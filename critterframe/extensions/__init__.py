@@ -1,0 +1,1 @@
+"""Source-specific packages: APIs, ingest, download, and metrics particular to one data source. Everything here normalizes INTO the core representation rather than around it, so core stays free of any one source's quirks."""

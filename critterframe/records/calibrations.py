@@ -1,0 +1,311 @@
+"""
+Calibrations: what is known about the imaging system, and which occurrences it
+applies to.
+
+A calibration is knowledge about the relationship between an image and a
+reference — how big a pixel is, how a camera's colours relate to true ones. It
+describes equipment and conditions, never an organism, which is why it can't
+live on the occurrence table and doesn't belong in the metric log.
+
+    calibration_type scope         scope_value    parameters
+    scale            event_id      12835          {"px_per_mm": 11.83}
+    scale            event_id      12836          {"px_per_mm": 11.79}
+    scale            occurrence_id AMNH_004421    {"px_per_mm": 42.10}
+    scale            device        copy_stand_A   {"px_per_mm": 19.40}
+    color            event_id      12835          {"method": "rgb_affine",
+                                                   "matrix": [...],
+                                                   "offset": [...]}
+
+WHAT IS GENERIC HERE IS THE SCOPE AND THE PROVENANCE, NOT THE VALUE. Every
+calibration answers "which occurrences does this apply to" and "where did this
+come from" identically, and those two questions are the entire content of this
+module. What a calibration IS varies enormously -- a scale is one number, a
+colour correction is a method name plus a matrix plus an offset plus an
+illuminant, and an ICC profile is an object -- so the payload is an opaque
+`parameters` dict that this layer stores and never interprets. Flattening both
+into a single `value` column would have forced colour into a shape that doesn't
+fit it, and forcing it later would mean migrating the table.
+
+Each calibration TYPE owns its own module under critterframe/calibrations/,
+which is where the meaning lives: how to measure one, what its parameters mean,
+how to validate them, and how to apply them. This module deliberately can't tell
+a good scale from a bad one -- calibrations/scale.py can. An extension mirrors
+that layout when it has a source-specific way of producing one (see
+extensions/antenna_lighttraps/calibrations/scale.py, which measures the same
+calibration off a light trap's reference card).
+
+A SCOPE IS JUST AN OCCURRENCE COLUMN. That is the same answer the rest of the
+package gives whenever something applies to a group rather than to one
+occurrence: outlier metrics take a group_col, training splits take a group_col,
+subsets select on a column. So a project says what it calibrated by naming the
+column that identifies it:
+
+  occurrence_id -- a reference in every frame, museum-specimen style. One row
+                   per occurrence, and each row describes only itself.
+  event_id      -- a light trap's card, set up when the trap is deployed and
+                   untouched until it's collected. One row covers a night (see
+                   extensions.antenna_lighttraps.calibrations.scale).
+  device        -- a fixed copy stand or a microscope at a known magnification,
+                   calibrated once and reused across everything shot on it.
+
+Nothing here decides which is right for a project, because nothing here can:
+whether the camera moved between two images is a fact about the fieldwork, not
+about the data. Changing your mind later is a data change -- write rows under a
+different scope.
+
+RESOLVED, NEVER COPIED. Nothing is written onto occurrences.
+resolve_for_occurrences() joins scope rows down to a per-occurrence answer at
+the moment someone needs one. The alternative -- merging px_per_mm onto the
+occurrence table -- is what this replaces, and it was quietly broken: the
+occurrence table is written as a full snapshot, so every re-ingest erased the
+calibration, on sources whose whole workflow is scheduled re-ingest.
+
+APPLIED LATE, NEVER BAKED IN. Traits stay in the units they were measured in and
+export converts (see export.export_metrics' units=). A calibration corrected
+next month should cost one re-export, not a re-measurement of everything derived
+under the old one.
+"""
+
+import logging
+from datetime import datetime, timezone
+
+import pandas as pd
+
+from ..project import paths
+from ..recipes import canonical_json, load_json
+from ..records.occurrences import ID_COL, load_occurrences
+from ..storage.tables import load_table, table_columns, upsert_table
+
+logger = logging.getLogger(__name__)
+
+TYPE_COL = "calibration_type"
+KEY_COLS = [TYPE_COL, "scope", "scope_value"]
+
+COLUMNS = [
+    TYPE_COL,
+    "scope",
+    "scope_value",
+    "parameters_json",
+    "source",
+    "score",
+    "measured_from",
+    "created_at",
+]
+
+
+def make_calibration_row(calibration_type, scope, scope_value, parameters,
+                         source, score=None, measured_from=None):
+    """
+    Build one calibration record.
+
+    calibration_type -- what kind of calibration this is: "scale", "color". The
+                        first part of the key, so two kinds of calibration can
+                        describe the same session without colliding.
+    scope            -- occurrence column identifying what this covers, e.g.
+                        "event_id", "device", or ID_COL for one occurrence.
+    scope_value      -- the value in that column this applies to.
+    parameters       -- dict of whatever the type needs. Stored as JSON and
+                        never interpreted here, so a type is free to grow a
+                        field without a schema change. Must be
+                        JSON-serializable, for the same reason an operation's
+                        parameters must be: what can't be recorded can't be
+                        reproduced.
+    source           -- how it was obtained: "target" (measured against a
+                        reference of known size), "declared" (stated by someone
+                        who knows the rig), or an extension's own name. Kept
+                        because a measured calibration and an asserted one
+                        deserve different amounts of trust, and six months later
+                        nothing else records which this was.
+    score            -- quality of the measurement where one exists, e.g. the
+                        correlation peak of a template match. The cheapest
+                        signal for "which calibration should a human check
+                        first", and dropping it at write time means never being
+                        able to ask.
+    measured_from    -- what it was measured on: an image key, a filename, a
+                        note.
+
+    The three key fields are coerced to str here, because storage compares keys
+    by value without coercing (see storage.tables.upsert_table) -- a numeric id
+    reaching it would be a different key from the same id as a string.
+    """
+    if not isinstance(parameters, dict):
+        raise TypeError(
+            f"calibration parameters must be a dict, got "
+            f"{type(parameters).__name__} -- even a single-number calibration "
+            "is stored as one, so that adding a second number later doesn't "
+            "change the shape of the table"
+        )
+
+    return {
+        TYPE_COL: str(calibration_type),
+        "scope": str(scope),
+        "scope_value": str(scope_value),
+        "parameters_json": canonical_json(parameters),
+        "source": source,
+        "score": None if score is None else float(score),
+        "measured_from": measured_from,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def save_calibrations(project_path, rows):
+    """
+    Write calibration rows, replacing any existing row for the same
+    (type, scope, scope_value).
+
+    Upsert rather than append: like a mask, the current calibration is the one
+    that counts, and a re-measurement supersedes rather than accumulates. Unlike
+    a metric there's no result to keep the history of -- what a corrected
+    calibration invalidates is nothing, because nothing was ever stored in
+    converted units.
+    """
+    if not rows:
+        return 0
+
+    upsert_table(pd.DataFrame(rows, columns=COLUMNS),
+                 paths.calibrations_path(project_path), key_cols=KEY_COLS)
+    return len(rows)
+
+
+def load_calibrations(project_path, calibration_type=None, scope=None):
+    """
+    Read the calibration table, with `parameters` parsed back into dicts.
+
+    Missing is fine and means nothing has been calibrated yet -- an empty frame
+    rather than a raise, since a project measuring only shape traits or only
+    relative colour never needs a calibration at all.
+    """
+    df = load_table(paths.calibrations_path(project_path), missing_ok=True)
+    if df.empty:
+        return pd.DataFrame(columns=[c for c in COLUMNS
+                                     if c != "parameters_json"] + ["parameters"])
+
+    if calibration_type is not None:
+        df = df[df[TYPE_COL] == calibration_type]
+    if scope is not None:
+        df = df[df["scope"] == scope]
+
+    df = df.reset_index(drop=True)
+    df["parameters"] = [load_json(value) for value in df.pop("parameters_json")]
+    return df
+
+
+def require_scope_column(project_path, scope):
+    """
+    Raise unless the occurrence table has this column, naming the ones it does.
+
+    Checked against the parquet's schema BEFORE reading, because reading one
+    named column that isn't there fails inside pyarrow with a message about
+    FieldRefs that says nothing about scopes or occurrences.
+    """
+    available = table_columns(paths.occurrences_path(project_path))
+    if scope not in available:
+        raise KeyError(
+            f"no '{scope}' column in this project's occurrences, so there is "
+            f"nothing to key a calibration on (columns: {sorted(available)})"
+        )
+    return scope
+
+
+def pending_scope_values(project_path, calibration_type, scope, limit=None):
+    """
+    Values of one occurrence column with no calibration of this type yet -- the
+    repeat-aware check a measurement pass makes before doing any work, so
+    measuring is resumable and re-running it is a no-op.
+    """
+    require_scope_column(project_path, scope)
+    occurrences = load_occurrences(project_path, columns=[scope])
+
+    values = occurrences[scope].dropna().astype(str).unique()
+    measured = set(load_calibrations(project_path,
+                                     calibration_type=calibration_type,
+                                     scope=scope)["scope_value"].astype(str))
+    pending = [value for value in values if value not in measured]
+
+    return pending[:limit] if limit is not None else pending
+
+
+def _occurrences_per_value(occurrences, scope):
+    """
+    How many occurrences one value of this scope covers, on average -- the
+    measure of how BROAD a scope is, used to order specificity.
+
+    A device column with two values across 5,000 occurrences scores 2,500; a
+    session column with 60 values scores 83; occurrence_id scores 1. Ordering by
+    it needs no hardcoded hierarchy of column names, so a project inventing its
+    own scope gets sensible precedence without telling anyone about it.
+    """
+    distinct = occurrences[scope].astype(str).nunique()
+    return len(occurrences) / distinct if distinct else float("inf")
+
+
+def resolve_for_occurrences(project_path, calibration_type, occurrence_ids=None):
+    """
+    The calibration parameters that apply to each occurrence, as a Series of
+    dicts indexed by occurrence_id.
+
+    An occurrence with no applicable row gets None -- never a project-wide
+    average, never the nearest session's value. A missing calibration has to
+    stay missing, because a trait converted with a guessed one is
+    indistinguishable in a CSV from a trait converted with a measured one.
+
+    Precedence, where more than one row could apply:
+
+      1. A row scoped to ID_COL wins. It describes that occurrence and nothing
+         else, so it is the most specific statement available -- which is what
+         makes "a target in this particular frame" override "the session this
+         frame belongs to".
+      2. Otherwise the scope covering the FEWEST occurrences wins, on the same
+         reasoning: a calibration measured per deployment says more about one
+         night than one measured per device says about a season. A warning fires
+         when this happens, because two overlapping calibrations usually means
+         one was meant to replace the other rather than join it.
+    """
+    calibrations = load_calibrations(project_path,
+                                     calibration_type=calibration_type)
+    if calibrations.empty:
+        return pd.Series(dtype="object", name=calibration_type)
+
+    scope_columns = list(dict.fromkeys(calibrations["scope"]))
+    occurrences = load_occurrences(project_path)
+
+    missing = [s for s in scope_columns if s not in occurrences.columns]
+    if missing:
+        logger.warning("%s calibration rows are scoped on column(s) the "
+                       "occurrence table doesn't have, so they apply to "
+                       "nothing: %s", calibration_type, ", ".join(sorted(missing)))
+        scope_columns = [s for s in scope_columns if s not in missing]
+
+    if occurrence_ids is not None:
+        wanted = {str(occurrence_id) for occurrence_id in occurrence_ids}
+        occurrences = occurrences[occurrences[ID_COL].isin(wanted)]
+
+    # Broadest scope first, most specific last, so each pass overwrites the one
+    # before it and the narrowest statement is what survives.
+    ordered = sorted(scope_columns,
+                     key=lambda scope: (scope == ID_COL,
+                                        -_occurrences_per_value(occurrences, scope)))
+
+    index = occurrences[ID_COL].astype(str)
+    resolved = pd.Series([None] * len(index), index=index, dtype="object",
+                         name=calibration_type)
+
+    for scope in ordered:
+        rows = calibrations[calibrations["scope"] == scope]
+        lookup = dict(zip(rows["scope_value"].astype(str), rows["parameters"]))
+
+        values = occurrences[scope].astype(str).map(lookup)
+        values.index = index
+
+        overridden = int((values.notna() & resolved.notna()).sum())
+        if overridden:
+            logger.warning("%d occurrence(s) already had a %s calibration from "
+                           "a broader scope; '%s' is more specific and overrides "
+                           "it", overridden, calibration_type, scope)
+
+        resolved = values.combine_first(resolved)
+
+    logger.info("resolved a %s calibration for %d of %d occurrence(s) from "
+                "scope(s): %s", calibration_type, int(resolved.notna().sum()),
+                len(resolved), ", ".join(ordered) or "none")
+    return resolved
