@@ -1,111 +1,121 @@
-# CritterFrame
+# critterframe
 
-Images to traits — and image frames to dataframes.
+Image frames of critters into dataframes of traits
 
-CritterFrame turns a pile of organism images into a table of measurements: ingest the metadata, download or
-import the images, segment the organism (and any body parts you care about) out of each one, measure whatever
-you want off the result, and export one row per organism for analysis.
-
-It's built for the awkward middle ground where most biological image analysis actually lives — several
-collections imaged to different standards, several body parts per specimen, some measurements automated and
-some checked by hand, and a processing pipeline that keeps changing while the data keeps arriving.
+critterframe is a flexible Python package built for large-scale organismal image processing, including easy-to-understand tools for:
 
 ```python
-import critterframe as cf
-
+# 1. ingesting
 cf.ingest_occurrences("my_project", "specimens.csv", id_col="specimen_id", image_url_col="image_url")
+# 2. downloading
 cf.download_images("my_project")
 
+# 3. segmentation 
 cf.run_segments("my_project", steps=[cf.segment(cf.groundedsam2())])
 
+# 4. trait extraction
 cf.run_metrics(
     "my_project",
     run_name="traits",
     transforms=[cf.remove_appendages()],
     metrics=[cf.mean_lightness()],
 )
-
 cf.export_metrics("my_project", "traits.csv")
+
+# Plus:
+# filtering
+# validation
+# pipeline visualization
+# human annotation
+# custom model training & training set assembly
 ```
+## The framework
 
-## Install
+1. **One focal organism per image**
 
+   > **Why:** A single organism is the natural unit for organismal image analysis and maps cleanly onto an occurrence. We see this as a worthy simplification that removes a complex layer of bookkeeping. Tools are provided to convert multi-organism images into one-organism images for import.
+
+2. **One canonical mask per organism or organism-part**
+
+   > **Why:** Virtually all analyses need the best available representation of a biological part, not a growing collection of competing masks. Alternative segmentation approaches can be evaluated against reference masks before deciding which should become canonical.
+
+3. **All derived values are metrics - whether traits, QC scores, or annotations**
+
+   > **Why:** A common metric model lets the same machinery support biological measurements, quality control, validation, clustering, and other analyses. Since filtering happens also means filtering can happen during export or later analysis, so observations and derived data never need to be removed from the pipeline itself.
+
+4. **Filtering is selection, not deletion**
+
+   > **Why:** Filtering criteria are analytical decisions that may change as a project develops. CritterFrame therefore retains occurrences and their derived data, applying filters during export or later analysis rather than removing data from the processing pipeline.
+
+## The pipeline
+
+1. **Simple, small operations compose flexibly into complex pipelines**
+
+   > **Why:** The same segmentation, transform, metric, subset, and comparison tools can support both simple trait extraction and complex pipelines involving body parts, processing subsets, embeddings, clustering, human validation, and complex filtering.
+
+2. **Rerunnable and resumable**
+
+   > **Why:** Large image datasets are expensive to process and continually evolve. Equivalent completed work is reused, interrupted runs can continue, and adding new occurrences or analyses does not require starting over.
+
+3. **Full derivation provenance**
+
+   > **Why:** Every mask and metric retains enough information to determine how it was produced and what inputs it depended on. This makes analyses interpretable, comparable, and reproducible without requiring users to manually track processing history.
+
+## Convenience features
+
+1. **Projects are portable analytical records ready for archiving alongside a publication**
+   - A project folder contains the data, intermediate results, and provenance needed to reproduce an analysis
+2. **Nearly every processing step can be visualized**
+   - Most operations can produce diagnostic visualizations with `visualize=True`.
+3. **Training, review, and validation sets are easy to create from project data**
+   - Named subsets make it straightforward to freeze samples for annotation, model development, or benchmarking.
+4. **Metrics exports are built for easy analysis outside of critterframe**
+5. **Multithreading and efficiency built in (soon)** 
+
+## Documentation
+Todo
+
+## Installation
 ```
 pip install -e .
 pip install -e ".[segmentation]"        # torch + transformers, for SAM2/GroundedSAM2
 cp .env.example .env                    # only needed for extensions that call an external API
 ```
 
-The core — ingest, storage, transforms, metrics, export, validation — has no deep-learning dependency. Install
-the `segmentation` extra when you want the bundled SAM2 models; a project segmenting with its own model doesn't
+The core has no deep-learning dependency. Install
+the `segmentation` extra when you want the bundled SAM2 models. A project segmenting with its own model doesn't
 need it.
 
-## The ideas
+## Example pipelines
 
-Thirteen of these, and everything else follows from them.
+`scripts/` holds one runnable script per project shape, each documenting what it demonstrates:
 
-**A project is one self-contained analytical dataset.** One directory holding occurrences, images, masks,
-metrics, processing definitions, and provenance. Occurrences in a project share a biological and trait model,
-but subsets of them can be *processed* completely differently — three museums that photographed their specimens
-three different ways still belong in one project, because you want to compare them.
+| Script | Shows                                                                       |
+| --- |-----------------------------------------------------------------------------|
+| `simplest_pipeline.py` | The simplest five-call pipeline. Good place to start.                       |
+| `antenna_moths_pipeline.py` | Pre-cropped images, so segmentation skips detection. Scale calibration.     |
+| `dragonfly_wings_museums.py` | Subsets with different recipes; four wings as four parts.                   |
+| `dragonfly_bodies_inat.py` | Part refinement from the organism mask; group metrics; embeddings.          |
+| `salamander_boxes.py` | Local images, a specialized segmenter, position as the trait.               |
+| `validation_pipeline.py` | Mask, measurement, and filter validation against human-reviewed references. |
 
-**One focal organism per occurrence, per image.** The most important structural decision in the package. If
-your images contain several organisms, they must be separated upstream of ingest. Everything downstream leans
-on this.
+## The project structure
 
-**Any number of parts per occurrence.** A named biological component — the whole organism by default, or head,
-abdomen, forewing. Four wings on one sheet are four parts of one occurrence, not four occurrences.
-
-**Images are stored byte-exact.** The image store holds the encoded bytes of the analysis image exactly as
-they arrived — no decode, no re-encode. A 16-bit TIFF stays 16-bit, alpha survives, EXIF survives, and a JPEG
-is never recompressed a second time. Reads normalize to 8-bit BGR for the processing pipeline, which is
-reversible because `get_bytes()` still returns the original.
-
-**One canonical mask per occurrence-part.** Optional reference masks coexist alongside for validation. Masks
-are always stored in the coordinates of the original analysis image, whatever crops, rotations, and resizes
-produced them — so a wing mask found inside a rotated sub-crop and a whole-organism mask found on the full
-frame describe pixels of the same picture.
-
-**Metrics are any derived value.** Traits, QC scores, human labels, embeddings, cluster assignments, outlier
-scores. A metric fit against a reference population is still a metric. They all store, export, and filter the
-same way.
-
-**Filtering is data, not deletion.** Filters are applied at export. Excluding blurred images from a CSV leaves
-every blurred image, its mask, and its measurements exactly where they were, so a threshold can be revised and
-the export rerun without recomputing or losing anything.
-
-**Masks and metrics carry full derivation recipes.** A recipe is an immutable, hashable specification of
-ordered operations. Its identity covers operation order, every parameter, every version, model and checkpoint
-identity, and upstream dependencies.
-
-**Processing is interruptible and repeat-aware.** Because recipes hash, a run skips work an equivalent recipe
-already did. An interrupted run resumes. A repeated run is a no-op. An expensive metric behaves like cached
-derived data rather than a calculation redone on every invocation.
-
-**Derived data follows the masks it was derived from.** Every metric value records which mask produced it, and
-every part cut out of another part records which mask it started from. Resegment an occurrence and the numbers
-measured off its old mask stay on record — nothing is deleted — but they stop counting as done, so the next
-run recomputes them, and stop being reported, so an export describes the masks the project currently holds
-rather than ones it replaced. The same applies down a chain: resegment the organism and the wing masks cut out
-of it, and everything measured on those, follow.
-
-**Looking at the images is part of the pipeline.** `visualize=25` on any run samples 25 occurrences and writes
-one grid to `visualizations/pipeline/` — a row per specimen, a column per processing stage — which is how you
-judge a step across a collection instead of squinting at 10,000 debug files. Any operation in a recipe can
-contribute a column, and segmentation and metric runs work the same way. Renders you actually want to keep
-go to `visualizations/products/` as one image file per occurrence-part, named for the occurrence, so a figure
-script or an R session can find them by id.
-
-**A calibration describes the imaging system, not an organism.** A scale target in every frame, one reference
-card per trap deployment, one calibrated copy stand for a whole collection — all three are the same knowledge
-at a different grain, so a calibration is keyed by whichever occurrence column identifies what was calibrated,
-and resolved onto occurrences when something needs it. Scale is the first kind; colour correction is the next,
-and it shares the bookkeeping without being squeezed into scale's shape. Traits stay in pixels forever;
-`export_metrics(units="mm")` divides at the end, so a corrected calibration costs one re-export instead of
-re-measuring everything.
-
-**Validation is comparison, not a separate system.** Human mask correction is a segmentation recipe. Human
-labels are a metric run. Validation just measures agreement between results that both already exist.
+```
+my_project/
+    occurrences.parquet         central imported/normalized metadata
+    images.lmdb/                original images, one per occurrence, byte-exact
+    masks.parquet               canonical masks, one per occurrence-part
+    reference_masks.parquet     human-vetted or otherwise trusted masks
+    calibrations.parquet        px/mm and the like, keyed by what was calibrated
+    runs_and_metrics.sqlite     run records + the metric values they produced
+    imports/                    immutable source imports
+    definitions/                subsets.toml, recipes.py
+    visualizations/
+        pipeline/               one sampled QC grid per run
+        products/               rendered assets, one file per occurrence-part
+    models/                     registry.json + checkpoints trained for this project
+```
 
 ## Vocabulary
 
@@ -124,24 +134,6 @@ labels are a metric run. Validation just measures agreement between results that
 | **Subset** | A named selection of occurrences receiving a particular recipe. |
 | **Filter** | A rule for selecting occurrences at export. Never deletes. |
 
-## What a project looks like
-
-```
-my_project/
-    occurrences.parquet         central imported/normalized metadata
-    images.lmdb/                original images, one per occurrence, byte-exact
-    masks.parquet               canonical masks, one per occurrence-part
-    reference_masks.parquet     human-vetted or otherwise trusted masks
-    calibrations.parquet        px/mm and the like, keyed by what was calibrated
-    runs_and_metrics.sqlite     run records + the metric values they produced
-    imports/                    immutable source imports
-    definitions/                subsets.toml, recipes.py
-    visualizations/
-        pipeline/               one sampled QC grid per run
-        products/               rendered assets, one file per occurrence-part
-    models/                     named custom segmenters, checkpoints
-```
-
 ## Package layout
 
 - **`project/`** — where a project's files live (`paths`, all `pathlib.Path`), what's in it (`summarize`),
@@ -157,7 +149,9 @@ my_project/
   reshape everything else that wants that shape shares.
 - **`storage/`** — the LMDB image store (byte-exact; `get()` for the 8-bit working view, `get_bytes()` for
   the original) and the parquet/sqlite mechanics, with no knowledge of any entity.
-- **`records/`** — what a project persists: `occurrences`, `masks`, `runs`, `metrics`.
+- **`records/`** — what a project persists: `occurrences`, `masks`, `runs`, `metrics`, `calibrations`, and
+  `models` (which checkpoint a name refers to, what it was trained on, and the fingerprint that puts those
+  weights into the recipe hash of everything they produce).
 - **`transforms/`** — `orient`, `appendages`, `crop` (plus rotate, resize, remove_background).
 - **`segmentation/`** — `groundedsam` (SAM2, with or without a detector), `manual` (draw/correct by hand), `run`
   (compose and execute).
@@ -168,29 +162,19 @@ my_project/
 - **`visualization/`** — `panels` (one picture of one decision, and the colour conventions they share),
   `grids` (many panels as one image), `pipeline` (the per-run QC grid), `products` (`render_segments`, one
   image file per occurrence-part).
-- **`training/`** — `datasets` and `splits`, for training the project-specific models `segment()` then runs.
+- **`training/`** — `splits` (`split_ids`: which occurrences answer which question, grouped and stratified so a
+  specimen can't straddle train and validation) and `datasets` (`export_training_data`: those occurrences as
+  images, masks, class folders, and a manifest a trainer can read). Training itself stays outside; what comes
+  back is registered, and then `segment()` runs it like any other model.
+- **`tests/`** — `pytest`, no GPU or network required: `unit/` mirrors the package, `integration/` is named for
+  the invariant each file protects (repeat-awareness, metric staleness, coordinate inversion, calibrated
+  export). The scripts under `scripts/simple_tests/` remain the *visual* check — they write debug images a
+  person looks at, which is the one thing a test can't do.
 - **`extensions/`** — source-specific packages that normalize *into* the core representation:
   `antenna_lighttraps` (light-trap monitoring, scale calibration per trap night) and `inat_insects` (iNaturalist, colour
   clustering, embeddings).
 
-## Reference pipelines
-
-`scripts/` holds one runnable script per project shape, each documenting what it demonstrates:
-
-| Script | Shows |
-| --- | --- |
-| `simplest_pipeline.py` | The five-call pipeline. Start here. |
-| `antenna_moths_pipeline.py` | Pre-cropped images, so segmentation skips detection. Scale calibration. |
-| `dragonfly_wings_museums.py` | Subsets with different recipes; four wings as four parts. |
-| `dragonfly_bodies_inat.py` | Part refinement from the organism mask; group metrics; embeddings. |
-| `salamander_boxes.py` | Local images, a specialized segmenter, position as the trait. |
-| `validation_pipeline.py` | Mask, measurement, and filter validation against human-reviewed references. |
-
-`scripts/simple_tests/` mirrors the package layout with standalone manual scripts — no assertions, they print
-output or write debug images for you to look at. `pipeline_synthetic_test.py` and `recipes_test.py` need no
-data, no credentials, and no GPU, and are the fastest way to check the core machinery still works.
-
-Claude Code contributed code and documentation to this project (with every line examined by a human).
+Claude Code was used to contribute code and documentation to this project (with every line examined by a human).
 
 ## License
 
