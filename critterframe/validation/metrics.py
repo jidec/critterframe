@@ -172,6 +172,15 @@ def compare_metrics(project_path, predicted_run, reference_run,
         label = predicted_metric if predicted_metric == reference_metric \
             else f"{predicted_metric} vs {reference_metric}"
 
+        # A column compared against itself measures nothing, and selecting it
+        # twice gives a duplicated-column frame in which every statistic below
+        # degenerates into an unreadable pandas TypeError. Reached by comparing
+        # a run with itself, which is a plausible typo.
+        if predicted_column == reference_column:
+            logger.info("  %s: predicted and reference are the same column, "
+                        "skipping", label)
+            continue
+
         missing = [column for column in (predicted_column, reference_column)
                    if column not in wide.columns]
         if missing:

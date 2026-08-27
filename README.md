@@ -2,33 +2,29 @@
 
 Image frames of critters into dataframes of traits
 
-critterframe is a flexible Python package built for large-scale organismal image processing, including easy-to-understand tools for:
+critterframe is a flexible Python package built for large-scale organismal image processing, including easy-to-understand tools to:
 
+1. **Ingest** occurrence data and images into the framework
 ```python
-# 1. ingesting
-cf.ingest_occurrences("my_project", "specimens.csv", id_col="specimen_id", image_url_col="image_url")
-# 2. downloading
-cf.download_images("my_project")
-
-# 3. segmentation 
-cf.run_segments("my_project", steps=[cf.segment(cf.groundedsam2())])
-
-# 4. trait extraction
-cf.run_metrics(
-    "my_project",
-    run_name="traits",
-    transforms=[cf.remove_appendages()],
-    metrics=[cf.mean_lightness()],
-)
-cf.export_metrics("my_project", "traits.csv")
-
-# Plus:
-# filtering
-# validation
-# pipeline visualization
-# human annotation
-# custom model training & training set assembly
+cf.ingest_occurrences("C:/my_project", "specimens.csv", id_col="specimen_id", image_url_col="image_url")
+cf.download_images("C:/my_project")
 ```
+
+2. **Segment** each organism out of its occurrence image
+```python
+cf.run_segments("C:/my_project", steps=[cf.segment(cf.groundedsam2())])
+```
+
+3. **Extract** and export traits from segmented organisms
+```python
+cf.run_metrics("C:/my_project", run_name="traits",
+                transforms=[cf.remove_appendages()], metrics=[cf.mean_lightness()])
+cf.export_metrics("C:/my_project", "traits.csv")
+```
+
+Plus filtering, validation, human annotation, training dataset export & custom model import, support for organismal parts (i.e. head, thorax, abdomen), scale & color calibration, group-derived metrics (i.e. cluster assignments, outlier detection), 
+and more — see [scripts/](scripts/) for full examples.
+
 ## The framework
 
 1. **One focal organism per image**
@@ -41,39 +37,37 @@ cf.export_metrics("my_project", "traits.csv")
 
 3. **All derived values are metrics - whether traits, QC scores, or annotations**
 
-   > **Why:** A common metric model lets the same machinery support biological measurements, quality control, validation, clustering, and other analyses. Since filtering happens also means filtering can happen during export or later analysis, so observations and derived data never need to be removed from the pipeline itself.
+   > **Why:** A common metric model lets the same machinery support biological measurements, quality control, validation, clustering results, embeddings, and lots more.
 
 4. **Filtering is selection, not deletion**
 
-   > **Why:** Filtering criteria are analytical decisions that may change as a project develops. CritterFrame therefore retains occurrences and their derived data, applying filters during export or later analysis rather than removing data from the processing pipeline.
+   > **Why:** Filtering criteria are analytical decisions that may change as a project develops. We apply filters during export or post-critterframe analysis rather than removing data from the processing pipeline.
 
 ## The pipeline
 
-1. **Simple, small operations compose flexibly into complex pipelines**
+1. **Small operations compose flexibly into complex pipelines**
 
-   > **Why:** The same segmentation, transform, metric, subset, and comparison tools can support both simple trait extraction and complex pipelines involving body parts, processing subsets, embeddings, clustering, human validation, and complex filtering.
+   > **Why:** The same operations support both simple pipelines (i.e. foundational segmentation & thresholded color extraction) and complex ones (i.e. with custom part segmentation, filtering via outlier detection, metric learning embeddings, etc.).
 
-2. **Rerunnable and resumable**
+2. **Idempotent, resumable, & evolvable**
 
-   > **Why:** Large image datasets are expensive to process and continually evolve. Equivalent completed work is reused, interrupted runs can continue, and adding new occurrences or analyses does not require starting over.
+   > **Why:** Large image datasets are expensive to process and continually evolve. Running the same recipe twice does no extra work and produces no extra data. Interrupted runs can continue. Incorporating new data is as simple as importing a new snapshot with the new data included.
 
 3. **Full derivation provenance**
 
-   > **Why:** Every mask and metric retains enough information to determine how it was produced and what inputs it depended on. This makes analyses interpretable, comparable, and reproducible without requiring users to manually track processing history.
+   > **Why:** Every mask and metric is linked to how it was produced and what inputs it depended on. Analyses are traceable & reproducible by default.
 
 ## Convenience features
 
-1. **Projects are portable analytical records ready for archiving alongside a publication**
-   - A project folder contains the data, intermediate results, and provenance needed to reproduce an analysis
-2. **Nearly every processing step can be visualized**
-   - Most operations can produce diagnostic visualizations with `visualize=True`.
-3. **Training, review, and validation sets are easy to create from project data**
-   - Named subsets make it straightforward to freeze samples for annotation, model development, or benchmarking.
-4. **Metrics exports are built for easy analysis outside of critterframe**
-5. **Multithreading and efficiency built in (soon)** 
+1. Project folders are portable analytical records with full data and provenance ready for archiving alongside a publication
+2. Nearly every pipeline step can be visualized with `visualize=True
+3. Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
+4. Metrics exports designed for easy analysis post-critterframe
+5. Multithreading for image downloading, segmentation, and metric runs
 
 ## Documentation
-Todo
+[jidec.github.io/critterframe](https://jidec.github.io/critterframe/) — this README plus a full API reference
+generated from the package's docstrings. Preview it locally with `pip install -e ".[docs]"` then `mkdocs serve`.
 
 ## Installation
 ```
@@ -85,6 +79,24 @@ cp .env.example .env                    # only needed for extensions that call a
 The core has no deep-learning dependency. Install
 the `segmentation` extra when you want the bundled SAM2 models. A project segmenting with its own model doesn't
 need it.
+
+## Testing
+
+```
+pip install -e ".[dev]"
+
+pytest                          # ~1,100 tests, ~45s; no GPU, network, or credentials needed
+pytest tests/unit -m "not slow" # inner loop, a few seconds
+pytest -m gpu                   # opt in to what's deselected by default (gpu, network, interactive)
+```
+
+`tests/unit/` mirrors the package; `tests/integration/` is one file per cross-cutting invariant
+(repeat-awareness, metric staleness, coordinate inversion, calibrated export...) rather than per module,
+since a test spanning ingest → segment → measure → export isn't "about" any one of them.
+
+`scripts/simple_tests/` are separate, visual-only smoke scripts — never collected by pytest. They write debug
+images for a person to look at, which is the one check assertions can't do: *which* pixels
+`remove_appendages` took, whether `orient` picked the body or the wingspan.
 
 ## Example pipelines
 
@@ -133,6 +145,12 @@ my_project/
 | **Run** | One execution of a recipe over a set of occurrences. |
 | **Subset** | A named selection of occurrences receiving a particular recipe. |
 | **Filter** | A rule for selecting occurrences at export. Never deletes. |
+| **Calibration** | Knowledge about the imaging system (e.g. px/mm scale), keyed by scope, resolved late. |
+| **Reference mask** | A mask kept for comparison, not treated as canonical — validation's baseline, not "ground truth". |
+| **Recipe hash** | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work. |
+| **Registered model** | Provenance binding a checkpoint to the data it was trained on; retraining moves its identity. |
+| **Panel** | One picture of one operation's decision about one occurrence-part — the unit visualizations are built from. |
+| **Render** | A materialized image product (`products/`) — derives no data, records no run. |
 
 ## Package layout
 
@@ -170,12 +188,27 @@ my_project/
   the invariant each file protects (repeat-awareness, metric staleness, coordinate inversion, calibrated
   export). The scripts under `scripts/simple_tests/` remain the *visual* check — they write debug images a
   person looks at, which is the one thing a test can't do.
-- **`extensions/`** — source-specific packages that normalize *into* the core representation:
-  `antenna_lighttraps` (light-trap monitoring, scale calibration per trap night) and `inat_insects` (iNaturalist, colour
-  clustering, embeddings).
+- **`extensions/`** — source-specific packages that normalize *into* the core representation. See
+  [Extensions](#extensions) below.
+
+## Extensions
+
+An extension normalizes one data source's quirks *into* core's representation — occurrences, images, masks —
+rather than building parallel structures around it. That's the whole contract: an extension's `ingest`/`download`
+map a source's API or file layout onto `ingest_occurrences`/`download_images`, and anything project-specific
+(a calibration scope, a metric only that source's images support) lives beside it rather than leaking into
+core. Two are shipped as worked examples of the pattern:
+
+- **`antenna_lighttraps`** — light-trap camera monitoring. Pre-cropped detections come in pre-cropped, and
+  scale calibration is scoped per trap night (`event_id`) rather than per occurrence.
+- **`inat_insects`** — iNaturalist observations. Adds colour clustering and embedding-based metrics suited to
+  citizen-science images shot under uncontrolled conditions.
+
+A new data source follows the same shape: ingest/download that normalizes into core, plus whatever
+calibration scope or metrics that source specifically needs — not a fork of the pipeline.
 
 Claude Code was used to contribute code and documentation to this project (with every line examined by a human).
 
 ## License
 
-[GPL-3.0](LICENSE)
+[GPL-3.0](https://github.com/jidec/critterframe/blob/main/LICENSE)

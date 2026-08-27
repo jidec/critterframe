@@ -38,9 +38,11 @@ import logging
 
 import numpy as np
 
+from ..project import paths
 from ..recipes import Metric
 from ..records.metrics import latest_values
 from ..records.occurrences import ID_COL, load_occurrences
+from ..storage.tables import table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,16 @@ def group_lookup(project_path, group_col, occurrence_ids=None):
     """
     if not group_col:
         return {}
+
+    # Checked against the parquet's schema before reading, the same way a
+    # calibration scope is: naming a column the table doesn't have fails inside
+    # pyarrow with a message about FieldRefs that says nothing about groups.
+    available = table_columns(paths.occurrences_path(project_path))
+    if group_col not in available:
+        raise KeyError(
+            f"no '{group_col}' column in this project's occurrences, so there "
+            f"is nothing to group by (columns: {sorted(available)})"
+        )
 
     groups = load_occurrences(project_path, columns=[group_col])
     if occurrence_ids is not None:

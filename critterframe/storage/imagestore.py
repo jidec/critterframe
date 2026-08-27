@@ -67,14 +67,21 @@ class ImageStore:
     exact encoded bytes.
 
     project_path -- project whose images.lmdb to open.
+    map_size     -- maximum size the environment may grow to, in bytes.
+                    None (the default) reads DEFAULT_MAP_SIZE at CALL time
+                    rather than binding it as a default argument at def time --
+                    which is what lets the module constant be overridden at all,
+                    since every caller inside the package opens a store without
+                    passing one.
     readonly     -- open without a write lock; safe and faster for readers,
                     and lets several readers run at once.
     """
 
-    def __init__(self, project_path, map_size=DEFAULT_MAP_SIZE, readonly=False):
+    def __init__(self, project_path, map_size=None, readonly=False):
         self.project_path = project_path
         self.path = paths.images_path(project_path)
         self.path.mkdir(parents=True, exist_ok=True)
+        map_size = DEFAULT_MAP_SIZE if map_size is None else map_size
         self.readonly = readonly
         # subdir=True lets LMDB manage a directory rather than a single file;
         # lock=False for readonly is safe and avoids lock contention on reads.

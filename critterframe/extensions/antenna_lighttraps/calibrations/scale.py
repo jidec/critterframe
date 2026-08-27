@@ -135,12 +135,19 @@ def first_sheet_for_event(session, event, project=None):
     return None
 
 
-def _download_sheet(url, timeout=300):
+def _download_sheet(url, session=None, timeout=300):
     """
     Fetch one sheet image's bytes from its presigned url and decode to BGR.
 
     A plain unauthenticated GET -- the url carries its own auth in the query
     string, which is the whole point of routing through the captures endpoint.
+
+    session -- optional requests session to fetch through. The url needs no
+               authentication, so this is not about credentials: it is so one
+               session covers a whole scale pass (connection reuse over twenty
+               20 MB downloads is not nothing), and so a caller can hand in
+               something else entirely. Every other network call in the package
+               takes one; this is the last that did not.
 
     These are full-resolution sheets, around 20 MB each, and that download is
     the slow part of a scale pass now that the metadata isn't. Logged with its
@@ -149,7 +156,7 @@ def _download_sheet(url, timeout=300):
     reason: a slow 20 MB is normal here, not a fault.
     """
     started = time.perf_counter()
-    response = requests.get(url, timeout=timeout)
+    response = (session or requests).get(url, timeout=timeout)
     response.raise_for_status()
 
     image = cv2.imdecode(np.frombuffer(response.content, dtype=np.uint8),
@@ -164,7 +171,8 @@ def _download_sheet(url, timeout=300):
     return image
 
 
-def measure_scales(project_path, project=None, limit=None, visualize=False):
+def measure_scales(project_path, project=None, limit=None, visualize=False,
+                   session=None):
     """
     Measure scale for every event that doesn't have one yet, and record it.
 
@@ -191,6 +199,9 @@ def measure_scales(project_path, project=None, limit=None, visualize=False):
     project -- Antenna project id to read captures from; taken from the
                environment (ANTENNA_PROJECT_ID) if omitted, the same way every
                other Antenna call resolves it.
+    session -- authenticated session to use; one is created if omitted. Passing
+               one lets a script share it with a download pass, and is what
+               makes this function reachable without credentials.
 
     Returns a summary dict (saved, failed, unaddressable).
     """
@@ -201,7 +212,7 @@ def measure_scales(project_path, project=None, limit=None, visualize=False):
         logger.info("every event already has a scale -- nothing to measure")
         return {"saved": 0, "failed": 0, "unaddressable": 0}
 
-    session = api.get_session()
+    session = session or api.get_session()
     logger.info("%d event(s) pending scale measurement; one sheet image each, "
                 "around 20 MB apiece", len(pending))
 
@@ -231,7 +242,7 @@ def measure_scales(project_path, project=None, limit=None, visualize=False):
         capture_id, url = sheet
 
         try:
-            image = _download_sheet(url)
+            image = _download_sheet(url, session=session)
 
             result = scale_calibration.scale_from_target(
                 image, template, CIRCLE_DIAMETER_MM, region=CARD_REGION,

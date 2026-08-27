@@ -16,16 +16,24 @@ Run from the repo root:
 import logging
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
 import cv2
-import numpy as np
 import pandas as pd
 
 import critterframe as cf
 from critterframe.records import calibrations as calibration_records
 from critterframe.records.metrics import load_metrics
+
+# The specimens and the stand-in segmenter are shared with the test suite rather
+# than written out twice. This script shows a person what the pipeline did and
+# the suite asserts what it computed, and both have to be looking at the same
+# thing for either to mean anything.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests"))
+from helpers.models import ThresholdModel          # noqa: E402
+from helpers.synthetic import write_specimens      # noqa: E402
 
 logging.basicConfig(level=logging.WARNING)
 
@@ -36,44 +44,17 @@ IMAGE_DIR = os.path.join(WORKSPACE, "images")
 shutil.rmtree(WORKSPACE, ignore_errors=True)
 os.makedirs(IMAGE_DIR)
 
-# Draw tilted ellipses with thin "legs" -- enough shape for orientation to have
-# an answer and for appendage removal to have something to remove.
-for index in range(8):
-    image = np.full((220, 280, 3), 40, np.uint8)
-    cv2.ellipse(image, (140, 110), (20, 60), 15 + index * 12, 0, 360,
-                (200, 180, 150), -1)
-    for dx in (-45, 45):
-        cv2.line(image, (140, 110), (140 + dx, 145), (200, 180, 150), 1)
-    cv2.imwrite(os.path.join(IMAGE_DIR, f"specimen{index}.png"), image)
+# Tilted ellipses with thin "legs" -- enough shape for orientation to have an
+# answer and for appendage removal to have something to remove. Drawn by
+# tests/helpers/synthetic.py; open it to see exactly what a "specimen" is here.
+write_specimens(Path(IMAGE_DIR), count=8)
 
-
-class ThresholdModel:
-    """
-    The smallest thing meeting the segmenter contract: predict() returning a
-    mask, a score, and diagnostics, plus identity() so it reaches the recipe
-    hash. A real model differs only in what happens inside predict().
-
-    erode -- pixels to shave off the mask. Exists only to stand in for "a
-             different segmenter that finds a slightly different organism", so
-             the resegmentation section below has two masks that genuinely
-             disagree about where the specimen ends. It's in identity(), so the
-             two configurations hash differently -- which is the whole reason a
-             rerun can tell them apart.
-    """
-
-    def __init__(self, erode=0):
-        self.erode = erode
-
-    def identity(self):
-        return {"class": "ThresholdModel", "cutoff": 100, "erode": self.erode}
-
-    def predict(self, image, mask_threshold=0.5):
-        gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        mask = gray > 100
-        if self.erode:
-            kernel = np.ones((self.erode * 2 + 1,) * 2, np.uint8)
-            mask = cv2.erode(mask.astype(np.uint8), kernel).astype(bool)
-        return mask, 0.9, {"cutoff": 100, "erode": self.erode}
+# ThresholdModel is the smallest thing meeting the segmenter contract: predict()
+# returning a mask, a score, and diagnostics, plus identity() so it reaches the
+# recipe hash. A real model differs only in what happens inside predict(). Its
+# `erode` parameter stands in for "a different segmenter that finds a slightly
+# different organism", which is what the resegmentation section below needs --
+# and it's in identity(), so the two configurations hash differently.
 
 
 print("== ingest ==")

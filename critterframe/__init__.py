@@ -48,6 +48,9 @@ The vocabulary, in the order it matters:
   Run         -- one execution of a recipe over a set of occurrences.
   Subset      -- a named selection of occurrences receiving a particular recipe.
   Filter      -- a rule for selecting occurrences at export. Never deletes.
+  Model       -- what a model-backed operation runs: a segmenter, an encoder.
+                 Register one trained elsewhere to keep its checkpoint identity
+                 in the recipe hash of everything it produces.
 
 Two properties are worth knowing before you rely on anything else. Processing
 is repeat-aware: work already done by an equivalent recipe is skipped, so runs
@@ -77,6 +80,7 @@ from .ingest import ingest_images, ingest_occurrences
 from .recipes import DEFAULT_PART, Metric, Recipe, Segment, Segmentation, Transform
 
 # --- segmentation ----------------------------------------------------------
+from .records.masks import merge_mask_shards
 from .segmentation.groundedsam import GroundedSAM2, groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
 from .segmentation.run import run_segments, segment
@@ -107,9 +111,20 @@ from .metrics.quality import (
 )
 from .metrics.run import run_metrics
 
+# --- training data and trained models --------------------------------------
+from .records.models import (
+    RegisteredModel,
+    list_models,
+    load_model,
+    register_model,
+    unregister_model,
+)
+from .training.datasets import export_training_data
+from .training.splits import split_ids
+
 # --- getting data out ------------------------------------------------------
 from .export import export_metrics, export_units
-from .selectionhelpers import occurrences_matching, sample_occurrences
+from .selectionhelpers import occurrences_matching, sample_occurrences, shard_occurrences
 from .visualization.grids import comparison_grid, image_grid
 from .visualization.panels import PanelFiles
 from .visualization.products import render_segments
@@ -129,6 +144,7 @@ __all__ = [
     "Metric",
     "PanelFiles",
     "Recipe",
+    "RegisteredModel",
     "Segment",
     "Segmentation",
     "Transform",
@@ -156,6 +172,7 @@ __all__ = [
     "draw_mask",
     "edge_fraction",
     "export_metrics",
+    "export_training_data",
     "export_units",
     "get_validated_filters",
     "groundedsam2",
@@ -165,6 +182,8 @@ __all__ = [
     "ingest_images",
     "ingest_occurrences",
     "length",
+    "list_models",
+    "load_model",
     "load_subsets",
     "mask_area",
     "mask_fraction",
@@ -172,11 +191,13 @@ __all__ = [
     "mean_color",
     "mean_lightness",
     "measure_scales",
+    "merge_mask_shards",
     "occurrences_matching",
     "orient",
     "outlier",
     "print_summary",
     "red_fraction",
+    "register_model",
     "relative_position",
     "remove_appendages",
     "remove_background",
@@ -190,9 +211,12 @@ __all__ = [
     "scale_for_occurrences",
     "scale_from_target",
     "segment",
+    "shard_occurrences",
+    "split_ids",
     "suggest_threshold",
     "summarize",
     "sweep_thresholds",
+    "unregister_model",
     "validate_masks",
     "yellow_fraction",
 ]

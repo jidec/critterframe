@@ -193,10 +193,24 @@ def _click_two_points(segment, labels=DEFAULT_POINT_LABELS):
         cv2.waitKey(300)   # let the second marker stay visible briefly
     cv2.destroyWindow(window)
 
-    if skipped:
-        return {labels[0]: None, labels[1]: None,
-                "length_px": None, "angle_deg": None}
+    return _skipped_pair(labels) if skipped else _point_pair(labels, points)
 
+
+def _point_pair(labels, points):
+    """
+    The value two clicked points produce: both positions, the distance between
+    them, and the angle of the line they define.
+
+    Separate from the clicking so the arithmetic is reachable without a window.
+    That matters more here than it looks: these are the only computed numbers
+    this module produces, and the angle convention is the kind of thing that is
+    wrong for months before anyone notices. It follows image coordinates, where
+    y increases DOWNWARD, so a second point below the first is +90 degrees, not
+    -90.
+
+    labels -- the two names the positions are stored under.
+    points -- [(x0, y0), (x1, y1)] in the segment's current coordinates.
+    """
     (x0, y0), (x1, y1) = points
     dx, dy = x1 - x0, y1 - y0
     return {
@@ -205,3 +219,15 @@ def _click_two_points(segment, labels=DEFAULT_POINT_LABELS):
         "length_px": float(np.hypot(dx, dy)),
         "angle_deg": float(np.degrees(np.arctan2(dy, dx))),
     }
+
+
+def _skipped_pair(labels):
+    """
+    The same shape with nothing in it, for an occurrence the annotator skipped.
+
+    Nulls rather than no row at all: "this one was looked at and passed over" is
+    a different fact from "this one was never reached", and only the first is
+    recoverable from a value.
+    """
+    return {labels[0]: None, labels[1]: None,
+            "length_px": None, "angle_deg": None}

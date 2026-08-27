@@ -156,3 +156,32 @@ def sample_occurrences(occurrence_ids, count, seed=SAMPLE_SEED):
     if count is None or count >= len(ids):
         return ids
     return sorted(random.Random(seed).sample(ids, count))
+
+
+def shard_occurrences(occurrence_ids, index, total):
+    """
+    This shard's disjoint slice of occurrence_ids, out of `total` shards.
+
+    Sorted first, then handed out round-robin -- deterministic regardless of
+    the order occurrence_ids arrives in or which process computes it, so any
+    number of workers given the same ids and the same total always agree on
+    the same non-overlapping split with no coordination between them. That's
+    what lets a cluster job array (or a plain multiprocessing.Pool, or a
+    handful of manual terminal invocations) run one shard per worker safely:
+    worker i calls run_segments(..., shard=(i, n)) and never touches an
+    occurrence any other worker is also touching.
+
+    Sizes differ by at most one shard-to-shard (round-robin, not chunked), so
+    no worker sits idle waiting on a shard several times the size of its
+    neighbours'.
+
+    index -- this shard's number, 0 <= index < total.
+    total -- how many shards occurrence_ids is being split into.
+    """
+    if total < 1:
+        raise ValueError(f"total must be at least 1, got {total}")
+    if not (0 <= index < total):
+        raise ValueError(f"index must be in [0, {total}), got {index}")
+
+    ids = sorted(str(occurrence_id) for occurrence_id in occurrence_ids)
+    return ids[index::total]

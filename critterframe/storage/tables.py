@@ -23,11 +23,25 @@ merges on a key, for tables built up incrementally across many runs.
 
 import logging
 import sqlite3
+import time
 from pathlib import Path
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+# How long a writer waits for a lock before giving up, once more than one
+# process is writing to the same project's runs_and_metrics.sqlite (e.g.
+# several sharded segmentation runs sharing one project -- see
+# segmentation.run.run_segments' shard= parameter). Without this, sqlite's
+# default is to raise "database is locked" immediately rather than wait.
+BUSY_TIMEOUT_MS = 30_000
+
+# Retry budget for the one-time switch into WAL mode specifically (see
+# connect()) -- separate from BUSY_TIMEOUT_MS because that pragma doesn't
+# cover this particular race.
+WAL_SWITCH_RETRIES = 20
+WAL_SWITCH_RETRY_DELAY_S = 0.05
 
 
 def write_table(new_df, table_path):
@@ -187,6 +201,24 @@ def connect(database_path):
 
     Callers are responsible for creating their own tables (see
     records.runs.ensure_schema) -- this only opens the file.
+
+    WAL journal mode lets readers proceed while a writer commits, instead of
+    a writer's commit blocking every reader; busy_timeout makes a writer that
+    finds the database locked BLOCK AND RETRY (at the sqlite C level) for up
+    to BUSY_TIMEOUT_MS rather than raising `database is locked` on first
+    contention. Neither matters for a single process talking to its own
+    project, but both do the moment two do -- several sharded run_segments()
+    calls each doing their own start_run()/finish_run() against one project's
+    runs_and_metrics.sqlite, say.
+
+    The one-time switch INTO WAL mode is a separate race busy_timeout does
+    NOT cover: sqlite reports it as SQLITE_LOCKED ("database is locked"), not
+    SQLITE_BUSY ("database is busy"), and busy_timeout's automatic retry only
+    catches the latter. Two connections opening a brand-new project's
+    database at nearly the same moment can hit this genuinely, so it gets its
+    own short, bounded, Python-level retry -- once any connection succeeds,
+    WAL is recorded in the file itself and every later open just sees it
+    already set, so this only ever matters in that first narrow window.
     """
     database_path = Path(database_path)
     database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -194,4 +226,15 @@ def connect(database_path):
     connection = sqlite3.connect(database_path)
     connection.row_factory = sqlite3.Row
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
+
+    for attempt in range(WAL_SWITCH_RETRIES):
+        try:
+            connection.execute("PRAGMA journal_mode = WAL")
+            break
+        except sqlite3.OperationalError:
+            if attempt == WAL_SWITCH_RETRIES - 1:
+                raise
+            time.sleep(WAL_SWITCH_RETRY_DELAY_S)
+
     return connection

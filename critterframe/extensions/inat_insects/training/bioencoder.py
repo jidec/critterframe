@@ -128,6 +128,9 @@ def train(manifest, output_dir, backbone=None, loss=None, augmentations=None,
                     ever produces -- so write a distinct path per training run
                     rather than overwriting one file, or two different models'
                     embeddings become indistinguishable in the record.
+                    records.models.register_model() removes that trap by
+                    hashing the weights themselves, and is also where the
+                    training data behind the checkpoint gets recorded.
     backbone      -- pretrained feature extractor to fine-tune. The decision
                     that most affects the result and the one most dependent on
                     dataset size: a large backbone on a few thousand images

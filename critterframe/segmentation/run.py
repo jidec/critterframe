@@ -44,6 +44,7 @@ import logging
 
 import numpy as np
 
+from .. import selectionhelpers
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe, Segment, Segmentation
 from ..records import masks as mask_records
@@ -186,7 +187,7 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
 def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PART,
                  outputs=None, shared_steps=None, from_part=None, subset=None,
                  limit=None, force=False, visualize=True, reference=False,
-                 batch_size=DEFAULT_BATCH_SIZE):
+                 batch_size=DEFAULT_BATCH_SIZE, shard=None):
     """
     Run a segmentation recipe over a project's occurrences.
 
@@ -242,6 +243,30 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                     segmentation.manual), so reference masks coexist with the
                     canonical ones rather than replacing them.
     batch_size   -- masks accumulated before each write.
+    shard        -- (index, total): process only this shard of the occurrences,
+                    for running several workers over one project at once -- a
+                    cluster job array, a plain multiprocessing.Pool of
+                    subprocesses, or a few manual terminal invocations.
+                    run_segments() itself starts no processes; it only needs
+                    to know which slice it owns. Shards are deterministic and
+                    disjoint by construction (selectionhelpers.shard_occurrences),
+                    so any number of workers can run their own shard at the
+                    same time with no coordination and no risk of two workers
+                    redoing, or racing to write, the same occurrence-part.
+
+                    A sharded run writes to a private staging area instead of
+                    masks.parquet directly -- upsert_table's whole-file
+                    rewrite isn't safe for concurrent writers. Call
+                    merge_mask_shards() once, after every shard has finished,
+                    to fold the staged results into the canonical table.
+                    None (default) writes directly, exactly as before --
+                    sharding is entirely opt-in and changes nothing about a
+                    normal, single-process run.
+
+                    A sharded run with visualize= on will log a warning:
+                    every shard's QC grid currently shares one filename, so
+                    only the last shard's sample survives on disk. Pass
+                    visualize=False for a sharded run, or accept that.
 
     Returns {part: {"processed", "skipped", "failed", "run_id"}}.
     """
@@ -251,6 +276,18 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                              from_part, reference)
     occurrence_ids = subset_selection.select_ids(project_path, subset=subset,
                                                  limit=limit)
+
+    if shard is not None:
+        index, total = shard
+        occurrence_ids = selectionhelpers.shard_occurrences(occurrence_ids, index, total)
+        if visualize:
+            logger.warning(
+                "shard=%s with visualize=%r: every shard's QC grid shares one "
+                "filename, so only the last shard to finish will leave one on "
+                "disk. Pass visualize=False for a sharded run to avoid the "
+                "clobbering, or ignore this if only one shard's sample matters.",
+                shard, visualize)
+
     logger.info("run_segments '%s': %d occurrence(s), part(s): %s",
                 run_name, len(occurrence_ids), ", ".join(sorted(recipes)))
 
@@ -326,7 +363,11 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     def flush(output_part):
         rows = batches[output_part]
         if rows:
-            mask_records.save_masks(project_path, rows, reference=reference)
+            if shard is not None:
+                mask_records.save_mask_shard(project_path, rows, output_part,
+                                             reference=reference)
+            else:
+                mask_records.save_masks(project_path, rows, reference=reference)
             rows.clear()
 
     with ImageStore(project_path, readonly=True) as images:

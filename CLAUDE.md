@@ -21,29 +21,74 @@ validation all run without torch. Keep it that way: a new core module should not
 
 ## Running things
 
-There is no test framework (no pytest, no test config). `scripts/simple_tests/` are standalone manual smoke
-scripts mirroring the package layout — no assertions; they print output or write debug images for visual
-inspection. Run them individually from the repo root after installing.
+### The mechanical check: pytest
 
-Three need nothing but the package itself and are the fastest check that the core machinery still works:
+```
+pip install -e ".[dev]"
+
+pytest                              # ~1,100 tests, ~45s; needs no GPU, network, or credentials
+pytest tests/unit -m "not slow"     # inner loop, a few seconds
+pytest -n auto                      # parallel; the suite is tmp_path-isolated
+pytest -m gpu                       # opt in to what's deselected by default
+```
+
+`tests/unit/` mirrors the package; `tests/integration/` is named for the invariant or workflow each file
+protects (`test_staleness.py`, `test_repeat_awareness.py`, `test_derived_parts.py`, …) rather than for a
+module, because a test spanning ingest → segment → measure → export isn't "about" any one of them.
+`tests/helpers/` holds the shared synthetic specimens, the stub segmenters, and the fake session/cv2 — it is
+what the smoke scripts import too, so both sides are looking at the same specimens.
+
+Markers: `slow` runs by default (opt out with `-m "not slow"`); `gpu`, `network`, and `interactive` are
+deselected by default and opted into with `-m gpu`. `tests/unit/test_hash_stability.py` holds three pinned
+digests — read its docstring before changing one, because a failure there means every mask and metric in every
+existing project has been invalidated.
+
+**`scripts/simple_tests/**/*_test.py` are never collected.** They are scripts, not tests, and several want a
+GPU, credentials, or a project at a hardcoded path. `python_files = ["test_*.py"]` in `pyproject.toml` is what
+guarantees that (the scripts are `<thing>_test.py`); don't loosen it.
+
+### The visual check: the smoke scripts
+
+`scripts/simple_tests/` are standalone manual scripts mirroring the package layout. They print output and write
+debug images for visual inspection, and that is now their whole job — the assertions they used to state in
+English have been harvested into `tests/`. What they do that a test cannot is show you WHICH pixels: whether
+`remove_appendages` took legs or a wing tip, whether `orient` picked the body or the wingspan. Run them
+individually from the repo root after installing.
+
+Four need nothing but the package itself:
 
 ```
 python scripts/simple_tests/pipeline_synthetic_test.py      # full pipeline over drawn images
 python scripts/simple_tests/recipes_test.py                 # hashing + coordinate inversion
+python scripts/simple_tests/training/training_test.py       # split, export, register, rerun
 python scripts/simple_tests/visualization/grids_test.py     # grid layout + sampling, no project
 ```
 
-Run the first two after touching `recipes.py`, `records/`, or either `run.py`; the synthetic pipeline test also
-writes real pipeline grids and product renders, so open what it leaves behind after touching
-`visualization/`. The rest need real state — a populated project, credentials, a GPU, or files under
-`scripts/test_images/`.
+The synthetic pipeline script writes real pipeline grids and product renders, so open what it leaves behind
+after touching `visualization/`. The rest need real state — a populated project, credentials, a GPU, or files
+under `scripts/test_images/`.
 
 `scripts/*.py` (excluding `simple_tests/`) are annotated reference pipelines, one per project shape. They point
 at project paths that don't exist in this repo; read them as documentation of intended usage, and expect to
 change `PROJECT_PATH` before running one.
 
-No lint/format/typecheck tooling is configured. `python -m pyflakes critterframe` is clean and worth keeping
+No format/typecheck tooling is configured. `python -m pyflakes critterframe tests` is clean and worth keeping
 clean.
+
+### The docs site
+
+```
+pip install -e ".[docs]"
+mkdocs serve           # live preview at localhost:8000
+mkdocs build --strict  # what CI runs before deploying; fails on broken refs/links
+```
+
+`docs/index.md` is a `pymdownx.snippets` include of this README, not separate content — edit the README, not
+that file. `docs/api/*.md` are thin `mkdocstrings` directives, one per subpackage; they render existing
+docstrings as-is, so a new subpackage needs a new `docs/api/<name>.md` plus a `mkdocs.yml` nav entry, but a new
+module inside an existing subpackage needs nothing (`show_submodules` picks it up). `.github/workflows/docs.yml`
+deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touches `critterframe/`, `docs/`,
+`mkdocs.yml`, or `README.md`.
 
 ## Architecture
 
@@ -112,6 +157,14 @@ clean.
     its rule vocabulary is membership-only — it's kept too small to express a threshold, so a quality
     judgement can't be smuggled into the one place that can't undo it.
 11. Imports are complete snapshots - imported occurrences replace the current occurrence table and reimporting an image folder ingests any new images
+12. **A registered model is provenance about weights, and the FINGERPRINT is what reaches the recipe hash.**
+    Training happens outside the package (`records/models.py` imports no framework); what a project records is
+    the join between a checkpoint and the data behind it — task, framework, base model, training splits as id
+    digests, opaque training `parameters`. `RegisteredModel.attach(network)` binds a loaded network to that
+    record and forwards `predict`/`encode`/`visualize` to it while answering `identity()` from the registry, so
+    retraining into the same filename moves the recipe hash and every mask and metric below it is correctly
+    redone. Name and path are deliberately NOT in `identity()`: a copied project is the same model, and a
+    reused name over different weights is not.
 
 ### The three types everything is built from (`recipes.py`)
 
@@ -202,7 +255,8 @@ picture into a measurement.
   upsert on `(occurrence_id, part)`, `derivation_hash`/`current_derivation_hashes`), `runs` (owns the sqlite
   schema for BOTH tables, and migrates old ones), `metrics` (long storage, `load_metrics`, `current_rows`,
   `latest_values`), `calibrations` (the scope/provenance machinery every calibration type shares, with an
-  opaque `parameters` payload it never interprets).
+  opaque `parameters` payload it never interprets), `models` (the registry of trained models —
+  `models/registry.json`, checkpoint fingerprints, `RegisteredModel`; provenance only, loads nothing).
 - **`ingest.py` / `download.py` / `export.py`** — the generic in/out. Ingest archives the source into
   `imports/` before parsing (which is what makes `drop=` safe), and image ingest archives a *manifest*, not
   the pixels. `export.py` owns the wide view — `column_name`, `metrics_wide`, `metric_units` — which validation
@@ -228,7 +282,15 @@ picture into a measurement.
 
   A Segment's `panel_sink` is a `RunReport` under a run, or `panels.PanelFiles` when you build a segment
   yourself and want full-resolution files — the latter is deliberately not reachable through `visualize=`.
-- **`training/`** — `datasets`, `splits` (grouped and stratified, to avoid leakage).
+- **`training/`** — `splits` (`split_ids` returns `{split: ids}`; grouped and stratified, to avoid leakage) and
+  `datasets` (`iterate_segments` in memory, `export_training_data` to disk — splits as subsets or ids, optional
+  class folders and mask PNGs, a manifest, and a `dataset.json` whose `data_hash` is what a registered model
+  points at). Splitting decides, exporting materializes, and neither does the other's job.
+- **`tests/`** — `unit/` mirroring the package, `integration/` named per invariant, `helpers/` shared with the
+  smoke scripts. Testing conventions: real LMDB/parquet/sqlite in `tmp_path` (three of the invariants above ARE
+  storage-format invariants, so a mocked store would assert nothing), fakes only for the network and the GUI,
+  hashes asserted RELATIONALLY except for three pinned digests, and timestamps stripped before comparison
+  rather than frozen — except the one place where the date is the behaviour (an import archived twice in a day).
 - **`extensions/`** — `antenna_lighttraps` (api/ingest/download + `calibrations/scale`, scoped to Antenna's
   `event_id` — the worked example of a project choosing its own calibration scope) and `inat_insects`
   (api/ingest/download + `metrics/color`, `metrics/bioencoder`, `training/bioencoder`). Extensions normalize

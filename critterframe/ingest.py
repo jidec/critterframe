@@ -36,6 +36,7 @@ from .storage.imagestore import ImageStore
 logger = logging.getLogger(__name__)
 
 DEFAULT_IMAGE_PATTERNS = ("*.jpg", "*.jpeg", "*.png", "*.tif", "*.tiff")
+DEFAULT_BATCH_SIZE = 100
 
 
 def _archive_import(source_path, project_path, name_prefix):
@@ -164,7 +165,8 @@ def ingest_occurrences(project_path, import_csv_path, id_col=None,
 
 
 def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
-                  id_from_stem=True, metadata=None, recursive=False):
+                  id_from_stem=True, metadata=None, recursive=False,
+                  batch_size=DEFAULT_BATCH_SIZE):
     """
     Ingest a folder of local images as a full SNAPSHOT: copy them into the
     project's image store and write one occurrence row per file.
@@ -223,6 +225,11 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
                     This is how a metadata CSV and a folder of images become
                     one project: read the CSV yourself and pass it here.
     recursive    -- search subdirectories too.
+    batch_size   -- images written to the store per transaction. Batched
+                    because one LMDB transaction per image is markedly slower
+                    than one per batch; flushed periodically rather than kept
+                    in memory until the end so a very large folder doesn't
+                    hold every file's bytes at once.
 
     Returns a summary dict (attempted, saved, failed, occurrences).
     """
@@ -238,6 +245,7 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
     attempted = 0
     rows = []
     failures = []
+    batch = []
 
     with ImageStore(project_path) as store:
         for path in image_paths:
@@ -255,7 +263,10 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
                     raise ValueError("could not decode")
 
                 occurrence_id = path.stem
-                store.put(occurrence_id, data)
+                batch.append((occurrence_id, data))
+                if len(batch) >= batch_size:
+                    store.put_many(batch)
+                    batch.clear()
 
                 stat = path.stat()
                 rows.append({
@@ -270,6 +281,9 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
             except Exception as exc:
                 logger.warning("image ingest failed for %s: %s", path, exc)
                 failures.append({"path": str(path), "error": str(exc)})
+
+        if batch:
+            store.put_many(batch)
 
     if not rows:
         logger.warning("no images ingested from %s", image_dir)

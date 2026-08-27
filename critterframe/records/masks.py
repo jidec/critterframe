@@ -49,7 +49,7 @@ from pycocotools import mask as mask_utils
 
 from ..project import paths
 from ..recipes import DEFAULT_PART, hash_spec
-from ..storage.tables import load_table, table_columns, upsert_table
+from ..storage.tables import load_table, table_columns, upsert_table, write_table
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +216,113 @@ def save_masks(project_path, rows, reference=False):
     return len(rows)
 
 
+def save_mask_shard(project_path, rows, part, reference=False):
+    """
+    Write one batch of mask rows to a new, uniquely-named staging file,
+    instead of upserting them into the canonical table directly.
+
+    This is what a sharded run_segments() call (shard=(index, total)) flushes
+    through instead of save_masks(). upsert_table's whole-file
+    read-merge-overwrite has no locking, so two concurrent workers each
+    upserting masks.parquet at once would silently lose each other's rows --
+    whichever writes last simply overwrites the file the other one just wrote.
+    A brand-new file can't collide with anything, from any number of
+    concurrent writers, on any filesystem: there's nothing to race over.
+    merge_mask_shards() is the one place that reads these back and performs
+    the actual (single-writer, already-safe) upsert -- meant to run once,
+    after every shard has finished.
+
+    rows      -- as save_masks().
+    part      -- which output part these rows belong to. Shards are staged
+                 per part, mirroring how a multi-output run already flushes
+                 each part's batch independently.
+    reference -- as save_masks().
+    """
+    import time
+    import uuid
+
+    import pandas as pd
+
+    if not rows:
+        return 0
+
+    directory = paths.mask_shards_dir(project_path, part=part, reference=reference)
+    directory.mkdir(parents=True, exist_ok=True)
+
+    # Zero-padded nanosecond timestamp first, so filenames sort lexically in
+    # write order -- that's what lets merge_mask_shards() resolve two shards
+    # having written the same occurrence-part by simply keeping the last one
+    # in filename order. The uuid suffix only guards against two flushes
+    # landing in the same nanosecond, which two different worker processes
+    # could in principle do.
+    filename = f"{time.time_ns():020d}-{uuid.uuid4().hex[:8]}.parquet"
+    write_table(pd.DataFrame(rows, columns=COLUMNS), directory / filename)
+    return len(rows)
+
+
+def merge_mask_shards(project_path, part=None, reference=False, cleanup=True):
+    """
+    Fold every staged shard file into the canonical mask table.
+
+    Meant to run ONCE, single-process, after every shard of a sharded
+    run_segments() call has finished -- a cluster job with
+    --dependency=afterok:$ARRAY_JOB_ID (or its scheduler's equivalent) run
+    after the array is the natural fit. It's the one place that actually
+    performs the read-merge-overwrite upsert -- safe here specifically
+    because, unlike the shard writes themselves, there is only ever one
+    process doing it.
+
+    Reads every staged file for the given part(s), and if the same
+    occurrence-part was written by more than one (unmerged) shard attempt --
+    a shard rerun before a previous merge, say -- resolves it by keeping
+    whichever write is chronologically newest, the same "newest wins" rule
+    the rest of the package already uses for reconciling a value recorded
+    more than once.
+
+    part      -- merge only this part's staged shards, or None (default) for
+                 every part that has anything staged.
+    reference -- merge the reference-mask shards instead of the canonical
+                 ones.
+    cleanup   -- delete each staged file once its rows are safely folded into
+                 the canonical table (default True). False leaves the staged
+                 files in place, e.g. to inspect before trusting the merge.
+
+    Returns {part: n_rows_merged}, for parts that had anything staged.
+    """
+    import pandas as pd
+
+    root = paths.mask_shards_dir(project_path, reference=reference)
+    if not root.exists():
+        return {}
+
+    parts = [part] if part is not None else sorted(
+        entry.name for entry in root.iterdir() if entry.is_dir())
+
+    merged = {}
+    for output_part in parts:
+        directory = root / output_part
+        shard_files = sorted(directory.glob("*.parquet")) if directory.exists() else []
+        if not shard_files:
+            continue
+
+        # Filenames sort in write order (see save_mask_shard), so the last
+        # occurrence of a key after concatenating in that order is the
+        # chronologically newest write for it.
+        combined = pd.concat([pd.read_parquet(path) for path in shard_files],
+                             ignore_index=True)
+        combined = combined.drop_duplicates(subset=KEY_COLS, keep="last")
+
+        upsert_table(combined, paths.masks_path(project_path, reference=reference),
+                     key_cols=KEY_COLS)
+        merged[output_part] = len(combined)
+
+        if cleanup:
+            for path in shard_files:
+                path.unlink()
+
+    return merged
+
+
 def load_masks(project_path, parts=None, occurrence_ids=None, recipe_hash=None,
                reference=False, columns=None):
     """
@@ -234,7 +341,12 @@ def load_masks(project_path, parts=None, occurrence_ids=None, recipe_hash=None,
     if df.empty:
         return df
 
-    df["occurrence_id"] = df["occurrence_id"].astype(str)
+    # Guarded, because `columns` may deliberately exclude the id -- parts_present
+    # reads only the part column, and the identity read drops whatever the
+    # stored table predates. Coercing unconditionally made asking a narrow
+    # question fail on exactly the projects that had something to answer with.
+    if "occurrence_id" in df.columns:
+        df["occurrence_id"] = df["occurrence_id"].astype(str)
     if parts is not None:
         df = df[df["part"].isin(parts)]
     if occurrence_ids is not None:

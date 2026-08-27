@@ -16,6 +16,11 @@ dependencies = [
     "tomli; python_version < '3.11'",
 ]
 
+[project.urls]
+Homepage = "https://github.com/jidec/critterframe"
+Repository = "https://github.com/jidec/critterframe"
+Documentation = "https://jidec.github.io/critterframe/"
+
 [project.optional-dependencies]
 # Segmentation models. Kept optional because the core pipeline -- ingest,
 # storage, transforms, metrics, export, validation -- runs without torch, and a
@@ -25,6 +30,75 @@ segmentation = [
     "transformers",
     "pillow",
 ]
+
+# Running the test suite. pytest-timeout is not a nicety here: two functions in
+# the package block on cv2.waitKey with no timeout by design, and a test whose
+# GUI stub is incomplete would hang forever rather than fail.
+dev = [
+    "pytest>=8.0",
+    "pytest-timeout>=2.3",
+    "pytest-xdist>=3.5",
+    "pytest-cov>=5",
+    "pyflakes",
+]
+
+# The docs site (mkdocs.yml, docs/). mkdocstrings renders the package's own
+# docstrings, so this has no runtime overlap with segmentation/dev -- it's
+# purely a documentation-build-time dependency set.
+docs = [
+    "mkdocs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+
+# THE SCRIPTS EXCLUSION. scripts/simple_tests/ holds standalone smoke scripts
+# named <thing>_test.py which execute at import -- several want a GPU,
+# credentials, or a project at a hardcoded path. The suite is named
+# test_<thing>.py, so narrowing python_files is what makes those scripts
+# uncollectable however pytest is invoked. testpaths alone would NOT do it: it
+# is consulted only when no path argument is given, so `pytest .` ignores it.
+# norecursedirs is the belt. A script path typed directly still runs -- nothing
+# closes that, and at that point it was deliberate.
+python_files = ["test_*.py"]
+norecursedirs = ["scripts", "projects", "critterframe.egg-info", ".git", ".idea", "build", "dist"]
+
+# tests/ mirrors the package, so duplicate basenames are unavoidable
+# (test_masks.py twice, test_ingest.py three times). importlib import mode is
+# what stops that being an "import file mismatch" error; pythonpath is what
+# keeps tests/helpers importable once rootdir is no longer on sys.path.
+pythonpath = ["tests"]
+
+# Every project fixture copies an LMDB environment, so a run leaves a few
+# hundred megabytes behind. Keeping only what a failure needs for a post-mortem
+# is the difference between a tidy temp directory and a full disk.
+tmp_path_retention_policy = "failed"
+tmp_path_retention_count = 1
+
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+    "--timeout=120",
+    "-m", "not gpu and not network and not interactive",
+]
+
+markers = [
+    "slow: builds or copies a project; runs by default, opt out with -m 'not slow'",
+    "gpu: needs torch plus real model weights; deselected by default",
+    "network: makes a real request or needs credentials; deselected by default",
+    "interactive: opens a real cv2 window and waits for a person; deselected by default",
+]
+
+# Safe as an error from day one: the package raises no warnings.warn anywhere --
+# every warning it emits is a logger.warning, asserted on with caplog. Only
+# third-party noise can trip this, and each such trip deserves its own narrow
+# line here rather than a blanket ignore.
+filterwarnings = ["error"]
 
 [build-system]
 requires = ["setuptools>=61"]

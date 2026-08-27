@@ -177,8 +177,17 @@ def select_occurrences(project_path, subset=None, limit=None, columns=None):
             )
         definition = subsets[subset]
 
-    if columns is not None and definition is not None and "column" in definition:
-        columns = list(columns) + [definition["column"]]
+    # A narrowed read must still carry whatever the rule needs to select on.
+    # For a column/values rule that is one named column; for a query it could be
+    # any of them -- the expression is arbitrary pandas -- so the only safe
+    # answer is to read the whole table. Without this, select_ids() (which asks
+    # for the id column alone, and which every run funnels through) raised
+    # UndefinedVariableError on any query-defined subset.
+    if columns is not None and definition is not None:
+        if "query" in definition:
+            columns = None
+        elif "column" in definition:
+            columns = list(columns) + [definition["column"]]
 
     df = load_occurrences(project_path, columns=columns)
 

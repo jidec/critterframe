@@ -1,0 +1,70 @@
+site_name: CritterFrame
+site_description: "Images to traits: segment organisms out of images and measure them, reproducibly"
+site_url: https://jidec.github.io/critterframe/
+repo_url: https://github.com/jidec/critterframe
+repo_name: jidec/critterframe
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+    - toc.follow
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            show_submodules: true
+            show_root_heading: true
+            show_source: true
+            separate_signature: true
+            show_signature_annotations: true
+            merge_init_into_class: true
+            docstring_section_style: list
+
+nav:
+  - Home: index.md
+  - API Reference:
+      - Core types (recipes.py): api/recipes.md
+      - Ingest, download, export: api/io.md
+      - project: api/project.md
+      - calibrations: api/calibrations.md
+      - storage: api/storage.md
+      - records: api/records.md
+      - transforms: api/transforms.md
+      - segmentation: api/segmentation.md
+      - metrics: api/metrics.md
+      - validation: api/validation.md
+      - visualization: api/visualization.md
+      - training: api/training.md
+      - extensions: api/extensions.md

@@ -47,7 +47,11 @@ def save_panel(project_path, image, name, subdir=""):
     for a caller who wants a picture on disk and is naming the folder itself.
 
     project_path -- project whose visualizations directory to write into.
-    image        -- BGR or grayscale array to write.
+    image        -- BGR, grayscale, or boolean-mask array to write. A boolean
+                    mask is converted here rather than refused: emit_panel's
+                    contract allows one and grids lay one out happily, so a
+                    sink that crashed on it would make an operation's panel
+                    work in a run's grid and fail in a file.
     name         -- filename stem; ".png" is appended if absent.
     subdir       -- subfolder, conventionally the operation's name, so one
                     caller's output never mixes with another's.
@@ -58,6 +62,10 @@ def save_panel(project_path, image, name, subdir=""):
     if not name.lower().endswith(".png"):
         name = f"{name}.png"
     dest = dest_dir / name
+
+    image = np.asarray(image)
+    if image.dtype == bool:
+        image = mask_to_bgr(image)
 
     cv2.imwrite(str(dest), image)   # cv2 wants a str, not a Path
     return dest
@@ -163,6 +171,8 @@ def side_by_side(*images):
     image is taller than the one it came from -- and hstack refuses to join
     them.
     """
+    images = [mask_to_bgr(image) if np.asarray(image).dtype == bool else image
+              for image in images]
     images = [
         cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image
         for image in images

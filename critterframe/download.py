@@ -26,6 +26,7 @@ Individual failures are logged and counted, never fatal. A dead URL in a
 """
 
 import logging
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import cv2
 import numpy as np
@@ -40,6 +41,13 @@ logger = logging.getLogger(__name__)
 DEFAULT_BATCH_SIZE = 100
 DEFAULT_TIMEOUT = (10, 60)     # connect timeout, read timeout
 USER_AGENT = "critterframe-image-download/1.0"
+
+# A polite number of concurrent connections to one host -- enough to matter
+# (downloads are pure network I/O, so this is close to a free multi-x
+# speedup), not aggressive enough to look like abuse to a single-host API.
+# max_workers=1 reproduces the old fully-sequential behaviour, for a source
+# with a strict rate limit.
+DEFAULT_MAX_WORKERS = 8
 
 
 def make_session():
@@ -128,7 +136,7 @@ def _pending_occurrences(project_path, store, url_col=IMAGE_URL_COL, subset=None
 
 def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None,
                     batch_size=DEFAULT_BATCH_SIZE, timeout=DEFAULT_TIMEOUT,
-                    session=None):
+                    session=None, max_workers=DEFAULT_MAX_WORKERS):
     """
     Download images for a project's occurrences into its image store.
 
@@ -141,6 +149,13 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     be a decodable image on the way past, so a URL that 200s with an error page
     fails here rather than during a segmentation run days later.
 
+    Fetches run concurrently across a thread pool -- this is pure network I/O,
+    so threads (not processes) are the right tool, and a single shared
+    requests.Session is safe to use from many threads at once (its connection
+    pool is designed for exactly this). Only the fetch itself is threaded:
+    batching and the actual store.put_many() write always happen on the calling
+    thread, one at a time, so nothing new touches the image store concurrently.
+
     project_path -- project whose occurrences to download for.
     url_col      -- occurrence column holding the URLs.
     subset       -- name of a subset to download, or None for all.
@@ -152,6 +167,10 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     timeout      -- (connect, read) timeout tuple.
     session      -- optional requests.Session to reuse; one is created and
                     closed if omitted.
+    max_workers  -- concurrent fetches. Set to 1 to download strictly one at a
+                    time, e.g. for a source with a strict per-second rate limit
+                    (rate limiting itself is an extension's concern, not this
+                    module's -- see the module docstring).
 
     Returns a summary dict (attempted, saved, failed, failures).
     """
@@ -160,7 +179,6 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     owns_session = session is None
     session = session or make_session()
 
-    attempted = 0
     saved = 0
     failures = []
     batch = []
@@ -169,28 +187,32 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
         with ImageStore(project_path) as store:
             pending = _pending_occurrences(project_path, store, url_col=url_col,
                                            subset=subset, limit=limit)
-            logger.info("%d image(s) pending download", len(pending))
+            attempted = len(pending)
+            logger.info("%d image(s) pending download", attempted)
 
-            for row in pending.itertuples(index=False):
-                occurrence_id = getattr(row, ID_COL)
-                url = getattr(row, url_col)
-                attempted += 1
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                future_to_row = {
+                    executor.submit(_download_image, getattr(row, url_col), session,
+                                    occurrence_id=getattr(row, ID_COL), timeout=timeout):
+                        (getattr(row, ID_COL), getattr(row, url_col))
+                    for row in pending.itertuples(index=False)
+                }
 
-                try:
-                    batch.append((occurrence_id,
-                                  _download_image(url, session,
-                                                  occurrence_id=occurrence_id,
-                                                  timeout=timeout)))
-                    if len(batch) >= batch_size:
-                        store.put_many(batch)
-                        saved += len(batch)
-                        batch.clear()
-                        logger.info("saved %d/%d", saved, attempted)
+                for future in as_completed(future_to_row):
+                    occurrence_id, url = future_to_row[future]
 
-                except Exception as exc:
-                    logger.warning("download failed for %s: %s", occurrence_id, exc)
-                    failures.append({"occurrence_id": occurrence_id, "url": url,
-                                     "error": str(exc)})
+                    try:
+                        batch.append((occurrence_id, future.result()))
+                        if len(batch) >= batch_size:
+                            store.put_many(batch)
+                            saved += len(batch)
+                            batch.clear()
+                            logger.info("saved %d/%d", saved, attempted)
+
+                    except Exception as exc:
+                        logger.warning("download failed for %s: %s", occurrence_id, exc)
+                        failures.append({"occurrence_id": occurrence_id, "url": url,
+                                         "error": str(exc)})
 
             if batch:
                 store.put_many(batch)

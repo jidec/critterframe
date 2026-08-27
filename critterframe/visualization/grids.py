@@ -191,7 +191,7 @@ def comparison_grid(rows, column_titles=None, row_labels=None, title=None,
     row_labels    -- occurrence ids, drawn down the left edge.
     title         -- headline drawn across the top.
 
-    Ragged rows are padded, so `rows` is addressed as rows[occurrence][stage].
+    Ragged rows are padded, so `rows` is addressed as `rows[occurrence][stage]`.
     """
     rows = [list(row) for row in rows]
     if not rows:

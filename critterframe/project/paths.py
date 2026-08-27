@@ -17,7 +17,7 @@ masks, metrics, processing definitions, and provenance
         visualizations/
             pipeline/               one sampled QC sheet per run
             products/               rendered assets, one file per occurrence-part
-        models/                     named custom segmenters/checkpoints
+        models/                     registry.json + checkpoints trained here
 
 Nothing here creates anything. A project comes into existence lazily: every
 writer in the package makes the directory it needs on its way to writing, so
@@ -36,6 +36,7 @@ OCCURRENCES_FILE = "occurrences.parquet"
 IMAGES_DIR = "images.lmdb"
 MASKS_FILE = "masks.parquet"
 REFERENCE_MASKS_FILE = "reference_masks.parquet"
+MASK_SHARDS_DIR = "mask_shards"
 CALIBRATIONS_FILE = "calibrations.parquet"
 RUNS_AND_METRICS_FILE = "runs_and_metrics.sqlite"
 IMPORTS_DIR = "imports"
@@ -46,6 +47,7 @@ VISUALIZATIONS_DIR = "visualizations"
 PIPELINE_DIR = "pipeline"
 PRODUCTS_DIR = "products"
 MODELS_DIR = "models"
+MODELS_REGISTRY_FILE = "registry.json"
 
 
 def project_dir(project_path):
@@ -82,6 +84,28 @@ def masks_path(project_path, reference=False):
     return project_dir(project_path) / (
         REFERENCE_MASKS_FILE if reference else MASKS_FILE
     )
+
+
+def mask_shards_dir(project_path, part="", reference=False):
+    """
+    Staging area for a sharded run_segments() call's mask writes.
+
+    A sharded run (shard=(index, total)) never writes masks.parquet
+    directly -- upsert_table's whole-file read-merge-overwrite has no
+    locking, so two concurrent workers rewriting it at once would silently
+    lose each other's rows. It writes a new, uniquely-named file here on
+    every flush instead (see records.masks.save_mask_shard) -- an operation
+    safe for any number of concurrent writers, since no two of them ever
+    touch the same file. Nothing here is meaningful on its own; see
+    records.masks.merge_mask_shards, the one place that reads it back.
+
+    part -- narrows to one part's shards, matching how a sharded run flushes
+            each output part into its own subdirectory. "" (default) is the
+            root both parts share, useful for listing which parts have
+            anything staged.
+    """
+    return project_dir(project_path) / MASK_SHARDS_DIR / \
+        ("reference" if reference else "canonical") / part
 
 
 def calibrations_path(project_path):
@@ -179,6 +203,21 @@ def products_dir(project_path, name=""):
 def models_dir(project_path):
     """Named custom segmenters/checkpoints belonging to this project."""
     return project_dir(project_path) / MODELS_DIR
+
+
+def models_registry_path(project_path):
+    """
+    What is known about the models this project uses: name, checkpoint
+    fingerprint, task, base model, the training data behind it (see
+    records.models).
+
+    JSON rather than parquet because it holds a handful of rows of deeply
+    nested, per-framework provenance, and rather than TOML because nothing
+    hand-edits it -- unlike subsets.toml, which exists precisely to be edited.
+    Beside the checkpoints rather than in definitions/, since a registered
+    model is a record OF the files here.
+    """
+    return models_dir(project_path) / MODELS_REGISTRY_FILE
 
 
 def require_project(project_path):

@@ -1,0 +1,39 @@
+name: docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "critterframe/**"
+      - "docs/**"
+      - "mkdocs.yml"
+      - "README.md"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install package with docs extras
+        run: pip install -e ".[docs]"
+
+      - name: Build (strict, catches broken refs/links before deploying)
+        run: mkdocs build --strict
+
+      - name: Configure git identity for the gh-pages deploy commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy to gh-pages
+        run: mkdocs gh-deploy --force --clean

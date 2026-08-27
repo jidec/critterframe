@@ -13,7 +13,8 @@ occurrences is ingest.py's job; turning captures into a calibration is
 calibrations/scale.py's.
 
 Credentials come from the environment (ANTENNA_EMAIL, ANTENNA_PW), read from a
-.env file locally via python-dotenv. They're environment rather than project
+.env file locally via python-dotenv -- lazily, on the first call that needs one,
+never at import. They're environment rather than project
 configuration deliberately: a project directory is data and is copied,
 archived, and shared, and a password has no business travelling with it.
 """
@@ -26,11 +27,47 @@ from pathlib import Path
 import requests
 from dotenv import load_dotenv
 
-load_dotenv()   # reads .env into the environment
-
 logger = logging.getLogger(__name__)
 
-BASE = os.environ.get("ANTENNA_BASE", "https://api.antenna.insectai.org/api/v2")
+DEFAULT_BASE = "https://api.antenna.insectai.org/api/v2"
+
+# Whether .env has been read into the environment yet. Read LAZILY -- on the
+# first call that needs a credential or a url, not at import -- because
+# importing a module should not reach out and mutate os.environ for the whole
+# process. It did once, and the consequence was that anything importing this
+# module inherited whatever .env happened to be beside the working directory,
+# whether it wanted Antenna or not.
+_environment_loaded = False
+
+
+def _load_environment():
+    """
+    Read .env into the environment, once per process.
+
+    Non-overriding, which is what load_dotenv already does: a variable set in
+    the real environment beats the file. That ordering is the one that matters
+    on a server, where there is no .env and the values arrive as an
+    EnvironmentFile or a secret mount.
+    """
+    global _environment_loaded
+    if not _environment_loaded:
+        load_dotenv()
+        _environment_loaded = True
+
+
+def base():
+    """
+    The Antenna API root, from ANTENNA_BASE or the public default.
+
+    A function rather than a module constant so it is read when it is used
+    rather than when this module is imported -- which is the only way a value
+    coming from .env can reach it, now that .env is read lazily.
+    """
+    _load_environment()
+    # `or`, not a get() default: .env.example ships ANTENNA_BASE= with nothing
+    # after it, which sets the variable to the empty string. A blank line in a
+    # config file means "I did not set this", not "the API lives at ''".
+    return os.environ.get("ANTENNA_BASE") or DEFAULT_BASE
 
 OCCURRENCES_FORMAT = "occurrences_simple_csv"
 CLASSIFICATIONS_FORMAT = "classifications_simple_csv"
@@ -53,6 +90,7 @@ def project_id(default=None):
     default -- returned when the variable isn't set; raises if it's None, since
               silently exporting the wrong project is worse than failing.
     """
+    _load_environment()
     value = os.environ.get("ANTENNA_PROJECT_ID")
     if value is not None:
         return int(value)
@@ -71,6 +109,7 @@ def get_session():
     Reads ANTENNA_EMAIL and ANTENNA_PW from the environment, logs in, and
     attaches the returned token to the session.
     """
+    _load_environment()
     email = os.environ.get("ANTENNA_EMAIL")
     password = os.environ.get("ANTENNA_PW")
     if not (email and password):
@@ -81,7 +120,7 @@ def get_session():
         )
 
     session = requests.Session()
-    response = session.post(f"{BASE}/auth/token/login/",
+    response = session.post(f"{base()}/auth/token/login/",
                             json={"email": email, "password": password},
                             timeout=30)
     response.raise_for_status()
@@ -105,11 +144,11 @@ def paginate(session, path, params=None, page_size=PAGE_SIZE, timeout=60):
     job is known before committing to it.
 
     session -- authenticated session from get_session().
-    path    -- endpoint path relative to BASE, e.g. "captures/".
+    path    -- endpoint path relative to the API root, e.g. "captures/".
     params  -- query parameters for the FIRST request; `next` already encodes
                them for the rest.
     """
-    url = f"{BASE}/{path}"
+    url = f"{base()}/{path}"
     params = dict(params or {}, page_size=page_size)
     started = time.time()
     pages = 0
@@ -190,7 +229,7 @@ def request_export(session, fmt=OCCURRENCES_FORMAT, project=None, filters=None):
     if filters:
         payload["filters"] = filters
 
-    response = session.post(f"{BASE}/exports/", json=payload, timeout=30)
+    response = session.post(f"{base()}/exports/", json=payload, timeout=30)
     response.raise_for_status()
     export_id = response.json()["id"]
 
@@ -212,7 +251,7 @@ def poll_export(session, export_id, interval=5, timeout=1800):
     """
     started = time.time()
     while time.time() - started < timeout:
-        response = session.get(f"{BASE}/exports/{export_id}/", timeout=30)
+        response = session.get(f"{base()}/exports/{export_id}/", timeout=30)
         response.raise_for_status()
         export = response.json()
 
@@ -235,7 +274,7 @@ def download_export(session, export, dest):
     dest    -- local path to write to.
 
     To fetch a previously-completed export without polling:
-        export = session.get(f"{BASE}/exports/{export_id}/").json()
+        export = session.get(f"{base()}/exports/{export_id}/").json()
         download_export(session, export, dest)
     """
     dest = Path(dest)

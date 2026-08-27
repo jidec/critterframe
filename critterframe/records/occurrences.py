@@ -32,6 +32,7 @@ import logging
 import pandas as pd
 
 from ..project import paths
+from ..recipes import hash_spec
 from ..storage.tables import load_table, write_table
 
 logger = logging.getLogger(__name__)
@@ -195,6 +196,23 @@ def load_occurrences(project_path, columns=None, missing_ok=False):
 def occurrence_ids(project_path):
     """Every occurrence id in the project, as strings, in table order."""
     return load_occurrences(project_path, columns=[ID_COL])[ID_COL].tolist()
+
+
+def ids_digest(occurrence_ids):
+    """
+    A short stable digest of a SET of occurrence ids.
+
+    For recording WHICH occurrences something covered where listing them would
+    be absurd -- the training data behind a registered model, the contents of an
+    exported dataset. Order-independent and duplicate-independent, because the
+    thing being identified is the set: the same 4,000 specimens listed in a
+    different order are the same training data, and a record that said otherwise
+    would report a difference nobody made.
+
+    Not a substitute for the ids themselves. It answers "is this the same set as
+    that one", never "which ones were they" -- keep the manifest for that.
+    """
+    return hash_spec(sorted({str(occurrence_id) for occurrence_id in occurrence_ids}))
 
 
 def occurrence_count(project_path):
