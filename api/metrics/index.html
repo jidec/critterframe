@@ -1,0 +1,4533 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/metrics/">
+      
+      
+        <link rel="prev" href="../transforms/">
+      
+      
+        <link rel="next" href="../calibrations/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>metrics - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.metrics" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              metrics
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../recipes/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        metrics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="annotation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation.annotate_flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate_flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation.click_two_points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_two_points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        color
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="color">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.black_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        black_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.hue_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hue_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.mean_color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mean_color
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.mean_lightness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mean_lightness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.red_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        red_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.yellow_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        yellow_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dimensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="dimensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.body_length" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        body_length
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.bounding_box" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bounding_box
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.mask_area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.max_width" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        max_width
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        outliers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="outliers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.ClusterMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClusterMetric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GroupMetric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GroupMetric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric.prepare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric.spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.OutlierMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OutlierMetric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.group_lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        group_lookup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.outlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        outlier
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        position
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="position">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.centroid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        centroid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.image_bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_bounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.relative_position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relative_position
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quality
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="quality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.bilateral_asymmetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bilateral_asymmetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.blur_variance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        blur_variance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.edge_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.mask_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.RunContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RunContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.completed_keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        completed_keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.run_metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        metrics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="annotation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation.annotate_flags" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate_flags
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.annotation.click_two_points" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_two_points
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        color
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="color">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.black_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        black_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.hue_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        hue_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.mean_color" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mean_color
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.mean_lightness" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mean_lightness
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.red_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        red_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.color.yellow_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        yellow_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dimensions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="dimensions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.body_length" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        body_length
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.bounding_box" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bounding_box
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.mask_area" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_area
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.dimensions.max_width" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        max_width
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        outliers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="outliers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.ClusterMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ClusterMetric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        GroupMetric
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="GroupMetric">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric.prepare" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        prepare
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.GroupMetric.spec" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        spec
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.OutlierMetric" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        OutlierMetric
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.cluster" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cluster
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.group_lookup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        group_lookup
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.outliers.outlier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        outlier
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        position
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="position">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.centroid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        centroid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.image_bounds" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_bounds
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.position.relative_position" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        relative_position
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quality
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="quality">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.bilateral_asymmetry" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        bilateral_asymmetry
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.blur_variance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        blur_variance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.edge_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        edge_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.quality.mask_fraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_fraction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="run">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.RunContext" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RunContext
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.completed_keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        completed_keys
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.metrics.run.run_metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_metrics
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/metrics.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>metrics</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.metrics" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.metrics</span>
+
+
+<a href="#critterframe.metrics" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Metrics: operations producing terminal values -- traits, QC scores, human labels, embeddings, cluster assignments, outlier scores.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.annotation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">annotation</span>
+
+
+<a href="#critterframe.metrics.annotation" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Human labels: annotate_flags, click_two_points.</p>
+<p>No model, no heuristic -- these produce the labels everything else is graded
+against. They are metrics like any other, so a human label stores in the same
+table as body length and can be compared against an automated metric with no
+special plumbing (see validation.filters).</p>
+<p>There is deliberately no "grade this mask" metric: correct the mask instead
+(segmentation.manual) and validation.masks reports the IoU, which is the same
+judgement measured rather than estimated.</p>
+<p>Each opens an OpenCV window and blocks on a person, so scope a run to a subset.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.annotation.annotate_flags" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">annotate_flags</span>
+
+
+<a href="#critterframe.metrics.annotation.annotate_flags" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">annotate_flags</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'category'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: show the image, mask, and overlay side by side and ask a human to
+classify the occurrence.</p>
+<p>1 = usable              a single, complete organism
+  2 = not_an_organism     nothing that should have been ingested
+  3 = cut_off             an organism, but running off the frame edge
+  4 = multiple_organisms  more than one in frame</p>
+<p>A crop that is both cut off and multiple should be flagged cut_off -- of the
+two, that is the one that also explains why the segmentation can't be
+trusted.</p>
+<p>This is the SCREENING pass, and it comes before any other human work: a flag
+other than "usable" means there is no single complete boundary to correct, so
+no reference mask can be made either. Screen the whole sample, then point the
+reference passes at the usable ones -- an unscreened sample has nothing for
+validation.filters to calibrate a QC cutoff against.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/annotation.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">annotate_flags</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"category"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: show the image, mask, and overlay side by side and ask a human to</span>
+<span class="sd">    classify the occurrence.</span>
+
+<span class="sd">      1 = usable              a single, complete organism</span>
+<span class="sd">      2 = not_an_organism     nothing that should have been ingested</span>
+<span class="sd">      3 = cut_off             an organism, but running off the frame edge</span>
+<span class="sd">      4 = multiple_organisms  more than one in frame</span>
+
+<span class="sd">    A crop that is both cut off and multiple should be flagged cut_off -- of the</span>
+<span class="sd">    two, that is the one that also explains why the segmentation can't be</span>
+<span class="sd">    trusted.</span>
+
+<span class="sd">    This is the SCREENING pass, and it comes before any other human work: a flag</span>
+<span class="sd">    other than "usable" means there is no single complete boundary to correct, so</span>
+<span class="sd">    no reference mask can be made either. Screen the whole sample, then point the</span>
+<span class="sd">    reference passes at the usable ones -- an unscreened sample has nothing for</span>
+<span class="sd">    validation.filters to calibrate a QC cutoff against.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"annotate_flags"</span><span class="p">,</span> <span class="n">_annotate_flags</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.annotation.click_two_points" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">click_two_points</span>
+
+
+<a href="#critterframe.metrics.annotation.click_two_points" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">click_two_points</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="n">DEFAULT_POINT_LABELS</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px_xy'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: have a human click two points on the segment, in order. Esc skips.</p>
+<p>Agnostic about what the points mean -- a body axis by default, but equally a
+wing chord or a scale bar. <code>labels</code> names them, and the names appear in the
+prompt and as the keys of the stored value.</p>
+<p>Both raw points are stored: a length and an angle are each recoverable from
+two points, but neither recovers the points. length_px and angle_deg ride
+along as a convenience, since validation.metrics compares numbers.</p>
+<p>labels -- the two point names, in click order.</p>
+<p>Returns {<first>, <second>, "length_px", "angle_deg"}, all None if skipped.
+Points are [x, y] in the current frame, normally original image coordinates.
+angle_deg is measured in image coordinates (y DOWN), so +90 means the second
+point is directly below the first.</p>
+<p>The unit is "px_xy", which is not convertible: length_px stays in pixels in a
+units="mm" export while body_length converts. Right for a label whose job is
+grading a pipeline measured in pixels.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/annotation.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">click_two_points</span><span class="p">(</span><span class="n">labels</span><span class="o">=</span><span class="n">DEFAULT_POINT_LABELS</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px_xy"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: have a human click two points on the segment, in order. Esc skips.</span>
+
+<span class="sd">    Agnostic about what the points mean -- a body axis by default, but equally a</span>
+<span class="sd">    wing chord or a scale bar. `labels` names them, and the names appear in the</span>
+<span class="sd">    prompt and as the keys of the stored value.</span>
+
+<span class="sd">    Both raw points are stored: a length and an angle are each recoverable from</span>
+<span class="sd">    two points, but neither recovers the points. length_px and angle_deg ride</span>
+<span class="sd">    along as a convenience, since validation.metrics compares numbers.</span>
+
+<span class="sd">    labels -- the two point names, in click order.</span>
+
+<span class="sd">    Returns {&lt;first&gt;, &lt;second&gt;, "length_px", "angle_deg"}, all None if skipped.</span>
+<span class="sd">    Points are [x, y] in the current frame, normally original image coordinates.</span>
+<span class="sd">    angle_deg is measured in image coordinates (y DOWN), so +90 means the second</span>
+<span class="sd">    point is directly below the first.</span>
+
+<span class="sd">    The unit is "px_xy", which is not convertible: length_px stays in pixels in a</span>
+<span class="sd">    units="mm" export while body_length converts. Right for a label whose job is</span>
+<span class="sd">    grading a pipeline measured in pixels.</span>
+<span class="sd">    """</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="p">)</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">]</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">2</span> <span class="ow">or</span> <span class="n">labels</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">labels</span><span class="p">[</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"click_two_points needs two distinct labels, got </span><span class="si">{</span><span class="n">labels</span><span class="si">}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"click_two_points"</span><span class="p">,</span> <span class="n">_click_two_points</span><span class="p">,</span> <span class="p">{</span><span class="s2">"labels"</span><span class="p">:</span> <span class="n">labels</span><span class="p">},</span>
+                  <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.color" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">color</span>
+
+
+<a href="#critterframe.metrics.color" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Colour metrics: mean colour, hue/lightness fractions.</p>
+<p>Measured over the masked organism only. Colour is only comparable across
+occurrences to the extent the imaging was, so calibrate or normalize before
+comparing across sources.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.black_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">black_fraction</span>
+
+
+<a href="#critterframe.metrics.color.black_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">black_fraction</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="n">BLACK_THRESHOLD</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of masked pixels darker than <code>threshold</code> lightness.</p>
+<p>Melanisation is the usual reason to want this, and it's a genuinely
+different question from mean lightness: a mostly-pale organism with heavy
+black markings and a uniformly mid-grey one can share a mean and differ
+completely here.</p>
+<p>threshold -- lightness cutoff on a 0-1 scale.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">black_fraction</span><span class="p">(</span><span class="n">threshold</span><span class="o">=</span><span class="n">BLACK_THRESHOLD</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: fraction of masked pixels darker than `threshold` lightness.</span>
+
+<span class="sd">    Melanisation is the usual reason to want this, and it's a genuinely</span>
+<span class="sd">    different question from mean lightness: a mostly-pale organism with heavy</span>
+<span class="sd">    black markings and a uniformly mid-grey one can share a mean and differ</span>
+<span class="sd">    completely here.</span>
+
+<span class="sd">    threshold -- lightness cutoff on a 0-1 scale.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"black_fraction"</span><span class="p">,</span> <span class="n">_black_fraction</span><span class="p">,</span> <span class="p">{</span><span class="s2">"threshold"</span><span class="p">:</span> <span class="n">threshold</span><span class="p">},</span>
+                  <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.hue_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">hue_fraction</span>
+
+
+<a href="#critterframe.metrics.color.hue_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">hue_fraction</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">min_saturation</span><span class="o">=</span><span class="n">MIN_SATURATION</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="n">MIN_VALUE</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of masked pixels falling in one named hue band.</p>
+<p>hue            -- one of HUE_BANDS ("red", "yellow", "green", ...).
+min_saturation -- pixels greyer than this are excluded rather than assigned
+                  a hue they don't really have.
+min_value      -- pixels darker than this are excluded for the same reason;
+                  hue is meaningless in shadow.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">hue_fraction</span><span class="p">(</span><span class="n">hue</span><span class="p">,</span> <span class="n">min_saturation</span><span class="o">=</span><span class="n">MIN_SATURATION</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="n">MIN_VALUE</span><span class="p">,</span>
+                 <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: fraction of masked pixels falling in one named hue band.</span>
+
+<span class="sd">    hue            -- one of HUE_BANDS ("red", "yellow", "green", ...).</span>
+<span class="sd">    min_saturation -- pixels greyer than this are excluded rather than assigned</span>
+<span class="sd">                      a hue they don't really have.</span>
+<span class="sd">    min_value      -- pixels darker than this are excluded for the same reason;</span>
+<span class="sd">                      hue is meaningless in shadow.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">hue</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">HUE_BANDS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown hue </span><span class="si">{</span><span class="n">hue</span><span class="si">!r}</span><span class="s2"> -- expected one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">HUE_BANDS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hue</span><span class="si">}</span><span class="s2">_fraction"</span><span class="p">,</span> <span class="n">_hue_fraction</span><span class="p">,</span>
+                  <span class="p">{</span><span class="s2">"hue"</span><span class="p">:</span> <span class="n">hue</span><span class="p">,</span> <span class="s2">"min_saturation"</span><span class="p">:</span> <span class="n">min_saturation</span><span class="p">,</span>
+                   <span class="s2">"min_value"</span><span class="p">:</span> <span class="n">min_value</span><span class="p">},</span>
+                  <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.mean_color" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">mean_color</span>
+
+
+<a href="#critterframe.metrics.color.mean_color" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">mean_color</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: mean colour of the masked pixels, as {"r", "g", "b"} on 0-1 scales.</p>
+<p>The plainest possible colour summary, and the right one when what you want
+is comparable across a controlled imaging setup. It says nothing about
+PATTERN -- a black-and-white striped organism and a uniformly grey one
+return the same value -- so pair it with black_fraction or a colour cluster
+metric when pattern matters.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mean_color</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: mean colour of the masked pixels, as {"r", "g", "b"} on 0-1 scales.</span>
+
+<span class="sd">    The plainest possible colour summary, and the right one when what you want</span>
+<span class="sd">    is comparable across a controlled imaging setup. It says nothing about</span>
+<span class="sd">    PATTERN -- a black-and-white striped organism and a uniformly grey one</span>
+<span class="sd">    return the same value -- so pair it with black_fraction or a colour cluster</span>
+<span class="sd">    metric when pattern matters.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"mean_color"</span><span class="p">,</span> <span class="n">_mean_color</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.mean_lightness" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">mean_lightness</span>
+
+
+<a href="#critterframe.metrics.color.mean_lightness" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">mean_lightness</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: mean CIELAB lightness of the masked pixels, on a 0-1 scale.</p>
+<p>Lab's L rather than a plain RGB average because L is designed to track
+PERCEIVED lightness: a saturated yellow and a saturated blue of the same RGB
+mean are not equally light to an eye or a camera, and averaging channels
+would call them identical.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mean_lightness</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: mean CIELAB lightness of the masked pixels, on a 0-1 scale.</span>
+
+<span class="sd">    Lab's L rather than a plain RGB average because L is designed to track</span>
+<span class="sd">    PERCEIVED lightness: a saturated yellow and a saturated blue of the same RGB</span>
+<span class="sd">    mean are not equally light to an eye or a camera, and averaging channels</span>
+<span class="sd">    would call them identical.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"mean_lightness"</span><span class="p">,</span> <span class="n">_mean_lightness</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.red_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">red_fraction</span>
+
+
+<a href="#critterframe.metrics.color.red_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">red_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of masked pixels in the red hue band. See hue_fraction().</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">red_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Metric: fraction of masked pixels in the red hue band. See hue_fraction()."""</span>
+    <span class="k">return</span> <span class="n">hue_fraction</span><span class="p">(</span><span class="s2">"red"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.color.yellow_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">yellow_fraction</span>
+
+
+<a href="#critterframe.metrics.color.yellow_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">yellow_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of masked pixels in the yellow hue band. See hue_fraction().</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/color.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">yellow_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Metric: fraction of masked pixels in the yellow hue band. See hue_fraction()."""</span>
+    <span class="k">return</span> <span class="n">hue_fraction</span><span class="p">(</span><span class="s2">"yellow"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.dimensions" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">dimensions</span>
+
+
+<a href="#critterframe.metrics.dimensions" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Size and shape metrics: body_length, max_width, mask_area, bounding_box.</p>
+<p>Run these on ORIENTED masks. body_length and max_width measure image axes, and
+only orientation makes an image axis correspond to the organism's own.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.dimensions.body_length" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">body_length</span>
+
+
+<a href="#critterframe.metrics.dimensions.body_length" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">body_length</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: vertical extent of an ORIENTED mask -- the number of rows spanned
+from the topmost to the bottommost mask pixel.</p>
+<p>Assumes orientation put the body axis exactly vertical. A few degrees of
+residual tilt inflates this slightly (you're measuring the bounding-box
+height of a tilted object), a small systematic upward bias.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/dimensions.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span>
+<span class="normal">24</span>
+<span class="normal">25</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">body_length</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: vertical extent of an ORIENTED mask -- the number of rows spanned</span>
+<span class="sd">    from the topmost to the bottommost mask pixel.</span>
+
+<span class="sd">    Assumes orientation put the body axis exactly vertical. A few degrees of</span>
+<span class="sd">    residual tilt inflates this slightly (you're measuring the bounding-box</span>
+<span class="sd">    height of a tilted object), a small systematic upward bias.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"body_length"</span><span class="p">,</span> <span class="n">_body_length</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.dimensions.bounding_box" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">bounding_box</span>
+
+
+<a href="#critterframe.metrics.dimensions.bounding_box" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">bounding_box</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: the mask's bounding box in the CURRENT frame, as
+{"x", "y", "width", "height"}.</p>
+<p>Reported as four numbers in one metric rather than four metrics because
+they're only meaningful together -- and because a caller wanting just the
+height should use body_length(), which says what it means.</p>
+<p>Note this is the box in whatever frame the transforms left behind, not in
+original image coordinates; for position in the original image, use
+metrics.position.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/dimensions.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">bounding_box</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: the mask's bounding box in the CURRENT frame, as</span>
+<span class="sd">    {"x", "y", "width", "height"}.</span>
+
+<span class="sd">    Reported as four numbers in one metric rather than four metrics because</span>
+<span class="sd">    they're only meaningful together -- and because a caller wanting just the</span>
+<span class="sd">    height should use body_length(), which says what it means.</span>
+
+<span class="sd">    Note this is the box in whatever frame the transforms left behind, not in</span>
+<span class="sd">    original image coordinates; for position in the original image, use</span>
+<span class="sd">    metrics.position.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"bounding_box"</span><span class="p">,</span> <span class="n">_bounding_box</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.dimensions.mask_area" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">mask_area</span>
+
+
+<a href="#critterframe.metrics.dimensions.mask_area" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">mask_area</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px2'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: pixel count of the mask -- how much image the segmented part
+occupies.</p>
+<p>Unlike body_length/max_width this doesn't need an oriented mask, so it can
+run before or after orient(). It's also the natural size metric for parts
+whose "length" isn't well defined, like a wing.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/dimensions.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mask_area</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px2"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: pixel count of the mask -- how much image the segmented part</span>
+<span class="sd">    occupies.</span>
+
+<span class="sd">    Unlike body_length/max_width this doesn't need an oriented mask, so it can</span>
+<span class="sd">    run before or after orient(). It's also the natural size metric for parts</span>
+<span class="sd">    whose "length" isn't well defined, like a wing.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"mask_area"</span><span class="p">,</span> <span class="n">_mask_area</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.dimensions.max_width" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">max_width</span>
+
+
+<a href="#critterframe.metrics.dimensions.max_width" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">max_width</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: maximum horizontal span across an ORIENTED mask -- the width of the
+widest single row.</p>
+<p>Width is the SPAN from leftmost to rightmost mask pixel in the row, not the
+count of mask pixels. On a spread-wing specimen a row crosses left wing,
+background gap, then right wing; the span correctly reports wingtip to
+wingtip, whereas a pixel count would omit the gap.</p>
+<p>This is an extremum, so one noisy row can define it. The visualization draws
+the full per-row width profile alongside the mask -- a sustained peak is a
+real measurement, a single spike is noise.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/dimensions.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">max_width</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: maximum horizontal span across an ORIENTED mask -- the width of the</span>
+<span class="sd">    widest single row.</span>
+
+<span class="sd">    Width is the SPAN from leftmost to rightmost mask pixel in the row, not the</span>
+<span class="sd">    count of mask pixels. On a spread-wing specimen a row crosses left wing,</span>
+<span class="sd">    background gap, then right wing; the span correctly reports wingtip to</span>
+<span class="sd">    wingtip, whereas a pixel count would omit the gap.</span>
+
+<span class="sd">    This is an extremum, so one noisy row can define it. The visualization draws</span>
+<span class="sd">    the full per-row width profile alongside the mask -- a sustained peak is a</span>
+<span class="sd">    real measurement, a single spike is noise.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"max_width"</span><span class="p">,</span> <span class="n">_max_width</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.outliers" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">outliers</span>
+
+
+<a href="#critterframe.metrics.outliers" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Group metrics: outlier(), cluster().</p>
+<p>"Is this specimen unusual?" isn't answerable from one segment -- it needs a
+reference population, and usually the population of THIS species, since a body
+length unremarkable for one species is impossible for another.</p>
+<p>A group metric stores, exports, and composes like any other metric. The only
+difference is that it fits once before the run's per-occurrence loop, via
+prepare(), then scores each occurrence against its group's fitted model.
+Reference values are read from an earlier metric run rather than recomputed.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.metrics.outliers.ClusterMetric" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">ClusterMetric</span>
+
+
+<a href="#critterframe.metrics.outliers.ClusterMetric" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">ClusterMetric</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'category'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GroupMetric (critterframe.metrics.outliers.GroupMetric)" href="#critterframe.metrics.outliers.GroupMetric">GroupMetric</a></code></p>
+
+
+
+        <p>Which cluster an occurrence falls into within its own group's trait
+distribution, and how far from that cluster's centre.</p>
+<p>Same within-group reasoning as OutlierMetric: clustering across groups would
+mostly rediscover between-group differences. Cluster ids are only comparable
+within one group, since each group's model numbers its own clusters.</p>
+<p>n_clusters -- clusters per group, passed to the default KMeans
+              model_factory. Ignored if model_factory is given.</p>
+<p>Everything else is passed through to GroupMetric -- see its docstring.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">n_clusters</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+             <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">unit</span><span class="o">=</span><span class="s2">"category"</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.cluster</span><span class="w"> </span><span class="kn">import</span> <span class="n">KMeans</span>
+
+    <span class="n">model_factory</span> <span class="o">=</span> <span class="n">model_factory</span> <span class="ow">or</span> <span class="p">(</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">KMeans</span><span class="p">(</span><span class="n">n_clusters</span><span class="o">=</span><span class="n">n_clusters</span><span class="p">,</span> <span class="n">n_init</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="n">group_col</span><span class="p">,</span>
+                     <span class="n">min_group_size</span><span class="o">=</span><span class="n">min_group_size</span><span class="p">,</span>
+                     <span class="n">model_factory</span><span class="o">=</span><span class="n">model_factory</span><span class="p">,</span> <span class="n">score_fn</span><span class="o">=</span><span class="n">_kmeans_score</span><span class="p">,</span>
+                     <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">"cluster"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.metrics.outliers.GroupMetric" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">GroupMetric</span>
+
+
+<a href="#critterframe.metrics.outliers.GroupMetric" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">GroupMetric</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">score_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'category'</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s1">'1'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="Metric (critterframe.recipes.Metric)" href="../recipes/#critterframe.recipes.Metric">Metric</a></code></p>
+
+
+
+        <p>Base for metrics fit once per group over a reference population.</p>
+<p>Usable directly by supplying model_factory and score_fn; OutlierMetric and
+ClusterMetric below are the two cases that come up.</p>
+<p>features       -- ordered Metric operations making up the feature vector,
+                  e.g. [body_length(), max_width()]. The same operations look
+                  up the reference values and measure the occurrence being
+                  scored, so the two can't drift apart.
+from_run       -- the earlier metric run holding those stored values.
+group_col      -- occurrence column to group by before fitting, e.g. "taxon".
+                  None fits one population-wide model.
+min_group_size -- groups smaller than this fall back to the population model.
+model_factory  -- zero-arg callable returning a fresh, unfit model with
+                  .fit(X), X being one row per reference occurrence.
+score_fn       -- callable (model, features) -&gt; dict. Separate from
+                  model_factory because model types don't share a scoring API
+                  -- KMeans is read with .transform(), IsolationForest with
+                  .decision_function().</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">score_fn</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"category"</span><span class="p">,</span>
+             <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">model_factory</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">score_fn</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2"> needs both a model_factory (zero-arg, "</span>
+            <span class="s2">"returns an unfit model with .fit(X)) and a "</span>
+            <span class="s2">"score_fn(model, features) -&gt; dict"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">features</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"a group metric needs at least one feature"</span><span class="p">)</span>
+
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="bp">self</span><span class="o">.</span><span class="n">_score</span><span class="p">,</span>
+                     <span class="n">version</span><span class="o">=</span><span class="n">version</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                     <span class="n">metric_name</span><span class="o">=</span><span class="n">metric_name</span> <span class="ow">or</span> <span class="n">name</span> <span class="ow">or</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="o">.</span><span class="n">lower</span><span class="p">())</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">features</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">features</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">from_run</span> <span class="o">=</span> <span class="n">from_run</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">group_col</span> <span class="o">=</span> <span class="n">group_col</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span> <span class="o">=</span> <span class="n">min_group_size</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">model_factory</span> <span class="o">=</span> <span class="n">model_factory</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">score_fn</span> <span class="o">=</span> <span class="n">score_fn</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">models</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">group_by_id</span> <span class="o">=</span> <span class="p">{}</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.metrics.outliers.GroupMetric.prepare" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">prepare</span>
+
+
+<a href="#critterframe.metrics.outliers.GroupMetric.prepare" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">prepare</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Fit the reference models, once, before the run's per-occurrence loop.</p>
+<p>Fits against every occurrence this run covers, including ones already
+scored by an earlier interrupted attempt -- the reference population has
+to be the whole population being scored, or resuming a run would
+silently change what the score means partway through.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prepare</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">context</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Fit the reference models, once, before the run's per-occurrence loop.</span>
+
+<span class="sd">    Fits against every occurrence this run covers, including ones already</span>
+<span class="sd">    scored by an earlier interrupted attempt -- the reference population has</span>
+<span class="sd">    to be the whole population being scored, or resuming a run would</span>
+<span class="sd">    silently change what the score means partway through.</span>
+<span class="sd">    """</span>
+    <span class="n">reference</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_reference_table</span><span class="p">(</span><span class="n">context</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">reference</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"no reference values for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">metric_name</span><span class="si">}</span><span class="s2">: run "</span>
+            <span class="sa">f</span><span class="s2">"'</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">from_run</span><span class="si">}</span><span class="s2">' has no stored "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="p">[</span><span class="n">feature</span><span class="o">.</span><span class="n">metric_name</span><span class="w"> </span><span class="k">for</span><span class="w"> </span><span class="n">feature</span><span class="w"> </span><span class="ow">in</span><span class="w"> </span><span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">]</span><span class="si">}</span><span class="s2"> values "</span>
+            <span class="sa">f</span><span class="s2">"for part '</span><span class="si">{</span><span class="n">context</span><span class="o">.</span><span class="n">part</span><span class="si">}</span><span class="s2">'. Run those metrics first -- a group "</span>
+            <span class="s2">"metric scores against a population that has already been "</span>
+            <span class="s2">"measured."</span>
+        <span class="p">)</span>
+
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">feature</span><span class="o">.</span><span class="n">metric_name</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_col</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">group_by_id</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">ID_COL</span><span class="p">)[</span><span class="bp">self</span><span class="o">.</span><span class="n">group_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">group</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">reference</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">group_col</span><span class="p">):</span>
+            <span class="n">clean</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">clean</span><span class="p">)</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                    <span class="s2">"group </span><span class="si">%r</span><span class="s2"> has only </span><span class="si">%d</span><span class="s2"> reference occurrences (&lt; "</span>
+                    <span class="s2">"min_group_size=</span><span class="si">%d</span><span class="s2">) -- scoring it against the "</span>
+                    <span class="s2">"population-wide model instead of its own"</span><span class="p">,</span>
+                    <span class="n">group</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">clean</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">[</span><span class="n">group</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit</span><span class="p">(</span><span class="n">clean</span><span class="p">)</span>
+
+    <span class="n">population</span> <span class="o">=</span> <span class="n">reference</span><span class="p">[</span><span class="n">columns</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">population</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"no reference occurrences have every feature value populated"</span>
+        <span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">[</span><span class="n">POPULATION</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_fit</span><span class="p">(</span><span class="n">population</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2"> fit: </span><span class="si">%d</span><span class="s2"> group model(s) + 1 population-wide fallback, "</span>
+                <span class="s2">"</span><span class="si">%d</span><span class="s2"> reference occurrences"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">metric_name</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">models</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">population</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.metrics.outliers.GroupMetric.spec" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">spec</span>
+
+
+<a href="#critterframe.metrics.outliers.GroupMetric.spec" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">spec</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Identity includes which features, which reference run, and which
+grouping -- all three change what "outlier" means, so all three have to
+change the hash. The FITTED MODEL isn't in the hash: it's determined by
+the reference values, which are determined by from_run, so hashing it
+would add nothing but instability from model randomness.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">spec</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Identity includes which features, which reference run, and which</span>
+<span class="sd">    grouping -- all three change what "outlier" means, so all three have to</span>
+<span class="sd">    change the hash. The FITTED MODEL isn't in the hash: it's determined by</span>
+<span class="sd">    the reference values, which are determined by from_run, so hashing it</span>
+<span class="sd">    would add nothing but instability from model randomness.</span>
+<span class="sd">    """</span>
+    <span class="n">spec</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">spec</span><span class="p">()</span>
+    <span class="n">spec</span><span class="p">[</span><span class="s2">"parameters"</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"features"</span><span class="p">:</span> <span class="p">[</span><span class="n">feature</span><span class="o">.</span><span class="n">spec</span><span class="p">()</span> <span class="k">for</span> <span class="n">feature</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">features</span><span class="p">],</span>
+        <span class="s2">"from_run"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">from_run</span><span class="p">,</span>
+        <span class="s2">"group_col"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">group_col</span><span class="p">,</span>
+        <span class="s2">"min_group_size"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">min_group_size</span><span class="p">,</span>
+        <span class="s2">"model"</span><span class="p">:</span> <span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_factory</span><span class="p">())</span><span class="o">.</span><span class="vm">__name__</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">spec</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.metrics.outliers.OutlierMetric" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">OutlierMetric</span>
+
+
+<a href="#critterframe.metrics.outliers.OutlierMetric" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">OutlierMetric</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">contamination</span><span class="o">=</span><span class="s1">'auto'</span><span class="p">,</span> <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'category'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+            <p class="doc doc-class-bases">
+              Bases: <code><a class="autorefs autorefs-internal" title="GroupMetric (critterframe.metrics.outliers.GroupMetric)" href="#critterframe.metrics.outliers.GroupMetric">GroupMetric</a></code></p>
+
+
+
+        <p>Flags occurrences that are unusual within their own group's trait
+distribution.</p>
+<p>Being an outlier WITHIN your own group is the QC-relevant signal. Comparing
+across groups would mostly rediscover real between-group differences -- that
+one species is larger than another -- rather than catching the bad
+segmentations and mis-identifications this is for.</p>
+<p>Defaults to IsolationForest, which is built for exactly this: no cluster
+count to choose, and it isn't looking for structure in the data, just
+isolating points that are easy to separate from the rest. Swap in anything
+else (a one-class SVM, a per-group Mahalanobis distance) via
+model_factory/score_fn -- nothing else about this class is
+IsolationForest-specific.</p>
+<p>contamination -- expected fraction of outliers in each group's reference
+                 population; passed straight to IsolationForest. "auto"
+                 lets it decide. Ignored if model_factory is given.</p>
+<p>Everything else is passed through to GroupMetric -- see its docstring.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+             <span class="n">min_group_size</span><span class="o">=</span><span class="n">MIN_GROUP_SIZE</span><span class="p">,</span> <span class="n">contamination</span><span class="o">=</span><span class="s2">"auto"</span><span class="p">,</span>
+             <span class="n">model_factory</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"category"</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.ensemble</span><span class="w"> </span><span class="kn">import</span> <span class="n">IsolationForest</span>
+
+    <span class="n">model_factory</span> <span class="o">=</span> <span class="n">model_factory</span> <span class="ow">or</span> <span class="p">(</span>
+        <span class="k">lambda</span><span class="p">:</span> <span class="n">IsolationForest</span><span class="p">(</span><span class="n">contamination</span><span class="o">=</span><span class="n">contamination</span><span class="p">,</span> <span class="n">random_state</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="n">group_col</span><span class="p">,</span>
+                     <span class="n">min_group_size</span><span class="o">=</span><span class="n">min_group_size</span><span class="p">,</span>
+                     <span class="n">model_factory</span><span class="o">=</span><span class="n">model_factory</span><span class="p">,</span>
+                     <span class="n">score_fn</span><span class="o">=</span><span class="n">_isolation_forest_score</span><span class="p">,</span>
+                     <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="ow">or</span> <span class="s2">"outlier"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.outliers.cluster" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">cluster</span>
+
+
+<a href="#critterframe.metrics.outliers.cluster" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">cluster</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: ClusterMetric, in the lowercase factory style of every other metric.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cluster</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Operation: ClusterMetric, in the lowercase factory style of every other metric."""</span>
+    <span class="k">return</span> <span class="n">ClusterMetric</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.outliers.group_lookup" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">group_lookup</span>
+
+
+<a href="#critterframe.metrics.outliers.group_lookup" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">group_lookup</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>{occurrence_id: group} read off the occurrence table.</p>
+<p>Shared rather than reimplemented per group metric: "which group does this
+occurrence belong to, with a population-wide fallback when the answer is
+missing" is the same question for every metric fit per group, whether it
+fits on stored trait values (GroupMetric below) or on something heavier
+like pooled pixels (extensions.inat_insects.metrics.color).</p>
+<p>group_col -- occurrence column naming the group. None returns an empty
+             mapping, which puts every occurrence on the population-wide
+             fallback.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">group_lookup</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    {occurrence_id: group} read off the occurrence table.</span>
+
+<span class="sd">    Shared rather than reimplemented per group metric: "which group does this</span>
+<span class="sd">    occurrence belong to, with a population-wide fallback when the answer is</span>
+<span class="sd">    missing" is the same question for every metric fit per group, whether it</span>
+<span class="sd">    fits on stored trait values (GroupMetric below) or on something heavier</span>
+<span class="sd">    like pooled pixels (extensions.inat_insects.metrics.color).</span>
+
+<span class="sd">    group_col -- occurrence column naming the group. None returns an empty</span>
+<span class="sd">                 mapping, which puts every occurrence on the population-wide</span>
+<span class="sd">                 fallback.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">group_col</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{}</span>
+
+    <span class="n">occurrence_records</span><span class="o">.</span><span class="n">require_columns</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span>
+                                       <span class="s2">"nothing to group by"</span><span class="p">)</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">load_occurrences</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">group_col</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">groups</span> <span class="o">=</span> <span class="n">groups</span><span class="p">[</span><span class="n">groups</span><span class="p">[</span><span class="n">ID_COL</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">({</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">})]</span>
+    <span class="k">return</span> <span class="n">groups</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">ID_COL</span><span class="p">)[</span><span class="n">group_col</span><span class="p">]</span><span class="o">.</span><span class="n">to_dict</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.outliers.outlier" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">outlier</span>
+
+
+<a href="#critterframe.metrics.outliers.outlier" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">outlier</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: OutlierMetric, in the lowercase factory style of every other metric.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/outliers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">outlier</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Operation: OutlierMetric, in the lowercase factory style of every other metric."""</span>
+    <span class="k">return</span> <span class="n">OutlierMetric</span><span class="p">(</span><span class="n">features</span><span class="p">,</span> <span class="n">from_run</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.position" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">position</span>
+
+
+<a href="#critterframe.metrics.position" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Where in the image the organism is: centroid, relative_position, image_bounds.</p>
+<p>Reported in ORIGINAL image coordinates, whatever crops a recipe applied, so two
+occurrences are comparable.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.position.centroid" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">centroid</span>
+
+
+<a href="#critterframe.metrics.position.centroid" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">centroid</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: the mask's centre of mass in ORIGINAL image coordinates, as
+{"x", "y"}.</p>
+<p>Centre of mass rather than bounding-box centre, so a long tail doesn't drag
+the reported position the way it would if half the box were empty.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/position.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">15</span>
+<span class="normal">16</span>
+<span class="normal">17</span>
+<span class="normal">18</span>
+<span class="normal">19</span>
+<span class="normal">20</span>
+<span class="normal">21</span>
+<span class="normal">22</span>
+<span class="normal">23</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">centroid</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: the mask's centre of mass in ORIGINAL image coordinates, as</span>
+<span class="sd">    {"x", "y"}.</span>
+
+<span class="sd">    Centre of mass rather than bounding-box centre, so a long tail doesn't drag</span>
+<span class="sd">    the reported position the way it would if half the box were empty.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"centroid"</span><span class="p">,</span> <span class="n">_centroid</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.position.image_bounds" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">image_bounds</span>
+
+
+<a href="#critterframe.metrics.position.image_bounds" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">image_bounds</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'px'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: the mask's bounding box in ORIGINAL image coordinates, as
+{"x", "y", "width", "height"}.</p>
+<p>The positional counterpart to dimensions.bounding_box (which reports the
+box in the working frame): this one says where the organism is in the
+picture, that one says how big it is once oriented.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/position.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">image_bounds</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"px"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: the mask's bounding box in ORIGINAL image coordinates, as</span>
+<span class="sd">    {"x", "y", "width", "height"}.</span>
+
+<span class="sd">    The positional counterpart to dimensions.bounding_box (which reports the</span>
+<span class="sd">    box in the working frame): this one says where the organism is in the</span>
+<span class="sd">    picture, that one says how big it is once oriented.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"image_bounds"</span><span class="p">,</span> <span class="n">_image_bounds</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.position.relative_position" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">relative_position</span>
+
+
+<a href="#critterframe.metrics.position.relative_position" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">relative_position</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: the centroid as a fraction of image size, as {"x", "y"} in [0, 1].</p>
+<p>The comparable version of centroid(): experimental boxes photographed at
+different resolutions or slightly different distances give position in
+pixels that can't be pooled, while position as a fraction of the frame can.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/position.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">relative_position</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: the centroid as a fraction of image size, as {"x", "y"} in [0, 1].</span>
+
+<span class="sd">    The comparable version of centroid(): experimental boxes photographed at</span>
+<span class="sd">    different resolutions or slightly different distances give position in</span>
+<span class="sd">    pixels that can't be pooled, while position as a fraction of the frame can.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"relative_position"</span><span class="p">,</span> <span class="n">_relative_position</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span>
+                  <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.quality" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">quality</span>
+
+
+<a href="#critterframe.metrics.quality" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Automated QC metrics: blur, asymmetry, edge fraction, mask fraction.</p>
+<p>Heuristics that flag likely-bad images and likely-bad masks. The WARN constants
+are eyeballed defaults, not derived -- treat them as a sanity check and
+calibrate real thresholds against human labels with validation.filters.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.quality.bilateral_asymmetry" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">bilateral_asymmetry</span>
+
+
+<a href="#critterframe.metrics.quality.bilateral_asymmetry" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">bilateral_asymmetry</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: how left-right asymmetric an ORIENTED mask is -- mirrors it across its
+own vertical centreline and returns 1 minus the IoU with its mirror.</p>
+<p>Most organisms are bilaterally symmetric viewed dorsally, so a high score
+usually means a bad segmentation rather than a lopsided specimen.</p>
+<p>Only meaningful once the body axis is vertical: on an unoriented mask the
+left/right split is arbitrary. A different question from orient()'s axis
+choice, which uses end-to-end asymmetry.</p>
+<p>Returns [0, 1]: 0.0 is perfectly symmetric, 1.0 is no overlap with its mirror.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/quality.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">bilateral_asymmetry</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: how left-right asymmetric an ORIENTED mask is -- mirrors it across its</span>
+<span class="sd">    own vertical centreline and returns 1 minus the IoU with its mirror.</span>
+
+<span class="sd">    Most organisms are bilaterally symmetric viewed dorsally, so a high score</span>
+<span class="sd">    usually means a bad segmentation rather than a lopsided specimen.</span>
+
+<span class="sd">    Only meaningful once the body axis is vertical: on an unoriented mask the</span>
+<span class="sd">    left/right split is arbitrary. A different question from orient()'s axis</span>
+<span class="sd">    choice, which uses end-to-end asymmetry.</span>
+
+<span class="sd">    Returns [0, 1]: 0.0 is perfectly symmetric, 1.0 is no overlap with its mirror.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"bilateral_asymmetry"</span><span class="p">,</span> <span class="n">_bilateral_asymmetry</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span>
+                  <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.quality.blur_variance" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">blur_variance</span>
+
+
+<a href="#critterframe.metrics.quality.blur_variance" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">blur_variance</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'laplacian_var'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: variance of the Laplacian over the masked region -- a standard
+focus-blur proxy, since sharp edges produce large second derivatives and a
+blurry image is muted everywhere.</p>
+<p>Restricted to mask pixels, so an out-of-focus or cluttered BACKGROUND can't
+drag the score down and a busy background can't fake a high one. The
+question is whether the ORGANISM is in focus.</p>
+<p>Rotation-invariant, so it can run before or after orient(). Higher is
+sharper. There's no universal scale -- compare across images from the same
+setup, or against BLUR_WARN_VARIANCE as a rough default cutoff.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/quality.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">blur_variance</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"laplacian_var"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: variance of the Laplacian over the masked region -- a standard</span>
+<span class="sd">    focus-blur proxy, since sharp edges produce large second derivatives and a</span>
+<span class="sd">    blurry image is muted everywhere.</span>
+
+<span class="sd">    Restricted to mask pixels, so an out-of-focus or cluttered BACKGROUND can't</span>
+<span class="sd">    drag the score down and a busy background can't fake a high one. The</span>
+<span class="sd">    question is whether the ORGANISM is in focus.</span>
+
+<span class="sd">    Rotation-invariant, so it can run before or after orient(). Higher is</span>
+<span class="sd">    sharper. There's no universal scale -- compare across images from the same</span>
+<span class="sd">    setup, or against BLUR_WARN_VARIANCE as a rough default cutoff.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"blur_variance"</span><span class="p">,</span> <span class="n">_blur_variance</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.quality.edge_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">edge_fraction</span>
+
+
+<a href="#critterframe.metrics.quality.edge_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">edge_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of mask pixels sitting on the image border -- how cut off
+the organism is by the edge of the frame.</p>
+<p>A cut-off organism is the failure case that most reliably corrupts size
+traits while looking perfectly fine as a segmentation: the mask is a correct
+outline of the visible part, and every length taken from it is an
+underestimate. Unlike blur or asymmetry, this doesn't degrade gradually --
+anything meaningfully above zero is worth excluding.</p>
+<p>Measured on the mask in ORIGINAL image coordinates, since "the edge of the
+frame" means the real frame, not the edge of a crop a recipe made.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/quality.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">edge_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: fraction of mask pixels sitting on the image border -- how cut off</span>
+<span class="sd">    the organism is by the edge of the frame.</span>
+
+<span class="sd">    A cut-off organism is the failure case that most reliably corrupts size</span>
+<span class="sd">    traits while looking perfectly fine as a segmentation: the mask is a correct</span>
+<span class="sd">    outline of the visible part, and every length taken from it is an</span>
+<span class="sd">    underestimate. Unlike blur or asymmetry, this doesn't degrade gradually --</span>
+<span class="sd">    anything meaningfully above zero is worth excluding.</span>
+
+<span class="sd">    Measured on the mask in ORIGINAL image coordinates, since "the edge of the</span>
+<span class="sd">    frame" means the real frame, not the edge of a crop a recipe made.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"edge_fraction"</span><span class="p">,</span> <span class="n">_edge_fraction</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.quality.mask_fraction" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">mask_fraction</span>
+
+
+<a href="#critterframe.metrics.quality.mask_fraction" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">mask_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s1">'fraction'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Metric: fraction of the original image the mask covers.</p>
+<p>A blunt but effective catch for both segmentation failure directions: a mask
+covering 0.1% of the frame usually found a speck of dirt, and one covering
+80% usually found the substrate instead of the organism.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/quality.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mask_fraction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="s2">"fraction"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Metric: fraction of the original image the mask covers.</span>
+
+<span class="sd">    A blunt but effective catch for both segmentation failure directions: a mask</span>
+<span class="sd">    covering 0.1% of the frame usually found a speck of dirt, and one covering</span>
+<span class="sd">    80% usually found the substrate instead of the organism.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Metric</span><span class="p">(</span><span class="s2">"mask_fraction"</span><span class="p">,</span> <span class="n">_mask_fraction</span><span class="p">,</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">unit</span><span class="p">,</span>
+                  <span class="n">metric_name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.metrics.run" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">run</span>
+
+
+<a href="#critterframe.metrics.run" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>run_metrics() + RunContext + completed_keys.</p>
+<p>Transforms shape what gets measured and are part of the recipe hash, but the
+segment they produce is thrown away -- only the value is kept. Occurrences with
+no mask for the part are neither measured nor counted done, and the run says so.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.metrics.run.RunContext" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">RunContext</span>
+
+
+<a href="#critterframe.metrics.run.RunContext" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">RunContext</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">run_name</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>What a run tells its operations before the per-occurrence loop starts.</p>
+<p>Passed to every operation's prepare() hook. Almost all of them ignore it --
+a metric is normally self-contained per occurrence -- but group metrics need
+to know which project and which occurrences make up the reference population
+they're about to fit against, and this is how they find out (see
+metrics.outliers).</p>
+<p>project_path   -- project being processed.
+occurrence_ids -- ids this run covers, AFTER subset and limit are applied
+                  but BEFORE skipping already-completed work. A group metric
+                  must fit against the whole population it's scoring within,
+                  not against whichever occurrences happen to be left over
+                  from an interrupted earlier run -- otherwise resuming a
+                  run would silently change what "outlier" means partway
+                  through it.
+part           -- part being measured.
+run_name       -- name of the run.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/metrics/run.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">run_name</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">project_path</span> <span class="o">=</span> <span class="n">project_path</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">occurrence_ids</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">part</span> <span class="o">=</span> <span class="n">part</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">run_name</span> <span class="o">=</span> <span class="n">run_name</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.run.completed_keys" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">completed_keys</span>
+
+
+<a href="#critterframe.metrics.run.completed_keys" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">completed_keys</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">source_mask_hashes</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The (occurrence_id, part) pairs a recipe has already produced values for --
+the repeat-awareness check this module makes before doing any work.</p>
+<p>Here rather than in records.metrics because it is this run's decision about
+what work is left, not a way of reading the metric log. Keyed on the recipe
+hash and not the run, so work completed by an earlier interrupted run of the
+same recipe is exactly what a new run skips.</p>
+<p>source_mask_hashes -- {(occurrence_id, part): derivation_hash} of the masks
+                      about to be measured. When given, completion means
+                      "this recipe has run over THIS mask" rather than "this
+                      recipe has run here", so resegmenting forces a
+                      recompute. Rows the caller has no mask for never count.
+                      Omit it to ask the weaker question, which is all a
+                      caller with no masks in hand can ask.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/run.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">completed_keys</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">source_mask_hashes</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The (occurrence_id, part) pairs a recipe has already produced values for --</span>
+<span class="sd">    the repeat-awareness check this module makes before doing any work.</span>
+
+<span class="sd">    Here rather than in records.metrics because it is this run's decision about</span>
+<span class="sd">    what work is left, not a way of reading the metric log. Keyed on the recipe</span>
+<span class="sd">    hash and not the run, so work completed by an earlier interrupted run of the</span>
+<span class="sd">    same recipe is exactly what a new run skips.</span>
+
+<span class="sd">    source_mask_hashes -- {(occurrence_id, part): derivation_hash} of the masks</span>
+<span class="sd">                          about to be measured. When given, completion means</span>
+<span class="sd">                          "this recipe has run over THIS mask" rather than "this</span>
+<span class="sd">                          recipe has run here", so resegmenting forces a</span>
+<span class="sd">                          recompute. Rows the caller has no mask for never count.</span>
+<span class="sd">                          Omit it to ask the weaker question, which is all a</span>
+<span class="sd">                          caller with no masks in hand can ask.</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">run_records</span><span class="o">.</span><span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            SELECT DISTINCT occurrence_id, part, source_mask_hash FROM metrics</span>
+<span class="sd">            WHERE recipe_hash = ?</span>
+<span class="sd">            """</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">recipe_hash</span><span class="p">,),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">source_mask_hashes</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">{(</span><span class="n">row</span><span class="p">[</span><span class="s2">"occurrence_id"</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s2">"part"</span><span class="p">])</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">}</span>
+
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"occurrence_id"</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s2">"part"</span><span class="p">])</span>
+        <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span>
+        <span class="k">if</span> <span class="n">row</span><span class="p">[</span><span class="s2">"source_mask_hash"</span><span class="p">]</span> <span class="o">==</span> <span class="n">source_mask_hashes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"occurrence_id"</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s2">"part"</span><span class="p">]),</span> <span class="n">_NO_MASK</span><span class="p">)</span>
+    <span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.metrics.run.run_metrics" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">run_metrics</span>
+
+
+<a href="#critterframe.metrics.run.run_metrics" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">run_metrics</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">run_name</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Run a metric recipe over a project's occurrence-parts.</p>
+<p>project_path -- the project to process.
+run_name     -- what to call this run. Part of recipe identity and the first
+                component of every exported column name, so two
+                differently-configured measurements of one trait stay
+                distinguishable instead of overwriting each other.
+metrics      -- list of Metric operations to evaluate.
+transforms   -- ordered Transform operations applied before measuring.
+part         -- part to measure; the whole organism by default.
+parts        -- several parts, each with the same recipe. Each gets its own
+                run record and recipe hash, so re-running one leaves the
+                others alone.
+subset       -- name of a subset to process, or None for every occurrence.
+limit        -- optional cap on occurrences.
+force        -- recompute occurrence-parts this recipe already covered from
+                the mask it is about to measure. Occurrences whose mask has
+                been replaced are recomputed regardless: their stored value
+                describes a mask that no longer exists.
+visualize    -- as in run_segments. The last column of a metric grid is the
+                measured segment with its values written on it.
+reference    -- measure the reference masks instead of the canonical ones.
+                How reference metric VALUES are produced for validation: the
+                same recipe pointed at the reference table, so disagreement
+                is attributable to the masks rather than the method.</p>
+<p>Returns {part: {"processed", "skipped", "failed", "run_id"}}.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/metrics/run.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_metrics</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">run_name</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span>
+                <span class="n">parts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Run a metric recipe over a project's occurrence-parts.</span>
+
+<span class="sd">    project_path -- the project to process.</span>
+<span class="sd">    run_name     -- what to call this run. Part of recipe identity and the first</span>
+<span class="sd">                    component of every exported column name, so two</span>
+<span class="sd">                    differently-configured measurements of one trait stay</span>
+<span class="sd">                    distinguishable instead of overwriting each other.</span>
+<span class="sd">    metrics      -- list of Metric operations to evaluate.</span>
+<span class="sd">    transforms   -- ordered Transform operations applied before measuring.</span>
+<span class="sd">    part         -- part to measure; the whole organism by default.</span>
+<span class="sd">    parts        -- several parts, each with the same recipe. Each gets its own</span>
+<span class="sd">                    run record and recipe hash, so re-running one leaves the</span>
+<span class="sd">                    others alone.</span>
+<span class="sd">    subset       -- name of a subset to process, or None for every occurrence.</span>
+<span class="sd">    limit        -- optional cap on occurrences.</span>
+<span class="sd">    force        -- recompute occurrence-parts this recipe already covered from</span>
+<span class="sd">                    the mask it is about to measure. Occurrences whose mask has</span>
+<span class="sd">                    been replaced are recomputed regardless: their stored value</span>
+<span class="sd">                    describes a mask that no longer exists.</span>
+<span class="sd">    visualize    -- as in run_segments. The last column of a metric grid is the</span>
+<span class="sd">                    measured segment with its values written on it.</span>
+<span class="sd">    reference    -- measure the reference masks instead of the canonical ones.</span>
+<span class="sd">                    How reference metric VALUES are produced for validation: the</span>
+<span class="sd">                    same recipe pointed at the reference table, so disagreement</span>
+<span class="sd">                    is attributable to the masks rather than the method.</span>
+
+<span class="sd">    Returns {part: {"processed", "skipped", "failed", "run_id"}}.</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="n">metrics</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+    <span class="n">transforms</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">transforms</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"run_metrics needs at least one metric"</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">operation</span> <span class="ow">in</span> <span class="n">metrics</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">operation</span><span class="o">.</span><span class="n">kind</span> <span class="o">!=</span> <span class="s2">"metric"</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"metrics= got a </span><span class="si">{</span><span class="n">operation</span><span class="o">.</span><span class="n">kind</span><span class="si">}</span><span class="s2"> operation (</span><span class="si">{</span><span class="n">operation</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">) "</span>
+                <span class="s2">"-- transforms belong in transforms="</span>
+            <span class="p">)</span>
+    <span class="k">for</span> <span class="n">operation</span> <span class="ow">in</span> <span class="n">transforms</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">operation</span><span class="o">.</span><span class="n">kind</span> <span class="o">==</span> <span class="s2">"metric"</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"transforms= got a metric operation (</span><span class="si">{</span><span class="n">operation</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">) -- "</span>
+                <span class="s2">"metrics produce terminal values and can't be composed onto"</span>
+            <span class="p">)</span>
+
+    <span class="n">target_parts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="k">if</span> <span class="n">parts</span> <span class="k">else</span> <span class="p">[</span><span class="n">part</span><span class="p">]</span>
+    <span class="n">occurrence_ids</span> <span class="o">=</span> <span class="n">subset_selection</span><span class="o">.</span><span class="n">select_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">,</span>
+                                                 <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"run_metrics '</span><span class="si">%s</span><span class="s2">': </span><span class="si">%d</span><span class="s2"> occurrence(s), part(s): </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">run_name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">),</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_parts</span><span class="p">))</span>
+
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">target_part</span> <span class="ow">in</span> <span class="n">target_parts</span><span class="p">:</span>
+        <span class="n">results</span><span class="p">[</span><span class="n">target_part</span><span class="p">]</span> <span class="o">=</span> <span class="n">_run_one_part</span><span class="p">(</span>
+            <span class="n">project_path</span><span class="p">,</span> <span class="n">run_name</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span> <span class="n">target_part</span><span class="p">,</span>
+            <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">subset</span><span class="p">,</span> <span class="n">force</span><span class="p">,</span> <span class="n">visualize</span><span class="p">,</span> <span class="n">reference</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="n">results</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2420 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/transforms/">
+      
+      
+        <link rel="prev" href="../segmentation/">
+      
+      
+        <link rel="next" href="../metrics/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>transforms - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.transforms" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              transforms
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../recipes/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transforms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="transforms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.appendages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        appendages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="appendages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.appendages.remove_appendages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remove_appendages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="crop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.crop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.crop_to_mask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop_to_mask
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.remove_background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remove_background
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.resize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.rotate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rotate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        orient
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="orient">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.apply_affine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_affine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.compute_orientation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_orientation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.orient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        orient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.rotation_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rotation_matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.transforms" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        transforms
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="transforms">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.appendages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        appendages
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="appendages">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.appendages.remove_appendages" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remove_appendages
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="crop">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.crop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.crop_to_mask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        crop_to_mask
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.remove_background" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        remove_background
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.resize" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resize
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.crop.rotate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rotate
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        orient
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="orient">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.apply_affine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        apply_affine
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.compute_orientation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        compute_orientation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.orient" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        orient
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.transforms.orient.rotation_matrix" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rotation_matrix
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/transforms.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>transforms</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.transforms" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.transforms</span>
+
+
+<a href="#critterframe.transforms" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Transforms: operations that modify the working segment without producing a value.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.transforms.appendages" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">appendages</span>
+
+
+<a href="#critterframe.transforms.appendages" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Remove legs/antennae from a mask, keeping the body intact.</p>
+<p>Legs and antennae are thin and the body is not, so a morphological opening
+separates them -- but opening alone also shaves the body's own outline, which
+would systematically shorten every length measured afterwards. The body is
+recovered from the opened mask instead.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.appendages.remove_appendages" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">remove_appendages</span>
+
+
+<a href="#critterframe.transforms.appendages.remove_appendages" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">remove_appendages</span><span class="p">(</span><span class="n">relative_radius</span><span class="o">=</span><span class="n">RELATIVE_RADIUS</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: strip thin appendages (legs, antennae) from the working mask.</p>
+<p>relative_radius -- appendage thickness threshold as a fraction of the
+                   mask's linear size (see RELATIVE_RADIUS).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/appendages.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_appendages</span><span class="p">(</span><span class="n">relative_radius</span><span class="o">=</span><span class="n">RELATIVE_RADIUS</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: strip thin appendages (legs, antennae) from the working mask.</span>
+
+<span class="sd">    relative_radius -- appendage thickness threshold as a fraction of the</span>
+<span class="sd">                       mask's linear size (see RELATIVE_RADIUS).</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"remove_appendages"</span><span class="p">,</span> <span class="n">_remove_appendages</span><span class="p">,</span>
+                     <span class="p">{</span><span class="s2">"relative_radius"</span><span class="p">:</span> <span class="n">relative_radius</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.transforms.crop" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">crop</span>
+
+
+<a href="#critterframe.transforms.crop" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Framing transforms: crop, crop_to_mask, rotate, resize, remove_background.</p>
+<p>Each composes its affine onto the segment, so a mask found in a crop still
+inverts back to original image coordinates.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.crop.crop" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">crop</span>
+
+
+<a href="#critterframe.transforms.crop.crop" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">crop</span><span class="p">(</span><span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: crop the working frame to a region.</p>
+<p>Give either a named region or an explicit box, not both.</p>
+<p>region -- one of REGIONS ("upper_left", "center", ...), taken as fractions
+          of the current frame.
+x, y, width, height -- explicit box in pixels of the current frame.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/crop.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">crop</span><span class="p">(</span><span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">x</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: crop the working frame to a region.</span>
+
+<span class="sd">    Give either a named region or an explicit box, not both.</span>
+
+<span class="sd">    region -- one of REGIONS ("upper_left", "center", ...), taken as fractions</span>
+<span class="sd">              of the current frame.</span>
+<span class="sd">    x, y, width, height -- explicit box in pixels of the current frame.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">v</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">)):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"crop takes either region= or an explicit x/y/width/height box"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="kc">None</span> <span class="ow">in</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"crop needs region=, or all of x=, y=, width=, height="</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">region</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">REGIONS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"unknown region </span><span class="si">{</span><span class="n">region</span><span class="si">!r}</span><span class="s2"> -- expected one of </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">REGIONS</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"crop"</span><span class="p">,</span> <span class="n">_crop</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">"region"</span><span class="p">:</span> <span class="n">region</span><span class="p">,</span> <span class="s2">"x"</span><span class="p">:</span> <span class="n">x</span><span class="p">,</span> <span class="s2">"y"</span><span class="p">:</span> <span class="n">y</span><span class="p">,</span> <span class="s2">"width"</span><span class="p">:</span> <span class="n">width</span><span class="p">,</span> <span class="s2">"height"</span><span class="p">:</span> <span class="n">height</span><span class="p">,</span>
+    <span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.crop.crop_to_mask" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">crop_to_mask</span>
+
+
+<a href="#critterframe.transforms.crop.crop_to_mask" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">crop_to_mask</span><span class="p">(</span><span class="n">pad</span><span class="o">=</span><span class="n">BBOX_PAD_FRAC</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: crop the working frame to the current mask's bounding box.</p>
+<p>The usual preprocessing before a part-specific model: it puts the organism
+at a consistent size in a consistent frame, so the model doesn't have to
+cope with the specimen occupying 2% of one image and 60% of the next.</p>
+<p>pad -- slack around the box as a fraction of its size.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/crop.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">crop_to_mask</span><span class="p">(</span><span class="n">pad</span><span class="o">=</span><span class="n">BBOX_PAD_FRAC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: crop the working frame to the current mask's bounding box.</span>
+
+<span class="sd">    The usual preprocessing before a part-specific model: it puts the organism</span>
+<span class="sd">    at a consistent size in a consistent frame, so the model doesn't have to</span>
+<span class="sd">    cope with the specimen occupying 2% of one image and 60% of the next.</span>
+
+<span class="sd">    pad -- slack around the box as a fraction of its size.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"crop_to_mask"</span><span class="p">,</span> <span class="n">_crop_to_mask</span><span class="p">,</span> <span class="p">{</span><span class="s2">"pad"</span><span class="p">:</span> <span class="n">pad</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.crop.remove_background" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">remove_background</span>
+
+
+<a href="#critterframe.transforms.crop.remove_background" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">remove_background</span><span class="p">(</span><span class="n">fill</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: blank out every pixel outside the current mask, leaving the
+organism on a flat background.</p>
+<p>The standard preprocessing before a part-specific segmenter: with the
+background gone, a head/thorax/abdomen model can't learn to key off the
+substrate a specimen happened to be photographed on, and doesn't have to
+rediscover the organism boundary that whole-organism segmentation already
+established.</p>
+<p>Doesn't move any pixels, so the mapping back to original coordinates is
+untouched, and the mask passes through unchanged -- what changes is only
+what the image shows outside it.</p>
+<p>fill -- value written to background pixels; 0 (black) by default.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/crop.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">remove_background</span><span class="p">(</span><span class="n">fill</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: blank out every pixel outside the current mask, leaving the</span>
+<span class="sd">    organism on a flat background.</span>
+
+<span class="sd">    The standard preprocessing before a part-specific segmenter: with the</span>
+<span class="sd">    background gone, a head/thorax/abdomen model can't learn to key off the</span>
+<span class="sd">    substrate a specimen happened to be photographed on, and doesn't have to</span>
+<span class="sd">    rediscover the organism boundary that whole-organism segmentation already</span>
+<span class="sd">    established.</span>
+
+<span class="sd">    Doesn't move any pixels, so the mapping back to original coordinates is</span>
+<span class="sd">    untouched, and the mask passes through unchanged -- what changes is only</span>
+<span class="sd">    what the image shows outside it.</span>
+
+<span class="sd">    fill -- value written to background pixels; 0 (black) by default.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"remove_background"</span><span class="p">,</span> <span class="n">_remove_background</span><span class="p">,</span> <span class="p">{</span><span class="s2">"fill"</span><span class="p">:</span> <span class="n">fill</span><span class="p">},</span>
+                     <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.crop.resize" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resize</span>
+
+
+<a href="#critterframe.transforms.crop.resize" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">resize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: resize the working frame.</p>
+<p>Give width and/or height in pixels, or a scale factor. With only one of
+width/height, the other follows to preserve aspect ratio -- distorting an
+organism's proportions would corrupt every shape trait measured afterward.</p>
+<p>width, height -- target size in pixels.
+scale         -- multiplier applied to both dimensions.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/crop.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resize</span><span class="p">(</span><span class="n">width</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">height</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scale</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: resize the working frame.</span>
+
+<span class="sd">    Give width and/or height in pixels, or a scale factor. With only one of</span>
+<span class="sd">    width/height, the other follows to preserve aspect ratio -- distorting an</span>
+<span class="sd">    organism's proportions would corrupt every shape trait measured afterward.</span>
+
+<span class="sd">    width, height -- target size in pixels.</span>
+<span class="sd">    scale         -- multiplier applied to both dimensions.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">scale</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">width</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">height</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"resize takes either scale= or width=/height=, not both"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">scale</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">width</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">height</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"resize needs scale=, width=, or height="</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"resize"</span><span class="p">,</span> <span class="n">_resize</span><span class="p">,</span>
+                     <span class="p">{</span><span class="s2">"width"</span><span class="p">:</span> <span class="n">width</span><span class="p">,</span> <span class="s2">"height"</span><span class="p">:</span> <span class="n">height</span><span class="p">,</span> <span class="s2">"scale"</span><span class="p">:</span> <span class="n">scale</span><span class="p">},</span>
+                     <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.crop.rotate" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rotate</span>
+
+
+<a href="#critterframe.transforms.crop.rotate" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">rotate</span><span class="p">(</span><span class="n">degrees</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: rotate the working frame by a fixed angle, expanding the canvas
+so nothing is clipped.</p>
+<p>For collections whose specimens are mounted at a known angle. Use
+transforms.orient.orient() instead when the angle should be found from the
+organism rather than stated.</p>
+<p>degrees -- rotation in degrees, positive counter-clockwise.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/crop.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rotate</span><span class="p">(</span><span class="n">degrees</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: rotate the working frame by a fixed angle, expanding the canvas</span>
+<span class="sd">    so nothing is clipped.</span>
+
+<span class="sd">    For collections whose specimens are mounted at a known angle. Use</span>
+<span class="sd">    transforms.orient.orient() instead when the angle should be found from the</span>
+<span class="sd">    organism rather than stated.</span>
+
+<span class="sd">    degrees -- rotation in degrees, positive counter-clockwise.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"rotate"</span><span class="p">,</span> <span class="n">_rotate</span><span class="p">,</span> <span class="p">{</span><span class="s2">"degrees"</span><span class="p">:</span> <span class="n">degrees</span><span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.transforms.orient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">orient</span>
+
+
+<a href="#critterframe.transforms.orient" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>PCA orientation, axis chosen by asymmetry rather than length.</p>
+<p>Length alone picks the wingspan on a spread specimen; asymmetry picks the body,
+since a head-to-tail axis is lopsided and a wingtip-to-wingtip one is not. A
+near-isotropic mask has numerically unstable axes and is flagged unreliable
+rather than silently rotated.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.orient.apply_affine" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">apply_affine</span>
+
+
+<a href="#critterframe.transforms.orient.apply_affine" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">apply_affine</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Warp an array by a 2x3 affine into a (width, height) canvas, padding with
+zeros -- harmless for both a mask (False) and an image (black).</p>
+<p>flags -- interpolation. INTER_NEAREST for masks (no new values, stays
+         binary); INTER_LINEAR for images where smoothing is acceptable.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/orient.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">apply_affine</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Warp an array by a 2x3 affine into a (width, height) canvas, padding with</span>
+<span class="sd">    zeros -- harmless for both a mask (False) and an image (black).</span>
+
+<span class="sd">    flags -- interpolation. INTER_NEAREST for masks (no new values, stays</span>
+<span class="sd">             binary); INTER_LINEAR for images where smoothing is acceptable.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">warpAffine</span><span class="p">(</span><span class="n">array</span><span class="p">,</span> <span class="n">matrix</span><span class="p">,</span> <span class="n">size</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">flags</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.orient.compute_orientation" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">compute_orientation</span>
+
+
+<a href="#critterframe.transforms.orient.compute_orientation" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">compute_orientation</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">body_axis_is_higher_skew</span><span class="o">=</span><span class="n">BODY_AXIS_IS_HIGHER_SKEW</span><span class="p">,</span> <span class="n">isotropy_warn_ratio</span><span class="o">=</span><span class="n">ISOTROPY_WARN_RATIO</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Find the body axis of a boolean mask via PCA, choosing between the two
+principal components by asymmetry rather than by length.</p>
+<p>Length is the obvious criterion and the wrong one: a spread-wing moth's
+longest axis is its wingspan, not its body. Both PCs are instead scored by
+the skewness of the pixel distribution projected onto them, and the body
+axis is the asymmetric one -- an insect's head end and abdomen end differ,
+while its left and right wingtips are near mirror images.</p>
+<p>Returns (rotation_deg, cx, cy, info):
+  rotation_deg -- rotation to make the body axis vertical (positive = CCW)
+  cx, cy       -- centroid, the rotation center, in (x, y) pixels
+  info         -- diagnostics: the skew of each PC, which was chosen,
+                  whether the chosen axis was the longer one, and the
+                  eigenvalue ratio (near 1 = orientation unreliable)</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/orient.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">compute_orientation</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">body_axis_is_higher_skew</span><span class="o">=</span><span class="n">BODY_AXIS_IS_HIGHER_SKEW</span><span class="p">,</span>
+                        <span class="n">isotropy_warn_ratio</span><span class="o">=</span><span class="n">ISOTROPY_WARN_RATIO</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Find the body axis of a boolean mask via PCA, choosing between the two</span>
+<span class="sd">    principal components by asymmetry rather than by length.</span>
+
+<span class="sd">    Length is the obvious criterion and the wrong one: a spread-wing moth's</span>
+<span class="sd">    longest axis is its wingspan, not its body. Both PCs are instead scored by</span>
+<span class="sd">    the skewness of the pixel distribution projected onto them, and the body</span>
+<span class="sd">    axis is the asymmetric one -- an insect's head end and abdomen end differ,</span>
+<span class="sd">    while its left and right wingtips are near mirror images.</span>
+
+<span class="sd">    Returns (rotation_deg, cx, cy, info):</span>
+<span class="sd">      rotation_deg -- rotation to make the body axis vertical (positive = CCW)</span>
+<span class="sd">      cx, cy       -- centroid, the rotation center, in (x, y) pixels</span>
+<span class="sd">      info         -- diagnostics: the skew of each PC, which was chosen,</span>
+<span class="sd">                      whether the chosen axis was the longer one, and the</span>
+<span class="sd">                      eigenvalue ratio (near 1 = orientation unreliable)</span>
+<span class="sd">    """</span>
+    <span class="n">ys</span><span class="p">,</span> <span class="n">xs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nonzero</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"empty mask"</span><span class="p">)</span>
+
+    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">mean</span><span class="p">(),</span> <span class="n">ys</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+    <span class="n">dx</span><span class="p">,</span> <span class="n">dy</span> <span class="o">=</span> <span class="n">xs</span> <span class="o">-</span> <span class="n">cx</span><span class="p">,</span> <span class="n">ys</span> <span class="o">-</span> <span class="n">cy</span>
+
+    <span class="n">covariance</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cov</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">([</span><span class="n">dx</span><span class="p">,</span> <span class="n">dy</span><span class="p">]))</span>
+    <span class="n">eigvals</span><span class="p">,</span> <span class="n">eigvecs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">eigh</span><span class="p">(</span><span class="n">covariance</span><span class="p">)</span>   <span class="c1"># ascending</span>
+
+    <span class="c1"># project the pixel cloud onto each PC and score its asymmetry</span>
+    <span class="n">skews</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">):</span>
+        <span class="n">axis</span> <span class="o">=</span> <span class="n">eigvecs</span><span class="p">[:,</span> <span class="n">index</span><span class="p">]</span>
+        <span class="n">skews</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">_skew</span><span class="p">(</span><span class="n">axis</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">dx</span> <span class="o">+</span> <span class="n">axis</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">dy</span><span class="p">))</span>
+
+    <span class="n">abs_skews</span> <span class="o">=</span> <span class="p">[</span><span class="nb">abs</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">skews</span><span class="p">]</span>
+    <span class="n">chosen</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">abs_skews</span><span class="p">))</span> <span class="k">if</span> <span class="n">body_axis_is_higher_skew</span> \
+        <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">abs_skews</span><span class="p">))</span>
+
+    <span class="n">axis</span> <span class="o">=</span> <span class="n">eigvecs</span><span class="p">[:,</span> <span class="n">chosen</span><span class="p">]</span>
+    <span class="n">angle</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">degrees</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arctan2</span><span class="p">(</span><span class="n">axis</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+    <span class="n">rotation_deg</span> <span class="o">=</span> <span class="mf">90.0</span> <span class="o">-</span> <span class="n">angle</span>
+
+    <span class="c1"># eigenvalue ratio: minor/major. Near 1 means the mask is nearly isotropic</span>
+    <span class="c1"># and the axis directions are numerically unstable.</span>
+    <span class="n">ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">eigvals</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">eigvals</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">if</span> <span class="n">eigvals</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mf">1.0</span>
+
+    <span class="n">info</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"skew_pc0"</span><span class="p">:</span> <span class="n">skews</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+        <span class="s2">"skew_pc1"</span><span class="p">:</span> <span class="n">skews</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+        <span class="s2">"chosen_pc"</span><span class="p">:</span> <span class="n">chosen</span><span class="p">,</span>
+        <span class="s2">"chose_longer_axis"</span><span class="p">:</span> <span class="n">chosen</span> <span class="o">==</span> <span class="mi">1</span><span class="p">,</span>   <span class="c1"># index 1 == largest eigenvalue</span>
+        <span class="s2">"eigval_ratio"</span><span class="p">:</span> <span class="n">ratio</span><span class="p">,</span>
+        <span class="s2">"unreliable"</span><span class="p">:</span> <span class="n">ratio</span> <span class="o">&gt;</span> <span class="n">isotropy_warn_ratio</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">rotation_deg</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">cx</span><span class="p">),</span> <span class="nb">float</span><span class="p">(</span><span class="n">cy</span><span class="p">),</span> <span class="n">info</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.orient.orient" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">orient</span>
+
+
+<a href="#critterframe.transforms.orient.orient" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">orient</span><span class="p">(</span><span class="n">body_axis_is_higher_skew</span><span class="o">=</span><span class="n">BODY_AXIS_IS_HIGHER_SKEW</span><span class="p">,</span> <span class="n">isotropy_warn_ratio</span><span class="o">=</span><span class="n">ISOTROPY_WARN_RATIO</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Operation: rotate the segment so the body axis is vertical.</p>
+<p>body_axis_is_higher_skew -- pick the body axis as the more asymmetric
+                            principal component (see module constants).
+isotropy_warn_ratio      -- eigenvalue ratio above which the orientation is
+                            reported unreliable.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/orient.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">orient</span><span class="p">(</span><span class="n">body_axis_is_higher_skew</span><span class="o">=</span><span class="n">BODY_AXIS_IS_HIGHER_SKEW</span><span class="p">,</span>
+           <span class="n">isotropy_warn_ratio</span><span class="o">=</span><span class="n">ISOTROPY_WARN_RATIO</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Operation: rotate the segment so the body axis is vertical.</span>
+
+<span class="sd">    body_axis_is_higher_skew -- pick the body axis as the more asymmetric</span>
+<span class="sd">                                principal component (see module constants).</span>
+<span class="sd">    isotropy_warn_ratio      -- eigenvalue ratio above which the orientation is</span>
+<span class="sd">                                reported unreliable.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">Transform</span><span class="p">(</span><span class="s2">"orient"</span><span class="p">,</span> <span class="n">_orient</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">"body_axis_is_higher_skew"</span><span class="p">:</span> <span class="n">body_axis_is_higher_skew</span><span class="p">,</span>
+        <span class="s2">"isotropy_warn_ratio"</span><span class="p">:</span> <span class="n">isotropy_warn_ratio</span><span class="p">,</span>
+    <span class="p">},</span> <span class="n">version</span><span class="o">=</span><span class="s2">"1"</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.transforms.orient.rotation_matrix" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rotation_matrix</span>
+
+
+<a href="#critterframe.transforms.orient.rotation_matrix" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">rotation_matrix</span><span class="p">(</span><span class="n">rotation_deg</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">shape</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The affine that rotates an array of <code>shape</code> by rotation_deg about (cx, cy),
+EXPANDING the canvas to fit the rotated result rather than keeping the
+original size, plus that new (width, height).</p>
+<p>An image is only as tall/wide as the specimen needed lying in its ORIGINAL
+orientation -- a mostly-horizontal insect rotated upright needs a canvas
+taller than the original height, or the head and tail end up past the old
+frame edge and warpAffine silently clips them. Sizing the canvas to the
+rotated bounding box of the original frame guarantees the whole image
+survives regardless of angle or how off-center (cx, cy) is.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/transforms/orient.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rotation_matrix</span><span class="p">(</span><span class="n">rotation_deg</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">shape</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The affine that rotates an array of `shape` by rotation_deg about (cx, cy),</span>
+<span class="sd">    EXPANDING the canvas to fit the rotated result rather than keeping the</span>
+<span class="sd">    original size, plus that new (width, height).</span>
+
+<span class="sd">    An image is only as tall/wide as the specimen needed lying in its ORIGINAL</span>
+<span class="sd">    orientation -- a mostly-horizontal insect rotated upright needs a canvas</span>
+<span class="sd">    taller than the original height, or the head and tail end up past the old</span>
+<span class="sd">    frame edge and warpAffine silently clips them. Sizing the canvas to the</span>
+<span class="sd">    rotated bounding box of the original frame guarantees the whole image</span>
+<span class="sd">    survives regardless of angle or how off-center (cx, cy) is.</span>
+<span class="sd">    """</span>
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">matrix</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">getRotationMatrix2D</span><span class="p">((</span><span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">),</span> <span class="o">-</span><span class="n">rotation_deg</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+
+    <span class="c1"># Where the four original corners land after rotation -- size the new canvas</span>
+    <span class="c1"># to their bounding box, then shift so nothing falls negative.</span>
+    <span class="n">corners</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="n">width</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">height</span><span class="p">],</span> <span class="p">[</span><span class="n">width</span><span class="p">,</span> <span class="n">height</span><span class="p">]],</span>
+                       <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+    <span class="n">rotated</span> <span class="o">=</span> <span class="n">corners</span> <span class="o">@</span> <span class="n">matrix</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">T</span> <span class="o">+</span> <span class="n">matrix</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span>
+    <span class="n">min_xy</span> <span class="o">=</span> <span class="n">rotated</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+    <span class="n">max_xy</span> <span class="o">=</span> <span class="n">rotated</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">new_width</span><span class="p">,</span> <span class="n">new_height</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ceil</span><span class="p">(</span><span class="n">max_xy</span> <span class="o">-</span> <span class="n">min_xy</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+    <span class="n">matrix</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">]</span> <span class="o">-=</span> <span class="n">min_xy</span>
+
+    <span class="k">return</span> <span class="n">matrix</span><span class="p">,</span> <span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">new_width</span><span class="p">),</span> <span class="nb">int</span><span class="p">(</span><span class="n">new_height</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

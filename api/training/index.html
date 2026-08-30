@@ -1,0 +1,2486 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/training/">
+      
+      
+        <link rel="prev" href="../visualization/">
+      
+      
+        <link rel="next" href="../extensions/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>training - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.training" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              training
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../recipes/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.training" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        training
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="training">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        datasets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="datasets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.export_training_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_training_data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.iterate_segments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iterate_segments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.write_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        splits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="splits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_frames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_ids
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.training" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        training
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="training">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        datasets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="datasets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.export_training_data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        export_training_data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.iterate_segments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        iterate_segments
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.datasets.write_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        write_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        splits
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="splits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_dataset" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_dataset
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_frames" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_frames
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.training.splits.split_ids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        split_ids
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/training.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>training</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.training" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.training</span>
+
+
+<a href="#critterframe.training" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Building training datasets and splits out of a project, for training the project-specific models segment() then runs.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.training.datasets" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">datasets</span>
+
+
+<a href="#critterframe.training.datasets" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>export_training_data(): images, masks, class folders, and a manifest.</p>
+<p>Splitting decides which occurrences answer which question; exporting
+materializes them. Training itself happens outside the package -- what comes
+back is registered (records.models), and then segment() runs it like any other
+model.</p>
+<p>Export from REFERENCE masks where they exist: training on canonical masks
+teaches a new model the old model's mistakes.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.datasets.export_training_data" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">export_training_data</span>
+
+
+<a href="#critterframe.training.datasets.export_training_data" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">export_training_data</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">splits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">masks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">class_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">require_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Materialize project data as a directory a trainer can read.</p>
+<p>Layout, with the split level present only when <code>splits</code> is given and the
+class level only when <code>class_by</code> is:</p>
+<div class="highlight"><pre><span></span><code>output_dir/
+    manifest.csv
+    dataset.json
+    train/&lt;class&gt;/&lt;occurrence_id&gt;.png     (class_by given)
+    train/images/&lt;occurrence_id&gt;.png      (no class_by)
+    train/masks/&lt;occurrence_id&gt;.png       (masks=True)
+</code></pre></div>
+<p>project_path -- project to export from.
+output_dir   -- directory to write into; created if missing. Existing files
+                are left alone unless a new one has the same name.
+splits       -- {split name: subset name} or {split name: occurrence ids},
+                mixed freely. None exports everything as one flat dataset.
+                This does NOT decide the split -- pass what split_ids()
+                returned. An occurrence in two splits raises, since that is
+                the leakage every other guarantee here exists to prevent.
+part         -- part to export, "organism" by default.
+transforms   -- operations applied to each segment before writing. Use the
+                SAME chain the model will get at inference.
+reference    -- read masks from the reference table. Usually True when
+                training a segmenter.
+masks        -- also write each mask as a 0/255 PNG.
+class_by     -- occurrence column to organize images into class folders by,
+                e.g. "species". An occurrence with no value is left out and
+                logged: the class is the training target, so an image
+                without one has nothing to teach.
+metadata     -- occurrence columns to carry into the manifest.
+metrics      -- metric run names whose values to carry into the manifest.
+require_mask -- False exports occurrences with no mask, for training on
+                whole images.
+subset, limit -- narrow an unsplit export; rejected alongside <code>splits</code>.</p>
+<p>Returns the manifest DataFrame, one row per written image.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/datasets.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">export_training_data</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">splits</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span>
+                         <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">masks</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                         <span class="n">class_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                         <span class="n">require_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Materialize project data as a directory a trainer can read.</span>
+
+<span class="sd">    Layout, with the split level present only when `splits` is given and the</span>
+<span class="sd">    class level only when `class_by` is:</span>
+
+<span class="sd">        output_dir/</span>
+<span class="sd">            manifest.csv</span>
+<span class="sd">            dataset.json</span>
+<span class="sd">            train/&lt;class&gt;/&lt;occurrence_id&gt;.png     (class_by given)</span>
+<span class="sd">            train/images/&lt;occurrence_id&gt;.png      (no class_by)</span>
+<span class="sd">            train/masks/&lt;occurrence_id&gt;.png       (masks=True)</span>
+
+<span class="sd">    project_path -- project to export from.</span>
+<span class="sd">    output_dir   -- directory to write into; created if missing. Existing files</span>
+<span class="sd">                    are left alone unless a new one has the same name.</span>
+<span class="sd">    splits       -- {split name: subset name} or {split name: occurrence ids},</span>
+<span class="sd">                    mixed freely. None exports everything as one flat dataset.</span>
+<span class="sd">                    This does NOT decide the split -- pass what split_ids()</span>
+<span class="sd">                    returned. An occurrence in two splits raises, since that is</span>
+<span class="sd">                    the leakage every other guarantee here exists to prevent.</span>
+<span class="sd">    part         -- part to export, "organism" by default.</span>
+<span class="sd">    transforms   -- operations applied to each segment before writing. Use the</span>
+<span class="sd">                    SAME chain the model will get at inference.</span>
+<span class="sd">    reference    -- read masks from the reference table. Usually True when</span>
+<span class="sd">                    training a segmenter.</span>
+<span class="sd">    masks        -- also write each mask as a 0/255 PNG.</span>
+<span class="sd">    class_by     -- occurrence column to organize images into class folders by,</span>
+<span class="sd">                    e.g. "species". An occurrence with no value is left out and</span>
+<span class="sd">                    logged: the class is the training target, so an image</span>
+<span class="sd">                    without one has nothing to teach.</span>
+<span class="sd">    metadata     -- occurrence columns to carry into the manifest.</span>
+<span class="sd">    metrics      -- metric run names whose values to carry into the manifest.</span>
+<span class="sd">    require_mask -- False exports occurrences with no mask, for training on</span>
+<span class="sd">                    whole images.</span>
+<span class="sd">    subset, limit -- narrow an unsplit export; rejected alongside `splits`.</span>
+
+<span class="sd">    Returns the manifest DataFrame, one row per written image.</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">splits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">limit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"export_training_data takes splits= or subset=/limit=, not both -- "</span>
+            <span class="s2">"splits already says which occurrences to export"</span>
+        <span class="p">)</span>
+
+    <span class="n">selections</span> <span class="o">=</span> <span class="n">_resolve_splits</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">splits</span><span class="p">,</span> <span class="n">subset</span><span class="p">,</span> <span class="n">limit</span><span class="p">)</span>
+    <span class="n">class_values</span> <span class="o">=</span> <span class="n">_class_values</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">class_by</span><span class="p">)</span>
+    <span class="n">folders</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">unclassed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">unwritten</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">for</span> <span class="n">split_name</span><span class="p">,</span> <span class="n">occurrence_ids</span> <span class="ow">in</span> <span class="n">selections</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">segment</span> <span class="ow">in</span> <span class="n">iterate_segments</span><span class="p">(</span>
+                <span class="n">project_path</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">part</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">,</span>
+                <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">occurrence_ids</span><span class="p">,</span>
+                <span class="n">require_mask</span><span class="o">=</span><span class="n">require_mask</span><span class="p">):</span>
+
+            <span class="n">class_value</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">if</span> <span class="n">class_by</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">class_value</span> <span class="o">=</span> <span class="n">class_values</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">class_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">unclassed</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">continue</span>
+
+            <span class="n">leaf</span> <span class="o">=</span> <span class="n">_class_folder</span><span class="p">(</span><span class="n">folders</span><span class="p">,</span> <span class="n">class_value</span><span class="p">)</span> <span class="k">if</span> <span class="n">class_by</span> <span class="k">else</span> <span class="n">IMAGE_DIR</span>
+            <span class="n">image_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">_directory</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">split_name</span><span class="p">,</span> <span class="n">leaf</span><span class="p">),</span>
+                                      <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">occurrence_id</span><span class="si">}</span><span class="s2">.png"</span><span class="p">)</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">_write_image</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">segment</span><span class="o">.</span><span class="n">image</span><span class="p">):</span>
+                <span class="n">unwritten</span> <span class="o">+=</span> <span class="mi">1</span>
+                <span class="k">continue</span>
+
+            <span class="n">row</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"occurrence_id"</span><span class="p">:</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="s2">"part"</span><span class="p">:</span> <span class="n">part</span><span class="p">}</span>
+            <span class="k">if</span> <span class="n">splits</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"split"</span><span class="p">]</span> <span class="o">=</span> <span class="n">split_name</span>
+            <span class="k">if</span> <span class="n">class_by</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"class"</span><span class="p">]</span> <span class="o">=</span> <span class="n">class_value</span>
+            <span class="n">row</span><span class="p">[</span><span class="s2">"image_path"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_relative</span><span class="p">(</span><span class="n">image_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">masks</span><span class="p">:</span>
+                <span class="n">mask_path</span> <span class="o">=</span> <span class="kc">None</span>
+                <span class="k">if</span> <span class="n">segment</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">mask_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+                        <span class="n">_directory</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">split_name</span><span class="p">,</span> <span class="n">MASK_DIR</span><span class="p">),</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">occurrence_id</span><span class="si">}</span><span class="s2">.png"</span><span class="p">)</span>
+                    <span class="c1"># 0/255 PNG: lossless, so a mask boundary survives the</span>
+                    <span class="c1"># round trip exactly, and readable by anything.</span>
+                    <span class="n">_write_image</span><span class="p">(</span><span class="n">mask_path</span><span class="p">,</span> <span class="n">segment</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"uint8"</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">)</span>
+                    <span class="n">mask_path</span> <span class="o">=</span> <span class="n">_relative</span><span class="p">(</span><span class="n">mask_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">)</span>
+                <span class="n">row</span><span class="p">[</span><span class="s2">"mask_path"</span><span class="p">]</span> <span class="o">=</span> <span class="n">mask_path</span>
+
+            <span class="n">row</span><span class="p">[</span><span class="s2">"height"</span><span class="p">]</span> <span class="o">=</span> <span class="n">segment</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">row</span><span class="p">[</span><span class="s2">"width"</span><span class="p">]</span> <span class="o">=</span> <span class="n">segment</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">row</span><span class="p">[</span><span class="s2">"mask_area"</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="kc">None</span> <span class="k">if</span> <span class="n">segment</span><span class="o">.</span><span class="n">mask</span> <span class="ow">is</span> <span class="kc">None</span>
+                                <span class="k">else</span> <span class="nb">int</span><span class="p">(</span><span class="n">segment</span><span class="o">.</span><span class="n">mask</span><span class="o">.</span><span class="n">sum</span><span class="p">()))</span>
+            <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">unclassed</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"left out </span><span class="si">%d</span><span class="s2"> occurrence(s) with no value in '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="n">unclassed</span><span class="p">,</span> <span class="n">class_by</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">unwritten</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"</span><span class="si">%d</span><span class="s2"> image(s) could not be written -- check the "</span>
+                       <span class="s2">"occurrence ids for characters the filesystem rejects"</span><span class="p">,</span>
+                       <span class="n">unwritten</span><span class="p">)</span>
+
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">manifest</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"nothing exported -- does part '</span><span class="si">%s</span><span class="s2">' have </span><span class="si">%s</span><span class="s2"> masks?"</span><span class="p">,</span>
+                       <span class="n">part</span><span class="p">,</span> <span class="s2">"reference"</span> <span class="k">if</span> <span class="n">reference</span> <span class="k">else</span> <span class="s2">"canonical"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">manifest</span>
+
+    <span class="n">manifest</span> <span class="o">=</span> <span class="n">_attach_labels</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">manifest</span><span class="p">,</span> <span class="n">metadata</span><span class="p">,</span> <span class="n">metrics</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+    <span class="n">manifest</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">MANIFEST_FILE</span><span class="p">),</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+    <span class="n">_write_dataset_record</span><span class="p">(</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">manifest</span><span class="p">,</span> <span class="n">splits</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">transforms</span><span class="p">,</span>
+                          <span class="n">reference</span><span class="p">,</span> <span class="n">masks</span><span class="p">,</span> <span class="n">class_by</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"exported </span><span class="si">%d</span><span class="s2"> image(s) -&gt; </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">manifest</span><span class="p">),</span> <span class="n">output_dir</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">manifest</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.datasets.iterate_segments" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">iterate_segments</span>
+
+
+<a href="#critterframe.training.datasets.iterate_segments" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">iterate_segments</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">require_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Yield (occurrence_id, Segment) for every occurrence with a mask for <code>part</code>.</p>
+<p>project_path   -- project to read from.
+part           -- part whose masks to load.
+transforms     -- operations applied to each segment before it's yielded.
+reference      -- take masks from the reference table rather than the
+                  canonical one. Usually True for training: the whole
+                  reason to train a model is that the automated masks
+                  weren't good enough, so training on them would teach the
+                  new model to reproduce the old one's mistakes.
+subset         -- restrict to a named subset.
+limit          -- optional cap.
+occurrence_ids -- explicit ids, overriding subset/limit selection.
+require_mask   -- False yields occurrences that have no mask for <code>part</code>,
+                  with segment.mask left None, instead of skipping them.
+                  For training on whole images -- a classifier over
+                  photographs the project never segmented -- where an
+                  unsegmented occurrence is still training data. Any
+                  transform that needs a mask then fails per occurrence and
+                  is logged, so don't pass a mask-dependent chain with this.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/datasets.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">iterate_segments</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span>
+                     <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                     <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">require_mask</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Yield (occurrence_id, Segment) for every occurrence with a mask for `part`.</span>
+
+<span class="sd">    project_path   -- project to read from.</span>
+<span class="sd">    part           -- part whose masks to load.</span>
+<span class="sd">    transforms     -- operations applied to each segment before it's yielded.</span>
+<span class="sd">    reference      -- take masks from the reference table rather than the</span>
+<span class="sd">                      canonical one. Usually True for training: the whole</span>
+<span class="sd">                      reason to train a model is that the automated masks</span>
+<span class="sd">                      weren't good enough, so training on them would teach the</span>
+<span class="sd">                      new model to reproduce the old one's mistakes.</span>
+<span class="sd">    subset         -- restrict to a named subset.</span>
+<span class="sd">    limit          -- optional cap.</span>
+<span class="sd">    occurrence_ids -- explicit ids, overriding subset/limit selection.</span>
+<span class="sd">    require_mask   -- False yields occurrences that have no mask for `part`,</span>
+<span class="sd">                      with segment.mask left None, instead of skipping them.</span>
+<span class="sd">                      For training on whole images -- a classifier over</span>
+<span class="sd">                      photographs the project never segmented -- where an</span>
+<span class="sd">                      unsegmented occurrence is still training data. Any</span>
+<span class="sd">                      transform that needs a mask then fails per occurrence and</span>
+<span class="sd">                      is logged, so don't pass a mask-dependent chain with this.</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">occurrence_ids</span> <span class="o">=</span> <span class="n">subset_selection</span><span class="o">.</span><span class="n">select_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">,</span>
+                                                     <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+    <span class="n">occurrence_ids</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">]</span>
+
+    <span class="n">mask_rows</span> <span class="o">=</span> <span class="n">mask_records</span><span class="o">.</span><span class="n">mask_lookup</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">part</span><span class="p">,</span>
+                                         <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">occurrence_ids</span><span class="p">,</span>
+                                         <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">ImageStore</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">:</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">mask_rows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">require_mask</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"no image in the image store"</span><span class="p">)</span>
+
+                <span class="n">mask</span> <span class="o">=</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">mask_records</span><span class="o">.</span><span class="n">decode_mask</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+                <span class="n">segment</span> <span class="o">=</span> <span class="n">Segment</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="o">=</span><span class="n">mask</span><span class="p">,</span>
+                                  <span class="n">occurrence_id</span><span class="o">=</span><span class="n">occurrence_id</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">part</span><span class="p">,</span>
+                                  <span class="n">project_path</span><span class="o">=</span><span class="n">project_path</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">operation</span> <span class="ow">in</span> <span class="n">transforms</span><span class="p">:</span>
+                    <span class="n">segment</span><span class="p">,</span> <span class="n">_info</span> <span class="o">=</span> <span class="n">operation</span><span class="p">(</span><span class="n">segment</span><span class="p">)</span>
+
+                <span class="k">yield</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">segment</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"skipping </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.datasets.write_dataset" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">write_dataset</span>
+
+
+<a href="#critterframe.training.datasets.write_dataset" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">write_dataset</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_runs</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Write an image/mask pair per occurrence plus a manifest CSV, all in one
+flat directory:</p>
+<div class="highlight"><pre><span></span><code>output_dir/
+    images/&lt;occurrence_id&gt;.png
+    masks/&lt;occurrence_id&gt;.png
+    manifest.csv
+</code></pre></div>
+<p>export_training_data() with no splits and no class folders, kept under its
+own name because "give me every segment as files" is what training code
+that does its own splitting wants, and because it is what the BioEncoder
+extension is written against.</p>
+<p>label_columns -- occurrence columns to carry into the manifest
+                 (export_training_data's <code>metadata</code>).
+label_runs    -- metric run names to carry into the manifest
+                 (export_training_data's <code>metrics</code>).</p>
+<p>Everything else is as iterate_segments(). Returns the manifest DataFrame.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/datasets.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">write_dataset</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span>
+                  <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">label_columns</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">label_runs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Write an image/mask pair per occurrence plus a manifest CSV, all in one</span>
+<span class="sd">    flat directory:</span>
+
+<span class="sd">        output_dir/</span>
+<span class="sd">            images/&lt;occurrence_id&gt;.png</span>
+<span class="sd">            masks/&lt;occurrence_id&gt;.png</span>
+<span class="sd">            manifest.csv</span>
+
+<span class="sd">    export_training_data() with no splits and no class folders, kept under its</span>
+<span class="sd">    own name because "give me every segment as files" is what training code</span>
+<span class="sd">    that does its own splitting wants, and because it is what the BioEncoder</span>
+<span class="sd">    extension is written against.</span>
+
+<span class="sd">    label_columns -- occurrence columns to carry into the manifest</span>
+<span class="sd">                     (export_training_data's `metadata`).</span>
+<span class="sd">    label_runs    -- metric run names to carry into the manifest</span>
+<span class="sd">                     (export_training_data's `metrics`).</span>
+
+<span class="sd">    Everything else is as iterate_segments(). Returns the manifest DataFrame.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">export_training_data</span><span class="p">(</span>
+        <span class="n">project_path</span><span class="p">,</span> <span class="n">output_dir</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">part</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="n">transforms</span><span class="p">,</span>
+        <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span> <span class="n">masks</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">metadata</span><span class="o">=</span><span class="n">label_columns</span><span class="p">,</span>
+        <span class="n">metrics</span><span class="o">=</span><span class="n">label_runs</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.training.splits" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">splits</span>
+
+
+<a href="#critterframe.training.splits" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>split_ids(): grouped and stratified, to avoid leakage.</p>
+<p>Grouping is what stops the same specimen straddling train and validation, which
+would report a score for memorization. Stratifying keeps each split's class
+balance close to the whole. Ids are sorted before assignment, so the seed
+genuinely pins the split.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.splits.split_dataset" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_dataset</span>
+
+
+<a href="#critterframe.training.splits.split_dataset" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_dataset</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">fractions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="s1">'occurrence_id'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Assign each row to a split, returning df with a <code>split</code> column added.</p>
+<p>df           -- manifest or occurrence table to split (e.g. from
+                training.datasets.write_dataset).
+fractions    -- {split name: fraction}, defaulting to 70/15/15
+                train/val/test. Any names and any number of splits;
+                fractions are normalized, so they don't have to sum to 1.
+group_col    -- column whose values must not be split across sides. None
+                treats every row as its own group.
+stratify_col -- column whose distribution should be preserved across
+                splits. Rows with a missing value here are pooled into one
+                stratum rather than dropped -- an unlabelled image is still
+                training data.
+seed         -- random seed, so a split is reproducible. It has to be:
+                re-splitting differently between two training runs makes
+                their validation scores incomparable, and worse, moves
+                previously-validation examples into training.
+id_col       -- column identifying a row; used only for logging.</p>
+<p>Returns a copy of df with the split column added.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/splits.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">split_dataset</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">fractions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="s2">"occurrence_id"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Assign each row to a split, returning df with a `split` column added.</span>
+
+<span class="sd">    df           -- manifest or occurrence table to split (e.g. from</span>
+<span class="sd">                    training.datasets.write_dataset).</span>
+<span class="sd">    fractions    -- {split name: fraction}, defaulting to 70/15/15</span>
+<span class="sd">                    train/val/test. Any names and any number of splits;</span>
+<span class="sd">                    fractions are normalized, so they don't have to sum to 1.</span>
+<span class="sd">    group_col    -- column whose values must not be split across sides. None</span>
+<span class="sd">                    treats every row as its own group.</span>
+<span class="sd">    stratify_col -- column whose distribution should be preserved across</span>
+<span class="sd">                    splits. Rows with a missing value here are pooled into one</span>
+<span class="sd">                    stratum rather than dropped -- an unlabelled image is still</span>
+<span class="sd">                    training data.</span>
+<span class="sd">    seed         -- random seed, so a split is reproducible. It has to be:</span>
+<span class="sd">                    re-splitting differently between two training runs makes</span>
+<span class="sd">                    their validation scores incomparable, and worse, moves</span>
+<span class="sd">                    previously-validation examples into training.</span>
+<span class="sd">    id_col       -- column identifying a row; used only for logging.</span>
+
+<span class="sd">    Returns a copy of df with the split column added.</span>
+<span class="sd">    """</span>
+    <span class="n">fractions</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">fractions</span> <span class="ow">or</span> <span class="n">DEFAULT_FRACTIONS</span><span class="p">)</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">fractions</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"fractions must sum to something positive"</span><span class="p">)</span>
+    <span class="n">fractions</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">value</span> <span class="o">/</span> <span class="n">total</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">fractions</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+    <span class="k">if</span> <span class="n">df</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">df</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">SPLIT_COL</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="s2">"object"</span><span class="p">)})</span>
+
+    <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">groups</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">group_col</span><span class="p">]</span> <span class="k">if</span> <span class="n">group_col</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">stratify_col</span><span class="p">:</span>
+        <span class="n">strata</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">stratify_col</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="s2">"__unlabelled__"</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">strata</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="s2">"__all__"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
+    <span class="n">assignment</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="k">for</span> <span class="n">stratum</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">strata</span><span class="o">.</span><span class="n">unique</span><span class="p">(),</span> <span class="n">key</span><span class="o">=</span><span class="nb">str</span><span class="p">):</span>
+        <span class="n">in_stratum</span> <span class="o">=</span> <span class="n">strata</span> <span class="o">==</span> <span class="n">stratum</span>
+        <span class="c1"># A group is assigned as a unit, so it must belong to one stratum; where</span>
+        <span class="c1"># a group spans strata, its first stratum claims it and later ones skip</span>
+        <span class="c1"># it -- which keeps the no-leakage guarantee exact at the cost of some</span>
+        <span class="c1"># stratum balance, the tradeoff described in the module docstring.</span>
+        <span class="n">stratum_groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">g</span> <span class="k">for</span> <span class="n">g</span> <span class="ow">in</span> <span class="n">pd</span><span class="o">.</span><span class="n">unique</span><span class="p">(</span><span class="n">groups</span><span class="p">[</span><span class="n">in_stratum</span><span class="p">])</span>
+                          <span class="k">if</span> <span class="n">g</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">assignment</span><span class="p">]</span>
+        <span class="n">rng</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">stratum_groups</span><span class="p">)</span>
+        <span class="n">assignment</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">_assign</span><span class="p">(</span><span class="n">stratum_groups</span><span class="p">,</span> <span class="n">fractions</span><span class="p">))</span>
+
+    <span class="n">df</span><span class="p">[</span><span class="n">SPLIT_COL</span><span class="p">]</span> <span class="o">=</span> <span class="n">groups</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="n">assignment</span><span class="p">)</span>
+    <span class="n">_log_summary</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">fractions</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">stratify_col</span><span class="p">,</span> <span class="n">id_col</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">df</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.splits.split_frames" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_frames</span>
+
+
+<a href="#critterframe.training.splits.split_frames" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_frames</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>split_dataset(), returning {split name: DataFrame} instead of one frame with
+a column -- for training code that wants the pieces separately.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/splits.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">split_frames</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    split_dataset(), returning {split name: DataFrame} instead of one frame with</span>
+<span class="sd">    a column -- for training code that wants the pieces separately.</span>
+<span class="sd">    """</span>
+    <span class="n">split</span> <span class="o">=</span> <span class="n">split_dataset</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">frame</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">SPLIT_COL</span><span class="p">])</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">frame</span> <span class="ow">in</span> <span class="n">split</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">SPLIT_COL</span><span class="p">)}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.training.splits.split_ids" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">split_ids</span>
+
+
+<a href="#critterframe.training.splits.split_ids" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">split_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">proportions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">stratify_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Partition occurrence ids into named splits: {"train": [...], "val": [...]}.</p>
+<p>Ids in, ids out -- nothing is written. Keeping the decision separate from
+exporting images means one split can back a segmenter's dataset, an
+encoder's dataset, and a validation pass without any of them disagreeing.
+Freeze one with define_subset(..., occurrence_ids=splits["train"]).</p>
+<p>project_path   -- project the ids belong to.
+occurrence_ids -- the ids to split. None takes every occurrence in the
+                  project, or in <code>subset</code>.
+proportions    -- {split name: proportion}, defaulting to 70/15/15
+                  train/val/test. Normalized, so they needn't sum to 1. Every
+                  requested name is a key of the result even when empty.
+stratify_by    -- occurrence column whose distribution to preserve across
+                  splits, typically the label being trained on. A rare
+                  species is the case that needs it: a random split of a
+                  long-tailed table can leave it out of validation entirely.
+group_by       -- occurrence column whose members must all land on the same
+                  side. The leakage guard: several images of one specimen or
+                  one trap night are not independent, and splitting them
+                  apart makes a validation score measure memorization.
+subset         -- restrict to a named subset instead of passing ids.
+seed           -- split seed. The same inputs give the same split whatever
+                  ORDER the ids arrive in, since the frame is sorted first.</p>
+<p>stratify_by/group_by are occurrence columns. A label living in the metric log
+isn't reachable here -- export it onto a manifest and use split_dataset().</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/training/splits.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">split_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">proportions</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+              <span class="n">stratify_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">group_by</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Partition occurrence ids into named splits: {"train": [...], "val": [...]}.</span>
+
+<span class="sd">    Ids in, ids out -- nothing is written. Keeping the decision separate from</span>
+<span class="sd">    exporting images means one split can back a segmenter's dataset, an</span>
+<span class="sd">    encoder's dataset, and a validation pass without any of them disagreeing.</span>
+<span class="sd">    Freeze one with define_subset(..., occurrence_ids=splits["train"]).</span>
+
+<span class="sd">    project_path   -- project the ids belong to.</span>
+<span class="sd">    occurrence_ids -- the ids to split. None takes every occurrence in the</span>
+<span class="sd">                      project, or in `subset`.</span>
+<span class="sd">    proportions    -- {split name: proportion}, defaulting to 70/15/15</span>
+<span class="sd">                      train/val/test. Normalized, so they needn't sum to 1. Every</span>
+<span class="sd">                      requested name is a key of the result even when empty.</span>
+<span class="sd">    stratify_by    -- occurrence column whose distribution to preserve across</span>
+<span class="sd">                      splits, typically the label being trained on. A rare</span>
+<span class="sd">                      species is the case that needs it: a random split of a</span>
+<span class="sd">                      long-tailed table can leave it out of validation entirely.</span>
+<span class="sd">    group_by       -- occurrence column whose members must all land on the same</span>
+<span class="sd">                      side. The leakage guard: several images of one specimen or</span>
+<span class="sd">                      one trap night are not independent, and splitting them</span>
+<span class="sd">                      apart makes a validation score measure memorization.</span>
+<span class="sd">    subset         -- restrict to a named subset instead of passing ids.</span>
+<span class="sd">    seed           -- split seed. The same inputs give the same split whatever</span>
+<span class="sd">                      ORDER the ids arrive in, since the frame is sorted first.</span>
+
+<span class="sd">    stratify_by/group_by are occurrence columns. A label living in the metric log</span>
+<span class="sd">    isn't reachable here -- export it onto a manifest and use split_dataset().</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"split_ids takes occurrence_ids= or subset=, not both -- they are "</span>
+            <span class="s2">"two ways of saying which occurrences to split"</span>
+        <span class="p">)</span>
+
+    <span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="n">column</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="p">(</span><span class="n">stratify_by</span><span class="p">,</span> <span class="n">group_by</span><span class="p">)</span> <span class="k">if</span> <span class="n">column</span><span class="p">]</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">_frame_to_split</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">subset</span><span class="p">,</span> <span class="n">columns</span><span class="p">)</span>
+
+    <span class="n">proportions</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">proportions</span> <span class="ow">or</span> <span class="n">DEFAULT_FRACTIONS</span><span class="p">)</span>
+    <span class="n">assigned</span> <span class="o">=</span> <span class="n">split_dataset</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">fractions</span><span class="o">=</span><span class="n">proportions</span><span class="p">,</span> <span class="n">group_col</span><span class="o">=</span><span class="n">group_by</span><span class="p">,</span>
+                             <span class="n">stratify_col</span><span class="o">=</span><span class="n">stratify_by</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">)</span>
+
+    <span class="n">splits</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="n">name</span><span class="p">:</span> <span class="n">assigned</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">assigned</span><span class="p">[</span><span class="n">SPLIT_COL</span><span class="p">]</span> <span class="o">==</span> <span class="n">name</span><span class="p">,</span> <span class="n">ID_COL</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">name</span> <span class="ow">in</span> <span class="n">proportions</span>
+    <span class="p">}</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">ids</span> <span class="ow">in</span> <span class="n">splits</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ids</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span>
+                <span class="s2">"split '</span><span class="si">%s</span><span class="s2">' came out empty -- </span><span class="si">%d</span><span class="s2"> occurrence(s) can't be divided "</span>
+                <span class="s2">"</span><span class="si">%d</span><span class="s2"> ways in the proportions asked for"</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="nb">len</span><span class="p">(</span><span class="n">proportions</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">splits</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

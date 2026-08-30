@@ -1,0 +1,3949 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/visualization/">
+      
+      
+        <link rel="prev" href="../validation/">
+      
+      
+        <link rel="next" href="../training/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>visualization - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.visualization" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              visualization
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../recipes/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_8" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_8" id="__nav_2_8_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        visualization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="visualization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grids
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="grids">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.as_bgr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        as_bgr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.comparison_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        comparison_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.fit_cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fit_cell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.image_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        panels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="panels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PanelFiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PanelFiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles.collect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        collect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles.wants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.annotate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.diff_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diff_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.mask_to_bgr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_to_bgr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.overlay_mask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        overlay_mask
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.save_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.side_by_side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        side_by_side
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.PanelFanout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PanelFanout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RunReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RunReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.__bool__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __bool__
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.collect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        collect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.wants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.panel_sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        panel_sink
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.resolve_sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.run_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_report
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.products" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        products
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="products">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.products.render_segments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render_segments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.visualization" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        visualization
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="visualization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grids
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="grids">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.as_bgr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        as_bgr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.comparison_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        comparison_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.fit_cell" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        fit_cell
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.grids.image_grid" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_grid
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        panels
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="panels">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PanelFiles
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="PanelFiles">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles.collect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        collect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.PanelFiles.wants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.annotate" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        annotate
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.diff_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        diff_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.mask_to_bgr" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mask_to_bgr
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.overlay_mask" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        overlay_mask
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.save_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.panels.side_by_side" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        side_by_side
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pipeline
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="pipeline">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.PanelFanout" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        PanelFanout
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        RunReport
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="RunReport">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.__bool__" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        __bool__
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.collect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        collect
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.rows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rows
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.save" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        save
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.RunReport.wants" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        wants
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.panel_sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        panel_sink
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.resolve_sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.pipeline.run_report" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        run_report
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.products" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        products
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="products">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.visualization.products.render_segments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        render_segments
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/visualization.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>visualization</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.visualization" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.visualization</span>
+
+
+<a href="#critterframe.visualization" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Diagnostic visualizations shared by every operation that can render what it decided.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.visualization.grids" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">grids</span>
+
+
+<a href="#critterframe.visualization.grids" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Many panels as one image: image_grid, comparison_grid.</p>
+<p>Pure layout -- no project, no I/O. Panels must arrive display-ready uint8:
+nothing here will rescale a float array, since two probability maps with
+different ranges would stretch to look identical.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.grids.as_bgr" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">as_bgr</span>
+
+
+<a href="#critterframe.visualization.grids.as_bgr" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">as_bgr</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A display-ready panel as 3-channel 8-bit BGR.</p>
+<p>Handles only the conversions with one obvious answer: a boolean mask is
+black and white, a grayscale image is the same image in three channels, an
+image with alpha drops it. Anything else raises rather than being guessed
+at -- see the module docstring on why rescaling a float panel here would be
+the wrong place to make that call.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/grids.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">26</span>
+<span class="normal">27</span>
+<span class="normal">28</span>
+<span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">as_bgr</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A display-ready panel as 3-channel 8-bit BGR.</span>
+
+<span class="sd">    Handles only the conversions with one obvious answer: a boolean mask is</span>
+<span class="sd">    black and white, a grayscale image is the same image in three channels, an</span>
+<span class="sd">    image with alpha drops it. Anything else raises rather than being guessed</span>
+<span class="sd">    at -- see the module docstring on why rescaling a float panel here would be</span>
+<span class="sd">    the wrong place to make that call.</span>
+<span class="sd">    """</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span>
+    <span class="k">elif</span> <span class="n">image</span><span class="o">.</span><span class="n">dtype</span> <span class="o">!=</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"panel is </span><span class="si">{</span><span class="n">image</span><span class="o">.</span><span class="n">dtype</span><span class="si">}</span><span class="s2">, not uint8 -- grids lay out display-ready "</span>
+            <span class="s2">"images and won't rescale one for you, because how a float array "</span>
+            <span class="s2">"should map to pixels is a question only whatever computed it can "</span>
+            <span class="s2">"answer. Render it where it's made."</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_BGRA2BGR</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.grids.comparison_grid" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">comparison_grid</span>
+
+
+<a href="#critterframe.visualization.grids.comparison_grid" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">comparison_grid</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">column_titles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>One row per occurrence, one column per processing stage.</p>
+<p>rows          -- list of image lists, one list per occurrence, in stage
+                 order. Rows may be ragged: a recipe that skipped a stage
+                 for one occurrence leaves that cell empty rather than
+                 shifting everything left, which would silently compare one
+                 specimen's crop against another's rotation.
+column_titles -- stage names, drawn once across the top.
+row_labels    -- occurrence ids, drawn down the left edge.
+title         -- headline drawn across the top.</p>
+<p>Ragged rows are padded, so <code>rows</code> is addressed as <code>rows[occurrence][stage]</code>.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/grids.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">comparison_grid</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">column_titles</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">row_labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    One row per occurrence, one column per processing stage.</span>
+
+<span class="sd">    rows          -- list of image lists, one list per occurrence, in stage</span>
+<span class="sd">                     order. Rows may be ragged: a recipe that skipped a stage</span>
+<span class="sd">                     for one occurrence leaves that cell empty rather than</span>
+<span class="sd">                     shifting everything left, which would silently compare one</span>
+<span class="sd">                     specimen's crop against another's rotation.</span>
+<span class="sd">    column_titles -- stage names, drawn once across the top.</span>
+<span class="sd">    row_labels    -- occurrence ids, drawn down the left edge.</span>
+<span class="sd">    title         -- headline drawn across the top.</span>
+
+<span class="sd">    Ragged rows are padded, so `rows` is addressed as `rows[occurrence][stage]`.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="nb">list</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">]</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"comparison_grid needs at least one row"</span><span class="p">)</span>
+
+    <span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">column_titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">width</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">width</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_titles</span><span class="p">))</span>
+
+    <span class="n">cell_height</span><span class="p">,</span> <span class="n">cell_width</span> <span class="o">=</span> <span class="n">cell</span>
+    <span class="c1"># Sized to the longest id actually present, within reason: occurrence ids</span>
+    <span class="c1"># range from "12" to a 40-character UUID, and a fixed gutter either wastes</span>
+    <span class="c1"># half the grid or clips every label to the same unusable prefix.</span>
+    <span class="n">label_width</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">row_labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">longest</span> <span class="o">=</span> <span class="nb">max</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="p">))</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">row_labels</span><span class="p">),</span> <span class="n">default</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">label_width</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">clip</span><span class="p">(</span><span class="mi">8</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">longest</span><span class="p">,</span> <span class="mi">48</span><span class="p">,</span> <span class="mi">160</span><span class="p">))</span>
+    <span class="n">blank</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">cell_height</span><span class="p">,</span> <span class="n">cell_width</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="n">assembled</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">if</span> <span class="n">column_titles</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">headers</span> <span class="o">=</span> <span class="p">[</span><span class="n">_text_strip</span><span class="p">(</span><span class="n">column_titles</span><span class="p">[</span><span class="n">index</span><span class="p">]</span> <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">column_titles</span><span class="p">)</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span>
+                               <span class="n">cell_width</span><span class="p">,</span> <span class="n">LABEL_HEIGHT</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">background</span><span class="p">,</span>
+                               <span class="n">centered</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                   <span class="k">for</span> <span class="n">index</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">width</span><span class="p">)]</span>
+        <span class="n">header_row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">headers</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">label_width</span><span class="p">:</span>
+            <span class="n">corner</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">LABEL_HEIGHT</span><span class="p">,</span> <span class="n">label_width</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">header_row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">corner</span><span class="p">,</span> <span class="n">header_row</span><span class="p">])</span>
+        <span class="n">assembled</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">header_row</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">rows</span><span class="p">):</span>
+        <span class="n">cells</span> <span class="o">=</span> <span class="p">[</span><span class="n">fit_cell</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">cell</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">background</span><span class="p">)</span> <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                 <span class="k">else</span> <span class="n">blank</span>
+                 <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">row</span><span class="p">]</span>
+        <span class="n">cells</span> <span class="o">+=</span> <span class="p">[</span><span class="n">blank</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">))</span>
+        <span class="n">strip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">cells</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">label_width</span><span class="p">:</span>
+            <span class="n">label</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">cell_height</span><span class="p">,</span> <span class="n">label_width</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+            <span class="n">text</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">row_labels</span><span class="p">[</span><span class="n">index</span><span class="p">])</span> <span class="k">if</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">row_labels</span><span class="p">)</span> <span class="k">else</span> <span class="s2">""</span>
+            <span class="c1"># An id too long for even the widest gutter keeps its TAIL: ids</span>
+            <span class="c1"># sharing a prefix (specimen0001, specimen0002) are told apart by</span>
+            <span class="c1"># their end, so a head-first truncation would label every row alike.</span>
+            <span class="n">fits</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="p">(</span><span class="n">label_width</span> <span class="o">-</span> <span class="mi">6</span><span class="p">)</span> <span class="o">//</span> <span class="mi">6</span><span class="p">)</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">putText</span><span class="p">(</span><span class="n">label</span><span class="p">,</span> <span class="n">text</span><span class="p">[</span><span class="o">-</span><span class="n">fits</span><span class="p">:],</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="n">cell_height</span> <span class="o">//</span> <span class="mi">2</span><span class="p">),</span>
+                        <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">TEXT_COLOR</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">LINE_AA</span><span class="p">)</span>
+            <span class="n">strip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">([</span><span class="n">label</span><span class="p">,</span> <span class="n">strip</span><span class="p">])</span>
+
+        <span class="n">assembled</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">strip</span><span class="p">)</span>
+        <span class="n">assembled</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">strip</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">3</span><span class="p">),</span> <span class="n">GRID_COLOR</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">assembled</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_with_title</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">background</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.grids.fit_cell" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">fit_cell</span>
+
+
+<a href="#critterframe.visualization.grids.fit_cell" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">fit_cell</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>One image centred in a fixed-size cell, scaled to fit and letterboxed.</p>
+<p>Scaled DOWN only where it doesn't fit and up where it's smaller, both by the
+same factor in both axes: a grid whose cells each stretched to fill would
+make a long specimen and a round one look alike, which is exactly the
+judgement a QC grid exists to support.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/grids.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">fit_cell</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    One image centred in a fixed-size cell, scaled to fit and letterboxed.</span>
+
+<span class="sd">    Scaled DOWN only where it doesn't fit and up where it's smaller, both by the</span>
+<span class="sd">    same factor in both axes: a grid whose cells each stretched to fill would</span>
+<span class="sd">    make a long specimen and a round one look alike, which is exactly the</span>
+<span class="sd">    judgement a QC grid exists to support.</span>
+<span class="sd">    """</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">as_bgr</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">cell</span>
+    <span class="n">source_height</span><span class="p">,</span> <span class="n">source_width</span> <span class="o">=</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">source_height</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">source_width</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="n">scale</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">height</span> <span class="o">/</span> <span class="n">source_height</span><span class="p">,</span> <span class="n">width</span> <span class="o">/</span> <span class="n">source_width</span><span class="p">)</span>
+    <span class="n">new_size</span> <span class="o">=</span> <span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">source_width</span> <span class="o">*</span> <span class="n">scale</span><span class="p">))),</span>
+                <span class="nb">max</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">source_height</span> <span class="o">*</span> <span class="n">scale</span><span class="p">))))</span>
+    <span class="n">interpolation</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">INTER_AREA</span> <span class="k">if</span> <span class="n">scale</span> <span class="o">&lt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">cv2</span><span class="o">.</span><span class="n">INTER_NEAREST</span>
+    <span class="n">resized</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">new_size</span><span class="p">,</span> <span class="n">interpolation</span><span class="o">=</span><span class="n">interpolation</span><span class="p">)</span>
+
+    <span class="n">canvas</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">top</span> <span class="o">=</span> <span class="p">(</span><span class="n">height</span> <span class="o">-</span> <span class="n">resized</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">left</span> <span class="o">=</span> <span class="p">(</span><span class="n">width</span> <span class="o">-</span> <span class="n">resized</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">//</span> <span class="mi">2</span>
+    <span class="n">canvas</span><span class="p">[</span><span class="n">top</span><span class="p">:</span><span class="n">top</span> <span class="o">+</span> <span class="n">resized</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">left</span><span class="p">:</span><span class="n">left</span> <span class="o">+</span> <span class="n">resized</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]]</span> <span class="o">=</span> <span class="n">resized</span>
+    <span class="k">return</span> <span class="n">canvas</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.grids.image_grid" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">image_grid</span>
+
+
+<a href="#critterframe.visualization.grids.image_grid" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">image_grid</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">DEFAULT_COLUMNS</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A grid of images, row-major, each captioned.</p>
+<p>images  -- list of arrays. Any sizes; each is fitted into a cell.
+labels  -- caption per image (occurrence ids, usually). None for no captions.
+title   -- headline drawn across the top.
+columns -- images per row. The last row is padded with empty cells rather
+           than being narrower, so the grid stays rectangular and the eye
+           can track columns.
+cell    -- (height, width) of one image cell.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/grids.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">image_grid</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">labels</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">DEFAULT_COLUMNS</span><span class="p">,</span>
+               <span class="n">cell</span><span class="o">=</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">BACKGROUND</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A grid of images, row-major, each captioned.</span>
+
+<span class="sd">    images  -- list of arrays. Any sizes; each is fitted into a cell.</span>
+<span class="sd">    labels  -- caption per image (occurrence ids, usually). None for no captions.</span>
+<span class="sd">    title   -- headline drawn across the top.</span>
+<span class="sd">    columns -- images per row. The last row is padded with empty cells rather</span>
+<span class="sd">               than being narrower, so the grid stays rectangular and the eye</span>
+<span class="sd">               can track columns.</span>
+<span class="sd">    cell    -- (height, width) of one image cell.</span>
+<span class="sd">    """</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"image_grid needs at least one image"</span><span class="p">)</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="k">if</span> <span class="n">labels</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">images</span><span class="p">)</span><span class="si">}</span><span class="s2"> image(s) and </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span><span class="si">}</span><span class="s2"> label(s) -- a "</span>
+            <span class="s2">"grid captions each cell, so they have to correspond"</span>
+        <span class="p">)</span>
+
+    <span class="n">cells</span> <span class="o">=</span> <span class="p">[</span><span class="n">_labelled_cell</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">label</span><span class="p">,</span> <span class="n">cell</span><span class="p">,</span> <span class="n">background</span><span class="p">)</span>
+             <span class="k">for</span> <span class="n">image</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">labels</span><span class="p">)]</span>
+    <span class="n">blank</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">cells</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">background</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">cells</span><span class="p">),</span> <span class="n">columns</span><span class="p">):</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">cells</span><span class="p">[</span><span class="n">start</span><span class="p">:</span><span class="n">start</span> <span class="o">+</span> <span class="n">columns</span><span class="p">]</span>
+        <span class="n">row</span> <span class="o">+=</span> <span class="p">[</span><span class="n">blank</span><span class="p">]</span> <span class="o">*</span> <span class="p">(</span><span class="n">columns</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+        <span class="n">strip</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">row</span><span class="p">)</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">strip</span><span class="p">)</span>
+        <span class="c1"># A rule under each row, because a caption sits under its image with a</span>
+        <span class="c1"># letterbox above it -- without a line, a caption reads as belonging to</span>
+        <span class="c1"># whatever is below it instead.</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="n">strip</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">3</span><span class="p">),</span> <span class="n">GRID_COLOR</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">))</span>
+
+    <span class="n">grid</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">_with_title</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">title</span><span class="p">,</span> <span class="n">background</span><span class="o">=</span><span class="n">background</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.visualization.panels" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">panels</span>
+
+
+<a href="#critterframe.visualization.panels" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>One picture of one operation's decision about one occurrence-part, plus the
+shared drawing helpers and colour conventions.</p>
+<p>The unit everything else in visualization is built from. Helpers are shared so
+a panel from appendage removal and one from mask validation mean the same thing
+by the same colours, and a white pixel never quietly means "agreement" in one
+place and "mask" in another.</p>
+<p>Drawing only, no input: the two operations that put a panel on screen and wait
+for a person keep their own <code>_wait_for_key</code>, because their tests stub cv2 by
+rebinding it in the operation's own module (see the note on either copy).</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.visualization.panels.PanelFiles" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">PanelFiles</span>
+
+
+<a href="#critterframe.visualization.panels.PanelFiles" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">PanelFiles</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>A panel sink that writes every panel it's given as its own file.</p>
+<p>The counterpart to a pipeline RunReport, and the other thing a Segment's
+panel_sink can be. A report samples and composes because that's what makes a
+10,000-occurrence run inspectable; this writes one file per panel because
+that's what you want when you are looking hard at three specimens -- full
+resolution, one image per step, no grid cell shrinking the text.</p>
+<p>Deliberately NOT reachable through a run's visualize= argument. Per-panel
+files are right for a handful of segments you constructed yourself, and
+ruinous for a run over a collection, so getting them takes saying so:</p>
+<div class="highlight"><pre><span></span><code>segment = Segment(image, mask=mask, occurrence_id="a1",
+                  project_path=path, panel_sink=PanelFiles(path))
+</code></pre></div>
+<p>Files land in visualizations/<stage>/<occurrence_id>.png, one folder per
+stage, so one operation's output never mixes with another's.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_path</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">project_path</span> <span class="o">=</span> <span class="n">project_path</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">paths</span> <span class="o">=</span> <span class="p">[]</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.panels.PanelFiles.collect" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">collect</span>
+
+
+<a href="#critterframe.visualization.panels.PanelFiles.collect" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">collect</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Write one panel, recording its path on self.paths.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">image</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Write one panel, recording its path on self.paths."""</span>
+    <span class="n">dest</span> <span class="o">=</span> <span class="n">save_panel</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">project_path</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">),</span>
+                      <span class="n">subdir</span><span class="o">=</span><span class="n">stage</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">paths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">dest</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">dest</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.panels.PanelFiles.wants" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">wants</span>
+
+
+<a href="#critterframe.visualization.panels.PanelFiles.wants" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">wants</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>True always -- a file sink has no sample to be in.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">wants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""True always -- a file sink has no sample to be in."""</span>
+    <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.annotate" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">annotate</span>
+
+
+<a href="#critterframe.visualization.panels.annotate" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">annotate</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">TEXT_COLOR</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Draw one line of small diagnostic text at the top-left, in place.</p>
+<p>line -- 0-based line number, so several calls stack without each caller
+        computing y offsets.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">annotate</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="n">line</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">TEXT_COLOR</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Draw one line of small diagnostic text at the top-left, in place.</span>
+
+<span class="sd">    line -- 0-based line number, so several calls stack without each caller</span>
+<span class="sd">            computing y offsets.</span>
+<span class="sd">    """</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">putText</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">text</span><span class="p">,</span> <span class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">15</span> <span class="o">+</span> <span class="mi">17</span> <span class="o">*</span> <span class="n">line</span><span class="p">),</span> <span class="n">cv2</span><span class="o">.</span><span class="n">FONT_HERSHEY_SIMPLEX</span><span class="p">,</span>
+                <span class="mf">0.4</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.diff_panel" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">diff_panel</span>
+
+
+<a href="#critterframe.visualization.panels.diff_panel" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">diff_panel</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">agree</span><span class="o">=</span><span class="n">AGREE_COLOR</span><span class="p">,</span> <span class="n">only_mask</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="n">only_other</span><span class="o">=</span><span class="n">REMOVED_COLOR</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Two masks compared as one colored image: agreement in white, each mask's
+exclusive pixels in its own color.</p>
+<p>Used for every mask-vs-mask question in the package -- automated against
+a reference, a mask against its own mirror, before against after a
+transform -- so the colors mean the same thing wherever you see them.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">diff_panel</span><span class="p">(</span><span class="n">mask</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">agree</span><span class="o">=</span><span class="n">AGREE_COLOR</span><span class="p">,</span> <span class="n">only_mask</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span>
+               <span class="n">only_other</span><span class="o">=</span><span class="n">REMOVED_COLOR</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Two masks compared as one colored image: agreement in white, each mask's</span>
+<span class="sd">    exclusive pixels in its own color.</span>
+
+<span class="sd">    Used for every mask-vs-mask question in the package -- automated against</span>
+<span class="sd">    a reference, a mask against its own mirror, before against after a</span>
+<span class="sd">    transform -- so the colors mean the same thing wherever you see them.</span>
+<span class="sd">    """</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="n">other</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">other</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+
+    <span class="n">panel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="o">*</span><span class="n">mask</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="n">panel</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="n">other</span><span class="p">]</span> <span class="o">=</span> <span class="n">agree</span>
+    <span class="n">panel</span><span class="p">[</span><span class="n">mask</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">other</span><span class="p">]</span> <span class="o">=</span> <span class="n">only_mask</span>
+    <span class="n">panel</span><span class="p">[</span><span class="n">other</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="n">only_other</span>
+    <span class="k">return</span> <span class="n">panel</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.mask_to_bgr" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">mask_to_bgr</span>
+
+
+<a href="#critterframe.visualization.panels.mask_to_bgr" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">mask_to_bgr</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A boolean mask as a white-on-black BGR image, ready to draw on.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">mask_to_bgr</span><span class="p">(</span><span class="n">mask</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""A boolean mask as a white-on-black BGR image, ready to draw on."""</span>
+    <span class="k">return</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">((</span><span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span> <span class="o">*</span> <span class="mi">255</span><span class="p">),</span>
+                        <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.overlay_mask" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">overlay_mask</span>
+
+
+<a href="#critterframe.visualization.panels.overlay_mask" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">overlay_mask</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">REMOVED_COLOR</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The image with mask pixels tinted -- the standard "is this segmentation
+right" view, and what every human-annotation window shows.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">overlay_mask</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">REMOVED_COLOR</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The image with mask pixels tinted -- the standard "is this segmentation</span>
+<span class="sd">    right" view, and what every human-annotation window shows.</span>
+<span class="sd">    """</span>
+    <span class="n">out</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">out</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">out</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+
+    <span class="n">selected</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">mask</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">selected</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+        <span class="n">out</span><span class="p">[</span><span class="n">selected</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">alpha</span><span class="p">)</span> <span class="o">*</span> <span class="n">out</span><span class="p">[</span><span class="n">selected</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+            <span class="o">+</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">color</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">out</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.save_panel" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">save_panel</span>
+
+
+<a href="#critterframe.visualization.panels.save_panel" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save_panel</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subdir</span><span class="o">=</span><span class="s1">''</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Write one panel to project_path/visualizations/<subdir>/<name>.png, and
+return the path.</p>
+<p>Outside pipeline/ and products/, which have their own contracts -- this is
+for a caller who wants a picture on disk and is naming the folder itself.</p>
+<p>project_path -- project whose visualizations directory to write into.
+image        -- BGR, grayscale, or boolean-mask array to write. A boolean
+                mask is converted here rather than refused: emit_panel's
+                contract allows one and grids lay one out happily, so a
+                sink that crashed on it would make an operation's panel
+                work in a run's grid and fail in a file.
+name         -- filename stem; ".png" is appended if absent.
+subdir       -- subfolder, conventionally the operation's name, so one
+                caller's output never mixes with another's.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save_panel</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">subdir</span><span class="o">=</span><span class="s2">""</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Write one panel to project_path/visualizations/&lt;subdir&gt;/&lt;name&gt;.png, and</span>
+<span class="sd">    return the path.</span>
+
+<span class="sd">    Outside pipeline/ and products/, which have their own contracts -- this is</span>
+<span class="sd">    for a caller who wants a picture on disk and is naming the folder itself.</span>
+
+<span class="sd">    project_path -- project whose visualizations directory to write into.</span>
+<span class="sd">    image        -- BGR, grayscale, or boolean-mask array to write. A boolean</span>
+<span class="sd">                    mask is converted here rather than refused: emit_panel's</span>
+<span class="sd">                    contract allows one and grids lay one out happily, so a</span>
+<span class="sd">                    sink that crashed on it would make an operation's panel</span>
+<span class="sd">                    work in a run's grid and fail in a file.</span>
+<span class="sd">    name         -- filename stem; ".png" is appended if absent.</span>
+<span class="sd">    subdir       -- subfolder, conventionally the operation's name, so one</span>
+<span class="sd">                    caller's output never mixes with another's.</span>
+<span class="sd">    """</span>
+    <span class="n">dest_dir</span> <span class="o">=</span> <span class="n">paths</span><span class="o">.</span><span class="n">visualizations_dir</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subdir</span><span class="p">)</span>
+    <span class="n">dest_dir</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">name</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">".png"</span><span class="p">):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">.png"</span>
+    <span class="n">dest</span> <span class="o">=</span> <span class="n">dest_dir</span> <span class="o">/</span> <span class="n">name</span>
+
+    <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="n">image</span> <span class="o">=</span> <span class="n">mask_to_bgr</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+
+    <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">dest</span><span class="p">),</span> <span class="n">image</span><span class="p">)</span>   <span class="c1"># cv2 wants a str, not a Path</span>
+    <span class="k">return</span> <span class="n">dest</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.panels.side_by_side" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">side_by_side</span>
+
+
+<a href="#critterframe.visualization.panels.side_by_side" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">side_by_side</span><span class="p">(</span><span class="o">*</span><span class="n">images</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Stack images horizontally, bottom-padding the shorter ones with black.</p>
+<p>Needed because panels being compared often differ in height -- a rotated
+image is taller than the one it came from -- and hstack refuses to join
+them.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/panels.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">side_by_side</span><span class="p">(</span><span class="o">*</span><span class="n">images</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Stack images horizontally, bottom-padding the shorter ones with black.</span>
+
+<span class="sd">    Needed because panels being compared often differ in height -- a rotated</span>
+<span class="sd">    image is taller than the one it came from -- and hstack refuses to join</span>
+<span class="sd">    them.</span>
+<span class="sd">    """</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span><span class="n">mask_to_bgr</span><span class="p">(</span><span class="n">image</span><span class="p">)</span> <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="nb">bool</span> <span class="k">else</span> <span class="n">image</span>
+              <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">]</span>
+    <span class="n">images</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span> <span class="k">if</span> <span class="n">image</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span> <span class="k">else</span> <span class="n">image</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span>
+    <span class="p">]</span>
+    <span class="n">height</span> <span class="o">=</span> <span class="nb">max</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span><span class="p">)</span>
+    <span class="n">padded</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">cv2</span><span class="o">.</span><span class="n">copyMakeBorder</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">height</span> <span class="o">-</span> <span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span>
+                           <span class="n">cv2</span><span class="o">.</span><span class="n">BORDER_CONSTANT</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">image</span> <span class="ow">in</span> <span class="n">images</span>
+    <span class="p">]</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">(</span><span class="n">padded</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.visualization.pipeline" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">pipeline</span>
+
+
+<a href="#critterframe.visualization.pipeline" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>The per-run QC grid: resolve_sample, RunReport, PanelFanout.</p>
+<p>Any operation in a recipe may contribute a panel, and a pipeline visualization
+lays those out for a SAMPLE of the occurrences a run processed -- a stage per
+column, an occurrence per row. There is no per-occurrence file mode: a
+10,000-occurrence run can't be inspected as 10,000 files.</p>
+<p>The sample is deterministic, so two versions of a recipe show the same
+specimens and can be compared cell by cell. A grid can only show work that
+happened, so a fully cached rerun writes none.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.visualization.pipeline.PanelFanout" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">PanelFanout</span>
+
+
+<a href="#critterframe.visualization.pipeline.PanelFanout" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">PanelFanout</span><span class="p">(</span><span class="n">reports</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>A panel sink that hands each panel to several reports at once.</p>
+<p>Exists for exactly one situation: a multi-output segmentation run, whose
+shared steps run ONCE on a segment that then forks per part. Those shared
+panels belong on every output part's grid -- the shared steps are literally
+in each part's recipe -- so the forking segment emits into this and each
+report gets its own copy.</p>
+<p>Kept separate so RunReport stays one recipe, one part, one sample. The
+multiplexing is a property of how a run is shaped, not of what a report is.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">199</span>
+<span class="normal">200</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reports</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">reports</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">reports</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="critterframe.visualization.pipeline.RunReport" class="doc doc-heading">
+            <span class="doc doc-object-name doc-class-name">RunReport</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">RunReport</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="n">grids</span><span class="o">.</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">grids</span><span class="o">.</span><span class="n">DEFAULT_COLUMNS</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+
+
+        <p>The panels of one recipe, on one part, for one sample -- and the grid they
+become.</p>
+<p>One report is one grid. It knows a recipe hash, a part, the occurrences it
+is collecting from, and the stages it has seen; it does not know about other
+parts, other recipes, or where its panels came from. A run producing several
+parts makes several reports (see PanelFanout for the shared-steps case).</p>
+<p>Panels are fitted to their final cell the moment they arrive, so a report
+holds a bounded amount of memory -- sample x stages x one cell -- rather
+than a full-resolution copy of every intermediate image of every sampled
+occurrence.</p>
+<p>project_path -- project to write the grid into.
+name         -- the run's name, and the first part of the filename.
+recipe_hash  -- identity of the recipe whose behaviour this shows.
+part         -- the part being produced or measured.
+sample       -- occurrence ids to collect from, in row order.</p>
+
+
+
+
+
+
+
+
+                  <details class="mkdocstrings-source">
+                    <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+                    <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span>
+<span class="normal">91</span>
+<span class="normal">92</span>
+<span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">sample</span><span class="p">,</span>
+             <span class="n">cell</span><span class="o">=</span><span class="n">grids</span><span class="o">.</span><span class="n">DEFAULT_CELL</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="n">grids</span><span class="o">.</span><span class="n">DEFAULT_COLUMNS</span><span class="p">):</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">project_path</span> <span class="o">=</span> <span class="n">project_path</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">recipe_hash</span> <span class="o">=</span> <span class="n">recipe_hash</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">part</span> <span class="o">=</span> <span class="n">part</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">sample</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">sample</span><span class="p">]</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">cell</span> <span class="o">=</span> <span class="n">cell</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">columns</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_sample_set</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">)</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_panels</span> <span class="o">=</span> <span class="p">{}</span>     <span class="c1"># occurrence_id -&gt; {stage: fitted panel}</span>
+    <span class="bp">self</span><span class="o">.</span><span class="n">_stages</span> <span class="o">=</span> <span class="p">[]</span>     <span class="c1"># stage names, in the order first seen</span>
+</code></pre></div></td></tr></table></div>
+                  </details>
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.pipeline.RunReport.__bool__" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">__bool__</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport.__bool__" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">__bool__</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Truthy only when there's actually something to collect.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="fm">__bool__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Truthy only when there's actually something to collect."""</span>
+    <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_sample_set</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.pipeline.RunReport.collect" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">collect</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport.collect" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">collect</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">panel</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Take one panel, from Segment.emit_panel.</p>
+<p>A panel that can't be laid out is dropped with a warning rather than
+raised: visualization is diagnostic, and losing a cell must never cost
+the run that produced it.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">collect</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">stage</span><span class="p">,</span> <span class="n">panel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Take one panel, from Segment.emit_panel.</span>
+
+<span class="sd">    A panel that can't be laid out is dropped with a warning rather than</span>
+<span class="sd">    raised: visualization is diagnostic, and losing a cell must never cost</span>
+<span class="sd">    the run that produced it.</span>
+<span class="sd">    """</span>
+    <span class="n">occurrence_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fitted</span> <span class="o">=</span> <span class="n">grids</span><span class="o">.</span><span class="n">fit_cell</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"could not lay out '</span><span class="si">%s</span><span class="s2">' panel for </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                       <span class="n">stage</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+        <span class="k">return</span>
+
+    <span class="bp">self</span><span class="o">.</span><span class="n">_panels</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">,</span> <span class="p">{})[</span><span class="n">stage</span><span class="p">]</span> <span class="o">=</span> <span class="n">fitted</span>
+    <span class="k">if</span> <span class="n">stage</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.pipeline.RunReport.rows" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rows</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport.rows" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">rows</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>(row images, row labels) in sample order, skipping occurrences with nothing.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rows</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""(row images, row labels) in sample order, skipping occurrences with nothing."""</span>
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">labels</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">:</span>
+        <span class="n">collected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_panels</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">collected</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="n">collected</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">stage</span><span class="p">)</span> <span class="k">for</span> <span class="n">stage</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="p">])</span>
+        <span class="n">labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rows</span><span class="p">,</span> <span class="n">labels</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.pipeline.RunReport.save" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">save</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport.save" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">save</span><span class="p">()</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Write this report's grid, and return its path (None if nothing was
+collected).</p>
+<p>A single stage becomes an image grid -- the same view across specimens,
+which is what you scan for outliers. Several stages become a comparison
+grid -- a row per specimen, a column per stage, which is what shows
+WHERE in a recipe something went wrong. The layout follows the question
+the collected panels can answer.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Write this report's grid, and return its path (None if nothing was</span>
+<span class="sd">    collected).</span>
+
+<span class="sd">    A single stage becomes an image grid -- the same view across specimens,</span>
+<span class="sd">    which is what you scan for outliers. Several stages become a comparison</span>
+<span class="sd">    grid -- a row per specimen, a column per stage, which is what shows</span>
+<span class="sd">    WHERE in a recipe something went wrong. The layout follows the question</span>
+<span class="sd">    the collected panels can answer.</span>
+<span class="sd">    """</span>
+    <span class="n">rows</span><span class="p">,</span> <span class="n">labels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">rows</span><span class="p">()</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"no pipeline panels collected for '</span><span class="si">%s</span><span class="s2">' part '</span><span class="si">%s</span><span class="s2">' -- no "</span>
+                    <span class="s2">"operation in this recipe draws one"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">part</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">heading</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">part</span><span class="si">}</span><span class="s2"> / n=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">recipe_hash</span><span class="si">}</span><span class="s2">"</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">grids</span><span class="o">.</span><span class="n">image_grid</span><span class="p">([</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">],</span> <span class="n">labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span>
+                                <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">heading</span><span class="si">}</span><span class="s2"> / </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                                <span class="n">columns</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">columns</span><span class="p">,</span> <span class="n">cell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">grid</span> <span class="o">=</span> <span class="n">grids</span><span class="o">.</span><span class="n">comparison_grid</span><span class="p">(</span><span class="n">rows</span><span class="p">,</span> <span class="n">column_titles</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_stages</span><span class="p">,</span>
+                                     <span class="n">row_labels</span><span class="o">=</span><span class="n">labels</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="n">heading</span><span class="p">,</span>
+                                     <span class="n">cell</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cell</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_write</span><span class="p">(</span><span class="n">grid</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h5 id="critterframe.visualization.pipeline.RunReport.wants" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">wants</span>
+
+
+<a href="#critterframe.visualization.pipeline.RunReport.wants" class="headerlink" title="Permanent link">&para;</a></h5>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">wants</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>True if this occurrence is in the sample.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">wants</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""True if this occurrence is in the sample."""</span>
+    <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sample_set</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.pipeline.panel_sink" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">panel_sink</span>
+
+
+<a href="#critterframe.visualization.pipeline.panel_sink" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">panel_sink</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>What to give one occurrence's Segment as its panel sink: the report when
+this occurrence is in the sample, None otherwise.</p>
+<p>None is what keeps panel building off the path of the thousands of
+occurrences nobody is looking at -- an operation's emit_panel() call costs
+nothing when there's no sink to send it to.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">panel_sink</span><span class="p">(</span><span class="n">report</span><span class="p">,</span> <span class="n">occurrence_id</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    What to give one occurrence's Segment as its panel sink: the report when</span>
+<span class="sd">    this occurrence is in the sample, None otherwise.</span>
+
+<span class="sd">    None is what keeps panel building off the path of the thousands of</span>
+<span class="sd">    occurrences nobody is looking at -- an operation's emit_panel() call costs</span>
+<span class="sd">    nothing when there's no sink to send it to.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">report</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">report</span><span class="o">.</span><span class="n">wants</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">report</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.pipeline.resolve_sample" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolve_sample</span>
+
+
+<a href="#critterframe.visualization.pipeline.resolve_sample" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">resolve_sample</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Turn a run's visualize= argument into the ids to build a grid from, or None
+if this run isn't making one.</p>
+<p>visualize -- False/None: no visualization.
+             True:       a default-sized sample (25).
+             int:        sample that many.
+             iterable:   exactly these occurrence ids, ignoring any this run
+                         doesn't cover. Explicit ids are how you follow one
+                         known-difficult specimen through a recipe.</p>
+<p>occurrence_ids should be the ids the run will actually PROCESS, not every id
+it was pointed at: a grid can only show work that happened, and a run whose
+occurrences were all already done has nothing to draw.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">29</span>
+<span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
+<span class="normal">33</span>
+<span class="normal">34</span>
+<span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_sample</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Turn a run's visualize= argument into the ids to build a grid from, or None</span>
+<span class="sd">    if this run isn't making one.</span>
+
+<span class="sd">    visualize -- False/None: no visualization.</span>
+<span class="sd">                 True:       a default-sized sample (25).</span>
+<span class="sd">                 int:        sample that many.</span>
+<span class="sd">                 iterable:   exactly these occurrence ids, ignoring any this run</span>
+<span class="sd">                             doesn't cover. Explicit ids are how you follow one</span>
+<span class="sd">                             known-difficult specimen through a recipe.</span>
+
+<span class="sd">    occurrence_ids should be the ids the run will actually PROCESS, not every id</span>
+<span class="sd">    it was pointed at: a grid can only show work that happened, and a run whose</span>
+<span class="sd">    occurrences were all already done has nothing to draw.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">visualize</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">visualize</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">visualize</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">sample_occurrences</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">DEFAULT_SAMPLE</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">visualize</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">sample_occurrences</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">)</span>
+
+    <span class="n">wanted</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">visualize</span><span class="p">}</span>
+    <span class="n">chosen</span> <span class="o">=</span> <span class="p">[</span><span class="n">occurrence_id</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">ids</span> <span class="k">if</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">wanted</span><span class="p">]</span>
+    <span class="n">missing</span> <span class="o">=</span> <span class="n">wanted</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">chosen</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">missing</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"visualize= named </span><span class="si">%d</span><span class="s2"> occurrence(s) this run isn't "</span>
+                       <span class="s2">"processing, ignoring them (e.g. </span><span class="si">%s</span><span class="s2">)"</span><span class="p">,</span>
+                       <span class="nb">len</span><span class="p">(</span><span class="n">missing</span><span class="p">),</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">missing</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="k">return</span> <span class="n">chosen</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.pipeline.run_report" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">run_report</span>
+
+
+<a href="#critterframe.visualization.pipeline.run_report" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">run_report</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The RunReport for one part of a run, or None if it wasn't asked to
+visualize anything.</p>
+<p>Runs call this instead of interpreting visualize= themselves, so 25 means
+the same thing to a segmentation run and a metric run.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/pipeline.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">run_report</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The RunReport for one part of a run, or None if it wasn't asked to</span>
+<span class="sd">    visualize anything.</span>
+
+<span class="sd">    Runs call this instead of interpreting visualize= themselves, so 25 means</span>
+<span class="sd">    the same thing to a segmentation run and a metric run.</span>
+<span class="sd">    """</span>
+    <span class="n">sample</span> <span class="o">=</span> <span class="n">resolve_sample</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">visualize</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">sample</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">RunReport</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">sample</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.visualization.products" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">products</span>
+
+
+<a href="#critterframe.visualization.products" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>Assets for downstream use: render_segments, one file per occurrence-part.</p>
+<p>The opposite contract to pipeline: outputs, not diagnostics. Loose files rather
+than the image store, because these are for figures and for R.</p>
+<p>A render derives nothing and records nothing -- no mask, no metric, no run row.
+It hashes its transform chain only so the folder name identifies what is in it
+and a rerun is a no-op.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.visualization.products.render_segments" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">render_segments</span>
+
+
+<a href="#critterframe.visualization.products.render_segments" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">render_segments</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="n">DEFAULT_FORMAT</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Render each occurrence-part's segment through a chain of transforms and write
+one image file per occurrence-part.</p>
+<p>project_path -- project to read from and write into.
+name         -- the render's name, and its folder's, e.g. "oriented_bodies".
+transforms   -- ordered Transform operations applied before writing. The
+                interesting part: what makes a plate of comparable specimens
+                out of a pile of snapshots is usually remove_background() +
+                crop_to_mask() + orient(). An empty chain writes the
+                originals back out.
+part / parts -- the part to render, or several. Several qualifies every
+                filename with the part name.
+subset       -- name of a subset to render, or None for every occurrence.
+limit        -- optional cap, for checking a chain before committing to
+                10,000 files.
+occurrence_ids -- render exactly these, ignoring subset/limit.
+reference    -- render from the reference masks instead of the canonical.
+extension    -- image format by extension. PNG by default, since a render
+                usually goes into a figure and JPEG rings along the specimen
+                boundary.
+force        -- re-render occurrence-parts whose file exists. Normally
+                skipped, which makes an interrupted render resumable; output
+                is deterministic for a given hash, so skipping can't leave a
+                stale file.</p>
+<p>Returns a summary dict (rendered, skipped, failed, directory).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/visualization/products.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 32</span>
+<span class="normal"> 33</span>
+<span class="normal"> 34</span>
+<span class="normal"> 35</span>
+<span class="normal"> 36</span>
+<span class="normal"> 37</span>
+<span class="normal"> 38</span>
+<span class="normal"> 39</span>
+<span class="normal"> 40</span>
+<span class="normal"> 41</span>
+<span class="normal"> 42</span>
+<span class="normal"> 43</span>
+<span class="normal"> 44</span>
+<span class="normal"> 45</span>
+<span class="normal"> 46</span>
+<span class="normal"> 47</span>
+<span class="normal"> 48</span>
+<span class="normal"> 49</span>
+<span class="normal"> 50</span>
+<span class="normal"> 51</span>
+<span class="normal"> 52</span>
+<span class="normal"> 53</span>
+<span class="normal"> 54</span>
+<span class="normal"> 55</span>
+<span class="normal"> 56</span>
+<span class="normal"> 57</span>
+<span class="normal"> 58</span>
+<span class="normal"> 59</span>
+<span class="normal"> 60</span>
+<span class="normal"> 61</span>
+<span class="normal"> 62</span>
+<span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
+<span class="normal"> 67</span>
+<span class="normal"> 68</span>
+<span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
+<span class="normal"> 73</span>
+<span class="normal"> 74</span>
+<span class="normal"> 75</span>
+<span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">render_segments</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">transforms</span><span class="o">=</span><span class="p">(),</span> <span class="n">part</span><span class="o">=</span><span class="n">DEFAULT_PART</span><span class="p">,</span>
+                    <span class="n">parts</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                    <span class="n">reference</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extension</span><span class="o">=</span><span class="n">DEFAULT_FORMAT</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Render each occurrence-part's segment through a chain of transforms and write</span>
+<span class="sd">    one image file per occurrence-part.</span>
+
+<span class="sd">    project_path -- project to read from and write into.</span>
+<span class="sd">    name         -- the render's name, and its folder's, e.g. "oriented_bodies".</span>
+<span class="sd">    transforms   -- ordered Transform operations applied before writing. The</span>
+<span class="sd">                    interesting part: what makes a plate of comparable specimens</span>
+<span class="sd">                    out of a pile of snapshots is usually remove_background() +</span>
+<span class="sd">                    crop_to_mask() + orient(). An empty chain writes the</span>
+<span class="sd">                    originals back out.</span>
+<span class="sd">    part / parts -- the part to render, or several. Several qualifies every</span>
+<span class="sd">                    filename with the part name.</span>
+<span class="sd">    subset       -- name of a subset to render, or None for every occurrence.</span>
+<span class="sd">    limit        -- optional cap, for checking a chain before committing to</span>
+<span class="sd">                    10,000 files.</span>
+<span class="sd">    occurrence_ids -- render exactly these, ignoring subset/limit.</span>
+<span class="sd">    reference    -- render from the reference masks instead of the canonical.</span>
+<span class="sd">    extension    -- image format by extension. PNG by default, since a render</span>
+<span class="sd">                    usually goes into a figure and JPEG rings along the specimen</span>
+<span class="sd">                    boundary.</span>
+<span class="sd">    force        -- re-render occurrence-parts whose file exists. Normally</span>
+<span class="sd">                    skipped, which makes an interrupted render resumable; output</span>
+<span class="sd">                    is deterministic for a given hash, so skipping can't leave a</span>
+<span class="sd">                    stale file.</span>
+
+<span class="sd">    Returns a summary dict (rendered, skipped, failed, directory).</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="n">target_parts</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="k">if</span> <span class="n">parts</span> <span class="k">else</span> <span class="p">[</span><span class="n">part</span><span class="p">]</span>
+    <span class="n">qualify</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">target_parts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span>
+
+    <span class="n">recipe</span> <span class="o">=</span> <span class="n">Recipe</span><span class="p">(</span><span class="s2">"render"</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="nb">list</span><span class="p">(</span><span class="n">transforms</span><span class="p">),</span> <span class="n">part</span><span class="o">=</span><span class="n">part</span><span class="p">,</span>
+                    <span class="n">inputs</span><span class="o">=</span><span class="p">{</span><span class="s2">"masks"</span><span class="p">:</span> <span class="s2">"reference"</span> <span class="k">if</span> <span class="n">reference</span> <span class="k">else</span> <span class="s2">"canonical"</span><span class="p">,</span>
+                            <span class="s2">"parts"</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">target_parts</span><span class="p">),</span>
+                            <span class="s2">"format"</span><span class="p">:</span> <span class="n">extension</span><span class="p">})</span>
+    <span class="n">directory</span> <span class="o">=</span> <span class="n">paths</span><span class="o">.</span><span class="n">products_dir</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">recipe</span><span class="o">.</span><span class="n">hash</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="n">directory</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">occurrence_ids</span> <span class="o">=</span> <span class="n">subset_selection</span><span class="o">.</span><span class="n">select_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">,</span>
+                                                     <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">occurrence_ids</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">]</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"render '</span><span class="si">%s</span><span class="s2">': </span><span class="si">%d</span><span class="s2"> occurrence(s), part(s): </span><span class="si">%s</span><span class="s2"> -&gt; </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">),</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">target_parts</span><span class="p">),</span> <span class="n">directory</span><span class="p">)</span>
+
+    <span class="n">rendered</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">skipped</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">failed</span> <span class="o">=</span> <span class="mi">0</span>
+
+    <span class="k">with</span> <span class="n">ImageStore</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">target_part</span> <span class="ow">in</span> <span class="n">target_parts</span><span class="p">:</span>
+            <span class="n">mask_rows</span> <span class="o">=</span> <span class="n">mask_records</span><span class="o">.</span><span class="n">mask_lookup</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">target_part</span><span class="p">,</span>
+                                                 <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">occurrence_ids</span><span class="p">,</span>
+                                                 <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">:</span>
+                <span class="n">dest</span> <span class="o">=</span> <span class="n">directory</span> <span class="o">/</span> <span class="n">product_filename</span><span class="p">(</span>
+                    <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">target_part</span> <span class="k">if</span> <span class="n">qualify</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span> <span class="n">extension</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dest</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+                    <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">continue</span>
+
+                <span class="n">mask_row</span> <span class="o">=</span> <span class="n">mask_rows</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">mask_row</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="c1"># Not a failure: a project legitimately has parts that only</span>
+                    <span class="c1"># some occurrences carry, and a render of "every wing" over</span>
+                    <span class="c1"># a project where half the specimens have none should write</span>
+                    <span class="c1"># the wings it has and say how many it didn't.</span>
+                    <span class="n">skipped</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="k">continue</span>
+
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">image</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"no image in the image store"</span><span class="p">)</span>
+
+                    <span class="n">state</span> <span class="o">=</span> <span class="n">Segment</span><span class="p">(</span><span class="n">image</span><span class="p">,</span>
+                                    <span class="n">mask</span><span class="o">=</span><span class="n">mask_records</span><span class="o">.</span><span class="n">decode_mask</span><span class="p">(</span><span class="n">mask_row</span><span class="p">),</span>
+                                    <span class="n">occurrence_id</span><span class="o">=</span><span class="n">occurrence_id</span><span class="p">,</span>
+                                    <span class="n">part</span><span class="o">=</span><span class="n">target_part</span><span class="p">,</span>
+                                    <span class="n">project_path</span><span class="o">=</span><span class="n">project_path</span><span class="p">)</span>
+                    <span class="k">for</span> <span class="n">operation</span> <span class="ow">in</span> <span class="n">recipe</span><span class="o">.</span><span class="n">operations</span><span class="p">:</span>
+                        <span class="n">state</span><span class="p">,</span> <span class="n">_info</span> <span class="o">=</span> <span class="n">operation</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+                    <span class="k">if</span> <span class="ow">not</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">dest</span><span class="p">),</span> <span class="n">state</span><span class="o">.</span><span class="n">image</span><span class="p">):</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"could not write </span><span class="si">{</span><span class="n">dest</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                    <span class="n">rendered</span> <span class="o">+=</span> <span class="mi">1</span>
+
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                    <span class="n">failed</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"render failed for </span><span class="si">%s</span><span class="s2"> part '</span><span class="si">%s</span><span class="s2">': </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                                   <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">target_part</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"render '</span><span class="si">%s</span><span class="s2">' complete: rendered=</span><span class="si">%d</span><span class="s2"> skipped=</span><span class="si">%d</span><span class="s2"> failed=</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">name</span><span class="p">,</span> <span class="n">rendered</span><span class="p">,</span> <span class="n">skipped</span><span class="p">,</span> <span class="n">failed</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"rendered"</span><span class="p">:</span> <span class="n">rendered</span><span class="p">,</span> <span class="s2">"skipped"</span><span class="p">:</span> <span class="n">skipped</span><span class="p">,</span> <span class="s2">"failed"</span><span class="p">:</span> <span class="n">failed</span><span class="p">,</span>
+            <span class="s2">"directory"</span><span class="p">:</span> <span class="n">directory</span><span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
