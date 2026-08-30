@@ -20,7 +20,6 @@ import pandas as pd
 import pytest
 
 import critterframe as cf
-from critterframe import ingest
 from critterframe.project import paths
 from critterframe.records.occurrences import ID_COL
 from critterframe.storage.imagestore import ImageStore
@@ -98,15 +97,16 @@ def test_two_imports_on_one_day_do_not_clobber_each_other(tmp_path, source_csv,
     day. Computing today's date in the test would flake once a year, at
     midnight, in a way nobody could reproduce.
 
-    `ingest.py` does `from datetime import date`, so the name to patch lives on
-    the ingest module.
+    The dated name is built by `paths.import_path` (the whole project layout,
+    filenames included, lives in one module), and `paths.py` does `from datetime
+    import date` -- so that is the module the name to patch lives on.
     """
     class FixedDate:
         @staticmethod
         def today():
             return datetime.date(2026, 3, 14)
 
-    monkeypatch.setattr(ingest, "date", FixedDate)
+    monkeypatch.setattr(paths, "date", FixedDate)
     project = tmp_path / "project"
     cf.ingest_occurrences(project, source_csv, id_col="detection_id")
     cf.ingest_occurrences(project, source_csv, id_col="detection_id")

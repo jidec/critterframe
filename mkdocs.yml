@@ -1,5 +1,5 @@
-site_name: CritterFrame
-site_description: "Images to traits: segment organisms out of images and measure them, reproducibly"
+site_name: critterframe
+site_description: "Image frames of critters into dataframes of traits"
 site_url: https://jidec.github.io/critterframe/
 repo_url: https://github.com/jidec/critterframe
 repo_name: jidec/critterframe
@@ -52,18 +52,29 @@ plugins:
             merge_init_into_class: true
             docstring_section_style: list
 
+# Ordered to match the package layout in README.md, so the tree a reader sees
+# there and the nav they browse here are the same list in the same order.
 nav:
   - Home: index.md
   - API Reference:
-      - Core types (recipes.py): api/recipes.md
-      - Ingest, download, export: api/io.md
+      - recipes: api/recipes.md
+      - ingest: api/ingest.md
+      - download: api/download.md
+      - export: api/export.md
+      - selectionhelpers: api/selectionhelpers.md
       - project: api/project.md
-      - calibrations: api/calibrations.md
       - storage: api/storage.md
-      - records: api/records.md
-      - transforms: api/transforms.md
+      - records:
+          - occurrences: api/records/occurrences.md
+          - masks: api/records/masks.md
+          - runs: api/records/runs.md
+          - metrics: api/records/metrics.md
+          - calibrations: api/records/calibrations.md
+          - models: api/records/models.md
       - segmentation: api/segmentation.md
+      - transforms: api/transforms.md
       - metrics: api/metrics.md
+      - calibrations: api/calibrations.md
       - validation: api/validation.md
       - visualization: api/visualization.md
       - training: api/training.md

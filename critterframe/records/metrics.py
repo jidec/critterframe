@@ -1,44 +1,15 @@
 """
-Metric values and their provenance.
+Long-table storage for metric values, current_rows, latest_values.
 
 A metric is any derived value associated with an occurrence and a part: a
-trait, a quality-check value, a human label, an embedding, a cluster
-assignment, an outlier score. Group metrics are metrics too -- being fit
-against a reference population changes how a value is COMPUTED, not what it is
-once computed -- so they store here like everything else.
+trait, a QC value, a human label, an embedding, a cluster assignment, an
+outlier score.
 
-Values are stored long (one row per occurrence-part-metric) and reshaped wide
-on the way out, because long is what an interruptible run can append to and
-wide is what an analysis wants. The value itself is JSON, so a metric returning
-a dict, a list of embedding floats, or a bare number all store the same way
-without a schema change.
-
-Every row carries the recipe hash that produced it AND the recipe hash of the
-mask it was measured from, which together are what makes expensive metrics
-behave like cached derived data rather than disposable calculations: a rerun of
-the same recipe over the same masks finds its own rows already present and skips
-them, while a rerun over a mask that has since been replaced does not.
-
-Values are never rewritten or deleted. A metric is an immutable historical
-result: replacing an occurrence's canonical mask leaves every number derived
-from the old one exactly where it is, it just stops being CURRENT for that
-occurrence-part. So the long table accumulates
-
-    123 | black_fraction | .31 | recipe X | mask A     <- superseded, kept
-    123 | black_fraction | .27 | recipe X | mask B     <- current
-
-while masks.parquet holds only mask B. That keeps the provenance of a number
-that was already published, and still lets the working analysis follow the
-current masks: everything that reshapes values for analysis (export's
-metrics_wide, latest_values here) reports only the rows whose source mask is the
-one the project currently holds.
-
-A row stores only what isn't already recorded once per run. There's no per-row
-version -- a metric operation's version is in the recipe spec, so it's in the
-recipe hash on every row and in the recipe JSON on the run -- and no per-row
-timestamp, since the run has one and metric_id already carries insertion order.
-Storing either again would be a second copy of the same provenance, free to
-drift and not obviously authoritative when it did.
+Values are stored long, one row per occurrence-part-metric, because that is
+what an interruptible run can append to, and reshaped wide on the way out.
+Nothing is ever rewritten or deleted: a value measured from a mask that has
+since been replaced stops being current but stays in the table, which is what
+makes provenance answerable.
 """
 
 import logging
@@ -59,26 +30,15 @@ def make_metric_row(occurrence_id, part, metric_name, value, unit=None,
 
     occurrence_id    -- occurrence the value belongs to.
     part             -- part the value was measured on.
-    metric_name      -- what it's stored under (a Metric operation's
-                        metric_name, which defaults to its operation name).
-    value            -- the value itself. Usually a scalar; a dict is allowed
-                        and is how one metric reports several related numbers,
-                        which export splits into one column per key. Must be
-                        JSON-serializable.
-    unit             -- what the value is expressed in ("px", "px2",
-                        "category", ...).
-    source_mask_hash -- identity of the MASK this value was measured from:
-                        records.masks.derivation_hash(), which is the mask's
-                        segmentation recipe hash for a mask found straight in
-                        the image and a chained hash for one derived from
-                        another part's mask.
-
-                        Recorded per row rather than only on the run because a
-                        single metric run legitimately spans occurrences whose
-                        masks came from different segmentation recipes (two
-                        subsets processed differently, or a resegmented
-                        subset), so "which mask produced this number" is a
-                        property of the row, not of the run.
+    metric_name      -- what it is stored under.
+    value            -- the value. Usually a scalar; a dict reports several
+                        related numbers and export splits it into one column per
+                        key. Must be JSON-serializable.
+    unit             -- what the value is expressed in, e.g. "px", "category".
+    source_mask_hash -- identity of the MASK this was measured from, from
+                        records.masks.derivation_hash(). Recorded per row rather
+                        than on the run, because one run legitimately spans
+                        occurrences whose masks came from different recipes.
     """
     return {
         "occurrence_id": str(occurrence_id),
@@ -185,28 +145,19 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
 
 def current_rows(project_path, long_df):
     """
-    Drop the values that were measured from a mask the project has since
-    replaced, leaving the ones that still describe what it currently holds.
+    Drop values measured from a mask the project has since replaced, leaving
+    those that still describe what it holds.
 
-    Long-form in, long-form out (see load_metrics), so this composes onto any
-    query rather than being welded into one reshape.
+    Long-form in, long-form out, so this composes onto any query.
 
-    Canonical and reference masks are pooled into one "is this hash current for
-    this occurrence-part" test, because the long table doesn't record which of
-    the two tables a run measured -- inputs={"masks": ...} lives in the run's
-    recipe, not on the value -- and a reference-mask value must not be thrown
-    away for failing to match a canonical mask it was never derived from. What
-    pooling costs is that a value would survive on a match against the other
-    table's mask -- which takes one recipe hash writing into both tables, and
-    can't happen through run_segments, since inputs={"masks": ...} puts the
-    table into the hash. It errs toward keeping a real value either way.
+    Canonical and reference masks are pooled into one currency test, because the
+    long table doesn't record which table a run measured -- so a reference-mask
+    value must not be discarded for failing to match a canonical mask it was
+    never derived from.
 
-    Two things are deliberately kept rather than judged:
-
-      - rows with no source_mask_hash, which are of unrecorded provenance rather
-        than known-stale;
-      - everything, when the project has no mask table at all, since there is
-        nothing to compare against and "no masks" must not mean "no values".
+    Two things are kept rather than judged: rows with no source_mask_hash, which
+    are of unrecorded provenance rather than known-stale, and everything when the
+    project has no mask table at all, since "no masks" must not mean "no values".
     """
     if long_df.empty:
         return long_df

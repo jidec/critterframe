@@ -1,11 +1,5 @@
 """
-Project summaries: what does this project actually contain right now.
-
-Answers the questions you ask when you come back to a project after a month:
-how many occurrences, how many have images, which parts have been segmented,
-which runs have happened, how many metric values exist etc.
-
-Every count here is read straight off the stored tables and not stored itself
+Summarize what a project directory currently holds.
 """
 
 import logging

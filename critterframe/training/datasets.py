@@ -1,38 +1,13 @@
 """
-Build training datasets out of a project.
+export_training_data(): images, masks, class folders, and a manifest.
 
-A project accumulates exactly what a segmenter or an encoder needs to be
-trained on -- images, masks, parts, labels -- so training data isn't something
-to assemble separately, it's a view over what's already stored. That's the path
-from "CritterFrame segments whole organisms with a general model" to
-"CritterFrame segments THIS project's abdomens with a model trained here":
-segment organisms, correct a few dozen by hand into reference masks, build a
-dataset from those, train, and plug the result back in as segment(my_model).
+Splitting decides which occurrences answer which question; exporting
+materializes them. Training itself happens outside the package -- what comes
+back is registered (records.models), and then segment() runs it like any other
+model.
 
-Three shapes, because training code comes in three shapes:
-
-  iterate_segments()      -- yields Segment objects, for a torch Dataset or any
-                             in-memory training loop. Nothing is written.
-  export_training_data()  -- materializes a whole dataset: images (and masks)
-                             laid out by split and optionally by class, plus a
-                             manifest and a record of what was exported.
-  write_dataset()         -- one flat directory of image/mask pairs and a
-                             manifest; export_training_data() with no splits.
-
-All three take the same `transforms`, and using the same chain here as the
-model will get at inference time is the point: a model trained on
-background-removed, oriented segments needs those same operations in front of
-it when it runs, and sharing one operation list is what keeps the two from
-drifting apart.
-
-WHAT IS EXPORTED IS NOT WHAT DECIDED THE SPLIT. Nothing here chooses
-proportions, stratification, or grouping -- it takes splits already decided
-(training.splits.split_ids, or named subsets) and writes them out. Which
-occurrences answer which question is a scientific decision that wants to be
-made once, reviewed, and reused across every dataset built from the project;
-folding it into the exporter would mean re-deciding it every time anything is
-materialized, and two datasets from one project could then disagree about what
-"test" means.
+Export from REFERENCE masks where they exist: training on canonical masks
+teaches a new model the old model's mistakes.
 """
 
 import json
@@ -153,47 +128,32 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
             train/<class>/<occurrence_id>.png     (class_by given)
             train/images/<occurrence_id>.png      (no class_by)
             train/masks/<occurrence_id>.png       (masks=True)
-            val/...
 
     project_path -- project to export from.
     output_dir   -- directory to write into; created if missing. Existing files
-                    are left alone unless a new one has the same name, so
-                    export twice into one directory only if you mean to.
+                    are left alone unless a new one has the same name.
     splits       -- {split name: subset name} or {split name: occurrence ids},
                     mixed freely. None exports everything as one flat dataset.
-                    THIS FUNCTION DOES NOT DECIDE THE SPLIT: pass what
-                    training.splits.split_ids() returned, or the names of
-                    subsets the project has frozen. An occurrence appearing in
-                    two splits raises, because that is the leakage every other
-                    guarantee here exists to prevent, and a written dataset is
-                    exactly where it stops being visible.
+                    This does NOT decide the split -- pass what split_ids()
+                    returned. An occurrence in two splits raises, since that is
+                    the leakage every other guarantee here exists to prevent.
     part         -- part to export, "organism" by default.
-    transforms   -- operations applied to each segment before it is written.
-                    Use the SAME chain the trained model will get at inference
-                    time (see the module docstring).
-    reference    -- read masks from the reference table rather than the
-                    canonical one. Usually True when training a segmenter.
-    masks        -- also write each mask as a 0/255 PNG, from whichever table
-                    `reference` names. What segmentation training needs and
-                    what a classifier has no use for, hence off by default.
+    transforms   -- operations applied to each segment before writing. Use the
+                    SAME chain the model will get at inference.
+    reference    -- read masks from the reference table. Usually True when
+                    training a segmenter.
+    masks        -- also write each mask as a 0/255 PNG.
     class_by     -- occurrence column to organize images into class folders by,
-                    e.g. "species", producing an ImageFolder-shaped tree. An
-                    occurrence with no value in that column is left out and the
-                    count is logged: the class IS the training target here, so
-                    an image without one has nothing to teach -- unlike a split,
-                    where an unlabelled image is still data.
+                    e.g. "species". An occurrence with no value is left out and
+                    logged: the class is the training target, so an image
+                    without one has nothing to teach.
     metadata     -- occurrence columns to carry into the manifest.
-    metrics      -- metric run names whose values to carry into the manifest,
-                    so a stored trait or QC score can be a target or a filter
-                    downstream.
-    require_mask -- False exports occurrences that have no mask for `part`, for
-                    training on whole images. See iterate_segments().
-    subset, limit -- narrow an unsplit export. Rejected alongside `splits`,
-                    which already says which occurrences are wanted.
+    metrics      -- metric run names whose values to carry into the manifest.
+    require_mask -- False exports occurrences with no mask, for training on
+                    whole images.
+    subset, limit -- narrow an unsplit export; rejected alongside `splits`.
 
-    Returns the manifest DataFrame: one row per written image, carrying
-    occurrence_id, part, the split and class where there are any, the written
-    paths, and whatever metadata/metrics were asked for.
+    Returns the manifest DataFrame, one row per written image.
     """
     paths.require_project(project_path)
 

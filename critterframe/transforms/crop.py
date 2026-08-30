@@ -1,24 +1,8 @@
 """
-Framing transforms: crop, rotate, resize, remove_background.
+Framing transforms: crop, crop_to_mask, rotate, resize, remove_background.
 
-These are the operations a recipe uses to point a segmenter at the right piece
-of an image. A museum photographs four dragonfly wings in fixed positions on
-one sheet; the wings are four PARTS of one occurrence, and each is reached by
-cropping to its own region before segmenting. A different museum lays them out
-differently, so its subset gets a different crop -- same parts, same trait
-model, different recipe.
-
-Everything spatial here moves pixels, so everything spatial here composes onto
-the segment's mapping back to original coordinates. That's the entire reason
-parts-via-crops works: a mask found inside a quadrant is inverted back to the
-parent image before it's persisted, so a forewing mask and a whole-organism
-mask describe pixels of the same picture and can be measured, overlaid, or
-exported side by side.
-
-remove_background is the exception -- it rewrites pixel VALUES rather than
-moving them -- and lives here because it's the other half of the same job:
-crop_to_mask and remove_background together turn a whole photograph into just
-the organism, which is the input a part-specific model wants.
+Each composes its affine onto the segment, so a mask found in a crop still
+inverts back to original image coordinates.
 """
 
 import logging

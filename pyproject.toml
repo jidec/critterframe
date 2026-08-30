@@ -22,10 +22,14 @@ Repository = "https://github.com/jidec/critterframe"
 Documentation = "https://jidec.github.io/critterframe/"
 
 [project.optional-dependencies]
-# Segmentation models. Kept optional because the core pipeline -- ingest,
-# storage, transforms, metrics, export, validation -- runs without torch, and a
-# project segmenting with its own model shouldn't be made to install SAM2.
-segmentation = [
+# Torch, and what's built on it: the bundled GroundedSAM2 segmenter
+# (segmentation/groundedsam.py) and inat_insects' embedding-based metrics
+# (extensions/inat_insects/metrics/bioencoder.py). Named for the dependency
+# itself, not "segmentation" -- it isn't only that, and the core pipeline --
+# ingest, storage, transforms, metrics, export, validation -- runs without
+# torch, deliberately: a project segmenting with its own model (torch-based
+# or not) shouldn't be made to install SAM2 to use it.
+torch = [
     "torch",
     "transformers",
     "pillow",
@@ -43,8 +47,8 @@ dev = [
 ]
 
 # The docs site (mkdocs.yml, docs/). mkdocstrings renders the package's own
-# docstrings, so this has no runtime overlap with segmentation/dev -- it's
-# purely a documentation-build-time dependency set.
+# docstrings, so this has no runtime overlap with torch/dev -- it's purely a
+# documentation-build-time dependency set.
 docs = [
     "mkdocs",
     "mkdocs-material",

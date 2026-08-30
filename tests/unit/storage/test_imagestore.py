@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 from critterframe.project import paths
-from critterframe.storage.imagestore import ImageStore, pending_ids
+from critterframe.storage.imagestore import ImageStore
 
 
 @pytest.fixture
@@ -205,15 +205,6 @@ def test_get_many_reports_missing_as_none(store):
     images = store.get_many(["a", "missing"])
     assert images[0].shape == (10, 10, 3)
     assert images[1] is None
-
-
-def test_pending_ids_is_what_has_not_been_stored(store):
-    """
-    The download loop's resume check -- and why re-running an ingest costs
-    nothing for images already fetched.
-    """
-    store.put("a", encoded())
-    assert pending_ids(["a", "b", "c"], store) == ["b", "c"]
 
 
 # ---------------------------------------------------------------------------

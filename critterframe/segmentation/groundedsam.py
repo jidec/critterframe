@@ -1,30 +1,13 @@
 """
-Generic SAM/SAM2 segmentation, optionally with Grounding DINO in front of it to
-find the organism first.
+SAM2, with or without Grounding DINO detection.
 
-Two situations, one model:
+detect_bounds=True finds the organism with a text-prompted detector and
+segments inside the box it found, for a photograph where the location is
+unknown. detect_bounds=False prompts SAM2 geometrically instead, for an image
+that is already a crop around one organism.
 
-  detect_bounds=True  -- the organism's location in the image is unknown. A
-                         text-prompted detector ("insect", "dragonfly") finds a
-                         box, and SAM2 segments inside it. This is the default
-                         and the right choice for a raw specimen photo or an
-                         iNaturalist observation.
-  detect_bounds=False -- the image is ALREADY a crop around one organism, so
-                         there's nothing to detect; SAM2 is prompted
-                         geometrically instead (positive point at the center,
-                         negative points at the corners) and the detector is
-                         never loaded. This is the Antenna case, where upstream
-                         detection already cut the crop.
-
-Both paths return a mask in the coordinates of whatever frame they were handed,
-which the recipe machinery then inverts back to the original image before
-persisting.
-
-Models load once per instance and score many times, but LAZILY -- the first
-segmentation triggers the load, not construction. Recipes are built before a run
-starts and a fully repeat-aware run may find every occurrence already done, so
-constructing groundedsam2() must not cost a model load that nothing goes on to
-use.
+Torch and transformers are imported lazily, so constructing a model and reading
+its identity() work without the [torch] extra installed.
 """
 
 import logging

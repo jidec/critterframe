@@ -1,22 +1,13 @@
 """
-Subsets: named selections of occurrences intended to receive a particular
-processing recipe.
+Create named, persisted selections of occurrences.
 
-A project is one analytical dataset -- occurrences sharing a common biological
-and trait model -- but that doesn't mean every occurrence should be PROCESSED
-the same way. Specimens photographed by three museums to three different
-standards belong in one project (you want to compare them) while needing three
-different crop regions to get at the same wings. Subsets are how that's
-expressed: define the groups once, then point a different recipe at each.
+One project can need several recipes -- specimens from three museums shot to
+three standards need three crop regions to reach the same wings. Define the
+groups once, then point a different recipe at each.
 
-Definitions live in project_path/definitions/subsets.toml, hand-editable by
-design -- deciding which collection is which is human knowledge about the data,
-not something derived from it, so it belongs in a small file a person can read
-and correct rather than buried in a script.
-
-A subset selects rows; it never copies or moves them. An occurrence can belong
-to several subsets, or to none, and running a recipe over one subset leaves
-every other subset's masks and metrics untouched.
+Definitions live in definitions/subsets.toml, hand-editable by design. A subset
+selects rows and never copies them, so an occurrence can belong to several, and
+running over one leaves every other subset's masks and metrics untouched.
 """
 
 import logging
@@ -69,9 +60,8 @@ def _dump_toml(subsets):
 
 def load_subsets(project_path):
     """
-    Every subset definition in the project, as {name: definition}. Empty if the
-    project has no subsets.toml -- a project without subsets is the normal case
-    and not an error.
+    Every subset definition, as {name: definition}. Empty if the project has no
+    subsets.toml, which is the normal case rather than an error.
     """
     subsets_path = paths.subsets_path(project_path)
     if not subsets_path.exists():
@@ -97,15 +87,12 @@ def define_subset(project_path, name, column=None, values=None, query=None,
     Define (or redefine) one subset. Exactly one selection rule must be given.
 
     name           -- what to call it, e.g. "amnh".
-    column, values -- select occurrences whose `column` is one of `values`.
-                      The common case: a collection, a device, a source.
-    query          -- a pandas query expression evaluated against the
-                      occurrence table, e.g. "year >= 2020 and country ==
-                      'Panama'". For selections a column/values pair can't
-                      express.
-    occurrence_ids -- an explicit list of ids. For a hand-picked selection with
-                      no rule behind it -- a validation set chosen by eye, say
-                      -- where writing the ids down IS the definition.
+    column, values -- select occurrences whose `column` is one of `values`,
+                      e.g. a collection, a device, a source.
+    query          -- a pandas query against the occurrence table, e.g.
+                      "year >= 2020 and country == 'Panama'".
+    occurrence_ids -- an explicit list, for a hand-picked selection with no
+                      rule behind it.
     """
     given = [rule is not None for rule in (values, query, occurrence_ids)]
     if sum(given) != 1:
@@ -159,12 +146,10 @@ def select_occurrences(project_path, subset=None, limit=None, columns=None):
     The occurrence rows a run should process.
 
     subset  -- name of a subset to narrow to, or None for the whole project.
-               Every run funnels through here, so "no subset" and "this subset"
-               are the same code path with the same guarantees rather than two.
-    limit   -- optional cap, applied after selection. For trying a recipe on a
-               handful of occurrences before committing to the whole project.
-    columns -- optional list of occurrence columns to read; occurrence_id and
-               any column the subset rule needs are added automatically.
+               Every run funnels through here, so both are one code path.
+    limit   -- optional cap applied after selection, for trying a recipe out.
+    columns -- occurrence columns to read; occurrence_id and any column the
+               subset rule needs are added automatically.
     """
     definition = None
     if subset is not None:

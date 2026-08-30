@@ -1,39 +1,9 @@
 """
-LMDB blob storage for per-occurrence images.
+The LMDB image store, better than directories for millions of images.
 
-Large image blobs read randomly by occurrence id
-This is kinda LMDB's sweet spot and better than millions of loose files.
-
-THE STORE HOLDS THE EXACT ENCODED BYTES OF THE ANALYSIS IMAGE. Whatever arrived
--- a JPEG off a URL, a 16-bit TIFF, a PNG with an alpha channel -- is what comes
-back out, byte for byte. The store never decodes, re-encodes, or converts on the
-way in.
-
-That's load-bearing for a scientific package. Decoding and re-encoding would
-silently recompress JPEGs a second time (generational loss on exactly the fine
-detail a measurement depends on), turn lossless PNG/TIFF into lossy JPEG,
-flatten 16-bit data to 8, drop alpha, and discard EXIF. None of that is visible
-in the resulting array, and all of it is unrecoverable. A project's images are
-its raw observations.
-
-Reading is where a normalization happens instead, and it's reversible:
-
-  get()       decodes to 8-bit 3-channel BGR, which is what every transform,
-              metric, and model here is written against. Uniform and
-              predictable: a grayscale image comes back 3-channel, a 16-bit one
-              comes back 8-bit.
-  get_bytes() returns the stored bytes untouched, for anything needing full
-              fidelity -- 16-bit intensities, alpha, EXIF, re-exporting the
-              original file, checksums.
-
-So the lossy step sits at the point of USE, where a caller can see it and opt
-out, rather than at the point of STORAGE, where it would be permanent.
-
-A project has ONE image store (project_path/images.lmdb): the original
-analysis image, one per occurrence. Masks are not stored here: they go in
-masks.parquet as RLE, in the coordinates of the original image (see
-records.masks) and segments are never persisted at all, since a segment is
-just an image plus its current mask.
+One store per project, holding the exact encoded bytes of one analysis image per
+occurrence. Nothing is decoded or re-encoded on the way in; `get()` decodes to
+8-bit BGR for processing, `get_bytes()` returns the original bytes.
 """
 
 import logging
@@ -68,13 +38,9 @@ class ImageStore:
 
     project_path -- project whose images.lmdb to open.
     map_size     -- maximum size the environment may grow to, in bytes.
-                    None (the default) reads DEFAULT_MAP_SIZE at CALL time
-                    rather than binding it as a default argument at def time --
-                    which is what lets the module constant be overridden at all,
-                    since every caller inside the package opens a store without
-                    passing one.
-    readonly     -- open without a write lock; safe and faster for readers,
-                    and lets several readers run at once.
+                    None reads DEFAULT_MAP_SIZE at call time, so the module
+                    constant stays overridable.
+    readonly     -- open without a write lock; lets several readers run at once.
     """
 
     def __init__(self, project_path, map_size=None, readonly=False):
@@ -97,10 +63,9 @@ class ImageStore:
         """
         Store one image's encoded bytes under occurrence_id, exactly as given.
 
-        data -- the image file's bytes: an HTTP response body, or a file read
-                in binary mode. NOT a decoded array -- this store deliberately
-                has no way to write one, because encoding an array here is the
-                lossy step the module docstring exists to prevent.
+        data -- the image file's bytes, e.g. an HTTP response body or a file
+                read in binary mode. Not a decoded array; there is no way to
+                write one, because encoding it here would be lossy.
         """
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError(
@@ -117,10 +82,7 @@ class ImageStore:
             txn.put(self._key(occurrence_id), bytes(data))
 
     def put_many(self, items):
-        """
-        Store many (occurrence_id, bytes) pairs in one transaction -- far
-        faster than individual puts for batches.
-        """
+        """Store many (occurrence_id, bytes) pairs in one transaction."""
         with self.env.begin(write=True) as txn:
             for occurrence_id, data in items:
                 if not data:
@@ -132,9 +94,8 @@ class ImageStore:
         """
         The stored bytes, exactly as written, or None if absent.
 
-        The full-fidelity read: use it for anything the 8-bit BGR working view
-        would destroy -- 16-bit intensities, alpha, EXIF, or writing the
-        original file back out.
+        The full-fidelity read, for anything the 8-bit BGR working view would
+        destroy: 16-bit intensities, alpha, EXIF, or re-exporting the original.
         """
         with self.env.begin() as txn:
             raw = txn.get(self._key(occurrence_id))
@@ -142,11 +103,10 @@ class ImageStore:
 
     def get(self, occurrence_id, flags=WORKING_FLAGS):
         """
-        Fetch and decode one image into the pipeline's working representation
-        (8-bit 3-channel BGR), or None if absent.
+        Fetch and decode one image as 8-bit 3-channel BGR, or None if absent.
 
-        flags -- override the decode. cv2.IMREAD_UNCHANGED preserves bit depth
-                 and alpha, but transforms and metrics expect 8-bit BGR, so
+        flags -- override the decode, e.g. cv2.IMREAD_UNCHANGED to preserve bit
+                 depth and alpha. Transforms and metrics expect 8-bit BGR, so
                  pass it only when the caller handles what comes back.
         """
         raw = self.get_bytes(occurrence_id)
@@ -172,8 +132,8 @@ class ImageStore:
 
     def keys(self):
         """
-        All occurrence ids in the store (as strings). A full scan -- use for
-        the pending check, not in hot loops.
+        All occurrence ids in the store, as strings. A full scan, so use it for
+        a pending check rather than in a hot loop.
         """
         with self.env.begin() as txn:
             return [k.decode("utf-8") for k in txn.cursor().iternext(values=False)]
@@ -186,9 +146,3 @@ class ImageStore:
 
     def __exit__(self, *exc):
         self.close()
-
-
-def pending_ids(all_ids, store):
-    """Ids in all_ids that aren't yet in the image store."""
-    done = set(store.keys())
-    return [i for i in all_ids if str(i) not in done]

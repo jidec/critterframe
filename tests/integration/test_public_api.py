@@ -39,7 +39,7 @@ def test_import_pulls_in_no_heavy_dependency():
     """
     The core has no deep-learning dependency, deliberately, and a new core
     module must not add one. Torch is the one that matters -- the whole
-    `[segmentation]` extra exists so a project segmenting with its own model is
+    `[torch]` extra exists so a project segmenting with its own model is
     not made to install SAM2 -- and sklearn is the same bargain one size down.
 
     If this fails, look for an `import torch` that moved from inside a function

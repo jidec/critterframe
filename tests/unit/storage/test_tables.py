@@ -1,5 +1,6 @@
 """
-Parquet and sqlite mechanics, with no knowledge of any entity.
+Parquet table mechanics, with no knowledge of any entity. The other tabular
+backend is tested in test_sqlite.py.
 
 Two write shapes, and which one is right is a property of the data rather than
 of the caller: `write_table` replaces wholesale, for tables fed by full
@@ -14,8 +15,6 @@ import pandas as pd
 import pytest
 
 from critterframe.storage.tables import (
-    BUSY_TIMEOUT_MS,
-    connect,
     load_table,
     table_columns,
     upsert_table,
@@ -208,40 +207,3 @@ def test_naming_a_column_a_table_lacks_fails_the_read(tmp_path):
     write_table(rows(a_row()), path)
     with pytest.raises(Exception):
         load_table(path, columns=["value", "not_a_column"])
-
-
-# ---------------------------------------------------------------------------
-# connect
-# ---------------------------------------------------------------------------
-
-
-def test_connect_creates_the_parent_and_returns_rows_by_name(tmp_path):
-    database = tmp_path / "project" / "runs.sqlite"
-    with connect(database) as connection:
-        connection.execute("CREATE TABLE t (a INTEGER, b TEXT)")
-        connection.execute("INSERT INTO t VALUES (1, 'x')")
-        row = connection.execute("SELECT * FROM t").fetchone()
-
-    assert database.exists()
-    assert row["a"] == 1 and row["b"] == "x"
-
-
-def test_foreign_keys_are_enforced(tmp_path):
-    """
-    Metric rows reference their run. Without the pragma sqlite accepts an
-    orphan silently, and an orphaned value is one whose provenance is gone.
-    """
-    with connect(tmp_path / "runs.sqlite") as connection:
-        assert connection.execute("PRAGMA foreign_keys").fetchone()[0] == 1
-
-
-def test_wal_mode_and_busy_timeout_are_set(tmp_path):
-    """
-    Needed the moment more than one process writes to the same project (e.g.
-    several sharded segmentation runs sharing runs_and_metrics.sqlite):
-    without these, a writer that finds the database locked raises instead of
-    waiting.
-    """
-    with connect(tmp_path / "runs.sqlite") as connection:
-        assert connection.execute("PRAGMA journal_mode").fetchone()[0] == "wal"
-        assert connection.execute("PRAGMA busy_timeout").fetchone()[0] == BUSY_TIMEOUT_MS

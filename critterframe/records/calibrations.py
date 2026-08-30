@@ -1,69 +1,18 @@
 """
-Calibrations: what is known about the imaging system, and which occurrences it
-applies to.
+The scope/provenance machinery every calibration type shares.
 
-A calibration is knowledge about the relationship between an image and a
-reference — how big a pixel is, how a camera's colours relate to true ones. It
-describes equipment and conditions, never an organism, which is why it can't
-live on the occurrence table and doesn't belong in the metric log.
+A calibration is knowledge about the imaging system -- how big a pixel is, how
+a camera's colours relate to true ones. It describes equipment and conditions,
+never an organism, so it can't live on the occurrence table.
 
     calibration_type scope         scope_value    parameters
     scale            event_id      12835          {"px_per_mm": 11.83}
-    scale            event_id      12836          {"px_per_mm": 11.79}
-    scale            occurrence_id AMNH_004421    {"px_per_mm": 42.10}
-    scale            device        copy_stand_A   {"px_per_mm": 19.40}
-    color            event_id      12835          {"method": "rgb_affine",
-                                                   "matrix": [...],
-                                                   "offset": [...]}
 
-WHAT IS GENERIC HERE IS THE SCOPE AND THE PROVENANCE, NOT THE VALUE. Every
-calibration answers "which occurrences does this apply to" and "where did this
-come from" identically, and those two questions are the entire content of this
-module. What a calibration IS varies enormously -- a scale is one number, a
-colour correction is a method name plus a matrix plus an offset plus an
-illuminant, and an ICC profile is an object -- so the payload is an opaque
-`parameters` dict that this layer stores and never interprets. Flattening both
-into a single `value` column would have forced colour into a shape that doesn't
-fit it, and forcing it later would mean migrating the table.
-
-Each calibration TYPE owns its own module under critterframe/calibrations/,
-which is where the meaning lives: how to measure one, what its parameters mean,
-how to validate them, and how to apply them. This module deliberately can't tell
-a good scale from a bad one -- calibrations/scale.py can. An extension mirrors
-that layout when it has a source-specific way of producing one (see
-extensions/antenna_lighttraps/calibrations/scale.py, which measures the same
-calibration off a light trap's reference card).
-
-A SCOPE IS JUST AN OCCURRENCE COLUMN. That is the same answer the rest of the
-package gives whenever something applies to a group rather than to one
-occurrence: outlier metrics take a group_col, training splits take a group_col,
-subsets select on a column. So a project says what it calibrated by naming the
-column that identifies it:
-
-  occurrence_id -- a reference in every frame, museum-specimen style. One row
-                   per occurrence, and each row describes only itself.
-  event_id      -- a light trap's card, set up when the trap is deployed and
-                   untouched until it's collected. One row covers a night (see
-                   extensions.antenna_lighttraps.calibrations.scale).
-  device        -- a fixed copy stand or a microscope at a known magnification,
-                   calibrated once and reused across everything shot on it.
-
-Nothing here decides which is right for a project, because nothing here can:
-whether the camera moved between two images is a fact about the fieldwork, not
-about the data. Changing your mind later is a data change -- write rows under a
-different scope.
-
-RESOLVED, NEVER COPIED. Nothing is written onto occurrences.
-resolve_for_occurrences() joins scope rows down to a per-occurrence answer at
-the moment someone needs one. The alternative -- merging px_per_mm onto the
-occurrence table -- is what this replaces, and it was quietly broken: the
-occurrence table is written as a full snapshot, so every re-ingest erased the
-calibration, on sources whose whole workflow is scheduled re-ingest.
-
-APPLIED LATE, NEVER BAKED IN. Traits stay in the units they were measured in and
-export converts (see export.export_metrics' units=). A calibration corrected
-next month should cost one re-export, not a re-measurement of everything derived
-under the old one.
+The scope and provenance are generic; the payload is not. `parameters` is an
+opaque JSON dict this layer never interprets, because a scale is one number
+while a colour correction is a method, a matrix, an offset and an illuminant.
+Each calibration type owns a module under calibration/ that supplies the
+meaning.
 """
 
 import logging
@@ -73,8 +22,9 @@ import pandas as pd
 
 from ..project import paths
 from ..recipes import canonical_json, load_json
+from ..records import occurrences as occurrence_records
 from ..records.occurrences import ID_COL, load_occurrences
-from ..storage.tables import load_table, table_columns, upsert_table
+from ..storage.tables import load_table, upsert_table
 
 logger = logging.getLogger(__name__)
 
@@ -98,35 +48,24 @@ def make_calibration_row(calibration_type, scope, scope_value, parameters,
     """
     Build one calibration record.
 
-    calibration_type -- what kind of calibration this is: "scale", "color". The
-                        first part of the key, so two kinds of calibration can
-                        describe the same session without colliding.
+    The three key fields are coerced to str here, because storage compares keys
+    by value without coercing (see CLAUDE.md).
+
+    calibration_type -- what kind this is: "scale", "color". Part of the key, so
+                        two kinds can describe one session without colliding.
     scope            -- occurrence column identifying what this covers, e.g.
                         "event_id", "device", or ID_COL for one occurrence.
     scope_value      -- the value in that column this applies to.
-    parameters       -- dict of whatever the type needs. Stored as JSON and
-                        never interpreted here, so a type is free to grow a
-                        field without a schema change. Must be
-                        JSON-serializable, for the same reason an operation's
-                        parameters must be: what can't be recorded can't be
-                        reproduced.
+    parameters       -- dict of whatever the type needs, stored as JSON and never
+                        interpreted here, so a type can grow a field without a
+                        schema change. Must be JSON-serializable.
     source           -- how it was obtained: "target" (measured against a
                         reference of known size), "declared" (stated by someone
-                        who knows the rig), or an extension's own name. Kept
-                        because a measured calibration and an asserted one
-                        deserve different amounts of trust, and six months later
-                        nothing else records which this was.
-    score            -- quality of the measurement where one exists, e.g. the
-                        correlation peak of a template match. The cheapest
-                        signal for "which calibration should a human check
-                        first", and dropping it at write time means never being
-                        able to ask.
-    measured_from    -- what it was measured on: an image key, a filename, a
-                        note.
-
-    The three key fields are coerced to str here, because storage compares keys
-    by value without coercing (see storage.tables.upsert_table) -- a numeric id
-    reaching it would be a different key from the same id as a string.
+                        who knows the rig), or an extension's own name. A measured
+                        calibration and an asserted one deserve different trust.
+    score            -- quality of the measurement where one exists, e.g. a
+                        template match's correlation peak.
+    measured_from    -- what it was measured on: an image key, a filename, a note.
     """
     if not isinstance(parameters, dict):
         raise TypeError(
@@ -194,16 +133,13 @@ def require_scope_column(project_path, scope):
     """
     Raise unless the occurrence table has this column, naming the ones it does.
 
-    Checked against the parquet's schema BEFORE reading, because reading one
-    named column that isn't there fails inside pyarrow with a message about
-    FieldRefs that says nothing about scopes or occurrences.
+    A scope IS an occurrence column (see the module docstring), so this is
+    records.occurrences.require_columns asking on a calibration's behalf --
+    named here because "is this a usable scope" is the question a caller of this
+    module is actually asking.
     """
-    available = table_columns(paths.occurrences_path(project_path))
-    if scope not in available:
-        raise KeyError(
-            f"no '{scope}' column in this project's occurrences, so there is "
-            f"nothing to key a calibration on (columns: {sorted(available)})"
-        )
+    occurrence_records.require_columns(
+        project_path, scope, "nothing to key a calibration on")
     return scope
 
 

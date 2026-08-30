@@ -1,19 +1,9 @@
 """
-Colour metrics: what colour the organism (or one of its parts) actually is.
+Colour metrics: mean colour, hue/lightness fractions.
 
-Every metric here reads the pixels UNDER THE MASK and nothing else, which is
-the whole reason segmenting first is worth the trouble. Mean colour over a
-bounding box is mostly a measurement of the substrate the specimen was
-photographed on; mean colour over a mask is a measurement of the animal.
-
-Colours are reported on 0-1 scales rather than 0-255, so a value doesn't
-silently depend on the image's bit depth, and hue-band fractions are computed
-with saturation and value floors so near-black and near-grey pixels don't get
-counted as weak members of whatever hue their noise happens to point at.
-
-These are the generic ones. Source-specific colour handling -- iNaturalist
-photographs, with their uncontrolled lighting and white balance -- lives in
-extensions.inat_insects.metrics.color, which builds on these.
+Measured over the masked organism only. Colour is only comparable across
+occurrences to the extent the imaging was, so calibrate or normalize before
+comparing across sources.
 """
 
 import cv2

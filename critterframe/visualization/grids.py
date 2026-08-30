@@ -1,31 +1,9 @@
 """
-Stitching many small images into one image a person can actually look at.
+Many panels as one image: image_grid, comparison_grid.
 
-Two layouts, because there are two questions:
-
-  image_grid      -- one view, many occurrences. "Does segmentation work across
-                     this collection?" A grid you scan for the odd one out.
-  comparison_grid -- many views, many occurrences. "What does this recipe do to
-                     a specimen, step by step?" One row per occurrence, one
-                     column per stage, so a step that breaks something shows up
-                     as a column that goes wrong.
-
-Both take images of whatever sizes they happen to be -- a crop is smaller than
-the frame it came from, a rotation is taller -- and fit each into a uniform cell
-rather than sizing every cell to the largest. Uniform cells are what make a grid
-scannable; preserving aspect ratio inside them is what keeps a specimen from
-looking distorted enough to misjudge.
-
-Panels arriving here must already be DISPLAY-READY uint8 images. This module
-will not normalize a float array for you, and the restraint is deliberate: two
-probability maps spanning 0-0.2 and 0-1.0 would each stretch to full black-white
-and land on the grid looking identical, which is a scientifically misleading
-picture produced by a layout helper that had no business making the decision.
-Whatever produced the panel knows what its numbers mean; it renders them.
-
-Everything here is pure image assembly: no project, no I/O, no knowledge of what
-a run is. visualization.pipeline decides what goes on a grid; this decides what
-a grid looks like.
+Pure layout -- no project, no I/O. Panels must arrive display-ready uint8:
+nothing here will rescale a float array, since two probability maps with
+different ranges would stretch to look identical.
 """
 
 import logging

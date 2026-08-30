@@ -13,6 +13,7 @@ millimetres rather than an unconverted pixel value sitting in a column labelled
 mm.
 """
 
+import numpy as np
 import pandas as pd
 import pytest
 
@@ -22,8 +23,10 @@ from critterframe.export import (
     column_name,
     metric_units,
     metrics_wide,
+    occurrences_matching,
     to_millimetres,
 )
+from critterframe.metrics.annotation import annotate_flags
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.occurrences import ID_COL
 from critterframe.records.runs import start_run
@@ -362,3 +365,90 @@ def test_millimetres_need_a_calibration(measured_project):
 def test_only_millimetres_are_supported(measured_project):
     with pytest.raises(ValueError, match="isn't supported"):
         cf.export_metrics(measured_project, units="inches")
+
+
+# ---------------------------------------------------------------------------
+# occurrences_matching
+# ---------------------------------------------------------------------------
+
+
+def store_flags(project_path, flags, run_name="screening",
+                source_mask_hash=None):
+    recipe = Recipe("metric", run_name, [annotate_flags()], part="organism")
+    run_id = start_run(project_path, recipe)
+    append_metrics(project_path, run_id, recipe.hash,
+                   [make_metric_row(occurrence_id, "organism", "annotate_flags",
+                                    flag, unit="category",
+                                    source_mask_hash=source_mask_hash)
+                    for occurrence_id, flag in flags.items()])
+
+
+def test_stored_labels_can_be_selected_on_by_bare_metric_name(metadata_project):
+    """
+    The run and part prefixes are added for you, so a screening pass's usable
+    crops are {"annotate_flags": "usable"}.
+    """
+    store_flags(metadata_project, {"specimen0": "usable", "specimen1": "cut_off",
+                                   "specimen2": "usable"})
+    assert occurrences_matching(metadata_project, "screening",
+                                {"annotate_flags": "usable"}) == ["specimen0",
+                                                                  "specimen2"]
+
+
+def test_a_mistyped_metric_name_raises_once_there_is_data(metadata_project):
+    """
+    Because the usual thing to do with the answer is define a subset from it,
+    and a subset that is silently empty looks exactly like a review pass nobody
+    has done yet.
+    """
+    store_flags(metadata_project, {"specimen0": "usable"})
+    with pytest.raises(KeyError, match="rule column"):
+        occurrences_matching(metadata_project, "screening",
+                             {"annotate_flag": "usable"})
+
+
+def test_a_run_nobody_has_done_yet_selects_none_and_says_so(metadata_project,
+                                                            caplog):
+    """
+    The one empty case that ISN'T a typo. There is nothing to check a rule
+    against, so the typo guard can't apply -- it applies from the first
+    recorded value onward.
+    """
+    with caplog.at_level("WARNING"):
+        assert occurrences_matching(metadata_project, "screening",
+                                    {"annotate_flags": "usable"}) == []
+    assert "nothing to match" in caplog.text
+
+
+def test_labels_survive_a_resegmentation_by_default(metadata_project):
+    """
+    current_only is False here, against the grain of everything else that reads
+    stored values: a label like "cut_off" describes the CROP and stays true
+    whatever mask was on screen. Left at True, resegmenting would void a review
+    session over a change the labels never depended on.
+    """
+    from critterframe.records import masks as mask_records
+    from helpers.synthetic import blob_mask
+
+    store_flags(metadata_project, {"specimen0": "usable"},
+                source_mask_hash="the_mask_that_was_on_screen")
+    mask_records.save_masks(metadata_project, [
+        mask_records.make_mask_row("specimen0", blob_mask(),
+                                   recipe_hash="brand_new")])
+
+    assert occurrences_matching(metadata_project, "screening",
+                                {"annotate_flags": "usable"}) == ["specimen0"]
+    assert occurrences_matching(metadata_project, "screening",
+                                {"annotate_flags": "usable"},
+                                current_only=True) == []
+
+
+def test_numeric_labels_match_as_stored(metadata_project):
+    """Values are compared as they were stored, without coercion."""
+    recipe = Recipe("metric", "qc", [annotate_flags()], part="organism")
+    run_id = start_run(metadata_project, recipe)
+    append_metrics(metadata_project, run_id, recipe.hash, [
+        make_metric_row("specimen0", "organism", "grade", 3),
+        make_metric_row("specimen1", "organism", "grade", np.int64(4)),
+    ])
+    assert occurrences_matching(metadata_project, "qc", {"grade": 4}) == ["specimen1"]

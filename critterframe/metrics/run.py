@@ -1,29 +1,9 @@
 """
-Compose and run metric pipelines.
+run_metrics() + RunContext + completed_keys.
 
-run_metrics() is the other function a pipeline script actually calls. It takes
-an ordered list of transforms and a list of metrics, turns them into a recipe,
-and executes that recipe over a project's occurrence-parts, storing one value
-per metric per occurrence-part.
-
-    run_metrics(
-        project_path,
-        run_name="traits",
-        transforms=[remove_appendages(), orient()],
-        metrics=[body_length(), max_width()],
-    )
-
-Transforms come first and metrics last because that IS the pipeline: transforms
-compose a working segment, metrics read terminal values off the end of it.
-Nothing composes onto a metric's output, which is why a metric can't appear in
-the middle of a chain.
-
-Transforms here are NOT persisted. A metric run that removes appendages and
-orients is measuring a temporary working state, not rewriting the stored mask
--- appendage removal is right for measuring body length and wrong for measuring
-total area, and both should be derivable from the same stored mask. What gets
-persisted is the recipe that says how the measurement was taken, so the working
-state is always reconstructible.
+Transforms shape what gets measured and are part of the recipe hash, but the
+segment they produce is thrown away -- only the value is kept. Occurrences with
+no mask for the part are neither measured nor counted done, and the run says so.
 """
 
 import logging
@@ -111,32 +91,18 @@ def completed_keys(project_path, recipe_hash, source_mask_hashes=None):
     The (occurrence_id, part) pairs a recipe has already produced values for --
     the repeat-awareness check this module makes before doing any work.
 
-    It lives here rather than in records.metrics because it isn't a way of
-    reading the metric log, it's this run's decision about what work is left:
-    the records layer stores values and answers questions about them, and what
-    counts as already done is a property of how a run is executed. (The query is
-    a one-liner against the same table records.runs owns the schema for.)
-
-    Deliberately keyed on the recipe hash and not the run: work already
-    completed by an earlier, interrupted run of the SAME recipe is exactly the
-    work a new run should skip, and it shouldn't matter that a different run_id
-    did it.
+    Here rather than in records.metrics because it is this run's decision about
+    what work is left, not a way of reading the metric log. Keyed on the recipe
+    hash and not the run, so work completed by an earlier interrupted run of the
+    same recipe is exactly what a new run skips.
 
     source_mask_hashes -- {(occurrence_id, part): derivation_hash} of the masks
-                          the caller is about to measure, from
-                          records.masks.current_derivation_hashes(). When given,
-                          completion means "this recipe has run over THIS mask",
-                          not merely "this recipe has run here": resegmenting an
-                          occurrence makes every value derived from its old mask
-                          stale, and a metric rerun has to recompute it rather
-                          than skip the occurrence because a row with the right
-                          recipe hash happens to exist. Rows the caller has no
-                          mask for never count as complete -- the mask that
-                          produced them is not one this project still holds.
-
-                          Omit it to ask the weaker question ("has this recipe
-                          produced anything here at all"), which is all a caller
-                          with no masks in hand can ask.
+                          about to be measured. When given, completion means
+                          "this recipe has run over THIS mask" rather than "this
+                          recipe has run here", so resegmenting forces a
+                          recompute. Rows the caller has no mask for never count.
+                          Omit it to ask the weaker question, which is all a
+                          caller with no masks in hand can ask.
     """
     with run_records.open_database(project_path) as connection:
         rows = connection.execute(
@@ -165,41 +131,28 @@ def run_metrics(project_path, run_name, metrics, transforms=(), part=DEFAULT_PAR
     Run a metric recipe over a project's occurrence-parts.
 
     project_path -- the project to process.
-    run_name     -- what to call this run. Recorded on the run, part of recipe
-                    identity, and the first component of every exported column
-                    name -- so two differently-configured measurements of the
-                    same trait stay distinguishable in the export instead of
-                    overwriting each other. Named run_name rather than name
-                    because several other names are in play at a call site: a
-                    metric's own name, a part's, a subset's.
+    run_name     -- what to call this run. Part of recipe identity and the first
+                    component of every exported column name, so two
+                    differently-configured measurements of one trait stay
+                    distinguishable instead of overwriting each other.
     metrics      -- list of Metric operations to evaluate.
     transforms   -- ordered Transform operations applied before measuring.
     part         -- part to measure; the whole organism by default.
-    parts        -- several parts to measure, each with the same recipe. Each
-                    gets its own run record and its own recipe hash (part is
-                    part of identity), so a re-run for one part doesn't touch
-                    the others.
+    parts        -- several parts, each with the same recipe. Each gets its own
+                    run record and recipe hash, so re-running one leaves the
+                    others alone.
     subset       -- name of a subset to process, or None for every occurrence.
     limit        -- optional cap on occurrences.
-    force        -- recompute occurrence-parts this exact recipe already covered
-                    FROM THE MASK IT IS ABOUT TO MEASURE. Normally those are
-                    skipped, which is what makes an expensive metric behave like
-                    cached derived data rather than a calculation redone on
-                    every invocation. Occurrences whose mask has been replaced
-                    since their value was computed are recomputed anyway, force
-                    or not: their stored value describes a mask that no longer
-                    exists, so there is no cached work there to reuse.
-    visualize    -- 25 for a sampled QC grid in visualizations/pipeline/, True
-                    for one of default size, a list of occurrence ids for those
-                    specimens specifically, False for none. It means exactly
-                    what it means in run_segments -- every operation may
-                    contribute a column -- and the last column of a metric grid
-                    is the measured segment with its values written on it.
+    force        -- recompute occurrence-parts this recipe already covered from
+                    the mask it is about to measure. Occurrences whose mask has
+                    been replaced are recomputed regardless: their stored value
+                    describes a mask that no longer exists.
+    visualize    -- as in run_segments. The last column of a metric grid is the
+                    measured segment with its values written on it.
     reference    -- measure the reference masks instead of the canonical ones.
-                    This is how reference METRIC values are produced for
-                    validation: the same recipe, pointed at the reference mask
-                    table, so any disagreement is attributable to the masks
-                    rather than to a different measurement method.
+                    How reference metric VALUES are produced for validation: the
+                    same recipe pointed at the reference table, so disagreement
+                    is attributable to the masks rather than the method.
 
     Returns {part: {"processed", "skipped", "failed", "run_id"}}.
     """

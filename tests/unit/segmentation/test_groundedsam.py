@@ -1,7 +1,7 @@
 """
 The bundled segmenter's identity -- tested without torch, which is the point.
 
-`import critterframe` must work without the `[segmentation]` extra, so every
+`import critterframe` must work without the `[torch]` extra, so every
 torch and transformers import in this module is deferred inside a method.
 Constructing a `GroundedSAM2`, reading its `identity()`, and hashing a recipe
 that names it therefore all work on a machine that has never seen a GPU -- and

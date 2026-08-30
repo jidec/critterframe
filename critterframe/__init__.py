@@ -123,8 +123,8 @@ from .training.datasets import export_training_data
 from .training.splits import split_ids
 
 # --- getting data out ------------------------------------------------------
-from .export import export_metrics, export_units
-from .selectionhelpers import occurrences_matching, sample_occurrences, shard_occurrences
+from .export import export_metrics, export_units, occurrences_matching
+from .selectionhelpers import sample_occurrences, shard_occurrences
 from .visualization.grids import comparison_grid, image_grid
 from .visualization.panels import PanelFiles
 from .visualization.products import render_segments

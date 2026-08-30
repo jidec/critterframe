@@ -1,28 +1,16 @@
 """
-Human annotation metrics: a person looks at the segment and answers.
+Human labels: annotate_flags, click_two_points.
 
-No model, no heuristic. These exist to produce the labels everything else is
-graded against -- whether a crop should have been filtered, where the body axis
-really runs.
+No model, no heuristic -- these produce the labels everything else is graded
+against. They are metrics like any other, so a human label stores in the same
+table as body length and can be compared against an automated metric with no
+special plumbing (see validation.filters).
 
-There is deliberately no "grade this mask perfect/good/bad" metric. A coarse
-category asks a person to compress a judgement they can't make consistently
-across a session, and it answers a question already answered better elsewhere:
-correct the mask instead (segmentation.manual.correct_mask) and validation.masks
-reports the IoU, which is the same judgement measured rather than estimated,
-per-occurrence, and comparable between two versions of a segmenter.
+There is deliberately no "grade this mask" metric: correct the mask instead
+(segmentation.manual) and validation.masks reports the IoU, which is the same
+judgement measured rather than estimated.
 
-They're metrics like any other, which is the point: a human label is a derived
-value associated with an occurrence and a part, so it stores in the same table
-as body length, exports in the same CSV, and can be compared against an
-automated metric without any special plumbing (see validation.filters, which
-calibrates automated QC thresholds against exactly these labels).
-
-Each opens an OpenCV window and blocks on a keypress or click, so a run using
-them is paced by a person -- scope it to a subset of a few dozen occurrences
-rather than a whole project. run_metrics writes each occurrence's answers as
-they're given, so stopping partway keeps everything answered so far, and
-resuming skips it.
+Each opens an OpenCV window and blocks on a person, so scope a run to a subset.
 """
 
 import logging
@@ -65,25 +53,15 @@ def annotate_flags(name=None, unit="category"):
       3 = cut_off             an organism, but running off the frame edge
       4 = multiple_organisms  more than one in frame
 
-    If a crop is BOTH cut off and has several organisms, flag it cut_off -- of
-    the two, that's the one that also explains why the segmentation can't be
+    A crop that is both cut off and multiple should be flagged cut_off -- of the
+    two, that is the one that also explains why the segmentation can't be
     trusted.
 
-    These labels are the reference automated QC metrics are calibrated
-    against; see metrics.quality and validation.filters.
-
-    This is the SCREENING pass, and it comes before any other human work on a
-    sample, because it says which crops the expensive human questions can even
-    be asked of. A flag other than "usable" means there is no single complete
-    organism in frame, so there is no boundary to correct and no reference mask
-    to make either (segmentation.manual.correct_mask) -- and no body axis to
-    click. Screen the whole sample, then point the reference passes at the
-    usable ones (selectionhelpers.occurrences_matching).
-
-    Screening the WHOLE sample matters as much as the order does: the flagged
-    crops are the positives validation.filters scores a QC cutoff against, so a
-    sample they were left out of has nothing to detect and can't calibrate
-    anything.
+    This is the SCREENING pass, and it comes before any other human work: a flag
+    other than "usable" means there is no single complete boundary to correct, so
+    no reference mask can be made either. Screen the whole sample, then point the
+    reference passes at the usable ones -- an unscreened sample has nothing for
+    validation.filters to calibrate a QC cutoff against.
     """
     return Metric("annotate_flags", _annotate_flags, version="1", unit=unit,
                   metric_name=name)
@@ -91,41 +69,26 @@ def annotate_flags(name=None, unit="category"):
 
 def click_two_points(labels=DEFAULT_POINT_LABELS, name=None, unit="px_xy"):
     """
-    Metric: have a human click two points on the segment, in order. Esc skips,
-    for an occurrence where one of them isn't visible.
+    Metric: have a human click two points on the segment, in order. Esc skips.
 
-    Agnostic about what the two points MEAN -- the head and tail ends of a body
-    axis by default, but equally the two ends of a wing chord, the tips of a
-    scale bar, or the gap between two structures. `labels` names them, and the
-    names appear in the window prompt and as the keys of the stored value, so
-    one operation covers every "click these two spots" question instead of one
-    metric per question.
+    Agnostic about what the points mean -- a body axis by default, but equally a
+    wing chord or a scale bar. `labels` names them, and the names appear in the
+    prompt and as the keys of the stored value.
 
-    Both RAW points are stored, and that's the record: a length and an angle
-    are each recoverable from two points, but neither recovers the points, and
-    which comparison you'll want isn't knowable at annotation time. length_px
-    and angle_deg ride along BESIDE them as a convenience, because
-    validation.metrics compares numbers rather than point pairs -- and because
-    a length re-derived at each call site is a length two call sites eventually
-    derive differently.
+    Both raw points are stored: a length and an angle are each recoverable from
+    two points, but neither recovers the points. length_px and angle_deg ride
+    along as a convenience, since validation.metrics compares numbers.
 
     labels -- the two point names, in click order.
 
-    Returns {<first>, <second>, "length_px", "angle_deg"}, all None if skipped:
+    Returns {<first>, <second>, "length_px", "angle_deg"}, all None if skipped.
+    Points are [x, y] in the current frame, normally original image coordinates.
+    angle_deg is measured in image coordinates (y DOWN), so +90 means the second
+    point is directly below the first.
 
-      <first>, <second> -- [x, y] in the CURRENT frame. Normally annotated with
-                           no transforms applied, so they are original image
-                           coordinates.
-      length_px         -- distance between the two clicks.
-      angle_deg         -- direction of the first->second vector, in image
-                           coordinates (y down), so +90 means the second point
-                           is directly BELOW the first.
-
-    A metric's `unit` covers its whole value, so every key inherits "px_xy",
-    which is not one of export.CONVERTIBLE_UNITS: length_px stays in pixels in
-    a units="mm" export while body_length converts. That's the right default
-    for a label whose job is grading a pipeline measured in pixels, and the key
-    names carry their own units so the coarse parent tag can't mislead.
+    The unit is "px_xy", which is not convertible: length_px stays in pixels in a
+    units="mm" export while body_length converts. Right for a label whose job is
+    grading a pipeline measured in pixels.
     """
     labels = [str(label) for label in labels]
     if len(labels) != 2 or labels[0] == labels[1]:
@@ -145,7 +108,17 @@ def _panel(segment):
 
 
 def _wait_for_key(valid_keys):
-    """Block (no timeout) until one of valid_keys is pressed, ignoring anything else."""
+    """
+    Block (no timeout) until one of valid_keys is pressed, ignoring anything else.
+
+    DELIBERATELY duplicated in segmentation.manual rather than shared: the tests
+    for both interactive operations stub the GUI with
+    monkeypatch.setattr(<this module>, "cv2", FakeCv2(...)), which rebinds `cv2`
+    in THIS module's namespace only. Moved into visualization.panels, the shared
+    copy would keep its own reference to the real cv2, the fake would never
+    reach it, and every interactive test would block on a real waitKey until
+    pytest-timeout killed the run. Four lines is cheaper than that.
+    """
     while True:
         key = cv2.waitKey(20) & 0xFF
         if key in valid_keys:

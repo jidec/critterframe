@@ -1,34 +1,16 @@
 """
-Export: one row per occurrence, one column per trait, optionally filtered.
+Export a one-row-per-occurrence trait table, optionally filtered; select
+occurrences by stored values.
 
-This is where a project stops being a processing pipeline and becomes a
-dataset. Metric values are stored long and per-part; an export reshapes them
-wide, joins whatever occurrence metadata you want alongside, and writes a CSV
-an analysis can read.
+The long-to-wide reshape lives here too (column_name, metrics_wide,
+metric_units), because it is a view built for a reader rather than a way of
+storing anything -- validation and dataset assembly build on the same view.
 
-The reshape itself lives here too (column_name, metrics_wide, metric_units),
-because it's a view built for a reader rather than a way of storing anything.
-Long per occurrence-part-metric is what the metric log IS -- see
-records.metrics, which owns that -- and everything wide-form is a decision about
-presenting it: how columns are named, which of several values for one cell wins,
-and which values still describe the project's current masks. Validation and
-dataset assembly build on the same view for the same reason.
-
-Filtering happens HERE and only here. A filter is a rule for selecting
-occurrences, not for deleting them: excluding blurred images from an export
-leaves every blurred image, its mask, and its measurements exactly where they
-were, so a threshold can be revised and the export rerun without recomputing
-anything or losing anything. Two exports with two different filters can coexist
-from one project, which is the point -- "which occurrences count" is an
-analytical decision, and analytical decisions belong in the analysis rather than
-baked into the data.
-
-The one thing an export does decide for you is currency: it reports the values
-measured from the masks the project currently holds, not any earlier value left
-behind by a resegmentation (current_only, and see records.metrics). Which mask a
-number came from isn't an analytical preference the way a threshold is -- a
-value derived from a mask that no longer exists is describing something the
-project doesn't contain.
+Filtering happens here and only here. A filter selects occurrences, it never
+deletes them, so a threshold can be revised and the export rerun without
+recomputing anything. Exports report values measured from the masks the project
+currently holds (current_only), since a value from a mask that no longer exists
+describes something the project doesn't contain.
 """
 
 import logging
@@ -38,8 +20,10 @@ import pandas as pd
 
 from .calibrations import scale as scale_calibration
 from .project import paths, subsets as subset_selection
+from .recipes import DEFAULT_PART
 from .records.metrics import current_rows, load_metrics
 from .records.occurrences import ID_COL
+from .selectionhelpers import rows_matching
 
 logger = logging.getLogger(__name__)
 
@@ -61,9 +45,8 @@ def column_name(run_name, part, metric_name, key=None):
     The wide-form column one metric value lands in.
 
     Run name, part, and metric name are all included because all three vary
-    independently and any two of them can collide: the same metric measured on
-    head and thorax, or measured under two different recipes, must not land in
-    the same column and silently overwrite each other. `key` is appended for
+    independently and any two can collide -- the same metric on head and thorax,
+    or under two recipes, must not overwrite each other. `key` is appended for
     dict-valued metrics, one column per key.
     """
     parts = [run_name, part, metric_name] + ([key] if key is not None else [])
@@ -74,36 +57,20 @@ def metrics_wide(project_path, run_names=None, parts=None, metric_names=None,
                  current_only=True):
     """
     Reshape stored metric values into one row per occurrence, one column per
-    run/part/metric (see column_name) -- the shape an analysis wants, and what
-    export and validation both build on.
+    run/part/metric.
 
-    Here rather than in records.metrics because the reshape is an OUTPUT
-    decision, not a storage one: long is what the metric log is, and wide is a
-    view of it built for whoever is about to read it. Column naming, "newest
-    wins", and dropping stale values are all part of that same view.
-
-    Where a metric has been computed more than once for the same
-    occurrence-part under the same run name -- a deliberate force=True rerun,
-    or the same recipe rerun after a parameter change -- the NEWEST value wins,
-    newest meaning last written (metric_id is the metric log's insertion order).
-    Nothing is deleted; the older rows stay in the long table with their own
-    run ids and recipe hashes, which is where to look when two numbers disagree
-    and you need to know which recipe produced which.
+    Here rather than in records.metrics because the reshape is an output
+    decision, not a storage one. Where a metric was computed more than once for
+    the same occurrence-part under one run name, the NEWEST value wins.
 
     current_only -- report only values measured from the masks the project
-                    currently holds (see records.metrics.current_rows). On by
-                    default, and the reason is that "newest wins" alone is not
-                    enough: a value from a superseded mask can be the newest one
-                    there is, if the mask was replaced and the metric never
-                    rerun. An analysis that picked it up would be describing a
-                    mask the project no longer contains, with nothing in the
-                    wide table to show for it. Pass False to see every value the
-                    long table holds regardless of which mask produced it, which
-                    is a provenance question -- and load_metrics answers those
-                    better, since it keeps the mask hash beside the value.
+                    currently holds. On by default: "newest wins" alone isn't
+                    enough, since a value from a superseded mask can be the
+                    newest there is if the metric was never rerun. False shows
+                    every value regardless, which is a provenance question that
+                    load_metrics answers better.
 
-    Returns a DataFrame with occurrence_id as its first column. Empty (just
-    that column) if no values match.
+    Returns a DataFrame with occurrence_id first; empty if nothing matches.
     """
     long_df = load_metrics(project_path, run_names=run_names, parts=parts,
                            metric_names=metric_names)
@@ -131,17 +98,13 @@ def metrics_wide(project_path, run_names=None, parts=None, metric_names=None,
 
 def metric_units(project_path, run_names=None, current_only=True):
     """
-    The unit recorded for each wide-form column -- so an export can carry its
-    units somewhere rather than losing them in the reshape.
+    The unit recorded for each wide-form column, as {column_name: unit}, so an
+    export can carry its units.
 
-    Returns {column_name: unit}. A dict-valued metric's per-key columns all
-    report the parent metric's unit, since the keys share it.
-
-    Resolved exactly the way metrics_wide resolves values: current rows only,
-    newest wins by metric_id. A column's unit has to describe the number that
-    column actually holds, and it stopped being merely descriptive the moment
-    unit-driven conversion existed -- reporting "px" for a value the export
-    already divided into millimetres would be worse than reporting nothing.
+    Resolved exactly as metrics_wide resolves values: current rows only, newest
+    wins. A column's unit has to describe the number that column holds --
+    reporting "px" for a value already converted to millimetres would be worse
+    than reporting nothing.
     """
     long_df = load_metrics(project_path, run_names=run_names)
     if current_only:
@@ -167,24 +130,15 @@ CONVERTIBLE_UNITS = {"px": ("mm", 1), "px2": ("mm2", 2)}
 
 def to_millimetres(df, unit_map, scale):
     """
-    Convert the pixel columns of a wide export into millimetres, renaming each
-    with the unit it now carries.
+    Convert pixel columns to millimetres using each occurrence's px/mm scale.
 
-    df       -- wide table, one row per occurrence, indexed positionally with an
-                occurrence_id column (what metrics_wide returns).
-    unit_map -- {column: unit} from metric_units().
-    scale    -- px_per_mm per occurrence, a Series indexed by occurrence_id
-                (records.scales.scale_for_occurrences).
+    Lengths divide by the scale once and areas twice; anything with no physical
+    length in it (a fraction, a category, an embedding) is left alone.
+    Converted columns are renamed with an _mm/_mm2 suffix and the divisor is
+    carried alongside.
 
-    `traits__organism__body_length` becomes `traits__organism__body_length_mm`,
-    an area becomes `..._mm2`. The suffix is the point: a CSV can't carry units
-    in its header any other way, and two exports of one project that differ only
-    in units would otherwise be indistinguishable once the file is open in
-    something else.
-
-    An occurrence with no scale gets NaN in every converted column rather than
-    an unconverted pixel value, which would be the same number meaning something
-    entirely different in the same column.
+    An occurrence with no calibration gets NaN rather than an unconverted pixel
+    value sitting in a column labelled mm.
     """
     scale = scale.reindex(df[ID_COL].astype(str)).to_numpy(dtype="float64")
 
@@ -237,18 +191,13 @@ def apply_filters(df, filters):
     """
     Narrow df to the rows passing every condition, ANDed together.
 
-    filters -- {column: (op, value)} or {column: predicate}. op is one of
-               "<", "<=", ">", ">=", "==", "!=", "in", "not in" ("in"/"not in"
-               take a container, e.g. ("in", ["usable"])); a predicate is a
-               callable(series) -> boolean series, for anything the operator
-               shorthand can't express.
+    filters -- {column: (op, value)} or {column: predicate}. op is one of "<",
+               "<=", ">", ">=", "==", "!=", "in", "not in"; a predicate is a
+               callable(series) -> boolean series.
 
-    Filtering on a column that doesn't exist raises: a typo'd column name
-    should be loud, not silently match nothing and hand back an empty export.
-
-    A NaN in a filtered column never passes, whatever the operator. "This
-    metric wasn't measured" must not quietly count as passing a != test -- an
-    unmeasured occurrence is not a verified-good one.
+    Filtering on a column that doesn't exist raises rather than silently
+    matching nothing. A NaN never passes, whatever the operator -- "this metric
+    wasn't measured" must not count as passing a != test.
     """
     keep = pd.Series(True, index=df.index)
 
@@ -283,6 +232,47 @@ def apply_filters(df, filters):
     return df[keep]
 
 
+def occurrences_matching(project_path, run_name, rules, part=DEFAULT_PART,
+                         current_only=False):
+    """
+    The occurrences whose stored metric values match a {metric: values} rule set
+    -- "the ones a person called usable", "the ones a classifier called debris".
+
+    Rules take BARE metric names; the run and part prefixes are added for you.
+    Any rule matching is enough, a missing value never matches, and a metric
+    name that produced no column raises rather than selecting nothing. A run
+    with no stored values at all is the one empty case that isn't a typo, and
+    returns [] with a warning.
+
+    project_path -- project to read from.
+    run_name     -- run whose values the rules are written against.
+    rules        -- {metric_name: value} or {metric_name: [values...]}.
+    part         -- part the values were recorded for.
+    current_only -- False by default, against the grain of everything else that
+                    reads stored values: a label like "cut_off" describes the
+                    CROP and stays true whatever mask was on screen. Left at
+                    True, resegmenting would void a whole review session. Pass
+                    True where a rule reads a value that describes a mask.
+
+    Returns a sorted list of occurrence ids.
+    """
+    rules = {column_name(run_name, part, metric_name): values
+             for metric_name, values in rules.items()}
+
+    df = metrics_wide(project_path, run_names=[run_name], parts=[part],
+                      current_only=current_only)
+    if df.empty:
+        logger.warning("run '%s' has no stored values for part '%s' -- nothing "
+                       "to match %s against, selecting none", run_name, part,
+                       sorted(rules))
+        return []
+
+    matched = df[rows_matching(df, rules)]
+    logger.info("%d of %d occurrence(s) in run '%s' match %s",
+                len(matched), len(df), run_name, rules)
+    return sorted(matched[ID_COL].astype(str))
+
+
 def export_metrics(project_path, path=None, runs=None, parts=None,
                    metric_names=None, filters=None, occurrence_columns=None,
                    subset=None, drop_empty=True, current_only=True,
@@ -291,58 +281,24 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
     Build the wide, one-row-per-occurrence trait table, optionally write it to
     CSV, and return it.
 
+    Order of operations matters: metadata is joined, empty columns dropped,
+    units converted, then filters applied -- so a threshold written in
+    millimetres filters millimetres.
+
     project_path      -- project to export from.
-    path              -- CSV to write. None returns the DataFrame without
-                        writing, which is what you want when the next step is
-                        more Python rather than a file for R.
+    path              -- CSV to write. None returns the DataFrame unwritten.
     runs              -- run names to include; every run if None.
     parts             -- parts to include; every part if None.
     metric_names      -- metric names to include; all if None.
-    filters           -- {column: (op, value)} applied after the table is fully
-                        built (see apply_filters). Column names need their full
-                        run/part prefix, the same as any other column here.
-    occurrence_columns -- occurrence-table columns to join alongside the traits
-                        (species, date, collection, image_url...). None joins
-                        none, keeping the export to derived values only.
-    subset            -- restrict to a named subset's occurrences.
-    drop_empty        -- drop occurrences with no metric values at all. On by
-                        default: a project mid-processing shouldn't export
-                        thousands of empty rows. Turn it off when you need one
-                        row per occurrence regardless, to see what's missing.
-    current_only      -- export only values measured from the masks the project
-                        currently holds. On by default: an export is a dataset,
-                        and a number derived from a mask that was replaced and
-                        never remeasured would sit in it indistinguishable from
-                        one that describes the current mask. Those values aren't
-                        gone -- nothing here deletes anything -- they're in the
-                        long table with the mask hash that produced them
-                        (records.metrics.load_metrics), which is where a
-                        provenance question belongs. Pass False to export
-                        whatever is newest regardless of which mask it came
-                        from, e.g. to reproduce a table published before a
-                        resegmentation.
-    units             -- None (default) exports the stored pixel values
-                        untouched. "mm" converts every px and px2 column into
-                        millimetres using the project's scale table, renaming
-                        each with an _mm or _mm2 suffix and carrying px_per_mm
-                        alongside so the conversion is auditable (see
-                        to_millimetres and records.calibrations).
+    filters           -- {column: (op, value)}; see apply_filters.
+    occurrence_columns-- occurrence-table columns to join alongside the traits.
+    subset            -- restrict to a named subset.
+    drop_empty        -- drop columns that came out entirely empty.
+    current_only      -- only values measured from the project's current masks.
+    units             -- "mm" converts pixel columns using each occurrence's
+                         calibration; None leaves everything in pixels.
 
-                        The conversion lives here, at the last possible moment,
-                        rather than in the stored values. A metric's unit is
-                        part of its recipe hash, so measuring in millimetres
-                        would make a re-calibration a different recipe and
-                        invalidate every trait in the project; converting at
-                        export means a corrected scale costs one re-export and
-                        nothing else. Occurrences with no scale get NaN in the
-                        converted columns, never an unconverted pixel value
-                        sitting in a column labelled mm.
-
-    Column names are "{run}__{part}__{metric}", with a fourth "__{key}"
-    component for metrics returning several values at once. All three
-    components are always present because all three vary independently -- the
-    same metric measured on head and thorax, or under two differently
-    configured runs, must not collide into one column.
+    Returns the exported DataFrame.
     """
     paths.require_project(project_path)
 

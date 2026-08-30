@@ -1,48 +1,25 @@
 """
-Group metrics: metrics that need a reference population before any single
-occurrence can be scored.
+Group metrics: outlier(), cluster().
 
-Every other metric in this package is self-contained -- hand it one segment and
-it returns a value. "Is this specimen an outlier?" isn't answerable that way.
-It needs to know what the rest of the population looks like first, and usually
-what the rest of THIS SPECIES looks like, since a body length that's
-unremarkable for one species is impossible for another.
+"Is this specimen unusual?" isn't answerable from one segment -- it needs a
+reference population, and usually the population of THIS species, since a body
+length unremarkable for one species is impossible for another.
 
-A group metric is still a metric. It stores like one, exports like one, and
-composes into a recipe like one. The only difference is that it fits once
-before the run's per-occurrence loop -- via the prepare() hook every operation
-has and almost none use -- and then scores each occurrence against whichever
-group's fitted model applies.
-
-Where the reference values come from: a group metric doesn't recompute the
-population's traits, it READS them from an earlier metric run (`from_run`).
-That earlier run already measured every occurrence and stored the result, so
-refitting from stored values is both cheaper and more honest -- the population
-you're scoring against is exactly the one recorded, not a re-derivation that
-might differ if a transform changed in between. The occurrence being SCORED is
-measured fresh from its own segment, so an occurrence that wasn't in the
-reference population still gets a value.
-
-Two concrete cases, differing only in what model is fit and how it's read:
-
-  OutlierMetric -- is this occurrence unusual within its group
-                   (IsolationForest by default).
-  ClusterMetric -- which cluster within its group does it fall into, and how
-                   far from that cluster's centre (KMeans by default).
-
-They answer different questions. A point can be a perfectly unremarkable member
-of no particular sub-cluster, or an outlier despite landing nearest to one.
+A group metric stores, exports, and composes like any other metric. The only
+difference is that it fits once before the run's per-occurrence loop, via
+prepare(), then scores each occurrence against its group's fitted model.
+Reference values are read from an earlier metric run rather than recomputed.
 """
 
 import logging
 
 import numpy as np
+import pandas as pd
 
-from ..project import paths
 from ..recipes import Metric
+from ..records import occurrences as occurrence_records
 from ..records.metrics import latest_values
 from ..records.occurrences import ID_COL, load_occurrences
-from ..storage.tables import table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -74,15 +51,8 @@ def group_lookup(project_path, group_col, occurrence_ids=None):
     if not group_col:
         return {}
 
-    # Checked against the parquet's schema before reading, the same way a
-    # calibration scope is: naming a column the table doesn't have fails inside
-    # pyarrow with a message about FieldRefs that says nothing about groups.
-    available = table_columns(paths.occurrences_path(project_path))
-    if group_col not in available:
-        raise KeyError(
-            f"no '{group_col}' column in this project's occurrences, so there "
-            f"is nothing to group by (columns: {sorted(available)})"
-        )
+    occurrence_records.require_columns(project_path, group_col,
+                                       "nothing to group by")
 
     groups = load_occurrences(project_path, columns=[group_col])
     if occurrence_ids is not None:
@@ -94,32 +64,23 @@ class GroupMetric(Metric):
     """
     Base for metrics fit once per group over a reference population.
 
-    Usable directly -- supply model_factory and score_fn for a one-off group
-    metric that doesn't warrant its own class -- but OutlierMetric and
+    Usable directly by supplying model_factory and score_fn; OutlierMetric and
     ClusterMetric below are the two cases that come up.
 
-    features       -- ordered list of Metric operations whose values make up
-                      the feature vector, e.g. [body_length(), max_width()].
-                      The same operations are used both to look up the
-                      reference population's stored values and to measure the
-                      occurrence being scored, so the two can't drift apart.
-    from_run       -- name of the earlier metric run holding those stored
-                      values. Its part is taken from the run this group metric
-                      is running in.
-    group_col      -- occurrence-table column to group by before fitting, e.g.
-                      "taxon" for per-species models. None fits a single
-                      population-wide model for everyone.
-    min_group_size -- groups smaller than this fall back to the population-wide
-                      model.
-    model_factory  -- zero-arg callable returning a fresh, unfit model with a
-                      .fit(X) method, X being a 2D array with one row per
-                      reference occurrence.
-    score_fn       -- callable (model, features) -> dict, where features is a
-                      2D array holding exactly one row. Separate from
-                      model_factory because model types don't share a scoring
-                      API -- KMeans is read with .transform(), IsolationForest
-                      with .decision_function() -- and that difference belongs
-                      in one small function rather than in this class.
+    features       -- ordered Metric operations making up the feature vector,
+                      e.g. [body_length(), max_width()]. The same operations look
+                      up the reference values and measure the occurrence being
+                      scored, so the two can't drift apart.
+    from_run       -- the earlier metric run holding those stored values.
+    group_col      -- occurrence column to group by before fitting, e.g. "taxon".
+                      None fits one population-wide model.
+    min_group_size -- groups smaller than this fall back to the population model.
+    model_factory  -- zero-arg callable returning a fresh, unfit model with
+                      .fit(X), X being one row per reference occurrence.
+    score_fn       -- callable (model, features) -> dict. Separate from
+                      model_factory because model types don't share a scoring API
+                      -- KMeans is read with .transform(), IsolationForest with
+                      .decision_function().
     """
 
     def __init__(self, features, from_run, group_col=None,
@@ -219,8 +180,6 @@ class GroupMetric(Metric):
         Assemble the reference population: one row per occurrence, one column
         per feature, plus the group column if there is one.
         """
-        import pandas as pd
-
         columns = {}
         for feature in self.features:
             columns[feature.metric_name] = latest_values(

@@ -12,53 +12,34 @@ Run from the repo root:
 
 import logging
 import os
+import sys
 import tempfile
+from pathlib import Path
 
 import cv2
-import numpy as np
 
 from critterframe.calibrations.scale import scale_from_target, scale_panel
+
+# The target sheet is shared with the test suite rather than drawn twice --
+# this is where the drawing was originally written, later lifted into
+# tests/helpers/synthetic.py so the suite could measure the same sheet. This
+# script imports the lifted version rather than keeping its own copy, so
+# there's exactly one drawing to keep in sync, not two.
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "tests"))
+from helpers.synthetic import TARGET_DIAMETER_PX, TARGET_MM, draw_target_sheet  # noqa: E402
 
 logging.basicConfig(level=logging.INFO)
 
 OUT_DIR = os.path.join(tempfile.gettempdir(), "critterframe_calibration_test")
 os.makedirs(OUT_DIR, exist_ok=True)
 
-TARGET_MM = 25.4          # a 1-inch card target, as on a MothBox reference card
-DIAMETER_PX = 120         # what we draw it at
-EXPECTED = DIAMETER_PX / TARGET_MM
+EXPECTED = TARGET_DIAMETER_PX / TARGET_MM
 
-
-def draw_sheet(diameter_px=DIAMETER_PX, centre=(150, 130), size=(700, 900)):
-    """A dark sheet with a quadrant-style target near the top-left, plus clutter."""
-    sheet = np.full((size[0], size[1], 3), 60, np.uint8)
-
-    # Clutter that mustn't out-correlate the target: specimen-ish blobs.
-    rng = np.random.default_rng(0)
-    for _ in range(25):
-        x, y = rng.integers(200, size[1] - 20), rng.integers(200, size[0] - 20)
-        cv2.ellipse(sheet, (int(x), int(y)), (14, 7), int(rng.integers(0, 180)),
-                    0, 360, (170, 160, 140), -1)
-
-    radius = diameter_px // 2
-    cv2.circle(sheet, centre, radius, (255, 255, 255), -1)
-    # Quadrant fill: two opposite quarters black, like a real calibration target.
-    cv2.ellipse(sheet, centre, (radius, radius), 0, 0, 90, (0, 0, 0), -1)
-    cv2.ellipse(sheet, centre, (radius, radius), 0, 180, 270, (0, 0, 0), -1)
-    return sheet, centre, radius
-
-
-sheet, centre, radius = draw_sheet()
-
-# The template is the target cropped tightly to its outer edge -- the thing the
-# module docstring insists on, since the matched width IS the measurement.
-template = cv2.cvtColor(
-    sheet[centre[1] - radius:centre[1] + radius,
-          centre[0] - radius:centre[0] + radius], cv2.COLOR_BGR2GRAY)
+sheet, template, _expected = draw_target_sheet()
 cv2.imwrite(os.path.join(OUT_DIR, "template.png"), template)
 
 print("== a target drawn at a known size ==")
-print(f"  drawn {DIAMETER_PX}px across, {TARGET_MM}mm wide -> {EXPECTED:.4f} px/mm expected")
+print(f"  drawn {TARGET_DIAMETER_PX}px across, {TARGET_MM}mm wide -> {EXPECTED:.4f} px/mm expected")
 
 result = scale_from_target(sheet, template, TARGET_MM, region=(0, 0, 0.5, 0.5),
                            name="synthetic sheet")

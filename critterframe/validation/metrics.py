@@ -1,30 +1,8 @@
 """
-Compare predicted metric values against reference values.
+Compare predicted metric values against reference values. Persists nothing.
 
-The counterpart to validation.masks: that one asks whether the segmentation is
-right, this one asks whether the MEASUREMENTS are -- which is a different
-question, since a mask can be a few percent off and the length taken from it
-still be fine, or a mask can look excellent and the length still be wrong
-because the body axis was found along the wingspan.
-
-Both sides are ordinary metric runs. The reference values usually come from
-running the same recipe against the reference masks (run_metrics(...,
-reference=True)), which is deliberate: hold the measurement method constant and
-vary only the mask, and any disagreement is attributable to segmentation rather
-than to two different ways of measuring.
-
-The other reference a project has is a person. A human label is a metric like
-any other, so grading a trait against one is the same comparison with the two
-sides named differently -- metric_names={"body_length":
-"click_two_points__length_px"} measures the pipeline's body length against the
-distance between two clicks. That pairing is what catches a failure the
-mask-side comparison can't see at all: an orientation that picked the wingspan
-instead of the body measures a flawless mask along the wrong axis, so IoU stays
-high, both mask-derived lengths agree with each other, and only the human's
-axis disagrees with both.
-
-Nothing is written -- this is a log-only summary and a returned frame. Use
-export_metrics() if you want a file.
+Catches what IoU cannot: a mask can overlap well and still give the wrong
+length, and a human's clicked body axis is the reference that shows it.
 """
 
 import logging
@@ -76,71 +54,36 @@ def compare_metrics(project_path, predicted_run, reference_run,
     project_path  -- project to read from.
     predicted_run -- run name holding the automated values.
     reference_run -- run name holding the reference values.
-    metric_names  -- which metrics to compare, in one of three forms:
-
-                       None    every metric the two runs share.
-                       list    these metrics, under the same name on both
-                               sides -- the shape of a recipe run twice.
-                       dict    {predicted_metric: reference_metric}, pairing
-                               values that are the same quantity under two
-                               names.
-
-                     A dict-valued metric's key is named "metric__key", which
-                     is what makes a human annotation comparable:
-                     {"body_length": "click_two_points__length_px"} grades the
-                     measured body length against the distance between two
-                     clicks. Pairing across names rather than making both sides
-                     use one name is deliberate -- storing a human label under
-                     the trait's name would collide with the trait in the
-                     export and misreport where the number came from.
+    metric_names  -- None compares every metric the two runs share; a list
+                     compares those metrics under the same name on both sides; a
+                     dict pairs {predicted_metric: reference_metric}, which is
+                     what makes a human annotation comparable, e.g.
+                     {"body_length": "click_two_points__length_px"}.
     part          -- part to compare.
-    current_only  -- ignore values measured from masks that have since been
-                    replaced (see records.metrics.current_rows). On by default,
-                    because agreement between a current reference value and a
-                    predicted value left over from an earlier segmentation
-                    measures nothing anyone wants a number for -- it reports the
-                    old segmenter's error under the new one's name.
+    current_only  -- ignore values measured from masks since replaced. On by
+                     default: agreement between a current reference and a stale
+                     prediction reports the old segmenter's error under the new
+                     one's name.
     show_worst    -- how many of the largest percent disagreements to log by id,
-                    signed, so you can go straight to the occurrences
-                    responsible instead of reading an aggregate and wondering
-                    which ones they were. Same knob as validation.masks. 0
-                    disables. The sign is worth reading: a prediction hugely
-                    LARGER than its reference is the signature of a bad
-                    reference value, not a bad prediction.
+                     signed. 0 disables. A prediction hugely LARGER than its
+                     reference is the signature of a bad reference value.
 
-    Returns a DataFrame with one row per pair and columns:
-      metric,
-      reference_metric -- what was compared against what. Equal for every form
-                        but the mapping one.
+    Returns one row per pair with:
+      metric, reference_metric -- what was compared against what.
       n               -- occurrences with both values present.
       mean_abs_diff   -- mean absolute difference, in the metric's own unit.
       mean_pct_diff   -- mean absolute percent difference, relative to the
-                        REFERENCE side. The comparable figure across metrics of
-                        different magnitudes -- 3px is excellent for a body
-                        length and terrible for an antenna segment. Which side
-                        is the reference is a choice once names differ, so the
-                        mapping reads predicted-to-reference, same as the two
-                        run arguments. Occurrences whose reference is 0 are
-                        excluded (the ratio is undefined) but still counted in
-                        n, mean_abs_diff and bias; a warning says how many.
-      median_pct_diff -- the same quantity, median instead of mean. Present
-                        because mean_pct_diff is a mean of RATIOS and a ratio is
-                        unbounded as its denominator approaches zero: one human
-                        who clicked twice in the same place produces a 1832% row
-                        that moves a 37-occurrence mean from 12% to 62%. Read
-                        together they separate the two questions -- the median
-                        says whether the population agrees, and a mean far above
-                        it says the reference set contains a value that needs
-                        redoing. Neither is dropped, because "one reference
-                        value is wrong" is a finding, not noise.
-      bias            -- mean SIGNED difference, predicted minus reference.
-                        Separated from mean_abs_diff because they say different
-                        things: a metric that's 5% high on every specimen is
-                        correctable, while one that's randomly 5% off in both
-                        directions is not.
-      correlation     -- Pearson r between the two. High correlation with a
-                        large bias means the measurement is fine and the scale
-                        is off.
+                         reference. Occurrences whose reference is 0 are excluded
+                         from this but still counted elsewhere.
+      median_pct_diff -- the same, median instead of mean. Read together they
+                         separate two questions: the median says whether the
+                         population agrees, and a mean far above it says the
+                         reference set contains a value that needs redoing.
+      bias            -- mean signed difference, predicted minus reference. A
+                         metric 5% high on every specimen is correctable; one
+                         randomly 5% off in both directions is not.
+      correlation     -- Pearson r. High correlation with a large bias means the
+                         measurement is fine and the scale is off.
     """
     # metrics_wide rather than a pivot of its own: newest-wins, currency, and
     # the splitting of dict values into one column per key are all decisions

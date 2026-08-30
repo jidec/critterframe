@@ -12,7 +12,7 @@ export one row per organism.
 
 ```
 pip install -e .
-pip install -e ".[segmentation]"    # torch + transformers, only for the bundled SAM2 models
+pip install -e ".[torch]"           # torch + transformers, for the bundled SAM2 models and inat_insects' embeddings
 cp .env.example .env                # credentials for extensions that call an external API
 ```
 
@@ -210,6 +210,76 @@ for this; tables written before it exist are read without the column (`storage.t
 which makes their masks look upstream-less — true of everything recorded at the time, and it costs one
 recompute of any from_part chain.
 
+### Storage invariants that fail silently
+
+Each of these is a guard whose removal produces wrong data rather than an error, so none of them is safe to
+"simplify" without reading this first.
+
+- **`upsert_table` compares keys BY VALUE, with no coercion.** Coercing to string first looks harmless and
+  does three wrong things at once: it makes the integer `1` and the string `"1"` the same key while leaving
+  `1` and `1.0` different, and it turns `None`/`NaN`/`pd.NA` into `"None"`/`"nan"`/`"<NA>"` — three distinct
+  keys a literal string in the data can then collide with. Guaranteeing key types is the records layer's job
+  (`records.masks.make_mask_row`); storage rejects what can't be an identifier. A key that silently fails to
+  match doesn't error, it **duplicates** — a mask table growing a second copy of an occurrence-part per run.
+- **`records.occurrences.validate_ids` stops an ingest on a duplicate or missing id** rather than dropping
+  the row. Not recoverable automatically: the fix is a judgement about the data (two photos of one specimen,
+  or two specimens sharing a number?), and silently keeping whichever copy came first picks an arbitrary
+  winner and loses the other.
+- **RLE mask counts are stored as raw bytes, not base64.** Parquet has a binary column type, so base64 would
+  cost roughly a third of the mask table's size plus an encode/decode on every read and write, for nothing.
+- **`ImageStore` is keyed by occurrence id and takes a project path**, so it can't be pointed at another LMDB
+  in the project. Deliberate — it is the image store, not a generic blob store.
+
+### Run semantics that aren't obvious from the signatures
+
+- **A run's `RunContext.occurrence_ids` is the full set the run covers, BEFORE the completed/pending filter.**
+  A group metric fits its reference population from that set, so resuming an interrupted run would otherwise
+  fit against only the leftovers and change what "outlier" means mid-project.
+- **A fitted group model is deliberately NOT in the recipe hash.** It is determined by the reference values,
+  which are determined by `from_run`, so hashing it would add nothing but instability from model randomness.
+- **`subset` is recorded on the run but not hashed.** Processing the rest of the project later continues the
+  same work rather than counting as a different recipe.
+- **A metric run's transforms are not persisted.** They shape what gets measured, and they're in the recipe
+  hash, but the segment they produce is thrown away — only the value is kept.
+- **Metric runs distinguish "no mask" from "measured nothing"** with a sentinel, so an occurrence segmentation
+  hasn't reached is neither a failure nor a skip.
+- **`metrics.quality.WARN_THRESHOLDS` is keyed by metric NAME**, because the name is what survives into
+  storage and into an export column; keying by operation would not survive the round trip.
+- **Export converts units after `drop_empty` and before `filters`**, so a threshold written in millimetres
+  filters millimetres.
+- **`training.splits` sorts ids before assigning them.** Without that the seed doesn't pin the split, and the
+  same call reproduces a different partition depending on input order.
+- **Training data comes from reference masks where they exist**, since training on canonical masks teaches a
+  new model the old model's mistakes.
+- **`records.occurrences.save_occurrences` re-validates ids** even though `normalize()` already did:
+  `ingest_images` builds rows from filenames and never goes through `normalize`, so two colliding stems would
+  otherwise reach the table unchallenged.
+
+### Concurrency: what makes parallel runs safe
+
+`run_segments(shard=(index, total))` is the parallel entry point; the pieces below are what make it safe, and
+each was added for a failure that had no error message.
+
+- **Shards are computed, not coordinated.** `selectionhelpers.shard_occurrences` sorts then takes a
+  round-robin slice, so any number of workers given the same ids and the same `total` agree on the same
+  disjoint split with no communication.
+- **A sharded run never upserts `masks.parquet`.** `upsert_table` is a whole-file read-merge-overwrite with no
+  locking, so two concurrent writers silently lose each other's rows. Each flush writes a brand-new file
+  (`paths.mask_shard_path`) instead; `merge_mask_shards()` folds them in afterwards, single-writer. File
+  locking was rejected on purpose: OS locks are unreliable over the network filesystems a cluster shares,
+  and a never-before-used filename has nothing to race over.
+- **Shard filenames sort in write order** (zero-padded `time.time_ns()`, then a uuid tiebreak). `merge_mask_shards`
+  depends on that ordering to resolve the same occurrence-part staged twice by keeping the newest.
+- **In `storage/sqlite.py`, `busy_timeout` must be set BEFORE `journal_mode=WAL`.** The one-time switch into
+  WAL raises `SQLITE_LOCKED`, which `busy_timeout` does not cover (it only retries `SQLITE_BUSY`), so that
+  pragma gets its own bounded Python-level retry. Getting the order wrong fails only under concurrency, on a
+  brand-new project.
+- **`download_images` threads the fetch only.** Batching and every `store.put_many()` stay on the calling
+  thread, so concurrency never reaches the image store. `max_workers=1` reproduces the sequential behaviour.
+- **`project/paths.py` and `selectionhelpers.py` import nothing from the package.** That is what lets ingest,
+  run drivers, and visualization use them without acquiring a dependency on the metrics or export layers;
+  `selectionhelpers` reaching into `export` previously created a real import cycle.
+
 ### Visualization: two kinds, two contracts
 
 `visualizations/` has exactly two meanings under it, and which one a picture belongs to is decided by who it's
@@ -249,8 +319,9 @@ picture into a measurement.
   test behind ingest's `drop=`; any rule matches, a missing value never does, an unknown column raises).
   Distinct from `project/subsets`, which is about named, persisted selections. Later sampling rules — worst QC
   scores, failures, stratified by taxon — belong here, not in whichever module happens to want them.
-- **`storage/`** — `imagestore` (LMDB, one store per project, byte-exact) and `tables` (archive-then-replace ingest,
-  parquet replace/upsert/load, sqlite connect). No knowledge of any entity.
+- **`storage/`** — one module per backend, none with any knowledge of an entity: `imagestore` (LMDB, one store
+  per project, byte-exact), `tables` (parquet replace/upsert/load), and `sqlite` (`connect`, with the WAL and
+  busy_timeout pragmas that make concurrent sharded runs safe).
 - **`records/`** — `occurrences` (normalize + save/load; ids are strings everywhere), `masks` (RLE encode/decode,
   upsert on `(occurrence_id, part)`, `derivation_hash`/`current_derivation_hashes`), `runs` (owns the sqlite
   schema for BOTH tables, and migrates old ones), `metrics` (long storage, `load_metrics`, `current_rows`,
@@ -311,9 +382,20 @@ picture into a measurement.
 - **Anything expensive that must happen once per run goes in `Operation.prepare(context)`,** not in
   `__init__`. That's how group metrics fit their reference population.
 - **Individual failures are logged and counted, never fatal.** One bad occurrence must not cost a run.
-- **Docstrings explain *why*.** The existing ones document the reasoning behind a choice, the failure mode a
-  guard exists for, and what a number means — not what the code plainly says. Match that density; it's the
-  house style.
+- **Docstrings are reference, not essays.** They render as the API site, so keep them scannable:
+  - A **module** docstring is one line — the module's line from README.md's package-layout tree — plus at most
+    one short sentence a reader genuinely can't use the module without. No project-tree diagrams (the README
+    has one), no design essays.
+  - A **function** docstring is a one-line summary, an optional one- or two-sentence caveat, then
+    `param -- what it is`, one line each, and a `Returns ...` line. No rationale inside the param block.
+  - Write like README.md: present tense, declarative, `&`/`e.g.`/`i.e.`. No rhetorical openers ("Worth
+    knowing", "The reason is", "which is why"), no parenthetical asides longer than a clause, ALL-CAPS
+    emphasis at most once per docstring.
+  - **Why goes here, not there.** A design decision, a rejected alternative, or a silent failure mode a guard
+    exists for belongs in the Architecture section above — one copy, findable — not restated in every module
+    that touches it. The exception is a hazard someone editing *this specific code* would otherwise walk into:
+    that stays as a short `#` comment at the line it guards (see `_wait_for_key`'s duplication note, and the
+    pragma ordering in `storage/sqlite.py`).
 
 ### Things that are deliberately unfinished
 

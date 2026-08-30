@@ -1,35 +1,19 @@
 """
-Project layout: every path in a CritterFrame project derives from one project
-directory
+Define every path and filename in critterframe project folders.
 
-A project is one self-contained analytical dataset -- occurrences, images,
-masks, metrics, processing definitions, and provenance
+Creates nothing -- directories appear when a writer first needs them, so what a
+project holds is an honest account of what has been done to it. Imports nothing
+else in the package, so it holds no opinion about parts or recipes: where a name
+varies by part, `part=None` omits it and the caller decides what counts as
+default.
 
-    my_project/
-        occurrences.parquet         central imported/normalized metadata
-        images.lmdb/                original images, one per occurrence
-        masks.parquet               canonical masks, one per occurrence-part
-        reference_masks.parquet     human-vetted or otherwise trusted masks
-        calibrations.parquet        px/mm and the like, keyed by what was calibrated
-        runs_and_metrics.sqlite     run records + metric values
-        imports/                    immutable source imports
-        definitions/                subsets.toml, recipes.py
-        visualizations/
-            pipeline/               one sampled QC sheet per run
-            products/               rendered assets, one file per occurrence-part
-        models/                     registry.json + checkpoints trained here
-
-Nothing here creates anything. A project comes into existence lazily: every
-writer in the package makes the directory it needs on its way to writing, so
-ingesting a table produces a project holding an occurrence table and nothing
-else -- no empty mask file implying segmentation already ran, no visualizations
-folder for diagnostics nobody asked for. What a project directory contains is
-therefore an honest account of what has actually been done to it, which is also
-what summarize reads.
-
-Every function returns a pathlib.Path.
+Every function returns a pathlib.Path, except product_filename, which returns
+just the name.
 """
 
+import time
+import uuid
+from datetime import date
 from pathlib import Path
 
 OCCURRENCES_FILE = "occurrences.parquet"
@@ -54,8 +38,8 @@ def project_dir(project_path):
     """
     The project directory itself, as a Path.
 
-    Every other function here goes through this, so a caller may pass a string
-    or a Path anywhere a project_path is taken and get the same result.
+    Every other function goes through this, so a project_path may be a string
+    or a Path anywhere.
     """
     return Path(project_path)
 
@@ -74,12 +58,9 @@ def masks_path(project_path, reference=False):
     """
     The mask table.
 
-    reference -- False (default) returns the canonical processing mask table
-                 (one current mask per occurrence-part). True returns the
-                 reference table instead, which has an identical schema and
-                 is allowed to coexist with the canonical one -- validation
-                 is comparison between the two, not a separate processing
-                 system.
+    reference -- True returns the reference table instead of the canonical one.
+                 Identical schema; the two coexist, since validation compares
+                 them.
     """
     return project_dir(project_path) / (
         REFERENCE_MASKS_FILE if reference else MASKS_FILE
@@ -88,37 +69,34 @@ def masks_path(project_path, reference=False):
 
 def mask_shards_dir(project_path, part="", reference=False):
     """
-    Staging area for a sharded run_segments() call's mask writes.
+    Staging area for a sharded run's mask writes, read back by
+    records.masks.merge_mask_shards.
 
-    A sharded run (shard=(index, total)) never writes masks.parquet
-    directly -- upsert_table's whole-file read-merge-overwrite has no
-    locking, so two concurrent workers rewriting it at once would silently
-    lose each other's rows. It writes a new, uniquely-named file here on
-    every flush instead (see records.masks.save_mask_shard) -- an operation
-    safe for any number of concurrent writers, since no two of them ever
-    touch the same file. Nothing here is meaningful on its own; see
-    records.masks.merge_mask_shards, the one place that reads it back.
-
-    part -- narrows to one part's shards, matching how a sharded run flushes
-            each output part into its own subdirectory. "" (default) is the
-            root both parts share, useful for listing which parts have
-            anything staged.
+    part -- narrows to one part's shards. "" is the root they share, for
+            listing which parts have anything staged.
     """
     return project_dir(project_path) / MASK_SHARDS_DIR / \
         ("reference" if reference else "canonical") / part
 
 
+def mask_shard_path(project_path, part, reference=False):
+    """
+    A fresh, never-before-used path for one flush of a sharded run's masks.
+
+    Timestamp first so filenames sort in write order, which merge_mask_shards
+    relies on; the uuid breaks ties within a nanosecond. A new name every call
+    means no two writers contend for a file.
+    """
+    return (mask_shards_dir(project_path, part=part, reference=reference)
+            / f"{time.time_ns():020d}-{uuid.uuid4().hex[:8]}.parquet")
+
+
 def calibrations_path(project_path):
     """
-    What is known about the imaging system rather than about any organism:
-    pixels per millimetre, and in time colour correction and whatever else a
-    reference in the frame can establish.
+    What is known about the imaging system rather than any organism, e.g. px/mm.
 
-    One table for all of them, keyed by what an imaging setup holds constant --
-    one occurrence, one deployment session, one copy stand. A calibration isn't
-    a property of an occurrence: several occurrences imaged in one sitting share
-    one, and the sitting is the thing that was calibrated (see
-    records.calibrations).
+    One table for every calibration type, keyed by what an imaging setup holds
+    constant: one occurrence, one session, one copy stand.
     """
     return project_dir(project_path) / CALIBRATIONS_FILE
 
@@ -133,6 +111,28 @@ def imports_dir(project_path):
     return project_dir(project_path) / IMPORTS_DIR
 
 
+def import_path(project_path, name_prefix, extension=".csv"):
+    """
+    Where one archived source file lands: `<prefix>_<today>[_n]<extension>`.
+
+    The `_n` suffix stops a same-day re-import clobbering the earlier one, so
+    this reads the directory to find a free name. It still creates nothing.
+
+    name_prefix -- import kind, usually carrying the source, e.g.
+                   "occurrences_antenna_199".
+    """
+    directory = imports_dir(project_path)
+    base = f"{name_prefix}_{date.today().isoformat()}"
+    extension = extension or ".csv"
+
+    dest = directory / f"{base}{extension}"
+    n = 1
+    while dest.exists():
+        dest = directory / f"{base}_{n}{extension}"
+        n += 1
+    return dest
+
+
 def definitions_dir(project_path):
     """Project subsets/recipes/config -- the hand-edited part of a project."""
     return project_dir(project_path) / DEFINITIONS_DIR
@@ -145,11 +145,8 @@ def subsets_path(project_path):
 
 def recipes_path(project_path):
     """
-    Optional project-local Python module where a user keeps the recipes they
-    run repeatedly, so a pipeline script can import them instead of respelling
-    the operation list every time. Nothing in the package imports this for you
-    -- it exists so a project carries its own processing definitions alongside
-    its data.
+    Optional project-local module holding recipes a user runs repeatedly, so a
+    project carries its own processing definitions. Nothing imports it for you.
     """
     return definitions_dir(project_path) / RECIPES_FILE
 
@@ -158,46 +155,61 @@ def visualizations_dir(project_path, subdir=""):
     """
     Diagnostic images and figure material.
 
-    Two subfolders have a fixed meaning -- pipeline_dir and products_dir -- and
-    that's where a run's output goes. Anything else here is a caller's own,
-    named by whoever wrote it (visualization.panels.save_panel), which is where
-    per-panel files land for a segment you built and pointed at a PanelFiles
-    sink yourself.
+    pipeline_dir and products_dir have fixed meanings and hold a run's output;
+    anything else here is named by whoever wrote it (panels.save_panel).
     """
     return project_dir(project_path) / VISUALIZATIONS_DIR / subdir
 
 
 def pipeline_dir(project_path):
     """
-    Sample-level visual summaries of how processing BEHAVED: one sheet per run,
-    a sampled handful of occurrences laid out so a person can judge a step at a
-    glance.
+    Sample-level summaries of how processing behaved: one sheet per run.
 
-    Bounded by design. A project of 10,000 occurrences produces one image per
-    run here, not 10,000 -- the question "is this step working" is answered by
-    looking at a representative sample, and a folder holding one file per
-    occurrence per operation is a folder nobody opens.
+    Bounded by design -- 10,000 occurrences still produce one image per run,
+    since "is this step working" is answered from a representative sample.
     """
     return visualizations_dir(project_path, PIPELINE_DIR)
 
 
+def pipeline_grid_path(project_path, run_name, recipe_hash, part=None):
+    """
+    One run's QC grid: `<run>[__<part>]_<hash>.jpg`.
+
+    The hash is in the name so two versions of a recipe leave two grids to
+    compare rather than one overwriting the other.
+
+    part -- None omits it, giving a whole-organism run the plain
+            `<run>_<hash>.jpg`. Pass it so each part of a multi-part run gets
+            its own file.
+    """
+    stem = run_name if part is None else f"{run_name}__{part}"
+    return pipeline_dir(project_path) / f"{stem}_{recipe_hash}.jpg"
+
+
 def products_dir(project_path, name=""):
     """
-    Visual assets deliberately materialized for downstream use: one file per
-    occurrence-part, in a folder per render.
+    Assets materialized for downstream use: one file per occurrence-part, in a
+    folder per render.
 
-    The opposite contract to pipeline_dir. These are outputs, not diagnostics --
-    figure panels, per-specimen plates, images fed to another tool -- so they
-    are one-file-per-thing with the occurrence id in the filename, which is what
-    makes them joinable back to an exported trait table by anything that can
-    read a directory listing (R very much included).
-
-    Loose files rather than the image store on purpose: the store holds original
-    analysis images byte-exactly and is addressed by occurrence id from Python.
-    A render is derived, disposable, and usually wanted by something that isn't
-    Python.
+    The opposite contract to pipeline_dir -- outputs, not diagnostics. The
+    occurrence id is in each filename, so a directory listing joins back to an
+    exported trait table from any language.
     """
     return visualizations_dir(project_path, PRODUCTS_DIR) / name
+
+
+def product_filename(occurrence_id, part=None, extension="png"):
+    """
+    The filename one rendered occurrence-part gets:
+    `<occurrence_id>[__<part>].<ext>`.
+
+    Id first, part after a double underscore, so splitting a filename back into
+    ids is one operation in any language.
+
+    part -- None writes `<occurrence_id>.<ext>`, for a single-part render.
+    """
+    stem = str(occurrence_id) if part is None else f"{occurrence_id}__{part}"
+    return f"{stem}.{str(extension).lstrip('.')}"
 
 
 def models_dir(project_path):
@@ -207,15 +219,11 @@ def models_dir(project_path):
 
 def models_registry_path(project_path):
     """
-    What is known about the models this project uses: name, checkpoint
-    fingerprint, task, base model, the training data behind it (see
-    records.models).
+    What this project knows about the models it uses: name, checkpoint
+    fingerprint, task, base model, training data (see records.models).
 
-    JSON rather than parquet because it holds a handful of rows of deeply
-    nested, per-framework provenance, and rather than TOML because nothing
-    hand-edits it -- unlike subsets.toml, which exists precisely to be edited.
-    Beside the checkpoints rather than in definitions/, since a registered
-    model is a record OF the files here.
+    JSON because it holds a few rows of deeply nested provenance and nothing
+    hand-edits it, unlike subsets.toml.
     """
     return models_dir(project_path) / MODELS_REGISTRY_FILE
 
@@ -225,13 +233,9 @@ def require_project(project_path):
     Raise unless project_path holds an occurrence table, and return it as a
     Path.
 
-    Called before anything that READS existing state, so a typo'd path fails
-    loudly instead of quietly reporting an empty project. The occurrence table
-    is the right thing to check for: it's what ingest writes first, and nothing
-    else in the pipeline is meaningful without it.
-
-    Writers deliberately don't call this -- ingest has to work on a directory
-    that doesn't exist yet, which is what makes projects lazy.
+    Called before anything that reads existing state, so a typo'd path fails
+    loudly rather than reporting an empty project. Writers don't call it --
+    ingest has to work on a directory that doesn't exist yet.
     """
     directory = project_dir(project_path)
     if not occurrences_path(directory).exists():

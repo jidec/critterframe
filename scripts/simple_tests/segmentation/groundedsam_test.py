@@ -23,10 +23,9 @@ Run from the repo root:
 """
 
 import logging
+import sys
 import time
 from pathlib import Path
-
-import cv2
 
 import critterframe as cf
 from critterframe.recipes import Segment
@@ -35,11 +34,16 @@ from critterframe.visualization.panels import PanelFiles
 
 logging.basicConfig(level=logging.INFO)
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _crop_folder import iter_crops          # noqa: E402
+
 PROJECT_PATH = "projects/scratch"
 CROP_DIR = Path("scripts/test_images/insect_crops")
 TEXT_PROMPT = "moth."
 
-# PROJECT_PATH needn't exist -- the panel sink creates what it writes into
+# PROJECT_PATH needn't exist -- the panel sink creates what it writes into.
+# No pre-segmentation here (unlike the other crop-folder scripts) -- the model
+# under test IS the segmentation step, so each Segment starts with no mask.
 models = {
     "points  ": sam2(),
     "detected": groundedsam2(text_prompt=TEXT_PROMPT),
@@ -49,11 +53,7 @@ for label, model in models.items():
     print(f"\n== {label.strip()} ==")
     print("identity (this is what goes into the recipe hash):", model.identity())
 
-    for path in sorted(CROP_DIR.glob("*.jpg")):
-        image = cv2.imread(str(path))
-        if image is None:
-            continue
-
+    for path, image in iter_crops(CROP_DIR):
         segment = Segment(image, occurrence_id=f"{path.stem}_{label.strip()}",
                           project_path=PROJECT_PATH, panel_sink=PanelFiles(PROJECT_PATH))
         started = time.perf_counter()

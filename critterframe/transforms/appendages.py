@@ -1,11 +1,10 @@
 """
-Appendage removal: strip thin legs and antennae from a mask while keeping the
-body's original boundary intact.
+Remove legs/antennae from a mask, keeping the body intact.
 
-Segmenters include appendages inconsistently -- the same specimen photographed
-twice can come back with three legs one time and five the next -- so a body
-measurement taken straight off a raw mask carries that inconsistency into the
-trait. Removing them makes the measurement about the body.
+Legs and antennae are thin and the body is not, so a morphological opening
+separates them -- but opening alone also shaves the body's own outline, which
+would systematically shorten every length measured afterwards. The body is
+recovered from the opened mask instead.
 """
 
 import logging
@@ -71,30 +70,22 @@ def _radius_for(area, relative_radius):
 
 def _remove_appendages(segment, relative_radius=RELATIVE_RADIUS):
     """
-    Strip thin appendages from a segment's mask while keeping the body's
-    ORIGINAL boundary intact.
+    Strip thin appendages from a segment's mask while keeping the body's original
+    boundary intact.
 
     Opening alone would remove the appendages but also erode tapers and round
-    corners, systematically shortening the body. Instead the opened result is
-    used only as a SELECTOR: it decides which pixels are body, and the final
-    intersection with the input restores their exact original edges.
+    corners, systematically shortening the body. The opened result is used only
+    as a SELECTOR -- it decides which pixels are body, and intersecting with the
+    input restores their exact edges:
 
-      1. erode        -- appendages thinner than 2*radius vanish; their
-                         connection to the body is severed
+      1. erode        -- appendages thinner than 2*radius vanish
       2. largest blob -- keep the body core, discard severed fragments
-      3. dilate back  -- regrow the core into a stencil that covers the body
-                         (approximate boundary -- corners rounded, tapers blunt)
+      3. dilate back  -- regrow the core into a stencil covering the body
       4. intersect    -- AND with the original, so pixels keep their true edges
-                         and anything outside the stencil (the appendages) is
-                         dropped
 
-    Doesn't move any pixels -- erode/dilate/keep-largest all operate on the
-    same grid -- so the segment's mapping back to original coordinates is
-    untouched and the image passes through unchanged.
-
-    Masks with no appendages pass through essentially unchanged, which matters
-    when the segmenter includes them inconsistently: otherwise cleaned and
-    uncleaned masks would carry different distortions.
+    Moves no pixels, so the mapping back to original coordinates is untouched. A
+    mask with no appendages passes through essentially unchanged, which matters
+    when a segmenter includes them inconsistently.
     """
     original = segment.require_mask().astype(np.uint8)
     area_before = int(original.sum())

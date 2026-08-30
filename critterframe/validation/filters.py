@@ -1,28 +1,11 @@
 """
-Turn human labels into the filters an export should run with.
+Calibrate thresholds against human labels, returning the filters an export
+should run with.
 
-metrics.quality ships thresholds -- BLUR_WARN_VARIANCE, ASYMMETRY_WARN_SCORE,
-EDGE_WARN_FRACTION -- that are eyeballed, not derived. This module replaces them
-with numbers that mean something: sweep every observed value of a QC metric as a
-candidate cutoff, score each one against human labels from metrics.annotation,
-and hand back the winners in the shape export_metrics(filters=...) takes.
-
-Where to sit on the precision/recall tradeoff is still the caller's judgement --
-how much good data you can afford to throw away to keep bad data out is a
-question about the study, not about the data. What changed is where that
-judgement is stated: as a CONSTRAINT up front (max_fpr, min_precision) rather
-than as a number read off a printed table by hand. Recall is then maximized
-within it, because inside a budget for the cost you named, catching more bad
-data is free. The sweeps are logged in full either way, so the evidence behind
-each choice is there to read.
-
-An eyeballed default is still better than no filter at all, so a metric whose
-sweep can't satisfy the constraint falls back to its metrics.quality constant
-and says so, rather than dropping out and quietly exporting unfiltered.
-
-Filtering is data, not deletion. A threshold chosen here is applied at export
-(export_metrics(filters=...)), so changing your mind costs one re-export and
-destroys nothing.
+Sweep each metric's observed values as candidate cutoffs, score them against
+the labels, and pick the highest-recall cutoff satisfying a constraint. The
+constraint matters: an unconstrained sweep always "wins" with the most
+aggressive cutoff, which excludes everything.
 """
 
 import logging
@@ -59,35 +42,28 @@ def sweep_thresholds(df, metric_col, flag_when, flag_col, bad_flags=BAD_FLAGS):
     Score every observed value of one metric column as a candidate filter
     threshold.
 
-    df         -- wide DataFrame, one row per occurrence (see
-                  export.metrics_wide). Must hold metric_col and flag_col.
+    df         -- wide DataFrame, one row per occurrence, holding metric_col and
+                  flag_col.
     metric_col -- column of a continuous automated score.
-    flag_when  -- "below" or "above": which side of the threshold counts as
-                  "flag this for exclusion". Blur variance is LOWER for worse
-                  images ("below"); asymmetry and edge fraction are HIGHER for
-                  worse ones ("above").
+    flag_when  -- "below" or "above": which side counts as "flag this for
+                  exclusion". Blur variance is lower for worse images ("below");
+                  asymmetry and edge fraction are higher for worse ones.
     flag_col   -- column of human labels from metrics.annotation.
     bad_flags  -- label values that count as "should have been filtered".
 
-    For every candidate threshold, computes:
-      precision       -- of the occurrences flagged, the fraction genuinely bad.
-      recall          -- of the genuinely bad occurrences, the fraction flagged.
-      fpr             -- of the genuinely CLEAN occurrences, the fraction
-                        wrongly flagged. The cost side of the tradeoff: real
-                        data thrown away, which matters as much as recall.
-      recall_<flag>   -- recall broken out per bad-label category, so a metric
-                        that catches every cut-off organism while missing every
-                        non-organism shows up as such instead of hiding behind
-                        one aggregate number.
-      n_bad, n_clean,
-      n_<flag>        -- the counts behind each rate, so a rate computed from
-                        two examples isn't mistaken for one computed from fifty.
+    Computes per candidate threshold:
+      precision     -- of those flagged, the fraction genuinely bad.
+      recall        -- of the genuinely bad, the fraction flagged.
+      fpr           -- of the genuinely clean, the fraction wrongly flagged. The
+                       cost side: real data thrown away.
+      recall_<flag> -- recall per bad-label category, so a metric that catches
+                       every cut-off organism while missing every non-organism
+                       shows up instead of hiding behind one number.
+      n_bad, n_clean, n_<flag> -- the counts behind each rate, so a rate from two
+                       examples isn't mistaken for one from fifty.
 
-    Rows missing either column are dropped -- you can't score what wasn't
-    measured or wasn't labelled.
-
-    Returns one row per candidate threshold, ascending. Empty if nothing has
-    both columns.
+    Rows missing either column are dropped. Returns one row per candidate
+    threshold, ascending; empty if nothing has both columns.
     """
     if flag_when not in ("below", "above"):
         raise ValueError('flag_when must be "below" or "above"')
@@ -173,51 +149,35 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
     Calibrate several QC metrics against human labels and return the filters an
     export should run with.
 
-    The whole path in one call: build the joined frame, sweep each metric's
-    observed values as candidate cutoffs, score them against the labels, pick
-    the highest-recall cutoff that satisfies the constraint, and turn each into
-    an (operator, threshold) rule pointing at the right export column. The
-    result goes straight into export_metrics(filters=...) -- the two halves were
-    always one decision, and a caller reassembling them by hand is a caller who
-    can get the comparison backwards and silently keep exactly the occurrences
-    the sweep flagged.
+    The whole path in one call: sweep each metric's observed values as candidate
+    cutoffs, score them against the labels, pick the highest-recall cutoff
+    satisfying the constraint, and turn each into a rule pointing at the right
+    export column. The result goes straight into export_metrics(filters=...),
+    which is safer than reassembling it by hand -- getting the comparator
+    backwards silently keeps exactly the occurrences the sweep flagged.
 
     project_path   -- project to read from.
-    metric_specs   -- which metrics to calibrate, either
-
-                        ["edge_fraction", "bilateral_asymmetry"]
-                          for metrics metrics.quality knows the direction of, or
-                        {"blur_variance": "below", "edge_fraction": "above"}
-                          to say which side means "flag this one" -- needed for
-                          any metric of your own.
-
-                      Bare metric names either way; the run and part prefixes
-                      are added for you.
-    predicted_run  -- run name the candidate QC metrics were computed under.
-    annotation_run -- run name the human labels were recorded under.
-    flag_metric    -- metric name holding those labels, annotate_flags by
-                     default. Pass something else only for a screening metric of
-                     your own; a dict-valued one needs the key too, as
-                     "<metric>__<key>", since export gives each key its own
-                     column.
+    metric_specs   -- ["edge_fraction", ...] for metrics metrics.quality knows
+                      the direction of, or {"blur_variance": "below", ...} to say
+                      which side means "flag this one". Bare metric names; run
+                      and part prefixes are added for you.
+    predicted_run  -- run the candidate QC metrics were computed under.
+    annotation_run -- run the human labels were recorded under.
+    flag_metric    -- metric holding those labels, annotate_flags by default. A
+                      dict-valued one needs the key too, as "<metric>__<key>".
     part           -- part both runs measured.
     bad_flags      -- passed through to sweep_thresholds.
     max_fpr,
-    min_precision  -- the constraint each threshold has to satisfy (see
-                     suggest_threshold). max_fpr defaults to DEFAULT_MAX_FPR
-                     because an unconstrained read of a sweep always picks the
-                     most aggressive cutoff available.
+    min_precision  -- the constraint each threshold must satisfy. max_fpr has a
+                      default because an unconstrained sweep always picks the
+                      most aggressive cutoff available.
     defaults       -- {metric_name: threshold} to fall back on where the
-                     constraint can't be met; metrics.quality.WARN_THRESHOLDS
-                     for the metrics it covers if omitted. A metric with no
-                     fallback and no satisfying cutoff is left OUT of the
-                     returned filters and warned about -- there is nothing
-                     defensible to filter it on, and inventing a number would
-                     be worse than exporting it unfiltered and saying so.
+                      constraint can't be met. A metric with no fallback and no
+                      satisfying cutoff is left OUT and warned about, since
+                      inventing a number would be worse than saying so.
 
-    Returns {export column: (comparator, threshold)}, e.g.
-    {"qc__organism__edge_fraction": ("<=", 0.031)}. Empty if nothing could be
-    calibrated, which export_metrics reads as "no filtering" -- so check the log
+    Returns {export column: (comparator, threshold)}. Empty if nothing could be
+    calibrated, which export_metrics reads as "no filtering" -- check the log
     before trusting an unfiltered export.
     """
     specs = _resolve_specs(metric_specs)

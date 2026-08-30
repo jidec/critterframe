@@ -1,45 +1,24 @@
 """
-Recipes: reproducible compositions of configured operations, and the working
-representation they operate on.
+Classes jointly implementing the recipes contract: Segment, Recipe, Operation
+(Transform, Segmentation, Metric), plus hashing.
 
-Three things live here because they're three halves of one contract, and
-splitting them would just mean three modules importing each other:
+  Segment   -- the working representation an operation reads and writes: an
+               image plus its current mask. Never persisted.
+  Operation -- one configured action, e.g. remove_appendages(),
+               segment(groundedsam2()). Configured is the point: the callable
+               plus the exact parameters it runs with, which is what makes it
+               hashable.
+  Recipe    -- an ordered chain of operations plus the inputs they consume, and
+               the hash identifying the whole thing.
 
-  Segment   -- the temporary working representation an operation reads and
-               writes: an image plus its current mask. Never persisted (a
-               segment is just an image and a mask, both of which already are
-               persisted separately), so it carries only what an operation
-               needs while a recipe is running.
-  Operation -- one CONFIGURED processing action: remove_appendages(),
-               segment(groundedsam2()), mean_lightness(). Configured is the
-               important word -- an operation is the callable plus the exact
-               parameters it will run with, which is what makes it hashable.
-  Recipe    -- a reproducibly hashable configured operation chain: the ordered
-               operations plus the inputs they consume, and the hash that
-               identifies the whole thing.
+A recipe's hash covers operation order, every operation's parameters, version,
+and model identity, and the upstream inputs it consumes. That is what makes
+processing repeat-aware.
 
-Recipe identity includes operation order, every operation's parameters and
-version, model/checkpoint identity, and the upstream derived inputs the recipe
-consumes (which part it starts from, which mask table). That's what makes
-processing repeat-aware: run.py asks "does this occurrence-part already have
-output from this exact recipe hash?" and skips or reuses it if so, so an
-interrupted run resumes instead of restarting, and rerunning an identical
-config is a no-op instead of silently duplicating work.
-
-A recipe says what a chain IS, not what is done with the result, so its `kind`
-is open-ended -- "segment" and "metric" are the two that produce a run record,
-and "render" (see visualization.products) hashes a transform chain to name and
-identify a folder of images without recording anything at all. The run database
-deliberately accepts only the first two: a render derives no data, so there is
-nothing about it to keep provenance for beyond the hash that names it.
-
-Spatial bookkeeping is Segment's other job. Persisted masks are always in the
-coordinates of the ORIGINAL analysis image, but recipes freely crop, rotate,
-and resize on the way to producing one. Rather than making every operation
-remember how to invert itself, a Segment carries the affine mapping original
-coordinates to its own current ones; operations that move pixels compose onto
-it, and mask_in_original_coordinates() inverts the whole chain in one step
-right before persistence.
+Segment's other job is spatial bookkeeping: persisted masks are always in
+original image coordinates, so a Segment carries the affine mapping original
+coordinates to its current ones, and mask_in_original_coordinates() inverts the
+whole chain in one step before persistence.
 """
 
 import hashlib
@@ -118,11 +97,9 @@ def compose(existing, applied):
     Compose two 2x3 affines: `existing` maps original -> current, `applied`
     maps current -> new, and the result maps original -> new.
 
-    Done in homogeneous 3x3 form and truncated back, which is just the
-    arithmetic; the reason it's a named function is that every spatial
-    transform needs the multiplication in this order, and getting it backwards
-    produces masks that look plausible but land in the wrong place once
-    inverted.
+    Named because every spatial transform needs the multiplication in this
+    order; backwards produces masks that look plausible and land in the wrong
+    place once inverted.
     """
     def to_3x3(matrix):
         return np.vstack([np.asarray(matrix, dtype=np.float64), [0.0, 0.0, 1.0]])
@@ -132,29 +109,25 @@ def compose(existing, applied):
 
 class Segment:
     """
-    A temporary working representation of a masked image: the image, its
-    current mask, and where both sit relative to the original analysis image.
+    A working masked image: the image, its current mask, and where both sit
+    relative to the original analysis image.
 
-    image           -- current working image (OpenCV BGR, or grayscale).
-    mask            -- current working mask as a boolean array the same
-                       height/width as image, or None before any segmentation
-                       operation has produced one.
+    image           -- current working image, BGR or grayscale.
+    mask            -- current working mask, a boolean array matching image's
+                       height/width, or None before any segmentation.
     occurrence_id   -- the occurrence this segment belongs to.
-    part            -- the named biological part being derived/measured.
-    project_path    -- project this came from; needed so operations can save
-                       diagnostics without being handed a second argument.
-    matrix          -- 2x3 affine mapping ORIGINAL analysis-image coordinates
-                       to this segment's current coordinates. Identity for a
-                       segment that hasn't been spatially transformed.
-    original_shape  -- (height, width) of the original analysis image, needed
-                       to size the canvas when inverting back to it.
-    panel_sink      -- where this segment's diagnostic panels go: an object with
+    part            -- the named biological part being derived or measured.
+    project_path    -- project this came from, so operations can save
+                       diagnostics without a second argument.
+    matrix          -- 2x3 affine mapping original analysis-image coordinates
+                       to this segment's. Identity if untransformed.
+    original_shape  -- (height, width) of the original image, for sizing the
+                       canvas when inverting back to it.
+    panel_sink      -- where diagnostic panels go: an object with
                        collect(occurrence_id, stage, image), normally a
-                       visualization.pipeline.RunReport. None (the default) is
-                       what makes every emit_panel() call a no-op without each
-                       operation re-checking a flag, and is what the great
-                       majority of segments run with -- panels are built for the
-                       sampled few, not for everyone.
+                       RunReport. None makes every emit_panel() a no-op, which
+                       is what most segments run with -- panels are for the
+                       sampled few.
     """
 
     def __init__(self, image, mask=None, occurrence_id=None, part=DEFAULT_PART,
@@ -203,17 +176,15 @@ class Segment:
     def replace(self, image=None, mask=None, applied=None):
         """
         Return a new Segment with some parts swapped out, leaving this one
-        untouched -- operations return new segments rather than mutating,
-        so a recipe's intermediate states stay inspectable (and a failed
-        operation can't leave a half-modified segment behind).
+        untouched, so intermediate states stay inspectable and a failed
+        operation leaves nothing half-modified.
 
         image   -- new working image; keeps the current one if omitted.
-        mask    -- new working mask; keeps the current one if omitted. Pass
-                   False to explicitly clear it.
-        applied -- 2x3 affine mapping this segment's CURRENT coordinates to
-                   the new one's, for an operation that moves pixels (crop,
-                   rotate, resize). Composed onto the running original->current
-                   mapping. Omit for operations that don't move pixels.
+        mask    -- new working mask; keeps the current one if omitted. False
+                   clears it.
+        applied -- 2x3 affine mapping this segment's current coordinates to the
+                   new one's, for an operation that moves pixels. Composed onto
+                   the running original->current mapping. Omit otherwise.
         """
         if mask is False:
             new_mask = None
@@ -245,14 +216,12 @@ class Segment:
 
     def mask_in_original_coordinates(self):
         """
-        This segment's mask warped back into the ORIGINAL analysis image's
-        frame, which is the only coordinate system masks are ever persisted in.
+        This segment's mask warped back into the original analysis image's
+        frame, the only coordinate system masks are persisted in.
 
-        Inverts the accumulated affine in one step, so it doesn't matter how
-        many crops/rotations/resizes a recipe applied along the way, or in what
-        order -- a mask a part-specific model produced inside a rotated crop
-        still lands on the right pixels of the parent image, which is what
-        makes parts and whole organisms comparable in the same table.
+        Inverts the accumulated affine in one step, so however many crops,
+        rotations and resizes a recipe applied, a mask found inside a rotated
+        crop still lands on the right pixels of the parent image.
         """
         mask = self.require_mask()
         height, width = self.original_shape
@@ -273,21 +242,15 @@ class Segment:
     def emit_panel(self, image, stage):
         """
         Offer a diagnostic panel, or do nothing when nothing is listening.
-        Operations call this unconditionally rather than each guarding on a
-        flag.
+        Operations call this unconditionally rather than guarding on a flag.
 
-        EMIT, not save: an operation makes a picture of what it decided and
-        hands it over. Where it goes is the run's business, not the operation's.
-        Today a run collecting a pipeline grid takes it as one cell (see
-        visualization.pipeline); a different sink could write it as its own file
-        or stream it somewhere, and no operation would change.
+        Emit, not save: an operation draws what it decided and hands it over;
+        where it goes is the run's business.
 
-        image -- a DISPLAY-READY uint8 (or boolean) panel. An operation knows
-                 what its own numbers mean, so it renders them; nothing
-                 downstream will rescale a float array on its behalf.
-        stage -- what this panel shows, e.g. "orientation", "crop_to_mask". It
-                 titles the column the panel lands in, so name it for the step
-                 rather than for the occurrence.
+        image -- a display-ready uint8 or boolean panel. Nothing downstream
+                 will rescale a float array on the operation's behalf.
+        stage -- what this panel shows, e.g. "orientation". It titles the
+                 column, so name it for the step rather than the occurrence.
         """
         if self.panel_sink is None:
             return
@@ -303,25 +266,20 @@ class Operation:
     """
     One configured processing action.
 
-    Subclasses fix what an operation DOES with a segment (Transform rewrites
-    it, Segmentation gives it a mask, Metric reads a terminal value off it);
-    this base fixes what every operation must be able to say about ITSELF, so a
-    recipe containing it can be hashed.
+    Subclasses fix what an operation does with a segment; this base fixes what
+    every operation says about itself, so a recipe containing it can be hashed.
 
     name       -- operation identifier, e.g. "remove_appendages". Also the
                   default column/metric name and visualization subfolder.
-    function   -- the callable doing the work. Called as
-                  function(segment, **parameters) and returning whatever the
-                  subclass's __call__ contract expects.
-    parameters -- the exact settings this operation is configured with. Must be
-                  JSON-serializable, since they go into the recipe hash --
-                  configuration that can't be recorded can't be reproduced.
+    function   -- the callable doing the work, called as
+                  function(segment, **parameters).
+    parameters -- the exact settings this operation runs with. Must be
+                  JSON-serializable, since they go into the recipe hash.
     version    -- method version, bumped by hand when an implementation changes
-                  in a way that changes its output for unchanged parameters.
-                  Part of the hash, so a bump correctly invalidates cached work.
+                  its output for unchanged parameters, so cached work is
+                  correctly invalidated.
     model      -- optional model backing this operation; contributes its own
-                  identity() to the hash so two runs with different checkpoints
-                  are never mistaken for equivalent work.
+                  identity() to the hash.
     """
 
     kind = "operation"
@@ -335,10 +293,10 @@ class Operation:
 
     def spec(self):
         """
-        The hashable description of this configured operation. Everything that
-        can change the output belongs in here and nothing that can't -- a
-        visualize flag, for instance, produces debug images but identical
-        results, so it never reaches this.
+        The hashable description of this configured operation.
+
+        Everything that can change the output belongs here and nothing that
+        can't -- a visualize flag produces debug images but identical results.
         """
         spec = {
             "name": self.name,
@@ -354,10 +312,9 @@ class Operation:
         """
         Call this operation's function with its configured parameters.
 
-        A model, when there is one, is passed as `model=` rather than through
-        `parameters` -- parameters have to be JSON-serializable to be hashable,
-        and a loaded neural network isn't. The model reaches the hash via its
-        own identity() instead (see model_identity).
+        A model is passed as `model=` rather than through `parameters`, which
+        must stay JSON-serializable; it reaches the hash via its own
+        identity().
         """
         if self.model is not None:
             return self.function(segment, model=self.model, **self.parameters)
@@ -365,16 +322,13 @@ class Operation:
 
     def prepare(self, context):
         """
-        Optional hook run ONCE before a run's per-occurrence loop starts.
+        Optional hook run once before a run's per-occurrence loop.
 
-        Almost every operation is self-contained per occurrence and ignores
-        this. Group metrics are the exception -- they need a reference
-        population fit across many occurrences before any single one can be
-        scored -- so this is where that fit happens, rather than each group
-        metric inventing its own way to get called once up front.
+        Almost every operation ignores this. Group metrics are the exception:
+        they fit a reference population before any occurrence can be scored.
 
-        context -- a metrics.run.RunContext: the project path, the occurrence
-                   ids this run covers, and the part being processed.
+        context -- a metrics.run.RunContext: project path, the occurrence ids
+                   this run covers, and the part being processed.
         """
         return None
 
@@ -384,15 +338,12 @@ class Operation:
 
 class Transform(Operation):
     """
-    An operation that modifies the working image and/or mask without itself
-    producing a metric.
+    An operation that changes the working image and/or mask without producing
+    a value.
 
-    Its function is called as function(segment, **parameters) and returns
-    (segment, info): the new working segment, plus a dict of diagnostics that
-    gets recorded on the run. Transforms that move pixels are responsible for
-    passing `applied` to Segment.replace() so the mapping back to original
-    coordinates stays correct -- that is the one thing a transform must not
-    forget.
+    Returns (segment, info): the new segment, plus diagnostics recorded on the
+    run. A transform that moves pixels MUST pass `applied` to Segment.replace(),
+    or the mapping back to original coordinates is wrong.
     """
 
     kind = "transform"
@@ -403,14 +354,12 @@ class Transform(Operation):
 
 class Segmentation(Operation):
     """
-    An operation that derives or refines a mask -- from an image, from an
-    existing mask, or from another part's mask.
+    An operation that derives or refines a mask, from an image or an existing
+    mask.
 
     Automatic models and hand-drawn masks are alternative segmentations, not
-    different systems: segment(groundedsam2()) and draw_mask() are both
-    Segmentation operations returning (segment, info), and both feed the same
-    mask table. What differs is only which one a run's recipe names, and
-    therefore which recipe hash the resulting mask carries.
+    different systems: segment(groundedsam2()) and draw_mask() both return
+    (segment, info) and feed the same mask table.
     """
 
     kind = "segment"
@@ -423,22 +372,18 @@ class Metric(Operation):
     """
     An operation producing a terminal value: a trait, a QC value, a human
     label, an embedding, a cluster assignment, an outlier score. Metrics end a
-    chain -- nothing composes onto a metric's output the way operations compose
-    onto a segment.
+    chain.
 
-    Its function is called as function(segment, **parameters) and returns the
-    value: usually a scalar, but a dict is allowed and is how a metric reports
-    several related numbers at once (export gives each key its own column). The
-    value must be JSON-serializable, since that's how it's stored.
+    Returns the value, usually a scalar; a dict reports several related numbers
+    at once and export gives each key its own column. Must be
+    JSON-serializable, since that is how it is stored.
 
-    unit        -- what the value is expressed in ("px", "px2", "mm",
-                   "category", "fraction", ...). Recorded alongside the value,
-                   because a bare number whose unit lives only in a variable
-                   name is the easiest thing in this package to misread later.
+    unit        -- what the value is expressed in, e.g. "px", "px2", "category".
+                   Recorded alongside the value, since a bare number whose unit
+                   lives in a variable name is easy to misread later.
     metric_name -- what to store the value under, defaulting to the operation
-                   name. Overridable so the same operation can appear twice in
-                   one recipe under different configurations (mask_area() as
-                   "area_px", say) without the second overwriting the first.
+                   name. Override so one operation can appear twice in a recipe
+                   without the second overwriting the first.
     """
 
     kind = "metric"
@@ -462,16 +407,13 @@ class Metric(Operation):
 
 def model_identity(model):
     """
-    A model's contribution to a recipe hash: whatever the model reports about
-    which weights it actually is.
+    A model's contribution to a recipe hash: whatever it reports about which
+    weights it is.
 
-    A model may define identity() -> dict to say this precisely (see
-    segmentation.groundedsam.GroundedSAM2). Anything else -- a bare
-    torch.nn.Module a caller trained themselves, say -- falls back to its class
-    name, which identifies the architecture but NOT the checkpoint. That's the
-    honest answer for an object that never told us its checkpoint, but it does
-    mean two different fine-tunes of the same class hash alike; give a
-    caller-supplied model an identity() when that matters.
+    A model may define identity() -> dict to say so precisely. Anything else
+    falls back to its class name, which identifies the architecture but not the
+    checkpoint -- so two fine-tunes of one class hash alike. Give a model an
+    identity() when that matters.
     """
     if hasattr(model, "identity"):
         return model.identity()
@@ -488,26 +430,19 @@ class Recipe:
     An immutable, hashable specification of a configured operation chain and
     the inputs it consumes.
 
-    kind       -- what the chain is for. "segment" and "metric" are the two that
-                  execute as runs and get a run record (records.runs.RUN_KINDS);
-                  "render" identifies a chain of transforms whose output is
-                  images on disk rather than data (visualization.products). New
-                  kinds are cheap -- the hash doesn't care -- but a kind with no
-                  runner is just a name.
-    name       -- the run name a caller gave, e.g. "body_parts" or "traits".
-                  Part of identity, so deliberately rerunning the same
-                  operations under a new name records a genuinely new run
-                  rather than being skipped as already done.
-    operations -- ordered list of Operations. For a metric recipe this is the
-                  transforms followed by the metrics, in the order they run.
-    part       -- the part this recipe produces (segmentation) or measures
-                  (metrics).
-    from_part  -- the upstream part whose mask this recipe starts from, if any.
-                  Part of identity because a recipe that refines the organism
-                  mask is not the same recipe when pointed at a wing.
-    inputs     -- any other upstream derived dependency worth pinning into
-                  identity, e.g. {"masks": "reference"} for a metric recipe
-                  measuring reference masks instead of canonical ones.
+    kind       -- what the chain is for. "segment" and "metric" execute as runs
+                  and get a run record; "render" identifies a transform chain
+                  whose output is images rather than data.
+    name       -- the run name, e.g. "traits". Part of identity, so rerunning
+                  the same operations under a new name records a new run.
+    operations -- ordered Operations; for a metric recipe, transforms then
+                  metrics.
+    part       -- the part this recipe produces or measures.
+    from_part  -- the upstream part whose mask this starts from, if any. In
+                  identity, since refining the organism mask is not the same
+                  recipe pointed at a wing.
+    inputs     -- any other upstream dependency worth pinning into identity,
+                  e.g. {"masks": "reference"}.
     """
 
     def __init__(self, kind, name, operations, part=DEFAULT_PART, from_part=None,

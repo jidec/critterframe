@@ -1,23 +1,9 @@
 """
-Automated quality-control metrics: heuristics that flag likely-bad images and
-segmentations.
+Automated QC metrics: blur, asymmetry, edge fraction, mask fraction.
 
-These are metrics like any other -- they produce a value per occurrence-part
-and store next to the traits. They're separated here only because of what
-they're FOR: nothing downstream should trust a body length measured off a
-blurred photograph or a mask that swallowed half a leaf, and these are the
-numbers a filter uses to decide.
-
-Filtering on them is a decision made at export, not here. A QC metric never
-deletes or excludes anything; it records a number, and export_metrics() decides
-what to do with it. That way a threshold can be changed and the export rerun
-without recomputing, and the occurrences a threshold excluded are still there
-to reconsider.
-
-The WARN constants below are eyeballed starting points, not derived values.
-Calibrate them against human labels with validation.filters rather than
-trusting them -- they exist so a first pass has something to use, not because
-these particular numbers mean anything.
+Heuristics that flag likely-bad images and likely-bad masks. The WARN constants
+are eyeballed defaults, not derived -- treat them as a sanity check and
+calibrate real thresholds against human labels with validation.filters.
 """
 
 import cv2
@@ -79,21 +65,17 @@ def blur_variance(name=None, unit="laplacian_var"):
 
 def bilateral_asymmetry(name=None, unit="fraction"):
     """
-    Metric: how left-right asymmetric an ORIENTED mask is -- mirrors it across
-    its own vertical centreline and returns 1 minus the IoU of the mask with
-    its mirror.
+    Metric: how left-right asymmetric an ORIENTED mask is -- mirrors it across its
+    own vertical centreline and returns 1 minus the IoU with its mirror.
 
     Most organisms are bilaterally symmetric viewed dorsally, so a high score
     usually means a bad segmentation rather than a lopsided specimen.
 
-    A different question from the axis choice orient() makes: that one picks the
-    body axis by END-TO-END asymmetry (blunt thorax versus tapering abdomen),
-    this one measures SIDE-TO-SIDE symmetry across that axis. It's only
-    meaningful once the body axis is vertical -- on an unoriented mask the
-    left/right split is arbitrary.
+    Only meaningful once the body axis is vertical: on an unoriented mask the
+    left/right split is arbitrary. A different question from orient()'s axis
+    choice, which uses end-to-end asymmetry.
 
-    Returns a value in [0, 1]: 0.0 is perfectly symmetric, 1.0 is no overlap
-    with its own mirror at all.
+    Returns [0, 1]: 0.0 is perfectly symmetric, 1.0 is no overlap with its mirror.
     """
     return Metric("bilateral_asymmetry", _bilateral_asymmetry, version="1",
                   unit=unit, metric_name=name)

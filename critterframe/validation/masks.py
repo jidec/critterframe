@@ -1,23 +1,9 @@
 """
-Compare predicted masks against reference masks.
+IoU against reference masks. Compares, persists nothing.
 
-Validation is comparison, not a separate processing system. A reference mask is
-made by a segmentation recipe (a human drawing or correcting one -- see
-segmentation.manual) and written to the reference mask table; a predicted mask
-is made by a model recipe and written to the canonical one. Both are masks of
-the same occurrence-part in the same coordinate system, so validating them is
-just measuring their agreement.
-
-That coordinate system is the reason this module is short. Persisted masks are
-always in the coordinates of the original analysis image, whatever crops and
-rotations the recipe that produced them went through, so a mask drawn by hand
-on the full image and a mask found by a model inside a rotated sub-crop overlay
-directly with no alignment step.
-
-Nothing is written. This is a live comparison and a printed summary, cheap to
-rerun every time the segmenter changes -- which is what you want, since the
-reference masks only change when a human redoes one, so this always measures
-"how well does TODAY's segmenter match the frozen human answer".
+Masks are padded to a common shape before comparison, so two masks of one
+occurrence at different resolutions show up as a bad IoU rather than as a crash
+or a wrong number from a truncated comparison.
 """
 
 import logging
@@ -28,7 +14,7 @@ import pandas as pd
 from ..recipes import DEFAULT_PART, Segment
 from ..records import masks as mask_records
 from ..storage.imagestore import ImageStore
-from ..visualization.panels import annotate, diff_panel, side_by_side
+from ..visualization.panels import annotate, diff_panel, save_panel, side_by_side
 
 logger = logging.getLogger(__name__)
 
@@ -74,34 +60,25 @@ def validate_masks(project_path, part=DEFAULT_PART, transforms=(), limit=None,
     IoU.
 
     The comparison population is wherever a reference mask exists, so choosing
-    where to make reference masks IS choosing what this measures -- there are no
-    filter arguments here and there shouldn't be. On a project that screened
-    before annotating (see segmentation.manual.correct_mask), reference masks
-    exist only for crops a human called usable, so what comes back is "IoU over
-    the crops a human called usable". Narrower than "IoU", and worth naming as
-    such when reporting it -- it's also the number that describes the delivered
-    dataset, since an export filtered on the same QC labels covers about the
-    same population.
+    where to make reference masks IS choosing what this measures. On a project
+    that screened before annotating, references exist only for crops a human
+    called usable, so the result is "IoU over the crops a human called usable" --
+    narrower than "IoU", and worth naming as such when reporting it.
 
     project_path -- project to validate.
     part         -- part to compare.
     transforms   -- optional transforms applied to BOTH masks before comparing.
-                    Use this when the reference masks represent something other
-                    than raw model output -- if the human correction also erased
+                    Use this when the reference represents something other than
+                    raw model output: if the human correction also erased
                     appendages, comparing raw masks counts every appendage they
-                    correctly removed as a disagreement, so compare with
-                    remove_appendages() applied to both instead. Applying to
-                    both is the point: a transform is being held constant, not
-                    tested.
+                    correctly removed as a disagreement. Applying to both is the
+                    point -- a transform is held constant, not tested.
     limit        -- optional cap on how many occurrences to compare.
-    show_worst   -- how many of the lowest-IoU occurrences to log by id, so you
-                    can go straight to reviewing real mistakes rather than
-                    reading an aggregate and wondering which ones they were. 0
+    show_worst   -- how many of the lowest-IoU occurrences to log by id. 0
                     disables.
-    visualize    -- save a diff panel per compared occurrence: the image
-                    alongside white where the two agree, yellow where only the
-                    prediction covers, red where only the reference does. One
-                    image per occurrence, so pair with limit.
+    visualize    -- save a diff panel per compared occurrence: white where the
+                    two agree, yellow where only the prediction covers, red where
+                    only the reference does. One image each, so pair with limit.
 
     Returns a DataFrame indexed by occurrence_id with an `iou` column.
     """
@@ -170,8 +147,6 @@ def _apply(project_path, image, mask, occurrence_id, part, transforms):
 
 def _visualize(project_path, image, mask, gt, iou, occurrence_id, part):
     """The image beside a colour-coded agreement panel."""
-    from ..visualization.panels import save_panel
-
     panel = diff_panel(mask, gt)
     annotate(panel, f"iou {iou:.2f}{'  LOW IOU' if iou < LOW_IOU_WARN else ''}")
     annotate(panel, "white=agree  yellow=predicted only  red=reference only", line=1)

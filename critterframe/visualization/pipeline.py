@@ -1,43 +1,14 @@
 """
-Pipeline visualization: one grid per run, showing what a recipe did to a sample
-of the occurrences it processed.
+The per-run QC grid: resolve_sample, RunReport, PanelFanout.
 
-The principle, which holds for every kind of run:
+Any operation in a recipe may contribute a panel, and a pipeline visualization
+lays those out for a SAMPLE of the occurrences a run processed -- a stage per
+column, an occurrence per row. There is no per-occurrence file mode: a
+10,000-occurrence run can't be inspected as 10,000 files.
 
-    Any operation in a recipe may contribute a visual panel, and a pipeline
-    visualization summarizes those panels for a sample of the occurrences a run
-    processed.
-
-Nothing in that sentence mentions segmentation or metrics, and that's the point.
-A segmentation run's panels happen to be detector boxes, raw model masks, and
-cleaned masks; a colour-pattern metric run's happen to be the oriented segment,
-the classified pixels, and the measurement overlay; a one-stage QC metric
-contributes a single panel per occurrence. All three are the same object -- a
-stage per column, an occurrence per row -- so `visualize=25` means exactly the
-same thing wherever it's passed.
-
-    run_segments(project_path, steps=[...], visualize=25)
-    run_metrics(project_path, run_name="colour", metrics=[...], visualize=25)
-
-each produce
-
-    visualizations/pipeline/<run name>_<recipe hash>.jpg
-
-one file, whatever the size of the project. The recipe hash is in the filename
-so re-running an unchanged recipe overwrites its own grid while a changed one
-writes a new grid beside the old -- the same identity rule the rest of the
-package runs on, applied to pictures.
-
-A run over 10,000 occurrences can't be inspected by looking at 10,000 debug
-images, and nobody does. So there is no per-occurrence file mode: every form of
-visualize= samples, and asking for a handful is the only way to ask.
-
-The sample is drawn deterministically (see selectionhelpers.sample_occurrences),
-so two grids from two versions of a recipe show the same specimens and can be
-compared cell by cell. Sampling accepts a count or explicit ids now; the
-intended later additions -- worst QC scores, failures, stratified by taxon --
-are all "choose a different set of ids", which is why sampling is a function
-returning ids rather than anything woven into the runs.
+The sample is deterministic, so two versions of a recipe show the same
+specimens and can be compared cell by cell. A grid can only show work that
+happened, so a fully cached rerun writes none.
 """
 
 import logging
@@ -45,6 +16,7 @@ import logging
 import cv2
 
 from ..project import paths
+from ..recipes import DEFAULT_PART
 from ..selectionhelpers import sample_occurrences
 from . import grids
 
@@ -196,16 +168,14 @@ class RunReport:
 
     def _write(self, grid):
         """Write the grid, named for the run, the part, and the recipe."""
-        from ..recipes import DEFAULT_PART
-
-        directory = paths.pipeline_dir(self.project_path)
-        directory.mkdir(parents=True, exist_ok=True)
-
         # The part is only in the filename when it isn't the default one, so a
         # plain whole-organism run gets the obvious `<name>_<hash>.jpg` and a
-        # multi-part run still gets one distinct file per part.
-        stem = self.name if self.part == DEFAULT_PART else f"{self.name}__{self.part}"
-        dest = directory / f"{stem}_{self.recipe_hash}.jpg"
+        # multi-part run still gets one distinct file per part. paths builds the
+        # name; deciding which part counts as default is this layer's call.
+        dest = paths.pipeline_grid_path(
+            self.project_path, self.name, self.recipe_hash,
+            part=None if self.part == DEFAULT_PART else self.part)
+        dest.parent.mkdir(parents=True, exist_ok=True)
 
         cv2.imwrite(str(dest), grid, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
         logger.info("pipeline grid -> %s", dest)

@@ -1,52 +1,21 @@
 """
-Registered models: what a project knows about a model it uses, and how that
-knowledge reaches a recipe hash.
+The registry of trained models: checkpoint fingerprints, RegisteredModel.
 
-CritterFrame chooses training data, records what was trained from it, and runs
-and evaluates the result. It does NOT train -- a training loop belongs to
-whatever framework the model comes from, and pretending otherwise would tie a
-package with no torch dependency in its core to one framework's idea of an
-epoch. What is missing without a registry is the join between the two halves:
-a checkpoint sitting in a folder says nothing about which occurrences it saw,
-which base model it started from, or whether it is the same weights as the ones
-that produced last month's masks.
-
-A registration is that join, and it is provenance ONLY. Nothing here loads a
-network, imports torch, or knows what a checkpoint contains:
+Provenance only -- nothing here loads a network, imports torch, or knows what a
+checkpoint contains. Training happens outside the package; what a project
+records is the join between a checkpoint and the data behind it.
 
     cf.register_model(project_path, "dragonfly_segmenter_v1",
-                      path="models/segmenter_v1.pt",
-                      task="segment", framework="torch",
-                      base_model="sam2_hiera_large",
-                      training_data="datasets/wings_2026",
-                      parameters={"epochs": 40, "lr": 1e-4})
+                      path="models/segmenter_v1.pt", task="segment",
+                      framework="torch", base_model="sam2_hiera_large")
 
     model = cf.load_model(project_path, "dragonfly_segmenter_v1").attach(my_net)
     cf.run_segments(project_path, steps=[cf.segment(model)])
 
-The second line is the point. `attach` binds the loaded network -- whatever
-`my_net` is, however it was loaded -- to the registered record, and the result
-meets the segmenter contract by forwarding predict()/encode()/visualize() to
-the network while answering identity() from the registry. So the recipe hash
-carries the checkpoint FINGERPRINT rather than a class name, and the failure
-this exists to prevent -- retraining into the same filename and having every
-downstream mask and metric silently keep the old recipe hash -- becomes
-impossible: new weights, new fingerprint, new hash, work correctly redone.
-
-THE FINGERPRINT IS THE IDENTITY, NOT THE NAME AND NOT THE PATH. A name is what
-a person calls the model and a path is where it sits today; neither says which
-weights they are. So registration hashes the checkpoint's bytes, and identity()
-carries that hash. Copying a project, renaming a folder, or re-registering the
-same file under a second name all leave identity untouched, which is correct --
-the same weights are the same work. Registering a model whose weights live
-somewhere this package can't read (a remote endpoint, a service) is allowed and
-warned about, and then identity falls back to the name, which is only as
-trustworthy as the person maintaining it.
-
-Deliberately not here: loading. There is no cf.load_checkpoint(), because how
-to rebuild a network from a file is a fact about the framework that wrote it,
-and a registry that guessed would be wrong in a way that looks like a bad model
-rather than like a bad guess.
+`attach` binds a loaded network to the record and forwards predict/encode/
+visualize to it while answering identity() from the registry. Identity is the
+checkpoint's FINGERPRINT, not its name or path, so retraining into the same
+filename moves the recipe hash and everything below it is correctly redone.
 """
 
 import hashlib
@@ -77,54 +46,31 @@ def register_model(project_path, name, path=None, task=None, framework=None,
     """
     Record a trained model in the project, and return it as a RegisteredModel.
 
-    project_path    -- project the model belongs to. A model is registered per
-                       project, like everything else here: two projects that
-                       use the same checkpoint each say so themselves, and
-                       neither can silently change what the other runs.
-    name            -- what this model is called, e.g.
-                       "dragonfly_segmenter_v1". Re-registering an existing
-                       name REPLACES the record -- fine, and logged loudly when
-                       the fingerprint moves, since every recipe using it then
-                       hashes differently and correctly redoes its work.
-                       Version in the name (`_v1`) if you want both to remain.
-    path            -- checkpoint file or directory, absolute or relative to
-                       the project. Stored relative when it is inside the
-                       project, so moving or copying the project keeps it
-                       resolvable. None for a model whose weights this package
-                       cannot see (a hosted endpoint); identity then rests on
-                       the name alone, and says so.
+    Re-registering a name replaces the record. That is logged loudly when the
+    fingerprint moves, since every recipe using it then hashes differently and
+    correctly redoes its work.
+
+    project_path    -- project the model belongs to; models are registered per
+                       project.
+    name            -- what this model is called, e.g. "dragonfly_segmenter_v1".
+    path            -- checkpoint file or directory, absolute or relative to the
+                       project. Stored relative when inside it, so a copied
+                       project still resolves. None for weights this package
+                       can't see, e.g. a hosted endpoint.
     task            -- what it does: "segment", "embedding", "classify". Free
-                       text -- nothing dispatches on it -- but it is the first
-                       thing anyone reading the registry needs.
-    framework       -- what it was trained with: "torch", "bioencoder",
-                       "ultralytics". Recorded because it is what a future
-                       reader needs in order to load the thing at all.
+                       text; nothing dispatches on it.
+    framework       -- what it was trained with, e.g. "torch", "ultralytics".
     base_model      -- what it was fine-tuned from, e.g. "sam2_hiera_large".
-                       Provenance, not identity: the fingerprint already
-                       separates two fine-tunes of one base.
-    training_data   -- directory written by training.datasets
-                       .export_training_data(), or its dataset.json, or a dict
-                       you assembled yourself. The exported record carries the
-                       split id digests and the transform chain, which is what
-                       makes "this model saw these occurrences, through these
-                       operations" a recorded fact rather than a memory.
+    training_data   -- directory written by export_training_data(), its
+                       dataset.json, or a dict you assembled yourself.
     training_splits -- {split name: occurrence ids} for a model trained without
-                       going through an export. Stored as counts and id
-                       digests, never as lists: the point is to be able to
-                       prove which set was used, and thousands of ids in a
-                       registry file would make it unreadable for no gain.
-    parameters      -- opaque dict of training settings (epochs, learning rate,
-                       loss, augmentations). Stored as given and never
-                       interpreted, exactly as a calibration's parameters are:
-                       what matters varies per framework, and flattening it
-                       would fit one and distort the rest.
-    notes           -- free text for whatever the fields above have no room
-                       for.
-    fingerprint     -- False skips hashing the checkpoint. For a very large
-                       file on slow storage, at the cost of the guarantee that
-                       replacing the file changes the recipe hash. Warned
-                       about, because that guarantee is the reason to register
-                       anything.
+                       an export. Stored as counts and id digests, not lists.
+    parameters      -- opaque dict of training settings, stored as given and
+                       never interpreted.
+    notes           -- free text.
+    fingerprint     -- False skips hashing the checkpoint, for a large file on
+                       slow storage. Costs the guarantee that replacing the file
+                       changes the recipe hash, so it warns.
 
     Returns a RegisteredModel with no network attached -- call .attach(network)
     to run it.
@@ -231,17 +177,9 @@ class RegisteredModel:
     """
     A model's provenance, optionally bound to a loaded network.
 
-    Two jobs, and keeping them in one object is what makes a registration
-    useful rather than decorative:
-
-      identity() answers from the RECORD, so the recipe hash of anything run
-      with this model carries the checkpoint fingerprint. Defined on the class,
-      so it always wins over whatever the attached network offers.
-
-      everything else forwards to the attached network, so a RegisteredModel is
-      accepted anywhere a model is: segment() calls predict(), an embedding
-      metric calls embed()/encode(), a run calls visualize() if it exists. The
-      registry never has to know which methods a task needs.
+    identity() answers from the record, so a recipe hash carries the checkpoint
+    fingerprint; everything else forwards to the attached network, so this is
+    accepted anywhere a model is.
 
     record       -- the registry entry.
     project_path -- project it was read from, so `path` resolves.
@@ -272,15 +210,12 @@ class RegisteredModel:
 
     def identity(self):
         """
-        What this model contributes to a recipe hash: the fingerprint of the
-        weights, and the name for readability.
+        What this model contributes to a recipe hash: the weights' fingerprint,
+        plus the name for readability.
 
-        The path is deliberately absent. Two copies of one checkpoint in
-        different folders are the same model and must hash alike, or moving a
-        project would invalidate every mask in it. When there is no fingerprint
-        -- no local weights, or fingerprinting was declined -- the name is all
-        that is left, and identity is then only as reliable as the discipline
-        of whoever reuses the name.
+        The path is absent on purpose -- two copies of one checkpoint are the
+        same model and must hash alike, or moving a project would invalidate
+        every mask in it. With no fingerprint, only the name is left.
         """
         return {
             "class": "RegisteredModel",
@@ -292,14 +227,11 @@ class RegisteredModel:
         """
         Bind a loaded network to this record, returning a new RegisteredModel.
 
-        A new one rather than a mutation, so a record read once can back
-        several loaded networks (a CPU copy and a GPU copy, say) without either
-        being able to change what the other claims to be.
+        New rather than mutated, so one record can back several loaded networks
+        -- a CPU copy and a GPU copy, say -- without either changing the other.
 
-        runtime -- whatever meets the contract of the operation it will be used
-                   in: predict() for segment(), embed()/encode() for an
-                   embedding metric. Loading it is the caller's business; see
-                   the module docstring for why.
+        runtime -- whatever meets the contract of the operation it is used in:
+                   predict() for segment(), encode() for an embedding metric.
         """
         return RegisteredModel(self.record, self.project_path, runtime)
 
@@ -307,9 +239,8 @@ class RegisteredModel:
         """
         Forward anything this class does not define to the attached network.
 
-        AttributeError rather than a louder failure when nothing is attached,
-        because hasattr() is how callers ask what a model can do -- a run
-        checking for visualize() must get False, not an exception.
+        Raises AttributeError, not something louder, when nothing is attached:
+        hasattr() is how a run asks whether a model has visualize().
         """
         runtime = self.__dict__.get("runtime")
         if runtime is None:

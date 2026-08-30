@@ -1,10 +1,5 @@
 """
-Compose and run segmentation chains.
-
-run_segments() is one of the two functions a pipeline script actually calls. It
-takes an ordered list of operations, turns it into a recipe, and executes that
-recipe over a project's occurrences, writing one canonical mask per
-occurrence-part.
+segment() operation + run_segments(), including sharded/parallel runs.
 
 Two forms:
 
@@ -12,32 +7,15 @@ Two forms:
     run_segments(project_path, steps=[segment(groundedsam2())])
 
     # several parts from one shared starting point
-    run_segments(
-        project_path,
-        run_name="body_parts",
-        from_part="organism",
-        shared_steps=[remove_background(), orient()],
-        outputs={
-            "head":    [segment(head_model)],
-            "thorax":  [segment(thorax_model)],
-            "abdomen": [segment(abdomen_model)],
-        },
-    )
+    run_segments(project_path, run_name="body_parts", from_part="organism",
+                 shared_steps=[remove_background(), orient()],
+                 outputs={"head": [segment(head_model)],
+                          "abdomen": [segment(abdomen_model)]})
 
-The multi-output form exists because parts of one organism usually share most
-of their preprocessing and differ only at the end. Shared steps run ONCE per
-occurrence and the resulting segment forks per part, so a three-part run does
-one background removal and one orientation, not three.
-
-Each output part still gets its OWN recipe and its own run record, hashed over
-the shared steps plus that part's steps. That's what keeps repeat-awareness
-per-part: if the abdomen model changes, abdomen masks are recomputed and head
-and thorax masks are left alone.
-
-Repeat-awareness follows derivation as well as configuration. A part cut out of
-another part's mask records which mask that was, so resegmenting the organism
-recomputes every part built on it -- an unchanged recipe is only half of "this
-work is still good".
+Shared steps run ONCE per occurrence and the segment forks per part, so a
+three-part run does one background removal rather than three. Each part still
+gets its own recipe and run record, so changing the abdomen model leaves head
+and thorax masks alone.
 """
 
 import logging
@@ -71,32 +49,18 @@ def segment(model, mask_threshold=0.0):
 
                predict(image) -> (mask, score, info)
 
-             where image is an RGB array, mask is a boolean array of the same
-             height/width, score is the model's own confidence (or None), and
-             info is a dict of diagnostics. Optionally also:
+             where image is RGB, mask is boolean of the same height/width, score
+             is the model's confidence or None, and info is diagnostics.
+             Optionally also identity() -> dict and visualize(...).
 
-               identity() -> dict
-               visualize(segment, image, mask, score, info) -> None
+             identity() is how a checkpoint reaches the recipe hash; without one
+             a model is identified only by its class name, so two fine-tunes
+             would be mistaken for equivalent work.
 
-             identity() is how a model's checkpoint reaches the recipe hash; a
-             model without one is identified only by its class name, so two
-             different fine-tunes of the same class would be mistaken for
-             equivalent work. Give a trained model an identity().
-
-             segmentation.groundedsam.GroundedSAM2 meets all of this. So does a
-             part-specific model you train yourself -- which is the intended
-             path for head/thorax/abdomen segmenters: wrap your network in a
-             small class with predict() and identity(), and it composes with
-             everything here.
-
-    mask_threshold -- cutoff passed to models that take one, in whatever units
-                      that model thresholds in. For SAM2 (and so for
-                      GroundedSAM2, the bundled one) it is a LOGIT, not a
-                      probability: 0.0 is the model's own default and the
-                      neutral choice, negative values grow the mask, positive
-                      values shrink it. A tenth of a logit is a meaningful step;
-                      0.5 is already a noticeably tighter mask, not the
-                      "middle" that a probability-shaped 0.5 suggests.
+    mask_threshold -- cutoff passed to models that take one. For SAM2 it is a
+                      LOGIT, not a probability: 0.0 is the neutral default,
+                      negative grows the mask, positive shrinks it. A tenth of a
+                      logit is a meaningful step.
     """
     return Segmentation("segment", _segment, {"mask_threshold": mask_threshold},
                         version="1", model=model)
@@ -139,10 +103,9 @@ def _visualize_result(state, score):
     The panel every segmentation run contributes itself: the mask it settled on,
     over the frame it was found in.
 
-    Drawn by the run rather than left to the model, because it's the one view
-    that always exists and is always the point -- a segmenter with no visualize()
-    hook of its own would otherwise put nothing on the grid, which is exactly
-    when you most want to look.
+    Drawn by the run rather than the model, because it is the one view that
+    always exists -- a segmenter with no visualize() of its own would otherwise
+    put nothing on the grid, which is exactly when you most want to look.
     """
     if state.panel_sink is None or state.mask is None:
         return
@@ -161,9 +124,8 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
     """
     Turn the caller's arguments into {part: Recipe}.
 
-    The single-output and multi-output forms differ only here; everything after
-    this point handles a dict of recipes either way, so there's one execution
-    path rather than two that have to be kept in step with each other.
+    The single- and multi-output forms differ only here; everything after
+    handles a dict of recipes either way.
     """
     if steps is not None and outputs is not None:
         raise ValueError("run_segments takes either steps= or outputs=, not both")
@@ -194,79 +156,36 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     project_path -- the project to process.
     steps        -- ordered operations producing one part's mask. Use this OR
                     outputs.
-    run_name     -- what to call this run: recorded on the run and part of
-                    recipe identity. Named run_name rather than name because
-                    several other names are in play at a call site -- a part's,
-                    a subset's, a model's.
+    run_name     -- what to call this run; recorded on the run and part of
+                    recipe identity.
     part         -- which part `steps` produces; the whole organism by default.
     outputs      -- {part: steps} for producing several parts in one pass.
     shared_steps -- operations run once per occurrence before forking into each
                     output's own steps.
     from_part    -- start each segment from an existing part's mask instead of
-                    from no mask. This is how refinement chains work: a
-                    part-specific model starts from the organism mask rather
-                    than rediscovering the organism. Occurrences with no mask
-                    for that part are skipped with a warning -- there's nothing
-                    to start from.
-
-                    Which upstream mask each output was derived from is recorded
-                    on it, so resegmenting the upstream part is enough to make
-                    every part below it recompute on the next run: a chain stays
-                    consistent without anyone having to remember what depends on
-                    what.
+                    from none. How refinement chains work: a part-specific model
+                    starts from the organism mask rather than rediscovering it.
+                    Which upstream mask each output came from is recorded, so
+                    resegmenting the upstream recomputes everything below it.
     subset       -- name of a subset to process, or None for every occurrence.
     limit        -- optional cap on occurrences, for trying a recipe out.
-    force        -- redo occurrence-parts this exact recipe already covered from
-                    the same upstream mask. Normally those are skipped, which is
-                    what makes an interrupted run resumable and a repeated run a
-                    no-op; use this when you want the work redone anyway. A part
-                    whose upstream mask has been replaced since is redone
-                    regardless -- what's stored for it was cut out of a mask the
-                    project no longer has.
-    visualize    -- how much of a pipeline grid to produce (see
-                    visualization.pipeline).
-
-                      25          sample 25 of the occurrences this run
-                                  processes and write ONE grid per part to
-                                  visualizations/pipeline/, rows of specimens
-                                  against columns of stages.
-                      True        the same, with the default sample size.
-                      ["a", "b"]  those occurrences specifically, for following
-                                  a known-difficult specimen through a recipe.
-                      False       none (default).
-
-                    A grid can only show work that happened, so a rerun that
-                    skips everything as already done produces no grid; use
-                    force=True to see a cached recipe's output again.
+    force        -- redo occurrence-parts this recipe already covered from the
+                    same upstream mask. A part whose upstream has been replaced
+                    is redone regardless.
+    visualize    -- how much of a pipeline grid to produce: 25 samples 25
+                    occurrences, True uses the default sample size, a list names
+                    occurrences specifically, False (default) produces none. A
+                    grid can only show work that happened, so a fully cached
+                    rerun writes none -- use force=True to see it again.
     reference    -- write to the reference mask table instead of the canonical
-                    one. What a human-drawn validation pass uses (see
-                    segmentation.manual), so reference masks coexist with the
-                    canonical ones rather than replacing them.
+                    one, as a human-drawn validation pass does.
     batch_size   -- masks accumulated before each write.
     shard        -- (index, total): process only this shard of the occurrences,
-                    for running several workers over one project at once -- a
-                    cluster job array, a plain multiprocessing.Pool of
-                    subprocesses, or a few manual terminal invocations.
-                    run_segments() itself starts no processes; it only needs
-                    to know which slice it owns. Shards are deterministic and
-                    disjoint by construction (selectionhelpers.shard_occurrences),
-                    so any number of workers can run their own shard at the
-                    same time with no coordination and no risk of two workers
-                    redoing, or racing to write, the same occurrence-part.
-
-                    A sharded run writes to a private staging area instead of
-                    masks.parquet directly -- upsert_table's whole-file
-                    rewrite isn't safe for concurrent writers. Call
-                    merge_mask_shards() once, after every shard has finished,
-                    to fold the staged results into the canonical table.
-                    None (default) writes directly, exactly as before --
-                    sharding is entirely opt-in and changes nothing about a
-                    normal, single-process run.
-
-                    A sharded run with visualize= on will log a warning:
-                    every shard's QC grid currently shares one filename, so
-                    only the last shard's sample survives on disk. Pass
-                    visualize=False for a sharded run, or accept that.
+                    for running several workers over one project at once. Shards
+                    are deterministic and disjoint, so workers need no
+                    coordination. A sharded run stages its writes; call
+                    merge_mask_shards() once afterwards. Note that every shard's
+                    QC grid shares one filename, so pass visualize=False.
 
     Returns {part: {"processed", "skipped", "failed", "run_id"}}.
     """

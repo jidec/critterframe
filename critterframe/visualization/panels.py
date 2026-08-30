@@ -1,22 +1,15 @@
 """
-Panels: one picture of what one operation decided about one occurrence-part.
+One picture of one operation's decision about one occurrence-part, plus the
+shared drawing helpers and colour conventions.
 
-The unit everything else in this package's visualization is built from. An
-operation that makes a non-obvious decision -- which axis is the body, which
-pixels were appendages, where a part boundary fell -- draws that decision here
-and hands it over with segment.emit_panel(), instead of only reporting a number.
-grids lays many panels out as one image; pipeline decides whose panels get laid
-out; products materializes them per occurrence-part.
+The unit everything else in visualization is built from. Helpers are shared so
+a panel from appendage removal and one from mask validation mean the same thing
+by the same colours, and a white pixel never quietly means "agreement" in one
+place and "mask" in another.
 
-The drawing helpers are shared rather than reimplemented per operation for one
-reason: a panel from appendage removal and a panel from reference-mask
-validation should mean the same thing by the same colours. Learning to read one
-is then learning to read all of them, and a white pixel never quietly means
-"agreement" in one place and "mask" in another.
-
-PanelFiles at the bottom is the other place a panel can end up: its own file, at
-full resolution, for when you are looking hard at a few specimens rather than
-scanning a whole run.
+Drawing only, no input: the two operations that put a panel on screen and wait
+for a person keep their own `_wait_for_key`, because their tests stub cv2 by
+rebinding it in the operation's own module (see the note on either copy).
 """
 
 import logging

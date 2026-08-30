@@ -1,21 +1,9 @@
 """
-Run records: one execution of a recipe over a particular set of occurrences.
+The sqlite schema for run + metric records, and the migrations that keep older
+databases readable.
 
-Runs are of segmentation and metrics only, because these derive something and need run recorded for provenance
-
-Ingest and download aren't runs: they bring data in rather than deriving anything from it, and their provenance
-is the immutable import they archived.
-
-Runs live in project_path/runs_and_metrics.sqlite alongside the metric values
-they produced (see records.metrics). sqlite rather than parquet because a run
-appends row by row over a long, interruptible process and has to survive the
-process dying partway through -- a rewrite-the-whole-file format would either
-lose everything or need constant rewriting.
-
-A run row is opened when the run starts and closed when it ends, so a run
-interrupted halfway leaves a "running" row rather than disappearing -- which is
-how you tell "this never finished" apart from "this finished and found nothing
-to do".
+A run is one execution of a recipe over a set of occurrences. Owns both tables,
+since a metric row references its run.
 """
 
 import logging
@@ -25,7 +13,7 @@ import pandas as pd
 
 from ..project import paths
 from ..recipes import canonical_json, load_json
-from ..storage.tables import connect
+from ..storage.sqlite import connect
 
 logger = logging.getLogger(__name__)
 

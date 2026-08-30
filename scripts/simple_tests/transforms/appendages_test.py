@@ -14,32 +14,21 @@ Run from the repo root:
 """
 
 import logging
+import sys
 from pathlib import Path
 
-import cv2
-
-from critterframe.recipes import Segment
-from critterframe.segmentation.groundedsam import sam2
 from critterframe.transforms.appendages import _remove_appendages
-from critterframe.visualization.panels import PanelFiles
 
 logging.basicConfig(level=logging.INFO)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _crop_folder import segmented_crops          # noqa: E402
 
 PROJECT_PATH = "projects/scratch"          # only used for writing visualizations
 CROP_DIR = Path("scripts/test_images/insect_crops")
 
 # PROJECT_PATH needn't exist -- the panel sink creates what it writes into
-model = sam2()
-
-for path in sorted(CROP_DIR.glob("*.jpg")):
-    image = cv2.imread(str(path))
-    if image is None:
-        continue
-
-    mask, score, _info = model.predict(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-
-    segment = Segment(image, mask=mask, occurrence_id=path.stem,
-                      project_path=PROJECT_PATH, panel_sink=PanelFiles(PROJECT_PATH))
+for path, segment, score in segmented_crops(CROP_DIR, PROJECT_PATH):
     cleaned, info = _remove_appendages(segment)
 
     flag = "  DEGENERATE" if info["degenerate"] else ""

@@ -1,16 +1,8 @@
 """
-Size and shape metrics: length, width, area.
+Size and shape metrics: body_length, max_width, mask_area, bounding_box.
 
-body_length and max_width both assume an ORIENTED segment -- they measure
-extents along the image axes, which only correspond to the organism's own axes
-once transforms.orient.orient() has put the body axis vertical. Put orient() in
-the recipe's transforms before either of them. mask_area doesn't care, since a
-pixel count is rotation-invariant.
-
-Values are in pixels. Converting to millimetres needs a per-image scale, which
-is a project-specific calibration rather than something a shape metric can know
--- see calibration.scale for one way to recover
-it. `length` is available as an alias for `body_length`.
+Run these on ORIENTED masks. body_length and max_width measure image axes, and
+only orientation makes an image axis correspond to the organism's own.
 """
 
 import cv2

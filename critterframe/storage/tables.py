@@ -1,47 +1,17 @@
 """
-Generic parquet/sqlite storage helpers with no knowledge of a specific
-entity or table
+Parquet tables (occurrences & masks): read, snapshot write, upsert.
 
-Records/ modules supply the schema, this supplies the mechanics.
-
-Two storage shapes live here because CritterFrame uses each for what it's
-good at:
-
-  parquet -- occurrences and masks: wide, columnar, read whole or by column,
-             rewritten as a unit.
-  sqlite  -- runs and metric values: appended row by row over long
-             interruptible runs, queried by key, and needing to survive a
-             process dying halfway through.
-
-Writing a table comes in two shapes, and which one is right is a property of
-the data, not of the caller. write_table replaces wholesale, for tables fed by
-full snapshots -- external occurrence exports are snapshots rather than deltas,
-so the newest one IS the complete desired state, and the dated import ingest
-archived is the recovery path if a replacement is ever wrong. upsert_table
-merges on a key, for tables built up incrementally across many runs.
+Mechanics only; records/ modules supply the schema. write_table replaces
+wholesale, for tables fed by full snapshots; upsert_table merges on a key, for
+tables built up across many runs.
 """
 
 import logging
-import sqlite3
-import time
 from pathlib import Path
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
-
-# How long a writer waits for a lock before giving up, once more than one
-# process is writing to the same project's runs_and_metrics.sqlite (e.g.
-# several sharded segmentation runs sharing one project -- see
-# segmentation.run.run_segments' shard= parameter). Without this, sqlite's
-# default is to raise "database is locked" immediately rather than wait.
-BUSY_TIMEOUT_MS = 30_000
-
-# Retry budget for the one-time switch into WAL mode specifically (see
-# connect()) -- separate from BUSY_TIMEOUT_MS because that pragma doesn't
-# cover this particular race.
-WAL_SWITCH_RETRIES = 20
-WAL_SWITCH_RETRY_DELAY_S = 0.05
 
 
 def write_table(new_df, table_path):
@@ -63,10 +33,8 @@ def _check_keys(df, key_cols, what):
     """
     Raise unless every key column is present and free of nulls.
 
-    A null key isn't an identifier -- it can't be matched against, and letting
-    one through means a row that silently never upserts and instead accumulates
-    a duplicate on every run. Loud here beats a mask table that grows a second
-    copy of the same occurrence-part each time it's segmented.
+    A null key can't be matched against, so a row carrying one never upserts --
+    it accumulates a duplicate on every run instead of replacing.
     """
     missing = [column for column in key_cols if column not in df.columns]
     if missing:
@@ -92,20 +60,9 @@ def upsert_table(new_df, table_path, key_cols):
     Merge rows into a working parquet, replacing any existing row that matches
     on key_cols and appending the rest.
 
-    Used where a table is built up INCREMENTALLY over many interruptible runs
-    rather than snapshotted -- masks especially, where a run over a subset must
-    not disturb the masks another subset's recipe produced (a project's subsets
-    are allowed to be processed with entirely different recipes, so a
-    replace-everything write would destroy the other subsets' work).
-
-    Keys are compared BY VALUE, with no coercion. Coercing them to string
-    first would look harmless and quietly do three wrong things: it would make
-    the integer 1 and the string "1" the same key while leaving 1 and 1.0
-    different; and it would turn None, NaN, and pd.NA into "None", "nan", and
-    "<NA>" -- three distinct keys, each of which a literal string in the data
-    could then collide with. Guaranteeing key types is the records layer's job
-    (see records.masks.make_mask_row); storage compares what it is given and
-    rejects what can't be an identifier.
+    For tables built up across many runs, where a run over one subset must not
+    disturb another subset's rows. Keys are compared by value with no coercion
+    (see CLAUDE.md; the records layer guarantees their types).
 
     new_df     -- rows to merge in; wins on conflict.
     table_path -- destination parquet path.
@@ -158,12 +115,10 @@ def load_table(table_path, columns=None, missing_ok=False):
 
     table_path -- parquet path written by write_table()/upsert_table().
     columns    -- optional list of column names to read; reads all if None.
-    missing_ok -- True returns an empty DataFrame (with `columns` as its
-                  columns, if given) when the file doesn't exist, for tables
-                  that are legitimately absent until something writes them
-                  (masks before any segmentation run). False (default) raises,
-                  so a missing occurrences table doesn't quietly read as "this
-                  project has no occurrences".
+    missing_ok -- True returns an empty DataFrame for a table that is
+                  legitimately absent until something writes it, e.g. masks
+                  before any segmentation run. False (the default) raises, so a
+                  missing occurrence table isn't read as an empty project.
     """
     if not Path(table_path).exists():
         if missing_ok:
@@ -180,11 +135,9 @@ def table_columns(table_path):
     The column names a parquet holds, read from its footer without touching any
     of its data. Empty list if the file doesn't exist.
 
-    Here so a records module can ask what an EXISTING table has before deciding
-    what to read from it. Parquet schemas here grow over time -- a column added
-    to a record type doesn't exist in a project segmented last month -- and a
-    read that names a column the file predates fails outright, so "read these
-    columns if they're there" needs an answer that isn't a swallowed exception.
+    Schemas grow over time, so a column added to a record type won't exist in a
+    project segmented last month. Reading one that isn't there fails outright;
+    this is how a caller asks first.
     """
     table_path = Path(table_path)
     if not table_path.exists():
@@ -192,49 +145,3 @@ def table_columns(table_path):
     import pyarrow.parquet
 
     return list(pyarrow.parquet.read_schema(table_path).names)
-
-
-def connect(database_path):
-    """
-    Open a sqlite database, creating its parent directory if needed, with
-    row access by column name.
-
-    Callers are responsible for creating their own tables (see
-    records.runs.ensure_schema) -- this only opens the file.
-
-    WAL journal mode lets readers proceed while a writer commits, instead of
-    a writer's commit blocking every reader; busy_timeout makes a writer that
-    finds the database locked BLOCK AND RETRY (at the sqlite C level) for up
-    to BUSY_TIMEOUT_MS rather than raising `database is locked` on first
-    contention. Neither matters for a single process talking to its own
-    project, but both do the moment two do -- several sharded run_segments()
-    calls each doing their own start_run()/finish_run() against one project's
-    runs_and_metrics.sqlite, say.
-
-    The one-time switch INTO WAL mode is a separate race busy_timeout does
-    NOT cover: sqlite reports it as SQLITE_LOCKED ("database is locked"), not
-    SQLITE_BUSY ("database is busy"), and busy_timeout's automatic retry only
-    catches the latter. Two connections opening a brand-new project's
-    database at nearly the same moment can hit this genuinely, so it gets its
-    own short, bounded, Python-level retry -- once any connection succeeds,
-    WAL is recorded in the file itself and every later open just sees it
-    already set, so this only ever matters in that first narrow window.
-    """
-    database_path = Path(database_path)
-    database_path.parent.mkdir(parents=True, exist_ok=True)
-
-    connection = sqlite3.connect(database_path)
-    connection.row_factory = sqlite3.Row
-    connection.execute("PRAGMA foreign_keys = ON")
-    connection.execute(f"PRAGMA busy_timeout = {BUSY_TIMEOUT_MS}")
-
-    for attempt in range(WAL_SWITCH_RETRIES):
-        try:
-            connection.execute("PRAGMA journal_mode = WAL")
-            break
-        except sqlite3.OperationalError:
-            if attempt == WAL_SWITCH_RETRIES - 1:
-                raise
-            time.sleep(WAL_SWITCH_RETRY_DELAY_S)
-
-    return connection

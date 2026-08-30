@@ -15,9 +15,8 @@ Run from the repo root:
 """
 
 import logging
+import sys
 from pathlib import Path
-
-import cv2
 
 import critterframe as cf
 from critterframe.metrics.quality import (
@@ -25,31 +24,21 @@ from critterframe.metrics.quality import (
     BLUR_WARN_VARIANCE,
     EDGE_WARN_FRACTION,
 )
-from critterframe.recipes import Segment
-from critterframe.segmentation.groundedsam import sam2
-from critterframe.visualization.panels import PanelFiles
 
 logging.basicConfig(level=logging.INFO)
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from _crop_folder import segmented_crops          # noqa: E402
 
 PROJECT_PATH = "projects/scratch"
 CROP_DIR = Path("scripts/test_images/insect_crops")
 
 # PROJECT_PATH needn't exist -- the panel sink creates what it writes into
-model = sam2()
-
 print(f"defaults: blur < {BLUR_WARN_VARIANCE} is blurry, "
       f"asymmetry > {ASYMMETRY_WARN_SCORE} is lopsided, "
       f"edge > {EDGE_WARN_FRACTION} is cut off\n")
 
-for path in sorted(CROP_DIR.glob("*.jpg")):
-    image = cv2.imread(str(path))
-    if image is None:
-        continue
-
-    mask, _score, _info = model.predict(cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-    segment = Segment(image, mask=mask, occurrence_id=path.stem,
-                      project_path=PROJECT_PATH, panel_sink=PanelFiles(PROJECT_PATH))
-
+for path, segment, _score in segmented_crops(CROP_DIR, PROJECT_PATH):
     # blur, edge fraction, and mask fraction are rotation-invariant; bilateral
     # asymmetry is not, so it needs the oriented mask -- on an unoriented one
     # the left/right split is arbitrary.

@@ -1,22 +1,14 @@
 """
-Manual segmentation: a human draws or corrects the mask.
+Draw/correct a mask by hand -- an alternative segmentation, not a separate
+system.
 
-Drawing a mask by hand is an ALTERNATIVE SEGMENTATION, not a separate system.
-draw_mask() and correct_mask() are Segmentation operations exactly like
-segment(groundedsam2()) is -- they take a segment and give it a mask, they
-compose with transforms the same way, and they record a run and a recipe hash
-the same way. What differs is only which one a recipe names, and therefore what
-hash the resulting mask carries.
+draw_mask() and correct_mask() are Segmentation operations exactly as
+segment(groundedsam2()) is: they compose with transforms the same way and
+record a run and a recipe hash the same way. That is what lets validation
+simply compare a human's mask against a model's.
 
-That matters for validation. A reference mask built by a human and a canonical
-mask built by a model are two masks of the same occurrence-part produced by two
-recipes; validation just compares them (see critterframe.validation.masks). No
-special "reference mode" runs through the pipeline, because there doesn't
-need to be one.
-
-These operations open an OpenCV window and block on a person, so they belong in
-a run a human is sitting through -- typically over a subset of a few dozen
-hand-picked occurrences, not the whole project.
+Both open an OpenCV window and block on a person, so scope them to a subset of
+a few dozen occurrences rather than a whole project.
 """
 
 import logging
@@ -36,33 +28,20 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     """
     Operation: show the current mask over the image and let a human fix it.
 
-    Left-drag erases pixels that were wrongly included (an extra leg, a shadow,
-    a second organism in frame); right-drag paints in pixels that were missed
-    (a dropped wing, an under-segmented edge). 's' saves, Esc cancels and keeps
-    the mask unchanged.
+    Left-drag erases pixels wrongly included, right-drag paints in pixels that
+    were missed; 's' saves, Esc cancels. Covering both failure directions is
+    what makes the result usable as a reference either way.
 
-    Covers both of a segmenter's failure directions rather than only trimming
-    what it over-included, so the result is usable as a reference either way,
-    not just a trimmed-down copy of what the model over-included.
+    The mask corrected is whatever the segment arrives with, which in a run means
+    run_segments(from_part=...). With no from_part the segment starts empty and
+    this behaves like draw_mask() -- a silent difference, since the window looks
+    the same.
 
-    The mask being corrected is whatever the segment arrives with, which in a
-    run means run_segments(from_part=...) -- that is what loads the stored mask
-    to start from. Given no from_part a segment starts empty and this behaves
-    like draw_mask(), which is a silent difference worth knowing about: the
-    window looks the same either way.
-
-    Point this at crops that HAVE a definable correction. Two organisms in
-    frame, no organism, or one running off the frame edge: there is no single
-    complete boundary to paint, so whatever gets painted is invented, and it
-    lands in the reference table and drags down the IoU validate_masks reports
-    as if the segmenter had got something wrong. Screen first
-    (metrics.annotation.annotate_flags), then run this over the occurrences
-    flagged "usable" -- selectionhelpers.occurrences_matching turns the one into
-    the other.
-
-    The correction IS the mask grade, which is why there's no metric asking a
-    person to rate one: paint the boundary and validation.masks reports the IoU
-    against it.
+    Point this at crops that HAVE a definable correction. With two organisms, no
+    organism, or one running off the edge there is no single boundary to paint,
+    so whatever gets painted is invented and then drags down the IoU
+    validate_masks reports as if the segmenter had erred. Screen with
+    annotate_flags first, then run this over the crops flagged usable.
 
     brush_radius -- brush size in pixels.
     """
@@ -87,7 +66,17 @@ def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
 
 
 def _wait_for_key(valid_keys):
-    """Block (no timeout) until one of valid_keys is pressed, ignoring anything else."""
+    """
+    Block (no timeout) until one of valid_keys is pressed, ignoring anything else.
+
+    DELIBERATELY duplicated in metrics.annotation rather than shared: the tests
+    for both interactive operations stub the GUI with
+    monkeypatch.setattr(<this module>, "cv2", FakeCv2(...)), which rebinds `cv2`
+    in THIS module's namespace only. Moved into visualization.panels, the shared
+    copy would keep its own reference to the real cv2, the fake would never
+    reach it, and every interactive test would block on a real waitKey until
+    pytest-timeout killed the run. Four lines is cheaper than that.
+    """
     while True:
         key = cv2.waitKey(20) & 0xFF
         if key in valid_keys:

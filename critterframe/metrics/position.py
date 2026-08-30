@@ -1,18 +1,8 @@
 """
-Where in the image the organism is.
+Where in the image the organism is: centroid, relative_position, image_bounds.
 
-For most projects position is incidental -- an artifact of how the specimen
-happened to be laid out -- but for some it's the measurement itself. A
-salamander in an experimental box is one occurrence per box per frame, and
-where in the box it sits IS the trait: near the shelter or out in the open,
-against a wall or in the middle.
-
-Everything here reports position in ORIGINAL analysis-image coordinates, not in
-whatever frame the recipe's transforms left behind. A recipe that cropped and
-rotated on the way to a clean mask would otherwise report a position in the
-coordinates of that intermediate crop, which means nothing to anyone. The
-segment already knows how to undo its own spatial history, so these metrics use
-it rather than asking callers to avoid transforms.
+Reported in ORIGINAL image coordinates, whatever crops a recipe applied, so two
+occurrences are comparable.
 """
 
 import cv2

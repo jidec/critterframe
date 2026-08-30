@@ -1,15 +1,10 @@
 """
-Orientation: rotate a segment so the organism's body axis is vertical, head/tail
-consistently the same way up.
+PCA orientation, axis chosen by asymmetry rather than length.
 
-Length and width only mean anything once every specimen is measured in the same
-frame -- "vertical extent" of a diagonally-lying moth is the height of its
-bounding box, not its body length. Orienting first is what turns those into
-comparable traits.
-
-This is a SPATIAL transform: it moves pixels, so it composes its rotation onto
-the segment's mapping back to original coordinates. Any mask derived after this
-point still lands on the right pixels of the original image when persisted.
+Length alone picks the wingspan on a spread specimen; asymmetry picks the body,
+since a head-to-tail axis is lopsided and a wingtip-to-wingtip one is not. A
+near-isotropic mask has numerically unstable axes and is flagged unreliable
+rather than silently rotated.
 """
 
 import logging

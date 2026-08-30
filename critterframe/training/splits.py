@@ -1,33 +1,10 @@
 """
-Training/validation/test splits.
+split_ids(): grouped and stratified, to avoid leakage.
 
-Splitting looks trivial and isn't, because biological image datasets leak in
-ways a random split doesn't catch. The two failure modes worth designing
-against:
-
-  GROUPED LEAKAGE. Several images of the same individual, the same specimen
-  drawer, the same trap night, or the same iNaturalist observation are not
-  independent. Split them at random and near-duplicates land on both sides,
-  and the validation score measures memorization rather than generalization.
-  Pass group_col to keep every member of a group on one side.
-
-  IMBALANCE. Species counts in field data are wildly uneven. A random split of
-  a set where 60% of images are one common species can leave a rare one absent
-  from validation entirely. Pass stratify_col to preserve each category's
-  proportions across the splits.
-
-Both at once is supported and is usually what you want (group by specimen,
-stratify by species): groups are assigned whole, stratum by stratum, so the
-grouping guarantee holds exactly while the stratification holds approximately
--- an inherent tension, since a group can't be divided to balance a stratum,
-and the leakage guarantee is the one worth keeping exact.
-
-Two entry points, differing only in what they take and give back. split_ids()
-is the one a pipeline script calls: project in, {split name: occurrence ids}
-out, deciding nothing about what is then done with them. split_dataset() takes
-a frame you already have and adds a column to it, which is what the manifest-
-shaped callers want. Neither writes anything -- a split is a decision about the
-data, and freezing one is define_subset()'s job, not this module's.
+Grouping is what stops the same specimen straddling train and validation, which
+would report a score for memorization. Stratifying keeps each split's class
+balance close to the whole. Ids are sorted before assignment, so the seed
+genuinely pins the split.
 """
 
 import logging
@@ -36,8 +13,8 @@ import numpy as np
 import pandas as pd
 
 from ..project import paths, subsets as subset_selection
+from ..records import occurrences as occurrence_records
 from ..records.occurrences import ID_COL, load_occurrences
-from ..storage.tables import table_columns
 
 logger = logging.getLogger(__name__)
 
@@ -51,47 +28,31 @@ def split_ids(project_path, occurrence_ids=None, proportions=None,
     """
     Partition occurrence ids into named splits: {"train": [...], "val": [...]}.
 
-    Ids in, ids out. Nothing is written and nothing is materialized -- what a
-    split IS is a decision about which occurrences answer which question, and
-    keeping that separate from exporting images means the same decision can be
-    re-used for a segmenter's dataset, an encoder's dataset, and a validation
-    pass without any of them being able to disagree about it. Freeze one with
-    define_subset(project_path, "train", occurrence_ids=splits["train"]) when it
-    should outlive the script that made it.
+    Ids in, ids out -- nothing is written. Keeping the decision separate from
+    exporting images means one split can back a segmenter's dataset, an
+    encoder's dataset, and a validation pass without any of them disagreeing.
+    Freeze one with define_subset(..., occurrence_ids=splits["train"]).
 
-    project_path   -- project the ids belong to. Read for the stratify/group
-                      columns, and to check the ids exist.
+    project_path   -- project the ids belong to.
     occurrence_ids -- the ids to split. None takes every occurrence in the
-                      project (or in `subset`).
+                      project, or in `subset`.
     proportions    -- {split name: proportion}, defaulting to 70/15/15
-                      train/val/test. Any names and any number of splits;
-                      normalized, so they needn't sum to 1. Every requested
-                      name is a key of the result even when it came out empty,
-                      so a caller looping over splits never has to guess which
-                      ones exist.
+                      train/val/test. Normalized, so they needn't sum to 1. Every
+                      requested name is a key of the result even when empty.
     stratify_by    -- occurrence column whose distribution to preserve across
                       splits, typically the label being trained on. A rare
                       species is the case that needs it: a random split of a
-                      long-tailed table can leave it out of validation
-                      entirely.
+                      long-tailed table can leave it out of validation entirely.
     group_by       -- occurrence column whose members must all land on the same
-                      side. The leakage guard: several images of one specimen,
-                      one observation, or one trap night are not independent,
-                      and splitting them apart makes a validation score measure
-                      memorization. Exact where stratification is approximate,
-                      since a group can't be divided (see the module docstring).
+                      side. The leakage guard: several images of one specimen or
+                      one trap night are not independent, and splitting them
+                      apart makes a validation score measure memorization.
     subset         -- restrict to a named subset instead of passing ids.
-                      Mutually exclusive with occurrence_ids.
-    seed           -- split seed. The same ids, proportions, columns, and seed
-                      give the same split whatever ORDER the ids arrive in --
-                      the frame is sorted before assignment -- so a split
-                      survives being recomputed by a different script.
+    seed           -- split seed. The same inputs give the same split whatever
+                      ORDER the ids arrive in, since the frame is sorted first.
 
-    stratify_by/group_by are occurrence columns, which is how the rest of the
-    package names a grouping (outliers.group_col, calibration scopes, subset
-    column). A label that lives in the metric log rather than on the occurrence
-    table isn't reachable here; pass the ids per class explicitly, or export it
-    onto a manifest and use split_dataset().
+    stratify_by/group_by are occurrence columns. A label living in the metric log
+    isn't reachable here -- export it onto a manifest and use split_dataset().
     """
     paths.require_project(project_path)
 
@@ -157,22 +118,9 @@ def _frame_to_split(project_path, occurrence_ids, subset, columns):
 def _require_columns(project_path, columns):
     """
     Fail on a stratify/group column the occurrence table doesn't have, listing
-    what it does have.
-
-    Read from the parquet footer rather than by catching a read error, so the
-    message names the columns available instead of restating the one that
-    wasn't -- a mistyped stratify_by is nearly always a near-miss on a column
-    that IS there.
+    what it does have. See records.occurrences.require_columns.
     """
-    if not columns:
-        return
-    available = table_columns(paths.occurrences_path(project_path))
-    unknown = [column for column in columns if column not in available]
-    if unknown:
-        raise KeyError(
-            f"occurrence table has no column(s) {unknown} to split on "
-            f"(columns: {sorted(available)})"
-        )
+    occurrence_records.require_columns(project_path, columns, "nothing to split on")
 
 
 def split_dataset(df, fractions=None, group_col=None, stratify_col=None,

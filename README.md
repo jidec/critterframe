@@ -1,6 +1,14 @@
 # critterframe
 
-Image frames of critters into dataframes of traits
+```text
+  .   .
+   \ /
+   ⌐■-■
+ ~/ ! \~   Image frames of critters into dataframes of traits
+~| o:o |~
+ | o:o |
+/ \_:_/ \
+```
 
 critterframe is a flexible Python package built for large-scale organismal image processing, including easy-to-understand tools to:
 
@@ -59,44 +67,44 @@ and more — see [scripts/](scripts/) for full examples.
 
 ## Convenience features
 
-1. Project folders are portable analytical records with full data and provenance ready for archiving alongside a publication
+1. Project folders are portable records with data & provenance ready for archiving alongside a publication
 2. Nearly every pipeline step can be visualized with `visualize=True
 3. Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
 4. Metrics exports designed for easy analysis post-critterframe
 5. Multithreading for image downloading, segmentation, and metric runs
 
 ## Documentation
-[jidec.github.io/critterframe](https://jidec.github.io/critterframe/) — this README plus a full API reference
-generated from the package's docstrings. Preview it locally with `pip install -e ".[docs]"` then `mkdocs serve`.
+[jidec.github.io/critterframe](https://jidec.github.io/critterframe/)
 
 ## Installation
 ```
-pip install -e .
-pip install -e ".[segmentation]"        # torch + transformers, for SAM2/GroundedSAM2
-cp .env.example .env                    # only needed for extensions that call an external API
+pip install "critterframe[torch] @ git+https://github.com/jidec/critterframe.git"
 ```
 
-The core has no deep-learning dependency. Install
-the `segmentation` extra when you want the bundled SAM2 models. A project segmenting with its own model doesn't
-need it.
+`[torch]` pulls in the ready-to-go SAM2/GroundedSAM2 torch models essential for many projects (as well as some deep-learning-based metrics), installing PyPI's default torch build for your platform if you don't yet have torch installed.
+
+Installing [CUDA](https://developer.nvidia.com/cuda-downloads) beforehand to enable processing on GPU is recommended (GroundedSAM2 can fall back to CPU but becomes very slow).
+
+If you need a torch version that fits a certain CUDA version (such as the version that exists on a computing cluster)
+install [that torch version](https://pytorch.org/get-started/locally/) before installing `critterframe[torch]` (critterframe's `torch` dependency carries no version pin so it won't be overridden).
+
+Projects segmenting with a custom model or working from existing masks (and not using deep-learning based metrics) don't need `torch`:
+```
+pip install "critterframe @ git+https://github.com/jidec/critterframe.git"
+```
 
 ## Testing
 
 ```
-pip install -e ".[dev]"
-
-pytest                          # ~1,100 tests, ~45s; no GPU, network, or credentials needed
+pytest                          # ~1,100 tests, ~45s, no GPU, network, or credentials
 pytest tests/unit -m "not slow" # inner loop, a few seconds
 pytest -m gpu                   # opt in to what's deselected by default (gpu, network, interactive)
 ```
 
-`tests/unit/` mirrors the package; `tests/integration/` is one file per cross-cutting invariant
-(repeat-awareness, metric staleness, coordinate inversion, calibrated export...) rather than per module,
-since a test spanning ingest → segment → measure → export isn't "about" any one of them.
+`tests/unit/` is one file per module
 
-`scripts/simple_tests/` are separate, visual-only smoke scripts — never collected by pytest. They write debug
-images for a person to look at, which is the one check assertions can't do: *which* pixels
-`remove_appendages` took, whether `orient` picked the body or the wingspan.
+`tests/integration/` is one file per notable cross-module case, testing
+repeat-awareness, metric staleness, coordinate inversion, calibrated export etc.
 
 ## Example pipelines
 
@@ -131,65 +139,102 @@ my_project/
 
 ## Vocabulary
 
-| Term | Meaning |
-| --- | --- |
-| **Project** | One self-contained analytical dataset. A directory. |
-| **Occurrence** | One focal organism at a place and time, as one analysis image plus metadata. |
-| **Part** | A named biological component of that organism. Defaults to `organism`. |
-| **Mask** | At most one current mask per occurrence-part, in original image coordinates. |
-| **Segment** | An image plus its current mask, in flight. Never persisted. |
-| **Metric** | Any derived value associated with an occurrence and a part. |
-| **Transform** | An operation changing the working segment without producing a value. |
-| **Operation** | One configured processing action: `remove_appendages()`, `segment(groundedsam2())`. |
-| **Recipe** | A reproducibly hashable configured operation chain: `segment`, `metric`, or `render`. |
-| **Run** | One execution of a recipe over a set of occurrences. |
-| **Subset** | A named selection of occurrences receiving a particular recipe. |
-| **Filter** | A rule for selecting occurrences at export. Never deletes. |
-| **Calibration** | Knowledge about the imaging system (e.g. px/mm scale), keyed by scope, resolved late. |
-| **Reference mask** | A mask kept for comparison, not treated as canonical — validation's baseline, not "ground truth". |
-| **Recipe hash** | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work. |
-| **Registered model** | Provenance binding a checkpoint to the data it was trained on; retraining moves its identity. |
-| **Panel** | One picture of one operation's decision about one occurrence-part — the unit visualizations are built from. |
-| **Render** | A materialized image product (`products/`) — derives no data, records no run. |
+| Term                 | Meaning                                                                                                                                                                               |
+|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Project**          | A self-contained collection of organismal occurrence images, metadata, & derivations intended to be analyzed as a coherent biological dataset, sharing at least some processing steps |
+| **Occurrence image** | Image evidence of a focal organism existing at a specific place at a specific time                                                                                                    |
+| **Part**             | A consistent named biological component of an organism, such as `head`. Defaults to `organism` for the part representing the whole organism                                           |
+| **Mask**             | At most one canonical mask per occurrence-part, in original image coordinates                                                                                                         |
+| **Segment**          | An image plus its current mask. Not persisted because images and masks already are                                                                                                    |
+| **Metric**           | Any derived value associated with an occurrence-part                                                                                                                                  |
+| **Transform**        | An operation changing the working segment without producing a value, such as orientation normalization                                                                                |
+| **Operation**        | One configured processing action, named `transform`, `segment`, or `metric` by what it DOES to a segment                                                                              |
+| **Recipe**           | A configured chain of operations, named `segment`, `metric`, or `render` by what its output is persisted as                                                                           |
+| **Run**              | One execution of a recipe over a set of occurrences                                                                                                                                   |
+| **Subset**           | A named selection of occurrences                                                                                                                                                      |
+| **Filter**           | A rule for selecting occurrences, at export or post-critterframe                                                                                                                      |
+| **Calibration**      | Knowledge about the imaging system (e.g. px/mm scale). Resolved at metric export.                                                                                                     |
+| **Record**           | A persisted datatype, including occurrences, masks, runs, metrics, calibrations, and models                                                                                           |
+| **Reference mask**   | A mask kept for comparison, not treated as canonical                                                                                                                                  |
+| **Recipe hash**      | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work.                                                                                          |
+| **Registered model** | A model attached to provenance info.                                                                                                                                                  |
+| **Panel**            | One picture of one operation's decision about one occurrence-part. The unit visualizations are built from.                                                                            |
+| **Render**           | A materialized image product.                                                                                                                                                         |
 
 ## Package layout
 
-- **`project/`** — where a project's files live (`paths`, all `pathlib.Path`), what's in it (`summarize`),
-  which occurrences a recipe runs over (`subsets`). Nothing creates a project: directories appear lazily, as
-  their first writer needs them, so what a project contains is an honest account of what's been done to it.
-- **`ingest.py` / `download.py`** — occurrence tables and local images in; images fetched from URLs. Rows a
-  source has already declared hold no organism can be dropped on the way in (`drop=`), while the archived
-  import keeps them.
-- **`recipes.py`** — `Segment`, `Operation`, `Recipe`, and the hashing that makes processing repeat-aware.
-- **`calibration/`** — what the imaging system did to the image: `scale` (px/mm from a target of known
-  size in the frame), and colour correction when it's written.
-- **`export.py`** — the wide, one-row-per-occurrence trait table, optionally filtered, and the long-to-wide
-  reshape everything else that wants that shape shares.
-- **`storage/`** — the LMDB image store (byte-exact; `get()` for the 8-bit working view, `get_bytes()` for
-  the original) and the parquet/sqlite mechanics, with no knowledge of any entity.
-- **`records/`** — what a project persists: `occurrences`, `masks`, `runs`, `metrics`, `calibrations`, and
-  `models` (which checkpoint a name refers to, what it was trained on, and the fingerprint that puts those
-  weights into the recipe hash of everything they produce).
-- **`transforms/`** — `orient`, `appendages`, `crop` (plus rotate, resize, remove_background).
-- **`segmentation/`** — `groundedsam` (SAM2, with or without a detector), `manual` (draw/correct by hand), `run`
-  (compose and execute).
-- **`metrics/`** — `dimensions`, `position`, `quality`, `color`, `outliers` (group metrics), `annotation`
-  (human labels), `run`.
-- **`validation/`** — `masks` (IoU against reference), `metrics` (predicted vs reference values), `filters`
-  (calibrate thresholds against human labels).
-- **`visualization/`** — `panels` (one picture of one decision, and the colour conventions they share),
-  `grids` (many panels as one image), `pipeline` (the per-run QC grid), `products` (`render_segments`, one
-  image file per occurrence-part).
-- **`training/`** — `splits` (`split_ids`: which occurrences answer which question, grouped and stratified so a
-  specimen can't straddle train and validation) and `datasets` (`export_training_data`: those occurrences as
-  images, masks, class folders, and a manifest a trainer can read). Training itself stays outside; what comes
-  back is registered, and then `segment()` runs it like any other model.
-- **`tests/`** — `pytest`, no GPU or network required: `unit/` mirrors the package, `integration/` is named for
-  the invariant each file protects (repeat-awareness, metric staleness, coordinate inversion, calibrated
-  export). The scripts under `scripts/simple_tests/` remain the *visual* check — they write debug images a
-  person looks at, which is the one thing a test can't do.
-- **`extensions/`** — source-specific packages that normalize *into* the core representation. See
-  [Extensions](#extensions) below.
+```
+critterframe/
+    recipes.py              classes jointly implementing recipes contract: Segment, Recipe, Operation (Transform, Segmentation, Metric) plus hashing
+    ingest.py               ingest occurrence tables and optionally local images
+    download.py             download images from URLs in ingested table
+    export.py               export one-row-per-occurrence trait table, optionally filtered; select occurrences by stored values
+    selectionhelpers.py     helpers for transient "out of these occurrences, which ones" tasks: sampling, sharding, rule matching
+    project/                
+        paths.py            define every path and filename in critterframe project folders
+        subsets.py          create named, persisted selections of occurrences
+        summarize.py        summarize what a project directory currently holds
+    storage/                
+        imagestore.py       the LMDB image store, better than directories for millions of images
+        tables.py           parquet tables (occurrences & masks) read, snapshot write, upsert 
+        sqlite.py           sqlite databases (runs & metrics) connection
+    records/
+        occurrences.py      normalize + save/load the occurrence table
+        masks.py            RLE encode/decode, upsert, derivation hashing, sharded writes for parallel runs
+        runs.py               the sqlite schema for run + metric records
+        metrics.py         long-table storage, current_rows, latest_values
+        calibrations.py  the scope/provenance machinery every calibration type shares
+        models.py          the registry of trained models: checkpoint fingerprints, RegisteredModel
+    segmentation/
+        groundedsam.py  SAM2, with or without Grounding DINO detection
+        manual.py          draw/correct a mask by hand -- an alternative segmentation, not a separate system
+        run.py                segment() operation + run_segments(), including sharded/parallel runs
+    transforms/
+        orient.py            PCA orientation, axis chosen by asymmetry rather than length
+        appendages.py    remove legs/antennae from a mask
+        crop.py               crop, crop_to_mask, rotate, resize, remove_background
+    metrics/
+        dimensions.py    body_length, max_width, mask_area, bounding_box
+        position.py        centroid, relative_position, image_bounds -- reported in original coordinates
+        quality.py          blur, asymmetry, edge fraction -- automated QC
+        color.py             mean color, hue/lightness fractions
+        outliers.py        group metrics: outlier(), cluster()
+        annotation.py    human labels: annotate_flags, click_two_points
+        run.py                run_metrics() + RunContext + completed_keys
+    calibrations/
+        scale.py            px/mm from a target of known size
+    validation/
+        masks.py            IoU against reference masks
+        metrics.py         predicted vs. reference values
+        filters.py           calibrate thresholds against human labels
+    visualization/
+        panels.py           one picture of one operation's decision; shared drawing helpers and colour conventions
+        grids.py             many panels as one image: image_grid, comparison_grid
+        pipeline.py        the per-run QC grid: resolve_sample, RunReport
+        products.py       assets for downstream use: render_segments, one file per occurrence-part
+    training/
+        splits.py            split_ids(): grouped and stratified, to avoid leakage
+        datasets.py       export_training_data(): images, masks, class folders, a manifest
+    extensions/                  source-specific packages that normalize INTO core, never around it
+        antenna_lighttraps/
+            api.py                 Antenna's HTTP API: auth, export, image URLs
+            ingest.py             Antenna export -> ingest_occurrences()
+            download.py         thin wrapper over download_images() for Antenna's URL column
+            calibrations/
+                scale.py            scale scoped per trap night (event_id), not per occurrence
+        inat_insects/
+            api.py                 iNaturalist's API
+            ingest.py             iNaturalist observations -> ingest_occurrences()
+            download.py         thin wrapper over download_images()
+            metrics/
+                color.py             colour clustering metrics
+                bioencoder.py    embedding-based metrics
+            training/
+                bioencoder.py    train()/load() -- deliberately unfinished, raises NotImplementedError
+```
+
+See [Extensions](#extensions) below for what `antenna_lighttraps`/`inat_insects` are and why extensions exist
+as a pattern; see [Testing](#testing) above for `tests/`, which mirrors this same tree one level up.
 
 ## Extensions
 

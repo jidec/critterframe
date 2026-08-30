@@ -1,42 +1,13 @@
 """
-Recovering physical scale from an image containing a target of known size.
+px/mm from a target of known size in the frame.
 
-If something in the frame is a known number of millimetres across, measuring how
-many pixels across it is gives you the scale of the image. That's the whole
-idea. What varies between projects is only what the target is and where it sits:
-a printed quadrant circle in the corner of a light-trap sheet, a scale bar
-beside a pinned specimen, a coin.
+The detector is generic: target, size, and search region are all arguments. A
+weak match is accepted but warned about, since clutter can out-correlate an
+absent target and a plausible wrong scale is worse than none -- a high match
+score is NOT evidence the millimetres are right, so check the panel.
 
-    template = cv2.imread("card_target.png", cv2.IMREAD_GRAYSCALE)
-    scale_from_target(sheet, template, target_mm=25.4, region=(0, 0, 0.5, 0.5))
-    -> {"px_per_mm": 11.83, "score": 0.71, ...}
-
-Matching is multi-scale normalized cross-correlation, coarse then fine. The
-coarse sweep finds WHERE the target is; the fine sweep around the winning scale
-pins down how BIG it is, which is the part that matters -- the diameter is the
-measurement, the position is only how we found it.
-
-The template must be cropped tightly to the target's outer edge. Padding around
-it inflates the matched width, and since the width IS the measurement, padding
-becomes scale error directly and silently.
-
-Ranked sources of error, worst first:
-
-  1. perspective -- the target and the specimen aren't in the same plane, so
-     they aren't at the same scale however well the match went
-  2. lens distortion, especially away from the image centre
-  3. how tightly the template is cropped (above)
-
-None of the three is detectable from the correlation peak, so a high score means
-the target was found, NOT that the resulting millimetres are right. Where it
-matters, photograph the target in the specimen's plane.
-
-Where a measured scale is STORED, and which occurrences it covers, is
-records.calibrations -- generic machinery this module supplies the meaning for.
-A scale's parameters are {"px_per_mm": ...}, one number today; anything this
-module learns to measure later (a distortion coefficient, a plane tilt) joins it
-there without a schema change. Converting pixel traits into millimetres with it
-happens at export.
+The template must be cropped tight to the target's outer edge: the matched
+width IS the measurement, so margin in the template measures the margin too.
 """
 
 import logging
@@ -319,26 +290,21 @@ def measure_scales(project_path, template, target_mm, scope=ID_COL, region=None,
     """
     Measure a scale target in each occurrence's own image and record the result.
 
-    The per-image case -- a museum specimen photographed with a target beside
-    it, a plate with a ruler in frame. Where the target is on a separate image
-    that isn't in the project's store (a light-trap sheet the crops were cut
-    from), this isn't the entry point: measure that image yourself and write the
-    row with records.scales (see the antenna_lighttraps extension).
+    The per-image case: a specimen photographed with a target beside it. Where
+    the target is on a separate image not in the store (a light-trap sheet the
+    crops were cut from), measure that image yourself and write the row directly
+    -- see the antenna_lighttraps extension.
 
     project_path -- project to measure and record in.
     template     -- grayscale template, cropped tightly to the target.
     target_mm    -- the target's real width in millimetres.
-    scope        -- occurrence column the resulting rows are keyed on. ID_COL by
-                    default, which is the honest answer when every frame is
-                    measured separately. Naming a grouping column instead
-                    records one occurrence's measurement as covering the whole
-                    group, which is only true if the rig really was fixed --
-                    the first occurrence measured per value wins.
+    scope        -- occurrence column the rows are keyed on. ID_COL by default,
+                    the honest answer when every frame is measured separately.
+                    Naming a grouping column records one measurement as covering
+                    the whole group, true only if the rig really was fixed.
     subset       -- named subset to restrict to.
-    limit        -- optional cap, for checking a template works before
-                    committing to a collection.
-    force        -- re-measure scope values that already have a scale. Normally
-                    they're skipped, so an interrupted pass resumes.
+    limit        -- optional cap, for checking a template works first.
+    force        -- re-measure scope values that already have a scale.
     visualize    -- save one panel per measurement under visualizations/scale/.
 
     Returns a summary dict (measured, skipped, failed, missed).
