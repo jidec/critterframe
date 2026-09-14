@@ -134,6 +134,51 @@ def test_a_failure_is_counted_and_the_rest_still_download(url_project):
     assert summary["failures"][0]["url"].endswith("b.png")
 
 
+def test_a_failed_download_is_not_retried_until_asked(url_project):
+    """
+    A failure is recorded, not just logged -- a rerun against the same URL
+    makes no HTTP request for it at all, until retry_failed asks anyway.
+    """
+    session = FakeSession({
+        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+        "http://example/": FakeResponse(image_bytes()),
+    })
+    first = cf.download_images(url_project, session=session)
+    assert (first["saved"], first["failed"]) == (3, 1)
+
+    second = FakeSession({
+        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+        "http://example/": FakeResponse(image_bytes()),
+    })
+    summary = cf.download_images(url_project, session=second)
+    assert (summary["attempted"], summary["previously_failed"]) == (0, 1)
+    assert second.calls == []
+
+    retried = cf.download_images(
+        url_project, retry_failed=True,
+        session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
+    assert (retried["attempted"], retried["saved"]) == (1, 1)
+
+
+def test_a_corrected_url_is_retried_without_asking(url_project):
+    """
+    The failure is scoped to the URL that failed -- a re-ingest that fixes it
+    is automatically new work, no retry_failed needed.
+    """
+    cf.download_images(url_project, session=FakeSession({
+        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+        "http://example/": FakeResponse(image_bytes()),
+    }))
+
+    table = pd.read_parquet(url_project / "occurrences.parquet")
+    table.loc[table[ID_COL] == "b", "image_url"] = "http://example/b-fixed.png"
+    save_occurrences(url_project, table)
+
+    summary = cf.download_images(
+        url_project, session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
+    assert (summary["attempted"], summary["saved"]) == (1, 1)
+
+
 def test_an_http_error_is_a_failure_not_a_crash(url_project):
     session = FakeSession({
         "http://example/c.png": FakeResponse(b"", status_code=404),

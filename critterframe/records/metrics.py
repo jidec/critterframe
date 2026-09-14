@@ -7,9 +7,10 @@ outlier score.
 
 Values are stored long, one row per occurrence-part-metric, because that is
 what an interruptible run can append to, and reshaped wide on the way out.
-Nothing is ever rewritten or deleted: a value measured from a mask that has
-since been replaced stops being current but stays in the table, which is what
-makes provenance answerable.
+Nothing is ever rewritten or deleted: a value stops being current -- measured
+from a mask that has since been replaced, or from a recipe its run_name has
+since moved off of (records.runs.resolve_recipe_currency) -- but stays in the
+table, which is what makes provenance answerable.
 """
 
 import logging
@@ -18,6 +19,7 @@ import pandas as pd
 
 from ..recipes import DEFAULT_PART, canonical_json, load_json
 from . import masks as mask_records
+from . import runs as run_records
 from .runs import open_database
 
 logger = logging.getLogger(__name__)
@@ -145,46 +147,62 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
 
 def current_rows(project_path, long_df):
     """
-    Drop values measured from a mask the project has since replaced, leaving
-    those that still describe what it holds.
+    Drop values that no longer describe what the project currently holds:
+    measured from a mask that's since been replaced, or produced by a recipe
+    a run_name has since moved off of (records.runs.commit_recipe_currency).
 
-    Long-form in, long-form out, so this composes onto any query.
+    Long-form in, long-form out, so this composes onto any query. The two
+    checks are independent judgements over the same rows, not a pipeline --
+    a row needs to pass both to count as current.
 
     Canonical and reference masks are pooled into one currency test, because the
     long table doesn't record which table a run measured -- so a reference-mask
     value must not be discarded for failing to match a canonical mask it was
     never derived from.
 
-    Two things are kept rather than judged: rows with no source_mask_hash, which
-    are of unrecorded provenance rather than known-stale, and everything when the
-    project has no mask table at all, since "no masks" must not mean "no values".
+    Two things are kept rather than judged on the mask side: rows with no
+    source_mask_hash, which are of unrecorded provenance rather than known-stale,
+    and everything when the project has no mask table at all, since "no masks"
+    must not mean "no values". On the recipe side, a (run_name, part) with no
+    recorded pointer is kept too -- nothing has ever moved off it, so there's
+    nothing to judge stale.
     """
     if long_df.empty:
         return long_df
 
-    current = {}
+    current_masks = {}
     for reference in (False, True):
         hashes = mask_records.current_derivation_hashes(project_path,
                                                         reference=reference)
         for key, recipe_hash in hashes.items():
-            current.setdefault(key, set()).add(recipe_hash)
-    if not current:
-        return long_df
+            current_masks.setdefault(key, set()).add(recipe_hash)
 
-    def is_current(row):
+    pointers = run_records.current_recipe_pointers(project_path)
+
+    def mask_is_current(row):
+        if not current_masks:
+            return True
         # Anything non-str (None from sqlite, NaN if pandas widened the column)
         # is an unrecorded source, which is unjudgeable rather than stale.
         if not isinstance(row.source_mask_hash, str):
             return True
-        return row.source_mask_hash in current.get(
+        return row.source_mask_hash in current_masks.get(
             (row.occurrence_id, row.part), ())
 
-    keep = pd.Series([is_current(row) for row in long_df.itertuples(index=False)],
-                     index=long_df.index)
+    def recipe_is_current(row):
+        pointed = pointers.get((row.run_name, row.part))
+        return pointed is None or pointed == row.recipe_hash
+
+    keep = pd.Series(
+        [mask_is_current(row) and recipe_is_current(row)
+         for row in long_df.itertuples(index=False)],
+        index=long_df.index,
+    )
     superseded = int((~keep).sum())
     if superseded:
-        logger.info("ignoring %d metric value(s) measured from a mask that has "
-                    "since been replaced", superseded)
+        logger.info("ignoring %d metric value(s) either measured from a mask "
+                    "that has since been replaced or produced by a recipe "
+                    "their run_name has since moved off of", superseded)
     return long_df[keep]
 
 

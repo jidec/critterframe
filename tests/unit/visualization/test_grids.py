@@ -1,7 +1,7 @@
 """
 Laying many panels out as one image. Pure geometry, no project, no I/O.
 
-The rule that shapes the module is at the top of `as_bgr`: panels must ARRIVE
+The rule that shapes the module is at the top of `_as_bgr`: panels must ARRIVE
 display-ready. A grid will not rescale a float array, because two probability
 maps with different ranges would stretch to look identical and the grid would
 have quietly invented a comparison. Only the operation that computed the numbers
@@ -16,7 +16,7 @@ import numpy as np
 import pytest
 
 from critterframe.visualization.grids import (
-    as_bgr,
+    _as_bgr,
     comparison_grid,
     fit_cell,
     image_grid,
@@ -28,14 +28,14 @@ def panel(height=40, width=60, value=200):
 
 
 # ---------------------------------------------------------------------------
-# as_bgr
+# _as_bgr
 # ---------------------------------------------------------------------------
 
 
 def test_a_boolean_mask_becomes_black_and_white():
     mask = np.zeros((4, 4), bool)
     mask[0, 0] = True
-    converted = as_bgr(mask)
+    converted = _as_bgr(mask)
 
     assert converted.shape == (4, 4, 3)
     assert converted[0, 0].tolist() == [255, 255, 255]
@@ -43,16 +43,16 @@ def test_a_boolean_mask_becomes_black_and_white():
 
 
 def test_a_grayscale_panel_becomes_three_channels():
-    assert as_bgr(np.zeros((4, 4), np.uint8)).shape == (4, 4, 3)
+    assert _as_bgr(np.zeros((4, 4), np.uint8)).shape == (4, 4, 3)
 
 
 def test_alpha_is_dropped():
-    assert as_bgr(np.zeros((4, 4, 4), np.uint8)).shape == (4, 4, 3)
+    assert _as_bgr(np.zeros((4, 4, 4), np.uint8)).shape == (4, 4, 3)
 
 
 def test_a_bgr_panel_passes_through():
     original = panel()
-    assert as_bgr(original) is original
+    assert _as_bgr(original) is original
 
 
 @pytest.mark.parametrize("dtype", [np.float32, np.float64, np.uint16, np.int32])
@@ -63,7 +63,7 @@ def test_anything_that_is_not_display_ready_raises(dtype):
     like a comparison.
     """
     with pytest.raises(TypeError, match="not uint8"):
-        as_bgr(np.zeros((4, 4), dtype))
+        _as_bgr(np.zeros((4, 4), dtype))
 
 
 # ---------------------------------------------------------------------------

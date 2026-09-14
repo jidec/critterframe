@@ -28,6 +28,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.records import masks as mask_records
+from critterframe.recipes import Recipe
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow
@@ -177,8 +178,8 @@ def test_a_registered_model_and_a_bare_one_are_not_the_same_work(
     model = cf.register_model(segmented_project, "blobnet_v1",
                               path=train_a_checkpoint(segmented_project))
 
-    bare = cf.Recipe("segment", "custom", [cf.segment(ThresholdModel())])
-    registered = cf.Recipe("segment", "custom",
+    bare = Recipe("segment", "custom", [cf.segment(ThresholdModel())])
+    registered = Recipe("segment", "custom",
                            [cf.segment(model.attach(ThresholdModel()))])
     assert bare.hash != registered.hash
 

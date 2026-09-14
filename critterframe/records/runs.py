@@ -2,8 +2,10 @@
 The sqlite schema for run + metric records, and the migrations that keep older
 databases readable.
 
-A run is one execution of a recipe over a set of occurrences. Owns both tables,
-since a metric row references its run.
+A run is one execution of a recipe over a set of occurrences. Owns all three
+tables, since a metric row references its run: `runs` and `metrics` are the
+immutable history; `current_recipes` is the metric-side pointer that says
+which recipe a run_name presently means (see resolve_recipe_currency).
 """
 
 import logging
@@ -29,6 +31,21 @@ STATUS_FAILED = "failed"
 
 
 LEGACY_METRIC_COLUMNS = ("version", "created_at")
+
+# Columns added to `runs` after projects existed. Nullable, so unlike the legacy
+# metric columns an old database is merely missing them rather than broken by
+# them -- but start_run and load_runs both name them, so they have to be there.
+ADDED_RUN_COLUMNS = {"context_json": "TEXT"}
+
+
+def _add_missing_run_columns(connection):
+    """Add any `runs` column introduced after this project's database was created."""
+    stored = {row["name"] for row in connection.execute("PRAGMA table_info(runs)")}
+    for column, declaration in ADDED_RUN_COLUMNS.items():
+        if column not in stored:
+            logger.info("migrating runs table: adding '%s' column", column)
+            connection.execute(
+                f"ALTER TABLE runs ADD COLUMN {column} {declaration}")
 
 
 def _drop_legacy_metric_columns(connection):
@@ -75,6 +92,7 @@ def ensure_schema(connection):
             recipe_hash TEXT NOT NULL,
             recipe_json TEXT NOT NULL,
             status TEXT NOT NULL,
+            context_json TEXT,
             created_at TEXT NOT NULL,
             finished_at TEXT,
             n_processed INTEGER NOT NULL DEFAULT 0,
@@ -83,6 +101,7 @@ def ensure_schema(connection):
         )
         """
     )
+    _add_missing_run_columns(connection)
     connection.execute(
         """
         CREATE INDEX IF NOT EXISTS runs_recipe_idx
@@ -126,6 +145,26 @@ def ensure_schema(connection):
         ON metrics (occurrence_id, part, metric_name)
         """
     )
+    # The metric-side counterpart of what masks.parquet already gives
+    # segmentation for free: one designated "current" recipe per (kind, name,
+    # part), separate from the immutable run history above. Masks don't need
+    # this table -- upserting to a single row per occurrence-part already
+    # makes "current" unambiguous -- but the metrics table is append-only, so
+    # without a pointer, "current" would only ever mean "whichever recipe ran
+    # most recently," silently, with no record that a name's meaning moved at
+    # all. See resolve_recipe_currency/commit_recipe_currency.
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS current_recipes (
+            kind TEXT NOT NULL,
+            name TEXT NOT NULL,
+            part TEXT NOT NULL,
+            recipe_hash TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (kind, name, part)
+        )
+        """
+    )
     connection.commit()
     return connection
 
@@ -135,7 +174,7 @@ def open_database(project_path):
     return ensure_schema(connect(paths.runs_and_metrics_path(project_path)))
 
 
-def start_run(project_path, recipe, subset=None):
+def start_run(project_path, recipe, subset=None, context=None):
     """
     Open a run record for a recipe about to execute, and return its run_id.
 
@@ -150,6 +189,10 @@ def start_run(project_path, recipe, subset=None):
                     the run, not of the recipe, so processing the rest of a
                     project later continues the same work instead of counting
                     as different work.
+    context      -- JSON-serializable record of what this run covered and what
+                    its operations fit: the occurrence set as a count and an
+                    ids_digest, the limit, and any prepare() records. Not
+                    hashed either, for the same reason as subset.
     """
     if recipe.kind not in RUN_KINDS:
         raise ValueError(
@@ -161,9 +204,9 @@ def start_run(project_path, recipe, subset=None):
             """
             INSERT INTO runs (
                 kind, name, part, subset, recipe_hash, recipe_json,
-                status, created_at
+                status, context_json, created_at
             )
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 recipe.kind,
@@ -173,6 +216,7 @@ def start_run(project_path, recipe, subset=None):
                 recipe.hash,
                 canonical_json(recipe.spec()),
                 STATUS_RUNNING,
+                None if context is None else canonical_json(context),
                 datetime.now(timezone.utc).isoformat(),
             ),
         )
@@ -207,27 +251,170 @@ def finish_run(project_path, run_id, processed=0, skipped=0, failed=0,
             (status, datetime.now(timezone.utc).isoformat(),
              processed, skipped, failed, run_id),
         )
+        row = connection.execute(
+            "SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
 
     logger.info("finished run %d: processed=%d skipped=%d failed=%d (%s)",
                 run_id, processed, skipped, failed, status)
+    _append_run_log(project_path, dict(row))
     return run_id
 
 
-def load_runs(project_path, kind=None, name=None, recipe_hash=None):
+def _append_run_log(project_path, row):
+    """
+    Append one finished run to runs.jsonl, mirroring export.py's
+    exports.jsonl: a human-readable log a person can grep/jq/git-diff without
+    opening runs_and_metrics.sqlite.
+
+    Only finish_run calls this -- a run left at STATUS_RUNNING by an
+    interrupted process keeps its sqlite row but never reaches the log, the
+    same "one line per call that actually completed" reasoning
+    paths.imports_log_path's docstring gives for imports.jsonl. This is a
+    derived mirror, not a second source of truth: load_runs() from sqlite
+    stays the primary, filterable reader.
+    """
+    record = dict(row)
+    record["recipe"] = load_json(record.pop("recipe_json"))
+    record["context"] = load_json(record.pop("context_json", None))
+
+    log = paths.runs_log_path(project_path)
+    log.parent.mkdir(parents=True, exist_ok=True)
+    with open(log, "a", encoding="utf-8") as handle:
+        handle.write(canonical_json(record) + "\n")
+
+
+def _seeded_current_hash(connection, kind, name, part):
+    """
+    The recipe presently designated for (kind, name, part): the pointer if one
+    has been written, else whichever hash run history's own insertion order
+    would already call current.
+
+    The fallback is what makes turning this on safe for a project that already
+    has runs: the first metric run after upgrading seeds the pointer from
+    history instead of arbitrarily adopting whatever recipe happens to run
+    next, so nothing moves under a name that hasn't actually changed.
+    """
+    row = connection.execute(
+        "SELECT recipe_hash FROM current_recipes WHERE kind = ? AND name = ? AND part = ?",
+        (kind, name, part),
+    ).fetchone()
+    if row is not None:
+        return row["recipe_hash"]
+
+    row = connection.execute(
+        "SELECT recipe_hash FROM runs WHERE kind = ? AND name = ? AND part = ? "
+        "ORDER BY run_id DESC LIMIT 1",
+        (kind, name, part),
+    ).fetchone()
+    return None if row is None else row["recipe_hash"]
+
+
+def _write_current_recipe(connection, kind, name, part, recipe_hash):
+    connection.execute(
+        """
+        INSERT INTO current_recipes (kind, name, part, recipe_hash, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+        ON CONFLICT (kind, name, part) DO UPDATE SET
+            recipe_hash = excluded.recipe_hash,
+            updated_at = excluded.updated_at
+        """,
+        (kind, name, part, recipe_hash, datetime.now(timezone.utc).isoformat()),
+    )
+
+
+def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force):
+    """
+    Settle whether (kind, name, part) may proceed under recipe_hash, and
+    whether the caller still owes commit_recipe_currency() once real work
+    confirms the change.
+
+    A no-op for anything but "metric": masks.parquet upserts to a single
+    current row per occurrence-part, so a segment run_name pointing at several
+    recipe hashes over a project's life is neither ambiguous nor new -- it's
+    exactly what resegmenting is. Metrics have no such row to make "current"
+    unambiguous on their own; the metrics table is append-only, so without
+    this, "current" only ever meant "whichever recipe ran most recently,"
+    silently, and export.metrics_wide / records.metrics.latest_values key on
+    run_name alone -- two recipes sharing a name would interleave under one
+    export column or one group-metric fit with no record they ever differed.
+
+    Raises when (kind, name, part) already points at a different recipe and
+    force is falsy, naming both hashes. force=True acknowledges the change
+    explicitly instead of it happening as a side effect of write order.
+
+    Returns True when the caller must call commit_recipe_currency() itself
+    once it knows real work was done; False when there is nothing left to do
+    (first use, or already pointing here) because that case is safe to write
+    immediately, before any occurrence is processed.
+    """
+    if kind != "metric":
+        return False
+
+    with open_database(project_path) as connection:
+        current = _seeded_current_hash(connection, kind, name, part)
+        if current is None or current == recipe_hash:
+            _write_current_recipe(connection, kind, name, part, recipe_hash)
+            return False
+
+        if not force:
+            raise ValueError(
+                f"run_name {name!r} currently points at a different metric "
+                f"recipe for part {part!r} (current hash {current!r}, this "
+                f"run's hash is {recipe_hash!r}). export.metrics_wide and "
+                f"records.metrics.latest_values key on run_name alone, so "
+                f"proceeding would silently interleave two recipes under one "
+                f"name. Pass force=True to move {name!r} onto this recipe -- "
+                f"values already on record stay there but stop being current "
+                f"-- or give this recipe its own name instead."
+            )
+        return True
+
+
+def commit_recipe_currency(project_path, kind, name, part, recipe_hash):
+    """
+    Move (kind, name, part)'s pointer to recipe_hash.
+
+    Called once a forced recipe change has actually produced at least one
+    value, not from resolve_recipe_currency itself: writing the pointer before
+    confirming that would mean a run that starts under a forced change and
+    then fails for every occurrence empties out every occurrence's current
+    value for this name, rather than leaving the previous recipe's values
+    (the safer outcome) in place.
+    """
+    if kind != "metric":
+        return
+    with open_database(project_path) as connection:
+        _write_current_recipe(connection, kind, name, part, recipe_hash)
+    logger.info("run_name %r for part %r now points at recipe %s",
+               name, part, recipe_hash)
+
+
+def current_recipe_pointers(project_path, kind="metric"):
+    """{(name, part): recipe_hash} for every name with a recorded pointer."""
+    with open_database(project_path) as connection:
+        rows = connection.execute(
+            "SELECT name, part, recipe_hash FROM current_recipes WHERE kind = ?",
+            (kind,),
+        ).fetchall()
+    return {(row["name"], row["part"]): row["recipe_hash"] for row in rows}
+
+
+def load_runs(project_path, kind=None, name=None, recipe_hash=None, run_id=None):
     """
     Read run records as a DataFrame, newest first, with the stored recipe spec
-    parsed back into a `recipe` column of dicts.
+    and run context parsed back into `recipe` and `context` columns of dicts.
 
     kind        -- optional "segment"/"metric" filter.
     name        -- optional run-name filter.
     recipe_hash -- optional exact-recipe filter, for "when has this exact
                    recipe been run before".
+    run_id      -- optional exact-run filter, for looking up one run by id.
     """
     query = "SELECT * FROM runs"
     conditions = []
     parameters = []
     for column, value in (("kind", kind), ("name", name),
-                          ("recipe_hash", recipe_hash)):
+                          ("recipe_hash", recipe_hash), ("run_id", run_id)):
         if value is not None:
             conditions.append(f"{column} = ?")
             parameters.append(value)
@@ -240,5 +427,6 @@ def load_runs(project_path, kind=None, name=None, recipe_hash=None):
 
     for row in rows:
         row["recipe"] = load_json(row.pop("recipe_json"))
+        row["context"] = load_json(row.pop("context_json", None))
 
     return pd.DataFrame(rows)

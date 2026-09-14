@@ -139,19 +139,25 @@ class GroundedSAM2:
         return self._device
 
     def _load(self):
-        """Load SAM2 (and the detector, if used) once, on first use."""
-        if self.model is not None:
-            return
+        """
+        Load SAM2 (and the detector, if used) once, on first use.
 
-        from transformers import Sam2Model, Sam2Processor
+        SAM2 and the detector are guarded independently, not by one check on
+        self.model -- a run where SAM2 loaded fine but the detector's .to(device)
+        failed would otherwise leave self.model set, and the old single guard
+        would skip retrying the detector forever afterward. Each piece retries
+        on its own until it actually succeeds.
+        """
+        if self.model is None:
+            from transformers import Sam2Model, Sam2Processor
 
-        logger.info("loading %s on %s", self.model_name, self.device)
-        self.processor = Sam2Processor.from_pretrained(self.model_name)
-        # downsize the processor's working resolution (from 1024) for speed
-        self.processor.image_processor.size = {"height": self.size, "width": self.size}
-        self.model = Sam2Model.from_pretrained(self.model_name).to(self.device)
+            logger.info("loading %s on %s", self.model_name, self.device)
+            self.processor = Sam2Processor.from_pretrained(self.model_name)
+            # downsize the processor's working resolution (from 1024) for speed
+            self.processor.image_processor.size = {"height": self.size, "width": self.size}
+            self.model = Sam2Model.from_pretrained(self.model_name).to(self.device)
 
-        if self.detect_bounds:
+        if self.detect_bounds and self.detector is None:
             from transformers import AutoModelForZeroShotObjectDetection, AutoProcessor
 
             logger.info("loading detector %s on %s", self.detector_name, self.device)

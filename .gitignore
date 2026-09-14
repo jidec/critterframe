@@ -205,3 +205,8 @@ data/
 # OS / editor
 .DS_Store
 .idea/
+
+# remove some things from the Github Repo
+/scripts/simple_tests/
+/scripts/test_images/
+/scripts/deprecated/

@@ -16,6 +16,10 @@ Two design points get tested here rather than described:
   a group too small to fit falls back to the population-wide model, and the
   stored value says which model actually scored it -- because a score is not
   interpretable without knowing what it was scored against.
+
+The last section is about what prepare() hands back: the reference population
+is decided by the run rather than by the recipe, so without a record the same
+recipe hash can mean two different fits.
 """
 
 import numpy as np
@@ -267,3 +271,125 @@ def test_a_group_metric_is_repeat_aware_like_any_other(measured_project):
 
     assert score()["processed"] == 8
     assert score()["skipped"] == 8
+
+
+# ---------------------------------------------------------------------------
+# What prepare() hands back: the reference population, after the fact
+# ---------------------------------------------------------------------------
+
+
+def test_the_fit_says_which_run_and_features_it_scored_against(metadata_project):
+    """
+    from_run and the features determine what "outlier" means, and both are in
+    the recipe hash -- but the hash alone doesn't say what they were, and a
+    recipe is not always still in reach when someone asks a year later.
+    """
+    store_lengths(metadata_project, typical_lengths())
+    metric = cf.outlier([cf.body_length()], from_run="traits")
+
+    fit = metric.prepare(a_context(metadata_project))
+
+    assert fit["from_run"] == "traits"
+    assert fit["features"] == ["body_length"]
+    assert fit["model"] == "IsolationForest"
+    assert fit["group_col"] is None
+
+
+def test_the_reference_population_is_recorded_as_a_digest(metadata_project):
+    """
+    Which occurrences were fitted against, answered the way every other record
+    in the package answers it: a count and an order-independent digest, not a
+    list that grows with the project.
+    """
+    from critterframe.records.occurrences import ids_record
+
+    store_lengths(metadata_project, typical_lengths())
+    metric = cf.outlier([cf.body_length()], from_run="traits")
+
+    fit = metric.prepare(a_context(metadata_project))
+
+    assert fit["population"] == ids_record(f"specimen{i}" for i in range(8))
+
+
+def test_the_population_is_what_the_run_covers_not_the_whole_project(
+        metadata_project):
+    """
+    A limited run fits against fewer occurrences without its recipe hash moving
+    an inch, so the record is the only thing that can tell the two fits apart.
+    """
+    store_lengths(metadata_project, typical_lengths())
+    metric = cf.outlier([cf.body_length()], from_run="traits")
+
+    narrowed = metric.prepare(
+        a_context(metadata_project, [f"specimen{i}" for i in range(5)]))
+
+    assert narrowed["population"]["count"] == 5
+
+
+def test_a_group_too_small_to_fit_is_recorded_as_such(metadata_project):
+    """
+    Falling back to the population-wide model changes what a score means, and
+    it used to exist only in a log line -- gone by the time anyone reads the
+    numbers.
+    """
+    store_lengths(metadata_project, typical_lengths())
+    metric = cf.outlier([cf.body_length()], from_run="traits",
+                        group_col="species", min_group_size=4)
+
+    groups = metric.prepare(a_context(metadata_project))["groups"]
+
+    # Five 'Anax junius' to three 'Libellula lydia', at min_group_size=4.
+    assert groups["Anax junius"]["fitted"] is True
+    assert groups["Anax junius"]["count"] == 5
+    assert groups["Libellula lydia"]["fitted"] is False
+    assert groups["Libellula lydia"]["count"] == 3
+
+
+def test_an_occurrence_missing_a_feature_is_out_of_the_population(
+        metadata_project):
+    """
+    The record has to describe the rows that actually fit the model, not the
+    rows the run was pointed at -- dropna decides, and the digest follows it.
+    """
+    lengths = typical_lengths()
+    del lengths["specimen7"]
+    store_lengths(metadata_project, lengths)
+
+    fit = cf.outlier([cf.body_length()],
+                     from_run="traits").prepare(a_context(metadata_project))
+
+    assert fit["population"]["count"] == 7
+
+
+def test_the_fit_record_does_not_reach_the_recipe_hash(metadata_project):
+    """
+    Same reasoning as the fitted model itself: the population is determined by
+    from_run and the run's occurrences, so hashing it would only make the hash
+    depend on how much of the project had been processed.
+    """
+    store_lengths(metadata_project, typical_lengths())
+    metric = cf.outlier([cf.body_length()], from_run="traits")
+    before = Recipe("metric", "scores", [metric], part="organism").hash
+
+    metric.prepare(a_context(metadata_project))
+
+    assert Recipe("metric", "scores", [metric], part="organism").hash == before
+
+
+def test_a_metric_run_stores_the_fit_on_the_run(measured_project):
+    """
+    End to end: the record reaches the run row, under the metric's own name, so
+    a stored score can be traced back to the population that defined it.
+    """
+    from critterframe.records.runs import load_runs
+
+    cf.run_metrics(measured_project, "scores",
+                   metrics=[cf.outlier([cf.body_length()], from_run="traits",
+                                       group_col="species")],
+                   visualize=False)
+
+    context = load_runs(measured_project, name="scores")["context"].iloc[0]
+    assert context["occurrences"]["count"] == 8
+    assert context["limit"] is None
+    assert context["operations"]["outlier"]["group_col"] == "species"
+    assert context["operations"]["outlier"]["population"]["count"] == 8

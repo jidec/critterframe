@@ -21,6 +21,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.project import paths
+from critterframe.visualization.pipeline import RunReport
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow
@@ -159,6 +160,74 @@ def test_the_sample_is_the_same_specimens_across_two_recipes(segmented_project):
 
     ids = [f"specimen{index}" for index in range(8)]
     assert resolve_sample(ids, 4) == resolve_sample(ids, 4)
+
+
+# ---------------------------------------------------------------------------
+# visualize_every: checkpointing a long run's grid before it finishes
+# ---------------------------------------------------------------------------
+
+
+def _counting_save(monkeypatch):
+    """Wrap RunReport.save so a test can count how many times it ran."""
+    calls = []
+    original = RunReport.save
+
+    def counted(self):
+        calls.append(1)
+        return original(self)
+
+    monkeypatch.setattr(RunReport, "save", counted)
+    return calls
+
+
+def test_visualize_every_checkpoints_a_segmentation_run_before_it_finishes(
+        image_project, monkeypatch):
+    """
+    The whole point: a very long run can be watched as it goes, and a killed
+    run still leaves a grid showing what it got through, rather than only ever
+    writing one at the very end.
+    """
+    calls = _counting_save(monkeypatch)
+
+    segment(image_project, visualize=8, visualize_every=3)
+
+    # 8 specimens, a checkpoint every 3 -- after the 3rd and 6th, plus the
+    # final save after the loop.
+    assert len(calls) == 3
+
+
+def test_visualize_every_checkpoints_a_metric_run_before_it_finishes(
+        segmented_project, monkeypatch):
+    calls = _counting_save(monkeypatch)
+
+    measure(segmented_project, visualize=8, visualize_every=3)
+    assert len(calls) == 3
+
+
+def test_visualize_every_without_visualize_warns_and_changes_nothing(
+        image_project, caplog):
+    with caplog.at_level("WARNING"):
+        result = segment(image_project, visualize=False, visualize_every=2)["organism"]
+
+    assert "has no effect" in caplog.text
+    assert grids(image_project) == []
+    assert result["processed"] == 8
+
+
+def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(
+        segmented_project):
+    """
+    visualize_every changes WHEN the grid is written, not what it becomes --
+    same run_name and recipe (force=True redoes it), same specimens, same
+    resulting sheet.
+    """
+    measure(segmented_project, visualize=8)
+    plain_size = (paths.pipeline_dir(segmented_project) / grids(segmented_project)[0]).stat().st_size
+
+    measure(segmented_project, force=True, visualize=8, visualize_every=2)
+    checkpointed_size = (paths.pipeline_dir(segmented_project) / grids(segmented_project)[0]).stat().st_size
+
+    assert checkpointed_size == plain_size
 
 
 # ---------------------------------------------------------------------------

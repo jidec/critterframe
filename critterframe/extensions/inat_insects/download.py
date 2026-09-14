@@ -26,7 +26,7 @@ DOWNLOAD_INTERVAL = 0.2
 USER_AGENT = "critterframe/0.1 (research image analysis)"
 
 
-def make_paced_session(interval=DOWNLOAD_INTERVAL):
+def _make_paced_session(interval=DOWNLOAD_INTERVAL):
     """
     A session that waits `interval` seconds between requests.
 
@@ -55,17 +55,17 @@ def download_images(project_path, subset=None, limit=None,
     """
     Download photos for a project's iNaturalist occurrences, paced.
 
-    project_path -- project whose occurrences to download for.
-    subset       -- name of a subset to download, or None for all.
-    limit        -- optional cap.
-    interval     -- minimum seconds between requests.
+    - `project_path` -- project whose occurrences to download for.
+    - `subset` -- name of a subset to download, or None for all.
+    - `limit` -- optional cap.
+    - `interval` -- minimum seconds between requests.
 
     Everything else is passed through to critterframe.download.download_images,
     including its skip-what's-already-stored behaviour -- so an interrupted
     download of a large project resumes rather than starting over, which
     matters much more here than it does for a fast source.
     """
-    session = make_paced_session(interval=interval)
+    session = _make_paced_session(interval=interval)
     try:
         return core_download_images(project_path, subset=subset, limit=limit,
                                     session=session, timeout=timeout, **kwargs)

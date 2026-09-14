@@ -19,7 +19,7 @@ import pandas as pd
 from ..recipes import Metric
 from ..records import occurrences as occurrence_records
 from ..records.metrics import latest_values
-from ..records.occurrences import ID_COL, load_occurrences
+from ..records.occurrences import ID_COL, ids_record, load_occurrences
 
 logger = logging.getLogger(__name__)
 
@@ -136,6 +136,11 @@ class GroupMetric(Metric):
         scored by an earlier interrupted attempt -- the reference population has
         to be the whole population being scored, or resuming a run would
         silently change what the score means partway through.
+
+        Returns the fit record the run stores: which reference run, which
+        features, which grouping, and each group's reference occurrences as a
+        count and a digest, with the ones too small to fit their own model
+        marked fitted=False.
         """
         reference = self._reference_table(context)
         if reference.empty:
@@ -150,30 +155,45 @@ class GroupMetric(Metric):
 
         columns = [feature.metric_name for feature in self.features]
 
+        groups = {}
         if self.group_col:
             self.group_by_id = reference.set_index(ID_COL)[self.group_col].to_dict()
             for group, rows in reference.groupby(self.group_col):
-                clean = rows[columns].dropna()
-                if len(clean) < self.min_group_size:
+                # Dropped by subset rather than by projection so the ids stay
+                # beside the numbers: the same rows fit the model and name it.
+                clean = rows.dropna(subset=columns)
+                fitted = len(clean) >= self.min_group_size
+                if fitted:
+                    self.models[group] = self._fit(clean[columns])
+                else:
                     logger.warning(
                         "group %r has only %d reference occurrences (< "
                         "min_group_size=%d) -- scoring it against the "
                         "population-wide model instead of its own",
                         group, len(clean), self.min_group_size,
                     )
-                    continue
-                self.models[group] = self._fit(clean)
+                groups[str(group)] = dict(ids_record(clean[ID_COL]), fitted=fitted)
 
-        population = reference[columns].dropna()
+        population = reference.dropna(subset=columns)
         if population.empty:
             raise ValueError(
                 "no reference occurrences have every feature value populated"
             )
-        self.models[POPULATION] = self._fit(population)
+        self.models[POPULATION] = self._fit(population[columns])
 
         logger.info("%s fit: %d group model(s) + 1 population-wide fallback, "
                     "%d reference occurrences", self.metric_name,
                     len(self.models) - 1, len(population))
+
+        return {
+            "from_run": self.from_run,
+            "group_col": self.group_col,
+            "features": columns,
+            "model": type(self.model_factory()).__name__,
+            "min_group_size": self.min_group_size,
+            "population": ids_record(population[ID_COL]),
+            "groups": groups,
+        }
 
     def _reference_table(self, context):
         """

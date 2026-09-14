@@ -153,7 +153,8 @@ def add_derived_columns(df):
 
 def ingest_occurrences(project_path, import_csv_path=None, session=None,
                        project=None, filters=None, transform=None,
-                       drop=NON_ORGANISM_DETERMINATIONS):
+                       drop=NON_ORGANISM_DETERMINATIONS, group_col=None,
+                       max_per_group=None, cap_rule="random"):
     """
     Ingest an Antenna occurrences export into a project, as a full snapshot.
 
@@ -162,33 +163,38 @@ def ingest_occurrences(project_path, import_csv_path=None, session=None,
     so the newest export is the newest truth. Re-ingesting on a schedule is the
     intended way to pick up new detections.
 
-    project_path    -- project to ingest into; created lazily by the first
-                      writer, so the directory needn't exist yet.
-    import_csv_path -- an already-downloaded export CSV. Omit to request, wait
-                      for, and download a fresh one via the API -- which needs
-                      credentials in the environment (see api).
-    session         -- authenticated session to reuse; one is created if
-                      omitted and a download is needed.
-    project         -- Antenna project id; from the environment if omitted.
-    filters         -- optional server-side export filters.
-    transform       -- optional callable(df) -> df run after the Antenna-specific
-                      derivations, for anything project-specific (joining a
-                      classification export, say).
-    drop            -- rows to exclude as non-organisms, defaulting to
-                      NON_ORGANISM_DETERMINATIONS. On by default because knowing
-                      that "Not Lepidoptera" is Antenna's way of saying "no moth
-                      here" is exactly the source-specific knowledge this
-                      extension exists to hold; a project shouldn't have to
-                      rediscover it. Pass None to ingest every detection --
-                      which is what you want if you're auditing the classifier
-                      itself rather than measuring moths.
+    - `project_path` -- project to ingest into; created lazily by the first
+      writer, so the directory needn't exist yet.
+    - `import_csv_path` -- an already-downloaded export CSV. Omit to
+      request, wait for, and download a fresh one via the API -- which
+      needs credentials in the environment (see `api`).
+    - `session` -- authenticated session to reuse; one is created if
+      omitted and a download is needed.
+    - `project` -- Antenna project id; from the environment if omitted.
+    - `filters` -- optional server-side export filters.
+    - `transform` -- optional `callable(df) -> df` run after the
+      Antenna-specific derivations, for anything project-specific (joining
+      a classification export, say).
+    - `drop` -- rows to exclude as non-organisms, defaulting to
+      `NON_ORGANISM_DETERMINATIONS`. On by default because knowing that
+      `"Not Lepidoptera"` is Antenna's way of saying "no moth here" is
+      exactly the source-specific knowledge this extension exists to hold;
+      a project shouldn't have to rediscover it. Pass None to ingest every
+      detection -- which is what you want if you're auditing the
+      classifier itself rather than measuring moths.
+    - `group_col`, `max_per_group`, `cap_rule` -- cap ingest at
+      `max_per_group` rows per distinct value of `group_col`, e.g.
+      `group_col="determination_name"`, `max_per_group=500` against an
+      export dominated by a few common species. See
+      `critterframe.ingest.ingest_occurrences`. Applied after `drop=`, so a
+      non-organism detection never counts toward its group's cap.
 
     Returns the resulting occurrence table.
     """
     downloaded = None
     if import_csv_path is None:
         session = session or api.get_session()
-        downloaded = paths.imports_dir(project_path) / ".antenna_export.csv"
+        downloaded = paths.raw_imports_dir(project_path) / ".antenna_export.csv"
         import_csv_path = api.fetch_export(session, downloaded, project=project,
                                            filters=filters)
 
@@ -206,6 +212,9 @@ def ingest_occurrences(project_path, import_csv_path=None, session=None,
             numeric_cols=NUMERIC_COLS,
             transform=antenna_transform,
             drop=drop,
+            group_col=group_col,
+            max_per_group=max_per_group,
+            cap_rule=cap_rule,
             name_prefix=f"occurrences_antenna_{api.project_id(project)}",
         )
     finally:

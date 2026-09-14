@@ -97,13 +97,13 @@ def load_template(project_path):
     return template
 
 
-def pending_events(project_path, limit=None):
+def _pending_events(project_path, limit=None):
     """Events in the occurrence table with no scale measured yet."""
     return scale_calibration.pending_scope_values(project_path, SCOPE_COL,
                                                   limit=limit)
 
 
-def first_sheet_for_event(session, event, project=None):
+def _first_sheet_for_event(session, event, project=None):
     """
     (capture_id, presigned_url) for one of an event's sheet images, or None.
 
@@ -196,18 +196,18 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
     sheets by hand with calibrations.scale.scale_from_target and compare -- a
     spread means the camera moved during the night.
 
-    project -- Antenna project id to read captures from; taken from the
-               environment (ANTENNA_PROJECT_ID) if omitted, the same way every
-               other Antenna call resolves it.
-    session -- authenticated session to use; one is created if omitted. Passing
-               one lets a script share it with a download pass, and is what
-               makes this function reachable without credentials.
+    - `project` -- Antenna project id to read captures from; taken from the
+      environment (`ANTENNA_PROJECT_ID`) if omitted, the same way every
+      other Antenna call resolves it.
+    - `session` -- authenticated session to use; one is created if omitted.
+      Passing one lets a script share it with a download pass, and is what
+      makes this function reachable without credentials.
 
     Returns a summary dict (saved, failed, unaddressable).
     """
     template = load_template(project_path)
 
-    pending = pending_events(project_path, limit=limit)
+    pending = _pending_events(project_path, limit=limit)
     if not pending:
         logger.info("every event already has a scale -- nothing to measure")
         return {"saved": 0, "failed": 0, "unaddressable": 0}
@@ -225,7 +225,7 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
         logger.info("event %s (%d of %d)", event, index, len(pending))
 
         try:
-            sheet = first_sheet_for_event(session, event, project=project)
+            sheet = _first_sheet_for_event(session, event, project=project)
         except Exception as exc:
             failed += 1
             logger.warning("  could not look up sheets for event %s: %s", event, exc)

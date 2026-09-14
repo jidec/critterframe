@@ -12,6 +12,7 @@ running over one leaves every other subset's masks and metrics untouched.
 
 import logging
 
+from .. import selectionhelpers
 from ..records.occurrences import ID_COL, load_occurrences
 from . import paths
 
@@ -71,7 +72,7 @@ def load_subsets(project_path):
         return tomllib.load(handle).get("subsets", {})
 
 
-def save_subsets(project_path, subsets):
+def _save_subsets(project_path, subsets):
     """Write the whole subset table, replacing whatever was there."""
     subsets_path = paths.subsets_path(project_path)
     subsets_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,13 +87,13 @@ def define_subset(project_path, name, column=None, values=None, query=None,
     """
     Define (or redefine) one subset. Exactly one selection rule must be given.
 
-    name           -- what to call it, e.g. "amnh".
-    column, values -- select occurrences whose `column` is one of `values`,
-                      e.g. a collection, a device, a source.
-    query          -- a pandas query against the occurrence table, e.g.
-                      "year >= 2020 and country == 'Panama'".
-    occurrence_ids -- an explicit list, for a hand-picked selection with no
-                      rule behind it.
+    - `name` -- what to call it, e.g. `"amnh"`.
+    - `column`, `values` -- select occurrences whose `column` is one of
+      `values`, e.g. a collection, a device, a source.
+    - `query` -- a pandas query against the occurrence table, e.g.
+      `"year >= 2020 and country == 'Panama'"`.
+    - `occurrence_ids` -- an explicit list, for a hand-picked selection with
+      no rule behind it.
     """
     given = [rule is not None for rule in (values, query, occurrence_ids)]
     if sum(given) != 1:
@@ -112,7 +113,7 @@ def define_subset(project_path, name, column=None, values=None, query=None,
 
     subsets = load_subsets(project_path)
     subsets[name] = definition
-    save_subsets(project_path, subsets)
+    _save_subsets(project_path, subsets)
     return definition
 
 
@@ -122,10 +123,10 @@ def define_subsets(project_path, column, mapping):
     single metadata column already separates the groups and only the names need
     tidying.
 
-    column  -- occurrence column the groups are read from.
-    mapping -- {column value: subset name}, e.g.
-               {"Alabama Museum": "alabama", "AMNH": "amnh"}. Several values
-               may map to the same subset name, which merges them.
+    - `column` -- occurrence column the groups are read from.
+    - `mapping` -- `{column value: subset name}`, e.g.
+      `{"Alabama Museum": "alabama", "AMNH": "amnh"}`. Several values may map
+      to the same subset name, which merges them.
     """
     grouped = {}
     for value, name in mapping.items():
@@ -134,7 +135,7 @@ def define_subsets(project_path, column, mapping):
     subsets = load_subsets(project_path)
     for name, values in grouped.items():
         subsets[name] = {"column": column, "values": values}
-    save_subsets(project_path, subsets)
+    _save_subsets(project_path, subsets)
 
     logger.info("defined %d subset(s) from column '%s': %s",
                 len(grouped), column, ", ".join(sorted(grouped)))
@@ -206,3 +207,43 @@ def select_ids(project_path, subset=None, limit=None):
     """The occurrence ids select_occurrences() would return, as a list of strings."""
     return select_occurrences(project_path, subset=subset, limit=limit,
                               columns=[ID_COL])[ID_COL].tolist()
+
+
+def grow_subset(project_path, name, target_size, candidate_ids=None,
+                seed=selectionhelpers.SAMPLE_SEED):
+    """
+    Define a subset if it doesn't exist yet, or grow (or shrink) it toward
+    target_size otherwise, keeping every id it already holds.
+
+    For a review or QC sample built up over several runs -- raising
+    target_size later adds only the shortfall rather than resampling
+    everything, the same additive guarantee ingest_occurrences(max_per_group=)
+    gives a capped group on a later reimport. See selectionhelpers.grow_sample
+    for the sampling rule this applies.
+
+    name          -- subset to grow; created on the first call.
+    target_size   -- desired size. Lowering it trims deterministically rather
+                     than raising or reshuffling who is in.
+    candidate_ids -- pool to draw new ids from; the whole project
+                     (select_ids(project_path)) if None. Pass a narrower list,
+                     e.g. from another subset, to draw from less than the
+                     whole project.
+    seed          -- passed through to grow_sample.
+
+    Returns the subset's ids after growing -- the same ids now on disk.
+    """
+    try:
+        already = select_ids(project_path, subset=name)
+    except KeyError:
+        already = []
+
+    if candidate_ids is None:
+        candidate_ids = select_ids(project_path)
+
+    ids = selectionhelpers.grow_sample(candidate_ids, target_size,
+                                       keep_ids=already, seed=seed)
+    define_subset(project_path, name, occurrence_ids=ids)
+
+    logger.info("subset '%s': %d -> %d occurrence(s) (target %d)",
+                name, len(already), len(ids), target_size)
+    return ids

@@ -13,6 +13,7 @@ every trait in the project. That is why every row stores its score, why a weak
 match warns, and why `match_score_min` exists.
 """
 
+import cv2
 import numpy as np
 import pytest
 
@@ -20,6 +21,7 @@ import critterframe as cf
 from critterframe.calibrations import scale as scale_calibration
 from critterframe.records import calibrations as calibration_records
 from critterframe.records.occurrences import ID_COL
+from helpers.stubs import FakeCv2
 from helpers.synthetic import TARGET_MM, draw_target_sheet
 
 # The target sits in the top-left quadrant of the drawn sheet.
@@ -231,3 +233,237 @@ def test_pending_scope_values_shrink_as_scales_are_declared(image_project):
     assert len(scale_calibration.pending_scope_values(image_project, "device")) == 2
     cf.declare_scale(image_project, 4.0, scope="device", scope_value="boxA")
     assert scale_calibration.pending_scope_values(image_project, "device") == ["boxB"]
+
+
+# ---------------------------------------------------------------------------
+# scale_from_click -- the by-hand alternative, tested without a human
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def gui(monkeypatch):
+    """
+    Script the window. Patched on `calibrations.scale`, never on cv2 -- same
+    reasoning as the manual-segmentation and annotation stubs: these functions
+    share cv2 with visualization.panels, whose output is asserted on, and a
+    global patch would leak into every other test.
+    """
+    def install(keys=(), clicks=()):
+        fake = FakeCv2(keys=keys, clicks=clicks)
+        monkeypatch.setattr(scale_calibration, "cv2", fake)
+        return fake
+    return install
+
+
+def a_scene():
+    """A blank scene image, standing in for a light-trap sheet or similar."""
+    return np.full((200, 300, 3), 40, np.uint8)
+
+
+def test_a_clicked_length_measures_at_the_scale_given(gui):
+    """A 3-4-5 triangle in pixels, so the answer is exact."""
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 10, 10),
+                            (cv2.EVENT_LBUTTONDOWN, 13, 14)])
+    result = scale_calibration.scale_from_click(a_scene(), target_mm=5.0)
+
+    assert result["length_px"] == pytest.approx(5.0)
+    assert result["px_per_mm"] == pytest.approx(1.0)
+    assert result["point_a"] == [10, 10]
+    assert result["point_b"] == [13, 14]
+
+
+def test_an_oversized_image_is_shrunk_for_display_but_clicks_stay_full_res(gui):
+    """
+    A full-resolution light-trap sheet is routinely bigger than any screen.
+    The window shown is shrunk, but the two points have to come back in the
+    ORIGINAL image's pixels, or px_per_mm would be measured at the wrong scale
+    entirely -- three times too small here, silently, if this broke.
+    """
+    big = np.full((2000, 3000, 3), 40, np.uint8)   # 3x DEFAULT_MAX_DISPLAY's worth
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 300, 100),
+                                      (cv2.EVENT_LBUTTONDOWN, 600, 100)])
+    result = scale_calibration.scale_from_click(big, target_mm=90.0,
+                                                max_display=1000)
+
+    # display_scale is 1000/3000 = 1/3, so a 300px on-screen gap is 900px in
+    # the original image -- not the 300px it would be misread as unscaled.
+    assert result["point_a"] == [900, 300]
+    assert result["point_b"] == [1800, 300]
+    assert result["length_px"] == pytest.approx(900.0)
+    assert result["px_per_mm"] == pytest.approx(10.0)
+
+
+def test_max_display_none_shows_the_image_at_full_resolution(gui):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 300, 100),
+                                      (cv2.EVENT_LBUTTONDOWN, 600, 100)])
+    result = scale_calibration.scale_from_click(
+        np.full((2000, 3000, 3), 40, np.uint8), target_mm=90.0, max_display=None)
+
+    assert result["point_a"] == [300, 100]
+    assert result["length_px"] == pytest.approx(300.0)
+
+
+def test_escape_before_both_points_cancels(gui):
+    gui(keys=[27])
+    assert scale_calibration.scale_from_click(a_scene(), target_mm=5.0) is None
+
+
+def test_a_stub_that_runs_dry_fails_instead_of_hanging(gui):
+    """
+    The real loop is `while True: waitKey(20)` with no timeout. A test whose
+    script is incomplete has to fail, not wait forever.
+    """
+    gui(keys=[])
+    with pytest.raises(AssertionError, match="ran dry"):
+        scale_calibration.scale_from_click(a_scene(), target_mm=5.0)
+
+
+def test_target_mm_none_prompts_on_the_terminal(gui, monkeypatch):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    monkeypatch.setattr("builtins.input", lambda prompt: "5")
+
+    result = scale_calibration.scale_from_click(a_scene())
+    assert result["px_per_mm"] == pytest.approx(2.0)
+
+
+def test_a_non_numeric_typed_length_cancels(gui, monkeypatch, caplog):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    monkeypatch.setattr("builtins.input", lambda prompt: "not a number")
+
+    with caplog.at_level("WARNING"):
+        result = scale_calibration.scale_from_click(a_scene())
+    assert result is None
+    assert "not a number" in caplog.text
+
+
+def test_a_non_positive_typed_length_cancels(gui, monkeypatch, caplog):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    monkeypatch.setattr("builtins.input", lambda prompt: "0")
+
+    with caplog.at_level("WARNING"):
+        result = scale_calibration.scale_from_click(a_scene())
+    assert result is None
+    assert "must be positive" in caplog.text
+
+
+def test_the_panel_draws_the_clicked_line(gui):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 10, 10),
+                            (cv2.EVENT_LBUTTONDOWN, 20, 10)])
+    scene = a_scene()
+    result = scale_calibration.scale_from_click(scene, target_mm=10.0)
+
+    panel = scale_calibration.click_scale_panel(scene, result)
+    assert panel.dtype == np.uint8
+    assert panel.shape == scene.shape
+
+
+# ---------------------------------------------------------------------------
+# measure_scale_by_hand -- one click-through, applied to many occurrences
+# ---------------------------------------------------------------------------
+
+
+def test_it_applies_to_every_occurrence_by_default(gui, metadata_project):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    result = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0)
+
+    assert result["covered"] == 8
+    stored = calibration_records.load_calibrations(metadata_project)
+    assert set(stored["scope"]) == {ID_COL}
+    assert len(stored) == 8
+    assert (stored["source"] == "clicked").all()
+    resolved = cf.scale_for_occurrences(metadata_project)
+    assert resolved["specimen0"] == pytest.approx(2.0)
+
+
+def test_it_can_target_an_explicit_list_of_occurrences(gui, metadata_project):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    result = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0,
+        occurrence_ids=["specimen0", "specimen1"])
+
+    assert result["covered"] == 2
+    resolved = cf.scale_for_occurrences(metadata_project)
+    assert resolved["specimen0"] == pytest.approx(2.0)
+    assert np.isnan(resolved["specimen2"])
+
+
+def test_it_can_target_a_named_subset(gui, metadata_project):
+    cf.define_subset(metadata_project, "boxA", column="device", values=["boxA"])
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    result = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0, subset="boxA")
+
+    assert result["covered"] == 4   # specimen0, 2, 4, 6
+
+
+def test_it_supports_a_named_scope_instead_of_occurrences(gui, metadata_project):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    result = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0,
+        scope="device", scope_value="boxA")
+
+    assert result["covered"] == 1
+    stored = calibration_records.load_calibrations(metadata_project)
+    assert stored.iloc[0][["scope", "scope_value"]].tolist() == ["device", "boxA"]
+
+
+def test_a_named_scope_needs_a_scope_value(metadata_project):
+    with pytest.raises(ValueError, match="needs a scope_value"):
+        scale_calibration.measure_scale_by_hand(
+            metadata_project, a_scene(), target_mm=5.0, scope="device")
+
+
+def test_a_named_scope_rejects_occurrence_ids(metadata_project):
+    with pytest.raises(ValueError, match="only apply with scope=ID_COL"):
+        scale_calibration.measure_scale_by_hand(
+            metadata_project, a_scene(), target_mm=5.0, scope="device",
+            scope_value="boxA", occurrence_ids=["specimen0"])
+
+
+def test_occurrence_ids_and_subset_are_mutually_exclusive(metadata_project):
+    with pytest.raises(ValueError, match="not both"):
+        scale_calibration.measure_scale_by_hand(
+            metadata_project, a_scene(), target_mm=5.0,
+            occurrence_ids=["specimen0"], subset="boxA")
+
+
+def test_cancelling_the_click_records_nothing(gui, metadata_project):
+    gui(keys=[27])
+    result = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0)
+
+    assert result is None
+    assert calibration_records.load_calibrations(metadata_project).empty
+
+
+def test_repeat_awareness_skips_already_covered_occurrences(gui, metadata_project):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    first = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0)
+    assert first["covered"] == 8
+
+    # Nothing left to measure -- no window is even opened this time.
+    second = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0)
+    assert second is None
+
+
+def test_force_remeasures_everything(gui, metadata_project):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                            (cv2.EVENT_LBUTTONDOWN, 20, 0)])
+    redone = scale_calibration.measure_scale_by_hand(
+        metadata_project, a_scene(), target_mm=5.0, force=True)
+
+    assert redone["covered"] == 8
+    resolved = cf.scale_for_occurrences(metadata_project)
+    assert resolved["specimen0"] == pytest.approx(4.0)

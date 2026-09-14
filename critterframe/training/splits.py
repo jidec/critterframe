@@ -33,23 +33,23 @@ def split_ids(project_path, occurrence_ids=None, proportions=None,
     encoder's dataset, and a validation pass without any of them disagreeing.
     Freeze one with define_subset(..., occurrence_ids=splits["train"]).
 
-    project_path   -- project the ids belong to.
-    occurrence_ids -- the ids to split. None takes every occurrence in the
-                      project, or in `subset`.
-    proportions    -- {split name: proportion}, defaulting to 70/15/15
-                      train/val/test. Normalized, so they needn't sum to 1. Every
-                      requested name is a key of the result even when empty.
-    stratify_by    -- occurrence column whose distribution to preserve across
-                      splits, typically the label being trained on. A rare
-                      species is the case that needs it: a random split of a
-                      long-tailed table can leave it out of validation entirely.
-    group_by       -- occurrence column whose members must all land on the same
-                      side. The leakage guard: several images of one specimen or
-                      one trap night are not independent, and splitting them
-                      apart makes a validation score measure memorization.
-    subset         -- restrict to a named subset instead of passing ids.
-    seed           -- split seed. The same inputs give the same split whatever
-                      ORDER the ids arrive in, since the frame is sorted first.
+    - `project_path` -- project the ids belong to.
+    - `occurrence_ids` -- the ids to split. None takes every occurrence in
+      the project, or in `subset`.
+    - `proportions` -- `{split name: proportion}`, defaulting to 70/15/15
+      train/val/test. Normalized, so they needn't sum to 1. Every requested
+      name is a key of the result even when empty.
+    - `stratify_by` -- occurrence column whose distribution to preserve
+      across splits, typically the label being trained on. A rare species
+      is the case that needs it: a random split of a long-tailed table can
+      leave it out of validation entirely.
+    - `group_by` -- occurrence column whose members must all land on the
+      same side. The leakage guard: several images of one specimen or one
+      trap night are not independent, and splitting them apart makes a
+      validation score measure memorization.
+    - `subset` -- restrict to a named subset instead of passing ids.
+    - `seed` -- split seed. The same inputs give the same split whatever
+      ORDER the ids arrive in, since the frame is sorted first.
 
     stratify_by/group_by are occurrence columns. A label living in the metric log
     isn't reachable here -- export it onto a manifest and use split_dataset().

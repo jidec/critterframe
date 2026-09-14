@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 
 import critterframe as cf
+from critterframe.recipes import Recipe
 
 # Shared with the test suite rather than written out twice -- see
 # tests/helpers/. The suite asserts what these produce; this script shows it.
@@ -178,7 +179,7 @@ print("  stored path          :", registered.record["path"],
 
 print("\n== a registered model runs like any other ==")
 model = cf.load_model(PROJECT_PATH, "blobnet_v1").attach(ThresholdModel(cutoff=120))
-before = cf.Recipe("segment", "custom", [cf.segment(model)]).hash
+before = Recipe("segment", "custom", [cf.segment(model)]).hash
 print("  run:", cf.run_segments(PROJECT_PATH, run_name="custom",
                                 steps=[cf.segment(model)]))
 print(f"  recipe hash: {before}")
@@ -191,7 +192,7 @@ cf.register_model(PROJECT_PATH, "blobnet_v1", path=checkpoint, task="segment",
                   training_data=SEGMENTER_DIR, parameters={"epochs": 80})
 
 retrained = cf.load_model(PROJECT_PATH, "blobnet_v1").attach(ThresholdModel(cutoff=120))
-after = cf.Recipe("segment", "custom", [cf.segment(retrained)]).hash
+after = Recipe("segment", "custom", [cf.segment(retrained)]).hash
 print(f"  after retraining into the same file: {after}")
 print(f"  hash moved: {before != after} (expect True) -- same name, same path, "
       "same\n  class, different weights, so the work is correctly redone")

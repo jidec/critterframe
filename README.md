@@ -96,9 +96,9 @@ pip install "critterframe @ git+https://github.com/jidec/critterframe.git"
 ## Testing
 
 ```
-pytest                          # ~1,100 tests, ~45s, no GPU, network, or credentials
-pytest tests/unit -m "not slow" # inner loop, a few seconds
-pytest -m gpu                   # opt in to what's deselected by default (gpu, network, interactive)
+pytest                          # ~1,100 tests, ~45s without GPU, network, or credentials
+pytest tests/unit -m "not slow" # inner loop, few seconds
+pytest -m gpu                   # opt into gpu, network, interactive etc.
 ```
 
 `tests/unit/` is one file per module
@@ -108,7 +108,8 @@ repeat-awareness, metric staleness, coordinate inversion, calibrated export etc.
 
 ## Example pipelines
 
-`scripts/` holds one runnable script per project shape, each documenting what it demonstrates:
+`scripts/` holds one runnable script per project shape, each documenting what it demonstrates. 
+Most are untested for now, but should work as written and are good examples of different project shapes. 
 
 | Script | Shows                                                                       |
 | --- |-----------------------------------------------------------------------------|
@@ -129,7 +130,8 @@ my_project/
     reference_masks.parquet     human-vetted or otherwise trusted masks
     calibrations.parquet        px/mm and the like, keyed by what was calibrated
     runs_and_metrics.sqlite     run records + the metric values they produced
-    imports/                    immutable source imports
+    raw_imports/                immutable raw imports + imports.jsonl, what each became and why
+    exports/                    exports.jsonl, what this project has handed out
     definitions/                subsets.toml, recipes.py
     visualizations/
         pipeline/               one sampled QC grid per run
@@ -139,27 +141,29 @@ my_project/
 
 ## Vocabulary
 
-| Term                 | Meaning                                                                                                                                                                               |
-|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Project**          | A self-contained collection of organismal occurrence images, metadata, & derivations intended to be analyzed as a coherent biological dataset, sharing at least some processing steps |
-| **Occurrence image** | Image evidence of a focal organism existing at a specific place at a specific time                                                                                                    |
-| **Part**             | A consistent named biological component of an organism, such as `head`. Defaults to `organism` for the part representing the whole organism                                           |
-| **Mask**             | At most one canonical mask per occurrence-part, in original image coordinates                                                                                                         |
-| **Segment**          | An image plus its current mask. Not persisted because images and masks already are                                                                                                    |
-| **Metric**           | Any derived value associated with an occurrence-part                                                                                                                                  |
-| **Transform**        | An operation changing the working segment without producing a value, such as orientation normalization                                                                                |
-| **Operation**        | One configured processing action, named `transform`, `segment`, or `metric` by what it DOES to a segment                                                                              |
-| **Recipe**           | A configured chain of operations, named `segment`, `metric`, or `render` by what its output is persisted as                                                                           |
-| **Run**              | One execution of a recipe over a set of occurrences                                                                                                                                   |
-| **Subset**           | A named selection of occurrences                                                                                                                                                      |
-| **Filter**           | A rule for selecting occurrences, at export or post-critterframe                                                                                                                      |
-| **Calibration**      | Knowledge about the imaging system (e.g. px/mm scale). Resolved at metric export.                                                                                                     |
-| **Record**           | A persisted datatype, including occurrences, masks, runs, metrics, calibrations, and models                                                                                           |
-| **Reference mask**   | A mask kept for comparison, not treated as canonical                                                                                                                                  |
-| **Recipe hash**      | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work.                                                                                          |
-| **Registered model** | A model attached to provenance info.                                                                                                                                                  |
-| **Panel**            | One picture of one operation's decision about one occurrence-part. The unit visualizations are built from.                                                                            |
-| **Render**           | A materialized image product.                                                                                                                                                         |
+| Term                 | Meaning                                                                                                                                                                                                                      |
+|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Project**          | A self-contained collection of organismal occurrence images, metadata, & derivations intended to be analyzed as a coherent biological dataset, sharing at least some processing steps                                        |
+| **Occurrence image** | Image evidence of a focal organism existing at a specific place at a specific time                                                                                                                                           |
+| **Part**             | A consistent named biological component of an organism, such as `head`. Defaults to `organism` for the part representing the whole organism                                                                                  |
+| **Mask**             | At most one canonical mask per occurrence-part, in original image coordinates                                                                                                                                                |
+| **Segment**          | An image plus its current mask. Not persisted because images and masks already are                                                                                                                                           |
+| **Metric**           | Any derived value associated with an occurrence-part                                                                                                                                                                         |
+| **Transform**        | An operation changing the working segment without producing a value, such as orientation normalization                                                                                                                       |
+| **Operation**        | One configured processing action, named `transform`, `segment`, or `metric` by what it DOES to a segment                                                                                                                     |
+| **Recipe**           | A configured chain of operations, named `segment`, `metric`, or `render` by what its output is persisted as                                                                                                                  |
+| **Run**              | One execution of a recipe over a set of occurrences                                                                                                                                                                          |
+| **Subset**           | A named selection of occurrences                                                                                                                                                                                             |
+| **Filter**           | A rule for selecting occurrences, at export or post-critterframe                                                                                                                                                             |
+| **Calibration**      | Knowledge about the imaging system that leads to a conversion of metrics at exports (e.g. px/mm scale, ColorChecker normalized color)                                                                                        |
+| **Record**           | A persisted datatype, including occurrences, masks, runs, metrics, calibrations, and models                                                                                                                                  |
+| **Reference mask**   | A mask kept for comparison, not treated as canonical                                                                                                                                                                         |
+| **Recipe hash**      | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work.                                                                                                                                 |
+| **Registered model** | A model attached to provenance info.                                                                                                                                                                                         |
+| **Panel**            | One picture of one operation's decision about one occurrence-part. The unit visualizations are built from.                                                                                                                   |
+| **Render**           | A materialized image product.                                                                                                                                                                                                |
+| **Raw import**       | Raw source data before any structural or judgement decision touches it (e.g. a GBIF DarwinCore archive as downloaded). Archived in raw_imports folder.                                                                       |
+| **Import**           | A raw import reshaped into occurrences and narrowed by judgement calls (drop=, group_col/max_per_group) about what's a valid, wanted candidate. Raw import to import conversions write a manifest recording those decisions. |
 
 ## Package layout
 
@@ -168,7 +172,7 @@ critterframe/
     recipes.py              classes jointly implementing recipes contract: Segment, Recipe, Operation (Transform, Segmentation, Metric) plus hashing
     ingest.py               ingest occurrence tables and optionally local images
     download.py             download images from URLs in ingested table
-    export.py               export one-row-per-occurrence trait table, optionally filtered; select occurrences by stored values
+    export.py               export one-row-per-occurrence trait table, optionally filtered, with a manifest saying what it is; select occurrences by stored values
     selectionhelpers.py     helpers for transient "out of these occurrences, which ones" tasks: sampling, sharding, rule matching
     project/                
         paths.py            define every path and filename in critterframe project folders
@@ -200,7 +204,7 @@ critterframe/
         color.py             mean color, hue/lightness fractions
         outliers.py        group metrics: outlier(), cluster()
         annotation.py    human labels: annotate_flags, click_two_points
-        run.py                run_metrics() + RunContext + completed_keys
+        run.py                run_metrics() + RunContext + _completed_keys
     calibrations/
         scale.py            px/mm from a target of known size
     validation/
@@ -231,26 +235,23 @@ critterframe/
                 bioencoder.py    embedding-based metrics
             training/
                 bioencoder.py    train()/load() -- deliberately unfinished, raises NotImplementedError
+        smp_segmenter/
+            segmentation.py   SMPSegmenter (UNet++, swappable encoder) + smp_segmenter() factory
+            training.py         prepare_dataset() + train() -- a real, runnable training loop
 ```
-
-See [Extensions](#extensions) below for what `antenna_lighttraps`/`inat_insects` are and why extensions exist
-as a pattern; see [Testing](#testing) above for `tests/`, which mirrors this same tree one level up.
 
 ## Extensions
 
-An extension normalizes one data source's quirks *into* core's representation — occurrences, images, masks —
-rather than building parallel structures around it. That's the whole contract: an extension's `ingest`/`download`
-map a source's API or file layout onto `ingest_occurrences`/`download_images`, and anything project-specific
-(a calibration scope, a metric only that source's images support) lives beside it rather than leaking into
-core. Two are shipped as worked examples of the pattern:
+Extensions are typically for handling specific data sources, very specialized metrics, or trainable models
+not general enough to bundle in core. By convention they mirror the package layout.
 
-- **`antenna_lighttraps`** — light-trap camera monitoring. Pre-cropped detections come in pre-cropped, and
-  scale calibration is scoped per trap night (`event_id`) rather than per occurrence.
+- **`antenna_lighttraps`** — light-trap camera monitoring. Scale calibration is scoped per trap night (`event_id`) rather than per occurrence.
 - **`inat_insects`** — iNaturalist observations. Adds colour clustering and embedding-based metrics suited to
   citizen-science images shot under uncontrolled conditions.
-
-A new data source follows the same shape: ingest/download that normalizes into core, plus whatever
-calibration scope or metrics that source specifically needs — not a fork of the pipeline.
+- **`smp_segmenter`** — a trainable UNet++ segmenter (segmentation_models_pytorch) for refining or replacing
+  the bundled zero-shot segmenter on one project's own masks. Unlike `inat_insects`' bioencoder scaffold, its
+  `train()` is a real, working training loop, not a stub -- binary mask segmentation doesn't carry the same
+  dataset-dependent backbone/loss judgment calls that make guessing at a metric-learning setup risky.
 
 Claude Code was used to contribute code and documentation to this project (with every line examined by a human).
 

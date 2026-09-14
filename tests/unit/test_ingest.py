@@ -1,12 +1,12 @@
 """
 Getting data in: archive first, parse second, snapshot always.
 
-The ordering is the point. The source file is copied into `imports/` BEFORE it
-is read, which is what makes `drop=` safe -- rows the source declared are not
-organisms never reach the occurrence table, and every one of them is still in
-the archive if that judgement was wrong. Nothing else in the package deletes a
-row, and this only gets to because what it excludes is a fact the SOURCE
-reported rather than a judgement this project made.
+The ordering is the point. The source file is copied into `raw_imports/`
+BEFORE it is read, which is what makes `drop=` safe -- rows the source
+declared are not organisms never reach the occurrence table, and every one of
+them is still in the archive if that judgement was wrong. Nothing else in the
+package deletes a row, and this only gets to because what it excludes is a
+fact the SOURCE reported rather than a judgement this project made.
 
 Harvested in part from `scripts/simple_tests/ingest_test.py`, which had three of
 these assertions and printed the rest.
@@ -41,7 +41,7 @@ def source_csv(tmp_path):
 
 
 def imports_of(project_path):
-    return sorted(paths.imports_dir(project_path).glob("*.csv"))
+    return sorted(paths.raw_imports_dir(project_path).glob("*.csv"))
 
 
 # ---------------------------------------------------------------------------
@@ -89,15 +89,15 @@ def test_the_archive_is_dated_and_prefixed(tmp_path, source_csv):
     datetime.date.fromisoformat(name.rsplit("_", 1)[-1])
 
 
-def test_two_imports_on_one_day_do_not_clobber_each_other(tmp_path, source_csv,
-                                                          monkeypatch):
+def test_two_different_imports_on_one_day_do_not_clobber_each_other(
+        tmp_path, source_csv, monkeypatch):
     """
     The one place the clock is frozen rather than stripped, because here the
-    date IS the behaviour: the suffix only appears when two imports share a
-    day. Computing today's date in the test would flake once a year, at
-    midnight, in a way nobody could reproduce.
+    date IS the behaviour: the suffix only appears when two GENUINELY
+    DIFFERENT raw imports share a day. Computing today's date in the test
+    would flake once a year, at midnight, in a way nobody could reproduce.
 
-    The dated name is built by `paths.import_path` (the whole project layout,
+    The dated name is built by `paths.raw_import_path` (the whole project layout,
     filenames included, lives in one module), and `paths.py` does `from datetime
     import date` -- so that is the module the name to patch lives on.
     """
@@ -109,10 +109,180 @@ def test_two_imports_on_one_day_do_not_clobber_each_other(tmp_path, source_csv,
     monkeypatch.setattr(paths, "date", FixedDate)
     project = tmp_path / "project"
     cf.ingest_occurrences(project, source_csv, id_col="detection_id")
-    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+
+    revised = tmp_path / "revised.csv"
+    pd.read_csv(source_csv).assign(detection_id=lambda df: df["detection_id"] + 10) \
+        .to_csv(revised, index=False)
+    cf.ingest_occurrences(project, revised, id_col="detection_id",
+                          name_prefix="occurrences")
 
     assert [path.name for path in imports_of(project)] == [
         "occurrences_2026-03-14.csv", "occurrences_2026-03-14_1.csv"]
+
+
+def test_reingesting_the_same_raw_import_the_same_way_is_a_no_op(tmp_path, source_csv):
+    """
+    The idempotency guarantee: identical raw content plus identical decisions
+    is recognized as work already done, so a scheduled re-pull that finds
+    nothing new doesn't re-archive, re-parse, or re-save anything.
+    """
+    project = tmp_path / "project"
+    first = cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                                  drop={"determination_name": ["Debris"]})
+    second = cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                                   drop={"determination_name": ["Debris"]})
+
+    assert first[ID_COL].tolist() == second[ID_COL].tolist()
+    assert len(imports_of(project)) == 1   # no duplicate archived
+
+
+def test_reingesting_the_same_raw_import_a_different_way_is_not_a_no_op(
+        tmp_path, source_csv):
+    """
+    Different decisions over identical content is a different IMPORT, even
+    though it's the same raw import -- the whole point of the two-tier
+    vocabulary. The raw content is still deduplicated: one raw file serves
+    both.
+    """
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id", drop=None)
+    table = cf.ingest_occurrences(
+        project, source_csv, id_col="detection_id",
+        drop={"determination_name": ["Not Lepidoptera", "Debris"]})
+
+    assert table[ID_COL].tolist() == ["1", "3"]
+    assert len(imports_of(project)) == 1   # same raw content, stored once
+    assert len(cf.load_imports(project)) == 2   # two distinct imports
+
+
+def test_already_ingested_answers_from_raw_bytes_alone(tmp_path, source_csv):
+    """
+    already_ingested exists for a caller whose own parse of raw_bytes is
+    itself expensive (see gbif_darwincore_inat.ingest) -- it has to answer
+    correctly with no parsed df in hand, and agree exactly with what
+    ingest_occurrences(df=...) would decide for the same inputs.
+    """
+    from critterframe.ingest import already_ingested
+
+    project = tmp_path / "project"
+    raw_bytes = source_csv.read_bytes()
+    kwargs = dict(id_col="detection_id", drop={"determination_name": ["Debris"]})
+
+    assert already_ingested(project, raw_bytes, **kwargs) is False
+
+    cf.ingest_occurrences(project, source_csv, **kwargs)
+    assert already_ingested(project, raw_bytes, **kwargs) is True
+
+    # A different decision over the same bytes is a different import.
+    assert already_ingested(project, raw_bytes, id_col="detection_id",
+                            drop=None) is False
+
+
+# ---------------------------------------------------------------------------
+# trust_source_file_unchanged
+# ---------------------------------------------------------------------------
+
+
+def test_trust_source_file_unchanged_skips_the_read_on_a_repeat_call(
+        tmp_path, source_csv, monkeypatch):
+    """
+    Same path, size, and mtime as a previous import: the content is never
+    read again, only the cheap fingerprint is checked.
+    """
+    from pathlib import Path
+
+    project = tmp_path / "project"
+    kwargs = dict(id_col="detection_id", drop={"determination_name": ["Debris"]})
+    first = cf.ingest_occurrences(project, source_csv, trust_source_file_unchanged=True,
+                                  **kwargs)
+
+    def _raise(self, *args, **kwargs):
+        raise AssertionError("read_bytes should not be called on a fingerprint hit")
+    monkeypatch.setattr(Path, "read_bytes", _raise)
+
+    second = cf.ingest_occurrences(project, source_csv, trust_source_file_unchanged=True,
+                                   **kwargs)
+    assert second[ID_COL].tolist() == first[ID_COL].tolist()
+    assert len(imports_of(project)) == 1
+
+
+def test_trust_source_file_unchanged_falls_back_when_the_file_changed(tmp_path, source_csv):
+    """
+    A fingerprint miss -- content, and so size and mtime, changed -- still
+    does a real read+hash and a correct re-ingest.
+    """
+    project = tmp_path / "project"
+    kwargs = dict(id_col="detection_id", drop={"determination_name": ["Debris"]})
+    cf.ingest_occurrences(project, source_csv, trust_source_file_unchanged=True, **kwargs)
+
+    revised = pd.read_csv(source_csv)
+    revised.loc[len(revised)] = [5, "http://example/5.jpg", "Noctuidae", "2024-05-05"]
+    revised.to_csv(source_csv, index=False)
+
+    table = cf.ingest_occurrences(project, source_csv, trust_source_file_unchanged=True,
+                                  **kwargs)
+    assert "5" in table[ID_COL].tolist()
+    assert len(cf.load_imports(project)) == 2
+
+
+def test_trust_source_file_unchanged_still_reingests_on_a_changed_decision(
+        tmp_path, source_csv):
+    """
+    The file's fingerprint matches, but drop= changed -- the borrowed
+    raw_hash produces a different import_hash, so this correctly does NOT
+    skip, unlike a naive "same file, always skip" shortcut would.
+    """
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          trust_source_file_unchanged=True, drop=None)
+    table = cf.ingest_occurrences(
+        project, source_csv, id_col="detection_id", trust_source_file_unchanged=True,
+        drop={"determination_name": ["Not Lepidoptera", "Debris"]})
+
+    assert table[ID_COL].tolist() == ["1", "3"]
+    assert len(cf.load_imports(project)) == 2
+
+
+def test_trust_source_file_unchanged_defaults_off(tmp_path, source_csv, monkeypatch):
+    """The fingerprint shortcut only applies when explicitly asked for."""
+    from pathlib import Path
+
+    project = tmp_path / "project"
+    kwargs = dict(id_col="detection_id", drop={"determination_name": ["Debris"]})
+    cf.ingest_occurrences(project, source_csv, **kwargs)
+
+    original_read_bytes = Path.read_bytes
+    calls = []
+
+    def _spy(self, *args, **kwargs):
+        calls.append(self)
+        return original_read_bytes(self, *args, **kwargs)
+    monkeypatch.setattr(Path, "read_bytes", _spy)
+
+    cf.ingest_occurrences(project, source_csv, **kwargs)
+    assert calls   # still read+hashed, even though nothing changed
+
+
+def test_the_manifest_records_the_source_fingerprint(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert manifest["import_source_path"] == str(source_csv)
+    assert manifest["import_source_bytes"] == source_csv.stat().st_size
+    assert manifest["import_source_mtime"] == source_csv.stat().st_mtime
+
+
+def test_the_manifest_fingerprint_is_absent_for_an_in_memory_import(tmp_path):
+    project = tmp_path / "project"
+    missing_path = tmp_path / "nonexistent_synthetic.csv"
+    df = pd.DataFrame({"detection_id": ["1"], "photo": ["http://x/1.jpg"]})
+    cf.ingest_occurrences(project, missing_path, id_col="detection_id",
+                          raw_bytes=b"synthetic", df=df)
+
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert pd.isna(manifest["import_source_bytes"])
+    assert pd.isna(manifest["import_source_mtime"])
 
 
 def test_ingest_normalizes_and_returns_the_table(tmp_path, source_csv):
@@ -214,6 +384,164 @@ def test_a_duplicate_id_stops_the_ingest(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# import manifests: what happened to a raw import to make it an import
+# ---------------------------------------------------------------------------
+
+
+def test_the_manifest_records_structural_and_judgement_decisions(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          image_url_col="photo", datetime_cols=["captured"],
+                          drop={"determination_name": ["Debris"]})
+
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert manifest["id_col"] == "detection_id"          # structural
+    assert manifest["image_url_col"] == "photo"           # structural
+    assert manifest["drop"] == {"determination_name": ["Debris"]}   # judgement
+    assert manifest["row_counts"] == {"read": 4, "dropped": 1, "capped": 0, "final": 3}
+
+
+def test_the_manifest_names_a_transform_rather_than_its_repr(tmp_path, source_csv):
+    def add_site(df):
+        return df.assign(site=df[ID_COL].str[0])
+
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          transform=add_site)
+
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert "add_site" in manifest["transform"]
+
+
+def test_the_manifest_sits_beside_the_raw_import_it_describes(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+
+    raw = imports_of(project)[0]
+    manifests = list(paths.raw_imports_dir(project).glob("*.import.json"))
+    assert len(manifests) == 1
+    assert manifests[0].name.startswith(raw.stem)
+
+
+def test_load_imports_is_empty_before_any_ingest(tmp_path):
+    assert cf.load_imports(tmp_path / "project").empty
+
+
+# ---------------------------------------------------------------------------
+# group_col / max_per_group
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def lopsided_csv(tmp_path):
+    """Seven of one species, three of another -- the shape a real pull takes."""
+    path = tmp_path / "lopsided.csv"
+    pd.DataFrame({
+        "occurrence_id": [f"o{index}" for index in range(10)],
+        "species": ["common"] * 7 + ["rare"] * 3,
+    }).to_csv(path, index=False)
+    return path
+
+
+def test_max_per_group_caps_each_group_independently(tmp_path, lopsided_csv):
+    project = tmp_path / "project"
+    table = cf.ingest_occurrences(project, lopsided_csv, group_col="species",
+                                  max_per_group=2)
+
+    counts = table["species"].value_counts()
+    assert counts["common"] == 2
+    assert counts["rare"] == 2
+
+
+def test_group_col_without_max_per_group_raises(tmp_path, lopsided_csv):
+    project = tmp_path / "project"
+    with pytest.raises(ValueError, match="group_col and max_per_group"):
+        cf.ingest_occurrences(project, lopsided_csv, group_col="species")
+
+
+def test_max_per_group_without_group_col_raises(tmp_path, lopsided_csv):
+    project = tmp_path / "project"
+    with pytest.raises(ValueError, match="group_col and max_per_group"):
+        cf.ingest_occurrences(project, lopsided_csv, max_per_group=2)
+
+
+def test_the_cap_is_applied_after_drop(tmp_path):
+    """
+    A row drop= excludes as not-an-organism must never count toward its
+    group's cap -- were the cap applied first, the excluded row would already
+    have used up one of the group's slots.
+    """
+    source = tmp_path / "export.csv"
+    pd.DataFrame({
+        "occurrence_id": [f"o{index}" for index in range(5)],
+        "species": ["moth"] * 5,
+        "determination_name": ["Not Lepidoptera"] + ["moth"] * 4,
+    }).to_csv(source, index=False)
+
+    project = tmp_path / "project"
+    table = cf.ingest_occurrences(
+        project, source, drop={"determination_name": ["Not Lepidoptera"]},
+        group_col="species", max_per_group=4, cap_rule="first")
+
+    # drop removes o0 first, leaving exactly 4 -- right at the cap, untouched.
+    # Capping before drop would instead keep o0..o3 by file order and then
+    # drop o0, leaving only 3.
+    assert table[ID_COL].tolist() == ["o1", "o2", "o3", "o4"]
+
+
+def test_capped_rows_are_still_in_the_archive(tmp_path, lopsided_csv):
+    """What makes capping safe: the import keeps everything the source sent."""
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, lopsided_csv, group_col="species",
+                          max_per_group=2)
+
+    assert len(pd.read_csv(imports_of(project)[0])) == 10
+
+
+def test_reimporting_with_a_higher_cap_keeps_what_was_already_kept(
+        tmp_path, lopsided_csv):
+    """
+    The point of keep_ids: a later pull growing max_per_group should be
+    additive -- same specimens the project already has, plus more -- not a
+    reshuffle that silently orphans work already done on specimens that are
+    still perfectly good candidates.
+    """
+    project = tmp_path / "project"
+    first = cf.ingest_occurrences(project, lopsided_csv, group_col="species",
+                                  max_per_group=2)
+    first_ids = set(first[ID_COL])
+
+    second = cf.ingest_occurrences(project, lopsided_csv, group_col="species",
+                                   max_per_group=4)
+    assert first_ids <= set(second[ID_COL])
+    assert second["species"].value_counts()["common"] == 4
+
+
+def test_reimporting_with_a_lower_cap_retrims_by_rule(tmp_path):
+    source = tmp_path / "export.csv"
+    pd.DataFrame({
+        "occurrence_id": [f"o{index}" for index in range(5)],
+        "species": ["moth"] * 5,
+    }).to_csv(source, index=False)
+
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source, group_col="species",
+                          max_per_group=4, cap_rule="first")
+    second = cf.ingest_occurrences(project, source, group_col="species",
+                                   max_per_group=2, cap_rule="first")
+
+    assert second[ID_COL].tolist() == ["o0", "o1"]
+
+
+def test_a_projects_first_ingest_has_nothing_to_prioritize(tmp_path, lopsided_csv):
+    """No existing occurrences yet -- capping behaves exactly as it always did."""
+    project = tmp_path / "project"
+    table = cf.ingest_occurrences(project, lopsided_csv, group_col="species",
+                                  max_per_group=2)
+    assert table["species"].value_counts()["common"] == 2
+
+
+# ---------------------------------------------------------------------------
 # ingest_images
 # ---------------------------------------------------------------------------
 
@@ -284,8 +612,8 @@ def test_a_manifest_is_archived_rather_than_the_pixels(tmp_path, image_dir):
     manifest = pd.read_csv(archived[0])
     assert {"occurrence_id", "source_path", "source_bytes",
             "source_mtime"} <= set(manifest.columns)
-    assert not list(paths.imports_dir(project).glob("*.png"))
-    assert not list(paths.imports_dir(project).glob(".manifest.csv"))
+    assert not list(paths.raw_imports_dir(project).glob("*.png"))
+    assert not list(paths.raw_imports_dir(project).glob(".manifest.csv"))
 
 
 def test_metadata_is_joined_onto_the_occurrences(tmp_path, image_dir):

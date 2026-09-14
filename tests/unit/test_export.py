@@ -11,24 +11,30 @@ The rules with teeth: filtering happens at export only and deletes nothing; a
 NaN never passes a filter; and an occurrence with no calibration gets NaN
 millimetres rather than an unconverted pixel value sitting in a column labelled
 mm.
+
+The last section is about the manifest, which exists because none of the above
+survives into a CSV: the reshape drops every recipe hash and run id it read.
 """
+
+import json
 
 import numpy as np
 import pandas as pd
 import pytest
 
 import critterframe as cf
+from critterframe.project import paths as cf_paths
 from critterframe.export import (
-    apply_filters,
+    _apply_filters,
+    _to_millimetres,
     column_name,
     metric_units,
     metrics_wide,
     occurrences_matching,
-    to_millimetres,
 )
 from critterframe.metrics.annotation import annotate_flags
 from critterframe.records.metrics import append_metrics, make_metric_row
-from critterframe.records.occurrences import ID_COL
+from critterframe.records.occurrences import ID_COL, load_occurrences
 from critterframe.records.runs import start_run
 from critterframe.recipes import Recipe
 from critterframe.metrics.dimensions import body_length
@@ -163,7 +169,7 @@ def test_a_dict_metric_s_keys_share_the_parent_unit(metadata_project):
 
 
 # ---------------------------------------------------------------------------
-# to_millimetres
+# _to_millimetres
 # ---------------------------------------------------------------------------
 
 
@@ -184,7 +190,7 @@ UNITS = {
 
 
 def test_lengths_divide_once_and_areas_twice():
-    converted = to_millimetres(wide_frame(), UNITS,
+    converted = _to_millimetres(wide_frame(), UNITS,
                                pd.Series({"a": 10.0, "b": 20.0}))
     assert converted["traits__organism__body_length_mm"].tolist() == [10.0, 10.0]
     assert converted["traits__organism__area_px_mm2"].tolist() == [100.0, 100.0]
@@ -196,14 +202,14 @@ def test_the_converted_column_is_renamed_with_its_new_unit():
     project differing only in units would otherwise be indistinguishable once
     the file is open in something else.
     """
-    converted = to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 10.0}))
+    converted = _to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 10.0}))
     assert "traits__organism__body_length" not in converted.columns
     assert "traits__organism__body_length_mm" in converted.columns
 
 
 def test_a_column_with_no_length_in_it_is_left_alone():
     """A fraction, a category, an embedding, a laplacian variance."""
-    converted = to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 10.0}))
+    converted = _to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 10.0}))
     assert converted["traits__organism__mean_lightness"].tolist() == [0.5, 0.6]
 
 
@@ -212,7 +218,7 @@ def test_an_uncalibrated_occurrence_gets_nan_not_pixels():
     The same number meaning something entirely different in the same column is
     the failure this prevents.
     """
-    converted = to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0}))
+    converted = _to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0}))
     assert converted["traits__organism__body_length_mm"].tolist()[0] == 10.0
     assert pd.isna(converted["traits__organism__body_length_mm"].tolist()[1])
 
@@ -222,20 +228,20 @@ def test_the_scale_rides_along_in_the_export():
     A millimetre in the table is only as good as the calibration behind it, and
     someone reading the CSV a year later has to be able to see which one.
     """
-    converted = to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 20.0}))
+    converted = _to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 20.0}))
     assert converted["px_per_mm"].tolist() == [10.0, 20.0]
 
 
 def test_nothing_convertible_leaves_the_frame_untouched(caplog):
     frame = pd.DataFrame({ID_COL: ["a"], "traits__organism__mean_lightness": [0.5]})
     with caplog.at_level("WARNING"):
-        converted = to_millimetres(frame, UNITS, pd.Series({"a": 10.0}))
+        converted = _to_millimetres(frame, UNITS, pd.Series({"a": 10.0}))
     assert converted.equals(frame)
     assert "nothing to" in caplog.text
 
 
 # ---------------------------------------------------------------------------
-# apply_filters
+# _apply_filters
 # ---------------------------------------------------------------------------
 
 
@@ -256,24 +262,24 @@ def filterable():
     (("!=", 50), ["a", "c"]),
 ])
 def test_each_comparison_selects_what_it_says(condition, expected):
-    assert apply_filters(filterable(), {"length": condition})[ID_COL].tolist() == expected
+    assert _apply_filters(filterable(), {"length": condition})[ID_COL].tolist() == expected
 
 
 def test_membership_filters_take_a_container():
-    kept = apply_filters(filterable(), {"flag": ("in", ["usable"])})
+    kept = _apply_filters(filterable(), {"flag": ("in", ["usable"])})
     assert kept[ID_COL].tolist() == ["a", "c", "d"]
-    excluded = apply_filters(filterable(), {"flag": ("not in", ["usable"])})
+    excluded = _apply_filters(filterable(), {"flag": ("not in", ["usable"])})
     assert excluded[ID_COL].tolist() == ["b"]
 
 
 def test_a_callable_expresses_what_the_shorthand_cannot():
-    kept = apply_filters(filterable(),
+    kept = _apply_filters(filterable(),
                          {"length": lambda series: series.between(20, 80)})
     assert kept[ID_COL].tolist() == ["b"]
 
 
 def test_conditions_are_anded_together():
-    kept = apply_filters(filterable(),
+    kept = _apply_filters(filterable(),
                          {"length": (">", 20), "flag": ("in", ["usable"])})
     assert kept[ID_COL].tolist() == ["c"]
 
@@ -285,19 +291,19 @@ def test_a_missing_value_never_passes(condition):
     "This metric wasn't measured" must not quietly count as passing a !=
     test -- an unmeasured occurrence is not a verified-good one.
     """
-    assert "d" not in apply_filters(filterable(),
+    assert "d" not in _apply_filters(filterable(),
                                     {"length": condition})[ID_COL].tolist()
 
 
 def test_filtering_on_a_column_that_is_not_there_raises():
     """A typo should be loud, not silently hand back an empty export."""
     with pytest.raises(KeyError, match="filter column"):
-        apply_filters(filterable(), {"lenght": (">", 1)})
+        _apply_filters(filterable(), {"lenght": (">", 1)})
 
 
 def test_an_unsupported_operator_raises():
     with pytest.raises(ValueError, match="unsupported filter op"):
-        apply_filters(filterable(), {"length": ("~=", 1)})
+        _apply_filters(filterable(), {"length": ("~=", 1)})
 
 
 # ---------------------------------------------------------------------------
@@ -305,14 +311,35 @@ def test_an_unsupported_operator_raises():
 # ---------------------------------------------------------------------------
 
 
-def test_export_writes_a_csv_only_when_asked(measured_project, tmp_path):
-    assert not list(tmp_path.glob("*.csv"))
-    cf.export_metrics(measured_project)
-    assert not list(tmp_path.glob("*.csv"))
+def test_export_defaults_to_a_uniquely_named_file_under_exports(measured_project):
+    """
+    No path named: still written, not lost, and never collides with a
+    previous unnamed export.
+    """
+    exports = cf_paths.exports_dir(measured_project)
+    assert not list(exports.glob("*.csv"))
+
+    first = cf.export_metrics(measured_project)
+    second = cf.export_metrics(measured_project)
+
+    written = list(exports.glob("*.csv"))
+    assert len(written) == 2
+    assert len(pd.read_csv(written[0])) == len(first)
+    assert len(pd.read_csv(written[1])) == len(second)
+
+
+def test_path_false_returns_without_writing(measured_project, tmp_path):
+    exports = cf_paths.exports_dir(measured_project)
+    before = set(exports.glob("*.csv")) if exports.exists() else set()
+
+    exported = cf.export_metrics(measured_project, path=False)
+
+    after = set(exports.glob("*.csv")) if exports.exists() else set()
+    assert after == before
 
     destination = tmp_path / "traits.csv"
-    exported = cf.export_metrics(measured_project, destination)
-    assert len(pd.read_csv(destination)) == len(exported)
+    written = cf.export_metrics(measured_project, destination)
+    assert len(pd.read_csv(destination)) == len(written) == len(exported)
 
 
 def test_identifying_columns_come_first(measured_project):
@@ -452,3 +479,195 @@ def test_numeric_labels_match_as_stored(metadata_project):
         make_metric_row("specimen1", "organism", "grade", np.int64(4)),
     ])
     assert occurrences_matching(metadata_project, "qc", {"grade": 4}) == ["specimen1"]
+
+
+# ---------------------------------------------------------------------------
+# The manifest: what an export says about itself
+# ---------------------------------------------------------------------------
+
+
+def read_sidecar(path):
+    """The manifest written beside one export."""
+    return json.loads(cf_paths.export_sidecar_path(path).read_text(encoding="utf-8"))
+
+
+def test_an_export_names_the_runs_and_recipes_behind_it(measured_project, tmp_path):
+    """
+    The gap this closes: a CSV that leaves the project used to say nothing about
+    where its numbers came from. Every run that contributed a value is named,
+    with the recipe hash that produced it.
+    """
+    out = tmp_path / "traits.csv"
+    exported = cf.export_metrics(measured_project, out)
+
+    record = read_sidecar(out)
+    assert record["occurrences"]["count"] == len(exported)
+    assert [run["name"] for run in record["runs"]] == ["traits"]
+    assert record["runs"][0]["kind"] == "metric"
+    assert len(record["runs"][0]["recipe_hash"]) == 16
+    assert record["runs"][0]["recipe"]["kind"] == "metric"
+
+
+def test_every_exported_column_says_what_it_holds(measured_project, tmp_path):
+    """
+    A column name alone does not say whether a number is pixels, a fraction or
+    a category, which is the whole reason export_units exists. The manifest
+    carries it per column, for exactly the columns the export ended up with.
+    """
+    out = tmp_path / "traits.csv"
+    exported = cf.export_metrics(measured_project, out)
+
+    occurrence_columns = set(load_occurrences(measured_project).columns)
+    columns = read_sidecar(out)["columns"]
+    assert set(columns) == {c for c in exported.columns if c not in occurrence_columns}
+
+    length = columns["traits__organism__body_length"]
+    assert (length["run_name"], length["part"]) == ("traits", "organism")
+    assert (length["metric_name"], length["unit"]) == ("body_length", "px")
+
+
+def test_the_masks_the_numbers_came_from_are_named(measured_project, tmp_path):
+    """
+    A metric row's source_mask_hash is the identity of the segmentation beneath
+    it, so listing the distinct ones is what makes "these numbers came from
+    those masks" answerable from the CSV's own manifest.
+    """
+    from critterframe.records import masks as mask_records
+
+    out = tmp_path / "traits.csv"
+    cf.export_metrics(measured_project, out)
+
+    record = read_sidecar(out)["source_masks"]
+    current = set(mask_records.current_derivation_hashes(measured_project).values())
+    assert set(record["derivations"]) == current
+    assert record["n_without_provenance"] == 0
+
+
+def test_the_hash_covers_the_data_and_not_the_filename(measured_project, tmp_path):
+    """
+    Two writes of one table are one export. The identity is what was selected
+    and what came out, so the filename and the timestamp are recorded but sit
+    outside the hash -- the same reasoning that keeps a path out of a registered
+    model's identity().
+    """
+    first = tmp_path / "one.csv"
+    second = tmp_path / "two.csv"
+    cf.export_metrics(measured_project, first)
+    cf.export_metrics(measured_project, second)
+
+    one, two = read_sidecar(first), read_sidecar(second)
+    assert one["export_hash"] == two["export_hash"]
+    assert one["path"] != two["path"]
+
+
+def test_a_different_selection_is_a_different_export(measured_project, tmp_path):
+    """The hash has to move when the table does, or it identifies nothing."""
+    everything = tmp_path / "all.csv"
+    narrowed = tmp_path / "some.csv"
+    cf.export_metrics(measured_project, everything)
+    cf.export_metrics(measured_project, narrowed,
+                      metric_names=["body_length"])
+
+    assert read_sidecar(everything)["export_hash"] \
+        != read_sidecar(narrowed)["export_hash"]
+
+
+def test_resegmenting_moves_the_export_hash(measured_project, tmp_path):
+    """
+    The point of recording the derivations: re-measure off new masks and the
+    export is a different export, even though the recipe, the occurrences and
+    the column names are all unchanged.
+    """
+    from helpers.models import ThresholdModel
+
+    before = tmp_path / "before.csv"
+    cf.export_metrics(measured_project, before)
+
+    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel(erode=3))],
+                    run_name="tighter", visualize=False)
+    # The exact recipe _measured_template used under "traits" (conftest.py) --
+    # run_name is pinned to a recipe, so re-measuring after resegmenting has to
+    # be this same recipe rather than a narrower stand-in.
+    cf.run_metrics(measured_project, run_name="traits",
+                   transforms=[cf.remove_appendages(), cf.orient()],
+                   metrics=[cf.body_length(), cf.max_width(),
+                            cf.mask_area(name="area_px", unit="px2"),
+                            cf.mean_lightness(), cf.blur_variance(),
+                            cf.bilateral_asymmetry(), cf.edge_fraction()],
+                   visualize=False)
+
+    after = tmp_path / "after.csv"
+    cf.export_metrics(measured_project, after)
+
+    assert read_sidecar(before)["source_masks"]["derivations"] \
+        != read_sidecar(after)["source_masks"]["derivations"]
+    assert read_sidecar(before)["export_hash"] != read_sidecar(after)["export_hash"]
+
+
+def test_how_the_rows_were_chosen_is_recorded(measured_project, tmp_path):
+    """
+    Filtering is revisable precisely because nothing is deleted -- which is only
+    useful if the threshold that was applied is still knowable a year later.
+    """
+    out = tmp_path / "traits.csv"
+    cf.export_metrics(measured_project, out, units=None, current_only=True,
+                      filters={"traits__organism__body_length": (">", 5)})
+
+    selection = read_sidecar(out)["selection"]
+    assert selection["filters"] == {"traits__organism__body_length": [">", 5]}
+    assert selection["current_only"] is True
+    assert selection["units"] is None
+
+
+def test_a_predicate_filter_is_recorded_by_name(measured_project, tmp_path):
+    """
+    A callable cannot be stored, and its repr carries a memory address that
+    would make one export hash differently on every run. The name is what is
+    kept, and the docstring says so -- two different lambdas sharing a name are
+    indistinguishable here.
+    """
+    def not_tiny(series):
+        return series > 5
+
+    out = tmp_path / "traits.csv"
+    cf.export_metrics(measured_project, out,
+                      filters={"traits__organism__body_length": not_tiny})
+
+    recorded = read_sidecar(out)["selection"]["filters"]
+    assert recorded["traits__organism__body_length"]["callable"].endswith("not_tiny")
+
+    again = tmp_path / "again.csv"
+    cf.export_metrics(measured_project, again,
+                      filters={"traits__organism__body_length": not_tiny})
+    assert read_sidecar(out)["export_hash"] == read_sidecar(again)["export_hash"]
+
+
+def test_the_project_logs_exports_it_wrote_elsewhere(measured_project, tmp_path):
+    """
+    The sidecar travels with the file; the log stays behind. An export written
+    outside the project is exactly the case where only the log can answer "what
+    has this project handed out".
+    """
+    cf.export_metrics(measured_project, tmp_path / "traits.csv")
+    cf.export_metrics(measured_project, path=False)          # returned, never written
+
+    log = cf.load_exports(measured_project)
+    assert len(log) == 2
+    assert log["path"].iloc[0].endswith("traits.csv")
+    assert log["path"].iloc[1] is None
+    assert not cf_paths.export_sidecar_path(tmp_path / "nothing.csv").exists()
+
+
+def test_no_manifest_is_written_when_it_is_not_wanted(measured_project, tmp_path):
+    """manifest=False leaves both the sidecar and the log alone."""
+    out = tmp_path / "traits.csv"
+    cf.export_metrics(measured_project, out, manifest=False)
+
+    assert out.exists()
+    assert not cf_paths.export_sidecar_path(out).exists()
+    assert cf.load_exports(measured_project).empty
+
+
+def test_a_project_that_has_exported_nothing_reads_as_empty(measured_project):
+    """No log file is 'nothing yet', not an error."""
+    assert cf.load_exports(measured_project).empty

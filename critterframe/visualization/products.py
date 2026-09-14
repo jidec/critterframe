@@ -36,27 +36,28 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
     Render each occurrence-part's segment through a chain of transforms and write
     one image file per occurrence-part.
 
-    project_path -- project to read from and write into.
-    name         -- the render's name, and its folder's, e.g. "oriented_bodies".
-    transforms   -- ordered Transform operations applied before writing. The
-                    interesting part: what makes a plate of comparable specimens
-                    out of a pile of snapshots is usually remove_background() +
-                    crop_to_mask() + orient(). An empty chain writes the
-                    originals back out.
-    part / parts -- the part to render, or several. Several qualifies every
-                    filename with the part name.
-    subset       -- name of a subset to render, or None for every occurrence.
-    limit        -- optional cap, for checking a chain before committing to
-                    10,000 files.
-    occurrence_ids -- render exactly these, ignoring subset/limit.
-    reference    -- render from the reference masks instead of the canonical.
-    extension    -- image format by extension. PNG by default, since a render
-                    usually goes into a figure and JPEG rings along the specimen
-                    boundary.
-    force        -- re-render occurrence-parts whose file exists. Normally
-                    skipped, which makes an interrupted render resumable; output
-                    is deterministic for a given hash, so skipping can't leave a
-                    stale file.
+    - `project_path` -- project to read from and write into.
+    - `name` -- the render's name, and its folder's, e.g.
+      `"oriented_bodies"`.
+    - `transforms` -- ordered Transform operations applied before writing.
+      The interesting part: what makes a plate of comparable specimens out
+      of a pile of snapshots is usually `remove_background()` +
+      `crop_to_mask()` + `orient()`. An empty chain writes the originals
+      back out.
+    - `part` / `parts` -- the part to render, or several. Several qualifies
+      every filename with the part name.
+    - `subset` -- name of a subset to render, or None for every occurrence.
+    - `limit` -- optional cap, for checking a chain before committing to
+      10,000 files.
+    - `occurrence_ids` -- render exactly these, ignoring subset/limit.
+    - `reference` -- render from the reference masks instead of the
+      canonical.
+    - `extension` -- image format by extension. PNG by default, since a
+      render usually goes into a figure and JPEG rings along the specimen
+      boundary.
+    - `force` -- re-render occurrence-parts whose file exists. Normally
+      skipped, which makes an interrupted render resumable; output is
+      deterministic for a given hash, so skipping can't leave a stale file.
 
     Returns a summary dict (rendered, skipped, failed, directory).
     """

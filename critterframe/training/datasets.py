@@ -23,7 +23,7 @@ import pandas as pd
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Segment, hash_spec
 from ..records import masks as mask_records
-from ..records.occurrences import ID_COL, ids_digest
+from ..records.occurrences import ID_COL, ids_record
 from ..export import metrics_wide
 from ..storage.imagestore import ImageStore
 
@@ -53,9 +53,23 @@ UNSPLIT = "all"
 _UNSAFE_IN_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 
 
+def _project_mask(segment, mask):
+    """
+    Warp `mask` (in ORIGINAL image coordinates) into `segment`'s current frame.
+
+    The forward half of Segment.mask_in_original_coordinates()'s inversion --
+    what letting an already-corrected downstream part's mask land inside an
+    upstream part's crop/orient/etc. needs.
+    """
+    height, width = segment.shape
+    warped = cv2.warpAffine(mask.astype("uint8"), segment.matrix, (width, height),
+                            flags=cv2.INTER_NEAREST)
+    return warped > 0
+
+
 def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
                      reference=False, subset=None, limit=None,
-                     occurrence_ids=None, require_mask=True):
+                     occurrence_ids=None, require_mask=True, from_part=None):
     """
     Yield (occurrence_id, Segment) for every occurrence with a mask for `part`.
 
@@ -77,6 +91,19 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
                       unsegmented occurrence is still training data. Any
                       transform that needs a mask then fails per occurrence and
                       is logged, so don't pass a mask-dependent chain with this.
+    from_part      -- build each segment from THIS part's CANONICAL mask
+                      instead of `part`'s own, run `transforms` against it,
+                      then swap in `part`'s own mask (from the table `reference`
+                      selects) reprojected into the resulting frame. Always
+                      canonical regardless of `reference`, exactly like
+                      run_segments(from_part=...): the upstream mask a
+                      hand-drawn part correction started from was never itself
+                      written to the reference table, only the correction was.
+                      A part carved out of another was trained -- and runs at
+                      inference -- against the shared upstream crop, not one
+                      cropped to its own, usually much smaller, mask, so
+                      exporting has to reproduce that same frame rather than
+                      re-deriving crop/orientation from `part`'s own mask.
     """
     paths.require_project(project_path)
 
@@ -88,6 +115,15 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
     mask_rows = mask_records.mask_lookup(project_path, part=part,
                                          occurrence_ids=occurrence_ids,
                                          reference=reference)
+    source_rows = None
+    if from_part is not None:
+        # Always canonical, like run_segments(from_part=...): `reference` here
+        # says where `part`'s OWN mask was written (a hand-drawn correction),
+        # not where the upstream mask that correction started from lives -- an
+        # organism mask has no reference counterpart just because a part cut
+        # out of it does.
+        source_rows = mask_records.mask_lookup(project_path, part=from_part,
+                                               occurrence_ids=occurrence_ids)
 
     with ImageStore(project_path, readonly=True) as images:
         for occurrence_id in occurrence_ids:
@@ -100,11 +136,28 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
                     raise ValueError("no image in the image store")
 
                 mask = None if row is None else mask_records.decode_mask(row)
-                segment = Segment(image, mask=mask,
-                                  occurrence_id=occurrence_id, part=part,
-                                  project_path=project_path)
-                for operation in transforms:
-                    segment, _info = operation(segment)
+
+                if from_part is None:
+                    segment = Segment(image, mask=mask,
+                                      occurrence_id=occurrence_id, part=part,
+                                      project_path=project_path)
+                    for operation in transforms:
+                        segment, _info = operation(segment)
+                else:
+                    source_row = source_rows.get(occurrence_id)
+                    if source_row is None:
+                        raise ValueError(
+                            f"no '{from_part}' mask to build the '{part}' "
+                            "frame from"
+                        )
+                    start_mask = mask_records.decode_mask(source_row)
+                    segment = Segment(image, mask=start_mask,
+                                      occurrence_id=occurrence_id,
+                                      part=from_part, project_path=project_path)
+                    for operation in transforms:
+                        segment, _info = operation(segment)
+                    segment = segment.for_part(part)
+                    segment.mask = None if mask is None else _project_mask(segment, mask)
 
                 yield occurrence_id, segment
 
@@ -115,7 +168,8 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
 def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PART,
                          transforms=(), reference=False, masks=False,
                          class_by=None, metadata=None, metrics=None,
-                         require_mask=True, subset=None, limit=None):
+                         require_mask=True, subset=None, limit=None,
+                         from_part=None):
     """
     Materialize project data as a directory a trainer can read.
 
@@ -129,29 +183,36 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
             train/images/<occurrence_id>.png      (no class_by)
             train/masks/<occurrence_id>.png       (masks=True)
 
-    project_path -- project to export from.
-    output_dir   -- directory to write into; created if missing. Existing files
-                    are left alone unless a new one has the same name.
-    splits       -- {split name: subset name} or {split name: occurrence ids},
-                    mixed freely. None exports everything as one flat dataset.
-                    This does NOT decide the split -- pass what split_ids()
-                    returned. An occurrence in two splits raises, since that is
-                    the leakage every other guarantee here exists to prevent.
-    part         -- part to export, "organism" by default.
-    transforms   -- operations applied to each segment before writing. Use the
-                    SAME chain the model will get at inference.
-    reference    -- read masks from the reference table. Usually True when
-                    training a segmenter.
-    masks        -- also write each mask as a 0/255 PNG.
-    class_by     -- occurrence column to organize images into class folders by,
-                    e.g. "species". An occurrence with no value is left out and
-                    logged: the class is the training target, so an image
-                    without one has nothing to teach.
-    metadata     -- occurrence columns to carry into the manifest.
-    metrics      -- metric run names whose values to carry into the manifest.
-    require_mask -- False exports occurrences with no mask, for training on
-                    whole images.
-    subset, limit -- narrow an unsplit export; rejected alongside `splits`.
+    - `project_path` -- project to export from.
+    - `output_dir` -- directory to write into; created if missing. Existing
+      files are left alone unless a new one has the same name.
+    - `splits` -- `{split name: subset name}` or `{split name: occurrence
+      ids}`, mixed freely. None exports everything as one flat dataset. This
+      does NOT decide the split -- pass what `split_ids()` returned. An
+      occurrence in two splits raises, since that is the leakage every
+      other guarantee here exists to prevent.
+    - `part` -- part to export, `"organism"` by default.
+    - `transforms` -- operations applied to each segment before writing. Use
+      the SAME chain the model will get at inference.
+    - `reference` -- read masks from the reference table. Usually True when
+      training a segmenter.
+    - `masks` -- also write each mask as a 0/255 PNG.
+    - `class_by` -- occurrence column to organize images into class folders
+      by, e.g. `"species"`. An occurrence with no value is left out and
+      logged: the class is the training target, so an image without one has
+      nothing to teach.
+    - `metadata` -- occurrence columns to carry into the manifest.
+    - `metrics` -- metric run names whose values to carry into the manifest.
+    - `require_mask` -- False exports occurrences with no mask, for training
+      on whole images.
+    - `subset`, `limit` -- narrow an unsplit export; rejected alongside
+      `splits`.
+    - `from_part` -- build each image from an upstream part's CANONICAL mask
+      instead of `part`'s own; see `iterate_segments()`. Pass the same
+      `from_part` the `run_segments()` call that made `part`'s mask used, so
+      the exported image matches the shared crop the model will see at
+      inference rather than one cropped to `part`'s own, usually much
+      smaller, mask.
 
     Returns the manifest DataFrame, one row per written image.
     """
@@ -175,7 +236,7 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
         for occurrence_id, segment in iterate_segments(
                 project_path, part=part, transforms=transforms,
                 reference=reference, occurrence_ids=occurrence_ids,
-                require_mask=require_mask):
+                require_mask=require_mask, from_part=from_part):
 
             class_value = None
             if class_by is not None:
@@ -233,7 +294,7 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
     manifest = _attach_labels(project_path, manifest, metadata, metrics, part)
     manifest.to_csv(os.path.join(output_dir, MANIFEST_FILE), index=False)
     _write_dataset_record(output_dir, manifest, splits, part, transforms,
-                          reference, masks, class_by)
+                          reference, masks, class_by, from_part)
 
     logger.info("exported %d image(s) -> %s", len(manifest), output_dir)
     return manifest
@@ -397,7 +458,7 @@ def _write_image(path, image):
 
 
 def _write_dataset_record(output_dir, manifest, splits, part, transforms,
-                          reference, masks, class_by):
+                          reference, masks, class_by, from_part=None):
     """
     Write dataset.json: what this export IS, hashed.
 
@@ -416,14 +477,14 @@ def _write_dataset_record(output_dir, manifest, splits, part, transforms,
 
     record = {
         "part": part,
+        "from_part": from_part,
         "reference": bool(reference),
         "masks": bool(masks),
         "class_by": class_by,
         "classes": (sorted(manifest["class"].unique().tolist())
                     if class_by is not None else None),
         "transforms": [operation.spec() for operation in transforms],
-        "splits": {name: {"count": len(ids), "ids_hash": ids_digest(ids)}
-                   for name, ids in sorted(groups.items())},
+        "splits": {name: ids_record(ids) for name, ids in sorted(groups.items())},
     }
     record["data_hash"] = hash_spec(record)
     record["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")

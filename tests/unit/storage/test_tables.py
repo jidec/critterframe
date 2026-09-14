@@ -11,6 +11,8 @@ mask table that grows a second copy of an occurrence-part on every run is a
 project that quietly stops meaning anything.
 """
 
+from pathlib import Path
+
 import pandas as pd
 import pytest
 
@@ -67,6 +69,40 @@ def test_the_index_is_not_written(tmp_path):
     frame = rows(a_row("a"), a_row("b")).set_index("occurrence_id")
     write_table(frame.reset_index(), path)
     assert load_table(path).index.tolist() == [0, 1]
+
+
+def _boom(self, dest, *args, **kwargs):
+    """A to_parquet stand-in for a write interrupted after some bytes land."""
+    Path(dest).write_bytes(b"not actually parquet")
+    raise RuntimeError("simulated interruption")
+
+
+def test_an_interrupted_write_leaves_the_previous_file_intact(tmp_path, monkeypatch):
+    """
+    write_table writes through a temp file and renames it into place, so a
+    process killed mid-write can never leave a truncated table.parquet behind
+    -- the failure mode behind the corruption this guards against.
+    """
+    path = tmp_path / "table.parquet"
+    write_table(rows(a_row("a")), path)
+    original = path.read_bytes()
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _boom)
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        write_table(rows(a_row("b")), path)
+
+    assert path.read_bytes() == original
+    assert [entry.name for entry in tmp_path.iterdir()] == [path.name]
+
+
+def test_an_interrupted_first_write_leaves_no_file_at_all(tmp_path, monkeypatch):
+    path = tmp_path / "table.parquet"
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _boom)
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        write_table(rows(a_row("a")), path)
+
+    assert not path.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 # ---------------------------------------------------------------------------
@@ -158,6 +194,20 @@ def test_upserting_into_an_empty_stored_table_is_fine(tmp_path):
     write_table(rows().reindex(columns=["occurrence_id", "part", "value"]), path)
     upsert_table(rows(a_row("a")), path, KEYS)
     assert len(load_table(path)) == 1
+
+
+def test_an_interrupted_upsert_leaves_the_previous_file_intact(tmp_path, monkeypatch):
+    """Same atomicity guarantee as write_table, for the incremental writer."""
+    path = tmp_path / "table.parquet"
+    upsert_table(rows(a_row("a", value=1)), path, KEYS)
+    original = path.read_bytes()
+
+    monkeypatch.setattr(pd.DataFrame, "to_parquet", _boom)
+    with pytest.raises(RuntimeError, match="simulated interruption"):
+        upsert_table(rows(a_row("a", value=99)), path, KEYS)
+
+    assert path.read_bytes() == original
+    assert [entry.name for entry in tmp_path.iterdir()] == [path.name]
 
 
 # ---------------------------------------------------------------------------

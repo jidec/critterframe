@@ -18,6 +18,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.records import masks as mask_records
+from critterframe.recipes import Recipe
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow
@@ -97,11 +98,11 @@ def test_resegmenting_the_upstream_makes_the_derived_masks_pending(segmented_pro
     cut out of is gone.
     """
     segment_core(segmented_project)
-    before = cf.Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
+    before = Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
                        part="core", from_part="organism").hash
 
     resegment_organism(segmented_project)
-    after = cf.Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
+    after = Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
                       part="core", from_part="organism").hash
 
     assert before == after

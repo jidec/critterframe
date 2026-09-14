@@ -41,7 +41,7 @@ def test_round_trip_preserves_every_pixel(shape):
     """
     rng = np.random.default_rng(0)
     mask = rng.random(shape) > 0.5
-    decoded = mask_records.decode_mask(mask_records.encode_mask(mask))
+    decoded = mask_records.decode_mask(mask_records._encode_mask(mask))
     assert decoded.dtype == bool
     assert np.array_equal(decoded, mask)
 
@@ -54,13 +54,13 @@ def test_round_trip_of_a_uniform_mask(fill):
     legitimate thing for a segmenter to return.
     """
     mask = np.full((12, 20), fill, bool)
-    assert np.array_equal(mask_records.decode_mask(mask_records.encode_mask(mask)),
+    assert np.array_equal(mask_records.decode_mask(mask_records._encode_mask(mask)),
                           mask)
 
 
 def test_encode_records_the_area_and_the_shape():
     mask = blob_mask(shape=(200, 300))
-    encoded = mask_records.encode_mask(mask)
+    encoded = mask_records._encode_mask(mask)
     assert encoded["area"] == int(mask.sum())
     assert (encoded["rle_height"], encoded["rle_width"]) == (200, 300)
 
@@ -74,7 +74,7 @@ def test_encode_accepts_a_non_boolean_mask():
     integer = np.zeros((10, 10), np.uint8)
     integer[2:5, 3:8] = 7
     assert np.array_equal(
-        mask_records.decode_mask(mask_records.encode_mask(integer)),
+        mask_records.decode_mask(mask_records._encode_mask(integer)),
         integer > 0)
 
 
@@ -85,7 +85,7 @@ def test_decode_accepts_a_bytes_like_view():
     bytes() rather than passing the value through.
     """
     mask = blob_mask()
-    encoded = mask_records.encode_mask(mask)
+    encoded = mask_records._encode_mask(mask)
     as_view = dict(encoded, rle_counts=memoryview(encoded["rle_counts"]))
     assert np.array_equal(mask_records.decode_mask(as_view), mask)
 

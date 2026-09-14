@@ -176,6 +176,49 @@ def test_saving_nothing_at_all_is_refused(gui):
         cf.draw_mask()(a_segment())
 
 
+def test_plus_and_minus_resize_the_brush_mid_session(gui):
+    """
+    A single right-click at a fixed point paints a bigger blob once the brush
+    has been grown, which is the only externally visible sign the resize took.
+
+    FakeCv2 pops one scripted click per waitKey() call regardless of which key
+    that call returns, so the click has to be padded with no-op moves to land
+    on the waitKey() call that actually follows both '+' presses.
+    """
+    noop = (cv2.EVENT_MOUSEMOVE, 0, 0)
+    gui(keys=[ord("+"), ord("+"), SAVE],
+        clicks=[noop, noop, (cv2.EVENT_RBUTTONDOWN, 50, 50)])
+    grown, _info = cf.correct_mask(brush_radius=2)(a_segment(with_mask=False))
+
+    gui(keys=[SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 50, 50)])
+    plain, _info = cf.correct_mask(brush_radius=2)(a_segment(with_mask=False))
+
+    assert grown.mask.sum() > plain.mask.sum()
+
+
+def test_minus_shrinks_and_will_not_go_below_one(gui):
+    noop = (cv2.EVENT_MOUSEMOVE, 0, 0)
+    gui(keys=[ord("-")] * 5 + [SAVE],
+        clicks=[noop] * 5 + [(cv2.EVENT_RBUTTONDOWN, 50, 50)])
+    corrected, _info = cf.correct_mask(brush_radius=2)(a_segment(with_mask=False))
+
+    # radius floors at 1 rather than 1 - 5 = -4, so some paint still lands.
+    assert corrected.mask.sum() > 0
+
+
+def test_resizing_does_not_change_the_recipe_hash(gui):
+    """
+    The starting brush_radius is in spec(); an in-session resize is an
+    operator action during an already-nondeterministic operation, not a
+    parameter, so it must not move the hash.
+    """
+    before = cf.correct_mask(brush_radius=5).spec()
+    gui(keys=[ord("+"), ord("-"), SAVE])
+    cf.correct_mask(brush_radius=5)(a_segment())
+    after = cf.correct_mask(brush_radius=5).spec()
+    assert before == after
+
+
 def test_a_key_that_means_nothing_is_ignored(gui):
     gui(keys=[ord("x"), SAVE])
     _corrected, info = cf.correct_mask()(a_segment())
@@ -233,14 +276,68 @@ def test_a_hand_drawn_mask_lands_in_the_reference_table(gui, segmented_project):
     The workflow the operation exists for: correct a few dozen by hand into the
     reference table, then validate the automated masks against them. Same run
     machinery, same repeat-awareness, different table.
+
+    force= is explicit because a hand-drawn mask is not reproducible; see
+    test_a_hand_drawn_recipe_will_not_guess_about_completed_work below.
     """
     from critterframe.records import masks as mask_records
 
     gui(keys=[SAVE] * 3)
     result = cf.run_segments(segmented_project, run_name="by_hand",
                              steps=[cf.correct_mask()], from_part="organism",
-                             reference=True, limit=3, visualize=False)["organism"]
+                             reference=True, limit=3, visualize=False,
+                             force=False)["organism"]
 
     assert result["processed"] == 3
     assert len(mask_records.load_masks(segmented_project, reference=True)) == 3
     assert len(mask_records.load_masks(segmented_project)) == 8   # untouched
+
+
+@pytest.mark.slow
+def test_a_hand_drawn_recipe_will_not_guess_about_completed_work(gui,
+                                                                 segmented_project):
+    """
+    Two people painting one crop produce two different masks under one recipe
+    hash, so "already done by this recipe" cannot be read either way. The run
+    refuses rather than picking one, and both answers stay reachable.
+    """
+    from critterframe.records import masks as mask_records
+
+    drawn = dict(run_name="by_hand", steps=[cf.correct_mask()],
+                 from_part="organism", reference=True, limit=3, visualize=False)
+
+    gui(keys=[SAVE] * 3)
+    with pytest.raises(ValueError, match="correct_mask is not deterministic"):
+        cf.run_segments(segmented_project, **drawn)
+
+    gui(keys=[SAVE] * 3)
+    first = cf.run_segments(segmented_project, force=False, **drawn)["organism"]
+    assert first["processed"] == 3
+
+    # force=False resumes: the three already painted are not painted again.
+    gui(keys=[])
+    resumed = cf.run_segments(segmented_project, force=False, **drawn)["organism"]
+    assert (resumed["processed"], resumed["skipped"]) == (0, 3)
+
+    # force=True is the second pass, over the same occurrence-parts.
+    gui(keys=[SAVE] * 3)
+    redone = cf.run_segments(segmented_project, force=True, **drawn)["organism"]
+    assert redone["processed"] == 3
+    assert len(mask_records.load_masks(segmented_project, reference=True)) == 3
+
+
+@pytest.mark.slow
+def test_a_model_recipe_still_defaults_to_resuming(segmented_project):
+    """
+    The refusal is scoped to the operations that earn it: a recipe of
+    reproducible operations skips completed work with no force= at all, exactly
+    as it did before draw_mask gained the flag.
+    """
+    from helpers.models import ThresholdModel
+
+    steps = [cf.segment(ThresholdModel())]
+    cf.run_segments(segmented_project, run_name="again", steps=steps,
+                    visualize=False)
+    second = cf.run_segments(segmented_project, run_name="again", steps=steps,
+                             visualize=False)["organism"]
+    assert (second["processed"], second["skipped"]) == (0, 8)

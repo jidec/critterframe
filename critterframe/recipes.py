@@ -92,7 +92,7 @@ def hash_spec(spec):
 # ---------------------------------------------------------------------------
 
 
-def compose(existing, applied):
+def _compose(existing, applied):
     """
     Compose two 2x3 affines: `existing` maps original -> current, `applied`
     maps current -> new, and the result maps original -> new.
@@ -199,7 +199,7 @@ class Segment:
             occurrence_id=self.occurrence_id,
             part=self.part,
             project_path=self.project_path,
-            matrix=self.matrix if applied is None else compose(self.matrix, applied),
+            matrix=self.matrix if applied is None else _compose(self.matrix, applied),
             original_shape=self.original_shape,
             panel_sink=self.panel_sink,
         )
@@ -284,6 +284,12 @@ class Operation:
 
     kind = "operation"
 
+    # Whether rerunning this operation reproduces its output. Deliberately NOT
+    # in spec(): it doesn't change what one execution produces, only whether an
+    # earlier one may stand in for this one, and hashing it would move every
+    # recipe hash already stored on disk.
+    deterministic = True
+
     def __init__(self, name, function, parameters=None, version="1", model=None):
         self.name = name
         self.function = function
@@ -305,7 +311,7 @@ class Operation:
             "parameters": self.parameters,
         }
         if self.model is not None:
-            spec["model"] = model_identity(self.model)
+            spec["model"] = _model_identity(self.model)
         return spec
 
     def invoke(self, segment):
@@ -329,6 +335,9 @@ class Operation:
 
         context -- a metrics.run.RunContext: project path, the occurrence ids
                    this run covers, and the part being processed.
+
+        Returns None, or a JSON-serializable record of what it prepared, which
+        the run stores alongside its recipe (see records.runs.start_run).
         """
         return None
 
@@ -360,9 +369,19 @@ class Segmentation(Operation):
     Automatic models and hand-drawn masks are alternative segmentations, not
     different systems: segment(groundedsam2()) and draw_mask() both return
     (segment, info) and feed the same mask table.
+
+    deterministic -- False where rerunning this can produce a different mask, as
+                     hand-drawing does. run_segments then refuses to decide on
+                     its own whether already-covered occurrence-parts are done.
     """
 
     kind = "segment"
+
+    def __init__(self, name, function, parameters=None, version="1", model=None,
+                 deterministic=True):
+        super().__init__(name, function, parameters=parameters, version=version,
+                         model=model)
+        self.deterministic = bool(deterministic)
 
     def __call__(self, segment):
         return self.invoke(segment)
@@ -405,7 +424,7 @@ class Metric(Operation):
         return self.invoke(segment)
 
 
-def model_identity(model):
+def _model_identity(model):
     """
     A model's contribution to a recipe hash: whatever it reports about which
     weights it is.
@@ -478,17 +497,45 @@ class Recipe:
         """The operations of one kind, in order -- e.g. the transforms of a metric recipe."""
         return [operation for operation in self.operations if operation.kind == kind]
 
+    def nondeterministic_operations(self):
+        """The operations that don't reproduce their output when rerun, in order."""
+        return [operation for operation in self.operations
+                if not operation.deterministic]
+
     def prepare_all(self, context):
-        """Run every operation's prepare() hook once, before the per-occurrence loop."""
+        """
+        Run every operation's prepare() hook once, before the per-occurrence loop.
+
+        Returns {name: record} for the operations that returned one, keyed by
+        metric name where there is one; empty when nothing prepared anything.
+        """
+        prepared = {}
         for operation in self.operations:
-            operation.prepare(context)
+            record = operation.prepare(context)
+            if record is not None:
+                prepared[getattr(operation, "metric_name", operation.name)] = record
+        return prepared
 
     def __repr__(self):
-        names = ", ".join(operation.name for operation in self.operations)
-        return f"Recipe({self.kind}:{self.name} part={self.part} [{names}] {self.hash})"
+        return f"Recipe({describe_spec(self.spec())} {self.hash})"
 
 
-def describe(recipe):
+def describe_spec(spec):
+    """
+    One readable line for a recipe spec: kind, name, part, from_part, and its
+    operation chain in order.
+
+    Takes the plain dict `Recipe.spec()` produces -- the same shape
+    `records.runs.load_runs()` hands back after parsing a stored run's
+    `recipe_json`, since a run's recipe can't be reconstructed into a live
+    Recipe (an operation's spec omits its callable).
+    """
+    names = ", ".join(operation["name"] for operation in spec.get("operations", []))
+    from_part = f" from_part={spec['from_part']}" if spec.get("from_part") else ""
+    return f"{spec['kind']}:{spec['name']} part={spec['part']}{from_part} [{names}]"
+
+
+def _describe(recipe):
     """
     A recipe's spec plus its hash, ready to be stored on a run record -- the
     reproducible half of provenance. Stored in full rather than as a hash alone

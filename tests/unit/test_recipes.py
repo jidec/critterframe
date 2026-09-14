@@ -28,12 +28,12 @@ from critterframe.recipes import (
     Segment,
     Segmentation,
     Transform,
+    _compose,
+    _describe,
+    _model_identity,
     canonical_json,
-    compose,
-    describe,
     hash_spec,
     load_json,
-    model_identity,
 )
 from helpers.models import ThresholdModel, UnidentifiedModel
 
@@ -147,7 +147,7 @@ def test_compose_applies_the_new_transform_after_the_old():
     """
     shift_right = np.array([[1.0, 0, 10], [0, 1.0, 0]])
     shift_down = np.array([[1.0, 0, 0], [0, 1.0, 5]])
-    assert np.allclose(compose(shift_right, shift_down),
+    assert np.allclose(_compose(shift_right, shift_down),
                        [[1, 0, 10], [0, 1, 5]])
 
 
@@ -296,7 +296,7 @@ def test_a_model_without_an_identity_is_only_its_class_name():
     and the reason register_model() exists: two fine-tunes of one class hash
     alike here.
     """
-    assert model_identity(UnidentifiedModel()) == {"class": "UnidentifiedModel"}
+    assert _model_identity(UnidentifiedModel()) == {"class": "UnidentifiedModel"}
 
 
 def test_invoke_passes_parameters_and_keeps_the_model_out_of_them():
@@ -338,6 +338,79 @@ def test_a_metric_defaults_to_being_stored_under_its_own_name():
 
 def test_prepare_is_optional():
     assert Operation("thing", None).prepare(context=None) is None
+
+
+# ---------------------------------------------------------------------------
+# Determinism -- which results may stand in for a rerun
+# ---------------------------------------------------------------------------
+
+
+def test_operations_reproduce_themselves_unless_they_say_otherwise():
+    """Every operation answers the question, so no caller has to guess."""
+    assert Operation("thing", None).deterministic is True
+    assert Transform("crop", None).deterministic is True
+    assert Metric("body_length", None).deterministic is True
+    assert Segmentation("segment", None).deterministic is True
+    assert Segmentation("draw", None, deterministic=False).deterministic is False
+
+
+def test_determinism_is_not_part_of_identity():
+    """
+    THE constraint on this flag. It doesn't change what one execution produces,
+    only whether an earlier execution may stand in for this one -- and a recipe
+    hash is stored on every mask and every metric row on disk, so moving it
+    would orphan every one of them. Same category as a visualize flag.
+    """
+    reproducible = Segmentation("paint", None, {"brush_radius": 8})
+    by_hand = Segmentation("paint", None, {"brush_radius": 8},
+                           deterministic=False)
+
+    assert reproducible.spec() == by_hand.spec()
+    assert Recipe("segment", "refs", [reproducible]).hash \
+        == Recipe("segment", "refs", [by_hand]).hash
+
+
+def test_a_recipe_reports_which_of_its_operations_will_not_reproduce():
+    """What run_segments asks before deciding whether it may skip anything."""
+    recipe = Recipe("segment", "refs",
+                    [cf.crop_to_mask(), cf.draw_mask(), cf.orient()],
+                    part="organism")
+
+    assert [op.name for op in recipe.nondeterministic_operations()] == ["draw_mask"]
+    assert Recipe("segment", "auto",
+                  [cf.segment(ThresholdModel())]).nondeterministic_operations() == []
+
+
+def test_hand_drawing_is_the_case_this_exists_for():
+    """
+    Two people painting one crop produce two different masks under one recipe
+    hash, which is exactly the thing repeat-awareness cannot see.
+    """
+    assert cf.draw_mask().deterministic is False
+    assert cf.correct_mask().deterministic is False
+    assert cf.segment(ThresholdModel()).deterministic is True
+
+
+def test_prepare_all_collects_what_its_operations_prepared():
+    """
+    The channel a group metric hands its fit back through. Keyed by metric name
+    where there is one, since that is what the value is stored under.
+    """
+    class Fitting(Metric):
+        def prepare(self, context):
+            return {"fitted": context}
+
+    recipe = Recipe("metric", "scores",
+                    [cf.body_length(),
+                     Fitting("outlier", None, metric_name="unusual")],
+                    part="organism")
+
+    assert recipe.prepare_all("the-context") == {"unusual": {"fitted": "the-context"}}
+
+
+def test_prepare_all_is_empty_when_nothing_prepares_anything():
+    """Almost every recipe. An empty dict, not a dict of Nones."""
+    assert Recipe("metric", "traits", [cf.body_length()]).prepare_all(None) == {}
 
 
 # ---------------------------------------------------------------------------
@@ -457,7 +530,7 @@ def test_describe_carries_the_spec_as_well_as_the_hash():
     operation that produced it has since been renamed or deleted.
     """
     recipe = base_recipe()
-    described = describe(recipe)
+    described = _describe(recipe)
     assert described["recipe_hash"] == recipe.hash
     assert described["recipe"] == recipe.spec()
 

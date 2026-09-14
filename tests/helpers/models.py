@@ -120,10 +120,17 @@ class FailingModel:
     For the "individual failures are logged and counted, never fatal" rule: one
     bad occurrence must not cost a run, so a run over eight of these must come
     back with failed=8 rather than an exception.
+
+    calls counts predict() invocations, so a repeat-awareness test can assert a
+    previously-failed occurrence-part was skipped rather than reattempted.
     """
+
+    def __init__(self):
+        self.calls = 0
 
     def identity(self):
         return {"class": "FailingModel"}
 
     def predict(self, image, mask_threshold=0.5):
+        self.calls += 1
         raise RuntimeError("this model always fails")

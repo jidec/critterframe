@@ -43,9 +43,10 @@ def crop(region=None, x=None, y=None, width=None, height=None):
 
     Give either a named region or an explicit box, not both.
 
-    region -- one of REGIONS ("upper_left", "center", ...), taken as fractions
-              of the current frame.
-    x, y, width, height -- explicit box in pixels of the current frame.
+    - `region` -- one of `REGIONS` (`"upper_left"`, `"center"`, ...), taken as
+      fractions of the current frame.
+    - `x`, `y`, `width`, `height` -- explicit box in pixels of the current
+      frame.
     """
     if region is not None and any(v is not None for v in (x, y, width, height)):
         raise ValueError("crop takes either region= or an explicit x/y/width/height box")
@@ -94,8 +95,8 @@ def resize(width=None, height=None, scale=None):
     width/height, the other follows to preserve aspect ratio -- distorting an
     organism's proportions would corrupt every shape trait measured afterward.
 
-    width, height -- target size in pixels.
-    scale         -- multiplier applied to both dimensions.
+    - `width`, `height` -- target size in pixels.
+    - `scale` -- multiplier applied to both dimensions.
     """
     if scale is not None and (width is not None or height is not None):
         raise ValueError("resize takes either scale= or width=/height=, not both")

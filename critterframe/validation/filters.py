@@ -42,25 +42,27 @@ def sweep_thresholds(df, metric_col, flag_when, flag_col, bad_flags=BAD_FLAGS):
     Score every observed value of one metric column as a candidate filter
     threshold.
 
-    df         -- wide DataFrame, one row per occurrence, holding metric_col and
-                  flag_col.
-    metric_col -- column of a continuous automated score.
-    flag_when  -- "below" or "above": which side counts as "flag this for
-                  exclusion". Blur variance is lower for worse images ("below");
-                  asymmetry and edge fraction are higher for worse ones.
-    flag_col   -- column of human labels from metrics.annotation.
-    bad_flags  -- label values that count as "should have been filtered".
+    - `df` -- wide DataFrame, one row per occurrence, holding `metric_col`
+      and `flag_col`.
+    - `metric_col` -- column of a continuous automated score.
+    - `flag_when` -- `"below"` or `"above"`: which side counts as "flag this
+      for exclusion". Blur variance is lower for worse images (`"below"`);
+      asymmetry and edge fraction are higher for worse ones.
+    - `flag_col` -- column of human labels from `metrics.annotation`.
+    - `bad_flags` -- label values that count as "should have been
+      filtered".
 
     Computes per candidate threshold:
-      precision     -- of those flagged, the fraction genuinely bad.
-      recall        -- of the genuinely bad, the fraction flagged.
-      fpr           -- of the genuinely clean, the fraction wrongly flagged. The
-                       cost side: real data thrown away.
-      recall_<flag> -- recall per bad-label category, so a metric that catches
-                       every cut-off organism while missing every non-organism
-                       shows up instead of hiding behind one number.
-      n_bad, n_clean, n_<flag> -- the counts behind each rate, so a rate from two
-                       examples isn't mistaken for one from fifty.
+
+    - `precision` -- of those flagged, the fraction genuinely bad.
+    - `recall` -- of the genuinely bad, the fraction flagged.
+    - `fpr` -- of the genuinely clean, the fraction wrongly flagged. The
+      cost side: real data thrown away.
+    - `recall_<flag>` -- recall per bad-label category, so a metric that
+      catches every cut-off organism while missing every non-organism shows
+      up instead of hiding behind one number.
+    - `n_bad`, `n_clean`, `n_<flag>` -- the counts behind each rate, so a
+      rate from two examples isn't mistaken for one from fifty.
 
     Rows missing either column are dropped. Returns one row per candidate
     threshold, ascending; empty if nothing has both columns.
@@ -156,25 +158,24 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
     which is safer than reassembling it by hand -- getting the comparator
     backwards silently keeps exactly the occurrences the sweep flagged.
 
-    project_path   -- project to read from.
-    metric_specs   -- ["edge_fraction", ...] for metrics metrics.quality knows
-                      the direction of, or {"blur_variance": "below", ...} to say
-                      which side means "flag this one". Bare metric names; run
-                      and part prefixes are added for you.
-    predicted_run  -- run the candidate QC metrics were computed under.
-    annotation_run -- run the human labels were recorded under.
-    flag_metric    -- metric holding those labels, annotate_flags by default. A
-                      dict-valued one needs the key too, as "<metric>__<key>".
-    part           -- part both runs measured.
-    bad_flags      -- passed through to sweep_thresholds.
-    max_fpr,
-    min_precision  -- the constraint each threshold must satisfy. max_fpr has a
-                      default because an unconstrained sweep always picks the
-                      most aggressive cutoff available.
-    defaults       -- {metric_name: threshold} to fall back on where the
-                      constraint can't be met. A metric with no fallback and no
-                      satisfying cutoff is left OUT and warned about, since
-                      inventing a number would be worse than saying so.
+    - `project_path` -- project to read from.
+    - `metric_specs` -- `["edge_fraction", ...]` for metrics
+      `metrics.quality` knows the direction of, or `{"blur_variance":
+      "below", ...}` to say which side means "flag this one". Bare metric
+      names; run and part prefixes are added for you.
+    - `predicted_run` -- run the candidate QC metrics were computed under.
+    - `annotation_run` -- run the human labels were recorded under.
+    - `flag_metric` -- metric holding those labels, `annotate_flags` by
+      default. A dict-valued one needs the key too, as `"<metric>__<key>"`.
+    - `part` -- part both runs measured.
+    - `bad_flags` -- passed through to `sweep_thresholds`.
+    - `max_fpr`, `min_precision` -- the constraint each threshold must
+      satisfy. `max_fpr` has a default because an unconstrained sweep
+      always picks the most aggressive cutoff available.
+    - `defaults` -- `{metric_name: threshold}` to fall back on where the
+      constraint can't be met. A metric with no fallback and no satisfying
+      cutoff is left OUT and warned about, since inventing a number would
+      be worse than saying so.
 
     Returns {export column: (comparator, threshold)}. Empty if nothing could be
     calibrated, which export_metrics reads as "no filtering" -- check the log

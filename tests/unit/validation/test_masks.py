@@ -165,3 +165,71 @@ def test_a_project_with_no_reference_masks_has_nothing_to_validate(
     with caplog.at_level("WARNING"):
         scores = cf.validate_masks(segmented_project, visualize=False)
     assert len(scores) == 0
+
+
+# ---------------------------------------------------------------------------
+# validate_masks(steps=...) -- computed live, no prior run_segments() needed
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.slow
+def test_steps_computes_predictions_live(segmented_project):
+    """
+    A candidate recipe checked against the reference set with no prior
+    run_segments() pass -- the whole point of `steps=`.
+    """
+    cf.run_segments(segmented_project, run_name="by_hand",
+                    steps=[cf.segment(ThresholdModel(erode=2))],
+                    reference=True, visualize=False)
+
+    scores = cf.validate_masks(segmented_project,
+                               steps=[cf.segment(ThresholdModel())],
+                               visualize=False)
+
+    assert len(scores) == 8
+    assert scores.index.name == "occurrence_id"
+    assert scores.columns.tolist() == ["iou"]
+    assert (scores["iou"] > 0).all()
+    assert (scores["iou"] < 1).all()       # erode=2 reference genuinely differs
+
+
+@pytest.mark.slow
+def test_steps_persists_nothing(segmented_project):
+    from critterframe.records.runs import load_runs
+
+    cf.run_segments(segmented_project, run_name="by_hand",
+                    steps=[cf.segment(ThresholdModel(erode=2))],
+                    reference=True, visualize=False)
+
+    before_runs = len(load_runs(segmented_project))
+    before_masks = len(mask_records.load_masks(segmented_project))
+
+    cf.validate_masks(segmented_project, steps=[cf.segment(ThresholdModel())],
+                      visualize=False)
+
+    assert len(load_runs(segmented_project)) == before_runs
+    assert len(mask_records.load_masks(segmented_project)) == before_masks
+    assert len(cf.export_metrics(segmented_project)) == 0
+
+
+@pytest.mark.slow
+def test_steps_includes_occurrences_with_no_canonical_mask(with_reference):
+    """
+    Population-selection proof: an occurrence with a reference mask but no
+    canonical mask is excluded by default and included under `steps=`.
+    """
+    from critterframe.project import paths
+    from critterframe.storage.tables import load_table, write_table
+
+    canonical_path = paths.masks_path(with_reference)
+    canonical = load_table(canonical_path)
+    orphan_id = canonical.iloc[0]["occurrence_id"]
+    write_table(canonical[canonical["occurrence_id"] != orphan_id], canonical_path)
+
+    default_scores = cf.validate_masks(with_reference, visualize=False)
+    live_scores = cf.validate_masks(with_reference,
+                                    steps=[cf.segment(ThresholdModel())],
+                                    visualize=False)
+
+    assert orphan_id not in default_scores.index
+    assert orphan_id in live_scores.index

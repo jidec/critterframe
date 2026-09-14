@@ -13,6 +13,7 @@ what is stored.
 """
 
 import cv2
+import lmdb
 import numpy as np
 import pytest
 
@@ -241,3 +242,90 @@ def test_map_size_is_read_at_call_time(tmp_path, monkeypatch):
     monkeypatch.setattr(imagestore, "DEFAULT_MAP_SIZE", 1024 ** 2)
     with imagestore.ImageStore(tmp_path) as small:
         assert small.env.info()["map_size"] == 1024 ** 2
+
+
+# ---------------------------------------------------------------------------
+# Growing past a full map
+# ---------------------------------------------------------------------------
+#
+# map_size and map_size_increment are both kept tiny in these tests -- LMDB
+# allocates the full map size up front on Windows, so growing by anything
+# increment-sized (let alone the real 5GB default) would be slow and wasteful
+# here.
+
+
+@pytest.fixture
+def tiny_store(tmp_path):
+    """A store barely bigger than empty, growing in equally tiny steps."""
+    with ImageStore(tmp_path, map_size=32 * 1024, map_size_increment=32 * 1024) as opened:
+        yield opened
+
+
+def test_a_write_that_overflows_the_map_grows_it_instead_of_raising(tiny_store):
+    before = tiny_store.env.info()["map_size"]
+    big = encoded(np.random.randint(0, 255, (128, 128, 3), dtype=np.uint8), extension=".png")
+
+    tiny_store.put("a", big)
+
+    assert tiny_store.get_bytes("a") == big
+    assert tiny_store.env.info()["map_size"] > before
+
+
+def test_growth_logs_a_warning(tiny_store, caplog):
+    big = encoded(np.random.randint(0, 255, (128, 128, 3), dtype=np.uint8), extension=".png")
+    with caplog.at_level("WARNING"):
+        tiny_store.put("a", big)
+    assert "growing" in caplog.text
+
+
+def test_put_many_survives_an_overflow_mid_batch(tiny_store):
+    """
+    A batch bigger than one increment must retry as a whole -- LMDB aborts the
+    partial write on MapFullError, so a naive retry that only redid the
+    remaining items would double-write or skip the ones already staged.
+    """
+    items = [
+        (str(i), encoded(np.random.randint(0, 255, (48, 48, 3), dtype=np.uint8), extension=".png"))
+        for i in range(6)
+    ]
+
+    tiny_store.put_many(items)
+
+    for occurrence_id, data in items:
+        assert tiny_store.get_bytes(occurrence_id) == data
+
+
+def test_a_write_that_can_never_fit_still_raises(tiny_store, monkeypatch):
+    """
+    The growth loop is bounded: a write pathologically larger than any
+    reasonable number of increments must eventually raise rather than grow
+    forever.
+    """
+    from critterframe.storage import imagestore
+
+    monkeypatch.setattr(imagestore, "MAX_GROWTHS_PER_CALL", 2)
+    monkeypatch.setattr(tiny_store, "_grow", lambda: None)  # simulate no headroom left
+    big = encoded(np.random.randint(0, 255, (128, 128, 3), dtype=np.uint8), extension=".png")
+
+    with pytest.raises(lmdb.MapFullError):
+        tiny_store.put("a", big)
+
+
+def test_a_reader_survives_a_resize_by_another_process(tmp_path):
+    """
+    A sharded run's readonly workers must not crash just because a writer
+    elsewhere grew the map after they opened their own handle.
+    """
+    with ImageStore(tmp_path, map_size=32 * 1024, map_size_increment=32 * 1024) as writer:
+        writer.put("a", encoded())
+
+        with ImageStore(tmp_path, map_size=32 * 1024, readonly=True) as reader:
+            assert reader.has("a")
+
+            big = encoded(np.random.randint(0, 255, (128, 128, 3), dtype=np.uint8), extension=".png")
+            writer.put("b", big)  # overflows and grows the shared environment file
+
+            # The reader's own handle hasn't resynced yet; a read through it
+            # must not raise MapResizedError to the caller.
+            assert reader.get_bytes("a") == encoded()
+            assert reader.get_bytes("b") == big

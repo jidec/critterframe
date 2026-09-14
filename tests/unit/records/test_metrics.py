@@ -227,6 +227,59 @@ def test_current_rows_follows_a_derived_part_upstream(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# current_rows -- recipe currency (the metric-side counterpart of a mask's
+# single current row: run_name pinned to one recipe, moved explicitly)
+# ---------------------------------------------------------------------------
+
+
+def test_a_value_from_the_pointed_at_recipe_is_current(tmp_path):
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
+                                        "organism", "hash_a", force=False)
+    store(tmp_path, {"a": 1.0}, recipe_hash="hash_a")
+
+    long_df = metric_records.load_metrics(tmp_path)
+    assert len(metric_records.current_rows(tmp_path, long_df)) == 1
+
+
+def test_a_value_from_a_recipe_the_name_has_moved_off_of_is_not(tmp_path):
+    """The staleness rule, on the recipe axis instead of the mask one."""
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
+                                        "organism", "hash_a", force=False)
+    store(tmp_path, {"a": 1.0}, recipe_hash="hash_a")
+
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
+                                        "organism", "hash_b", force=True)
+    run_records.commit_recipe_currency(tmp_path, "metric", "traits",
+                                       "organism", "hash_b")
+
+    long_df = metric_records.load_metrics(tmp_path)
+    assert metric_records.current_rows(tmp_path, long_df).empty
+
+
+def test_a_name_with_no_recorded_pointer_is_kept(tmp_path):
+    """Nothing has ever moved off it, so there's nothing to judge stale --
+    mirrors "no masks" not meaning "no values" on the other axis."""
+    store(tmp_path, {"a": 1.0})
+    long_df = metric_records.load_metrics(tmp_path)
+    assert len(metric_records.current_rows(tmp_path, long_df)) == 1
+
+
+def test_a_value_needs_both_a_current_mask_and_a_current_recipe(tmp_path):
+    """The two checks are independent -- a value can fail either on its own."""
+    save_mask(tmp_path, recipe_hash="seg_v1")
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
+                                        "organism", "hash_a", force=False)
+    store(tmp_path, {"a": 1.0}, source_mask_hash="seg_v1", recipe_hash="hash_a")
+
+    long_df = metric_records.load_metrics(tmp_path)
+    assert len(metric_records.current_rows(tmp_path, long_df)) == 1
+
+    # The recipe pointer still matches; only the mask moves.
+    save_mask(tmp_path, recipe_hash="seg_v2")
+    assert metric_records.current_rows(tmp_path, long_df).empty
+
+
+# ---------------------------------------------------------------------------
 # latest_values
 # ---------------------------------------------------------------------------
 

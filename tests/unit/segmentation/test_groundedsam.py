@@ -16,6 +16,7 @@ CritterFrame.
 """
 
 import sys
+import types
 
 import numpy as np
 import pytest
@@ -58,6 +59,75 @@ def test_a_recipe_naming_it_can_be_hashed_without_torch():
     recipe = Recipe("segment", "organisms", [cf.segment(cf.groundedsam2())],
                     part="organism")
     assert len(recipe.hash) == 16
+
+
+# ---------------------------------------------------------------------------
+# _load(), with a faked transformers so no real weights are needed
+# ---------------------------------------------------------------------------
+
+
+class _FakeWeights:
+    def to(self, device):
+        return self
+
+
+def _fake_transformers(detector_from_pretrained):
+    """A minimal fake `transformers` module: SAM2 always loads; the detector's
+    from_pretrained is whatever the caller supplies, so a test can make it
+    fail once and succeed the next time."""
+    class FakeSam2Processor:
+        @staticmethod
+        def from_pretrained(name):
+            return types.SimpleNamespace(image_processor=types.SimpleNamespace(size=None))
+
+    class FakeSam2Model:
+        @staticmethod
+        def from_pretrained(name):
+            return _FakeWeights()
+
+    class FakeAutoProcessor:
+        @staticmethod
+        def from_pretrained(name):
+            return object()
+
+    class FakeDetector:
+        from_pretrained = staticmethod(detector_from_pretrained)
+
+    return types.SimpleNamespace(
+        Sam2Model=FakeSam2Model, Sam2Processor=FakeSam2Processor,
+        AutoModelForZeroShotObjectDetection=FakeDetector,
+        AutoProcessor=FakeAutoProcessor,
+    )
+
+
+def test_a_failed_detector_load_is_retried_not_skipped_forever(monkeypatch):
+    """
+    _load() used to gate everything on `self.model is not None` -- if SAM2
+    itself loaded fine but the detector's load failed, self.model would stay
+    set and the old guard would skip retrying the detector forever. Each
+    piece must retry independently until it actually loads.
+    """
+    attempts = {"n": 0}
+
+    def detector_from_pretrained(name):
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            raise RuntimeError("the paging file is too small")
+        return _FakeWeights()
+
+    monkeypatch.setitem(sys.modules, "transformers",
+                        _fake_transformers(detector_from_pretrained))
+
+    model = GroundedSAM2(detect_bounds=True, device="cpu")
+
+    with pytest.raises(RuntimeError, match="paging file"):
+        model._load()
+    assert model.model is not None     # SAM2 itself loaded fine
+    assert model.detector is None      # the failed load left nothing behind
+
+    model._load()                       # retries only the missing piece
+    assert model.detector is not None
+    assert attempts["n"] == 2
 
 
 # ---------------------------------------------------------------------------

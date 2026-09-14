@@ -1,5 +1,5 @@
 """
-run_metrics() + RunContext + completed_keys.
+run_metrics() + RunContext + _completed_keys.
 
 Transforms shape what gets measured and are part of the recipe hash, but the
 segment they produce is thrown away -- only the value is kept. Occurrences with
@@ -13,6 +13,7 @@ from ..recipes import DEFAULT_PART, Recipe, Segment
 from ..records import masks as mask_records
 from ..records import metrics as metric_records
 from ..records import runs as run_records
+from ..records.occurrences import ids_record
 from ..storage.imagestore import ImageStore
 from ..visualization import pipeline as pipeline_visualization
 from ..visualization.panels import annotate, overlay_mask
@@ -86,7 +87,7 @@ def _visualize_measurement(state, rows):
     state.emit_panel(panel, "measured")
 
 
-def completed_keys(project_path, recipe_hash, source_mask_hashes=None):
+def _completed_keys(project_path, recipe_hash, source_mask_hashes=None):
     """
     The (occurrence_id, part) pairs a recipe has already produced values for --
     the repeat-awareness check this module makes before doing any work.
@@ -126,33 +127,40 @@ def completed_keys(project_path, recipe_hash, source_mask_hashes=None):
 
 def run_metrics(project_path, run_name, metrics, transforms=(), part=DEFAULT_PART,
                 parts=None, subset=None, limit=None, force=False,
-                visualize=True, reference=False):
+                visualize=True, visualize_every=None, reference=False):
     """
     Run a metric recipe over a project's occurrence-parts.
 
-    project_path -- the project to process.
-    run_name     -- what to call this run. Part of recipe identity and the first
-                    component of every exported column name, so two
-                    differently-configured measurements of one trait stay
-                    distinguishable instead of overwriting each other.
-    metrics      -- list of Metric operations to evaluate.
-    transforms   -- ordered Transform operations applied before measuring.
-    part         -- part to measure; the whole organism by default.
-    parts        -- several parts, each with the same recipe. Each gets its own
-                    run record and recipe hash, so re-running one leaves the
-                    others alone.
-    subset       -- name of a subset to process, or None for every occurrence.
-    limit        -- optional cap on occurrences.
-    force        -- recompute occurrence-parts this recipe already covered from
-                    the mask it is about to measure. Occurrences whose mask has
-                    been replaced are recomputed regardless: their stored value
-                    describes a mask that no longer exists.
-    visualize    -- as in run_segments. The last column of a metric grid is the
-                    measured segment with its values written on it.
-    reference    -- measure the reference masks instead of the canonical ones.
-                    How reference metric VALUES are produced for validation: the
-                    same recipe pointed at the reference table, so disagreement
-                    is attributable to the masks rather than the method.
+    - `project_path` -- the project to process.
+    - `run_name` -- what to call this run. Part of recipe identity and the
+      first component of every exported column name, so two
+      differently-configured measurements of one trait stay distinguishable
+      instead of overwriting each other.
+    - `metrics` -- list of Metric operations to evaluate.
+    - `transforms` -- ordered Transform operations applied before measuring.
+    - `part` -- part to measure; the whole organism by default.
+    - `parts` -- several parts, each with the same recipe. Each gets its own
+      run record and recipe hash, so re-running one leaves the others alone.
+    - `subset` -- name of a subset to process, or None for every occurrence.
+    - `limit` -- optional cap on occurrences.
+    - `force` -- two related meanings. Recompute occurrence-parts this recipe
+      already covered from the mask it is about to measure (occurrences
+      whose mask has been replaced are recomputed regardless: their stored
+      value describes a mask that no longer exists). Also acknowledges
+      moving `run_name` onto a genuinely different recipe for this part:
+      without it, changing what `run_name` measures raises rather than
+      silently taking over the name (`records.runs.resolve_recipe_currency`)
+      -- values already on record stay on record but stop being current
+      once this run has actually produced something under the new recipe.
+    - `visualize` -- as in `run_segments`. The last column of a metric grid
+      is the measured segment with its values written on it.
+    - `visualize_every` -- as in `run_segments`: refresh the grid every N
+      occurrences processed, in addition to the save at the end. None
+      (default) saves only at the end. No effect without `visualize`.
+    - `reference` -- measure the reference masks instead of the canonical
+      ones. How reference metric VALUES are produced for validation: the
+      same recipe pointed at the reference table, so disagreement is
+      attributable to the masks rather than the method.
 
     Returns {part: {"processed", "skipped", "failed", "run_id"}}.
     """
@@ -175,6 +183,12 @@ def run_metrics(project_path, run_name, metrics, transforms=(), part=DEFAULT_PAR
                 "metrics produce terminal values and can't be composed onto"
             )
 
+    if visualize_every and not visualize:
+        logger.warning(
+            "visualize_every=%d with visualize=%r: there's no report to "
+            "checkpoint without visualize, so visualize_every has no effect",
+            visualize_every, visualize)
+
     target_parts = list(parts) if parts else [part]
     occurrence_ids = subset_selection.select_ids(project_path, subset=subset,
                                                  limit=limit)
@@ -185,18 +199,28 @@ def run_metrics(project_path, run_name, metrics, transforms=(), part=DEFAULT_PAR
     for target_part in target_parts:
         results[target_part] = _run_one_part(
             project_path, run_name, metrics, transforms, target_part,
-            occurrence_ids, subset, force, visualize, reference,
+            occurrence_ids, subset, limit, force, visualize, visualize_every,
+            reference,
         )
     return results
 
 
 def _run_one_part(project_path, run_name, metrics, transforms, part,
-                  occurrence_ids, subset, force, visualize, reference):
+                  occurrence_ids, subset, limit, force, visualize,
+                  visualize_every, reference):
     """Execute one part's recipe. Split out so the multi-part loop stays readable."""
     recipe = Recipe("metric", run_name, transforms + metrics, part=part,
                     inputs={"masks": "reference" if reference else "canonical"})
 
-    recipe.prepare_all(RunContext(project_path, occurrence_ids, part, run_name))
+    # Fails fast, before any mask lookup or prepare() hook runs, if run_name
+    # already points at a different recipe for this part and force wasn't
+    # given to move it. needs_currency_commit is only True for a forced move
+    # still waiting on confirmation that it produced something -- see below.
+    needs_currency_commit = run_records.resolve_recipe_currency(
+        project_path, "metric", run_name, part, recipe.hash, force)
+
+    prepared = recipe.prepare_all(
+        RunContext(project_path, occurrence_ids, part, run_name))
 
     mask_rows = mask_records.mask_lookup(project_path, part=part,
                                          occurrence_ids=occurrence_ids,
@@ -214,8 +238,8 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
             row["recipe_hash"], row.get("source_mask_hash"))
         for occurrence_id, row in mask_rows.items()
     }
-    done = set() if force else completed_keys(project_path, recipe.hash,
-                                              source_mask_hashes=source_hashes)
+    done = set() if force else _completed_keys(project_path, recipe.hash,
+                                               source_mask_hashes=source_hashes)
 
     todo = [
         occurrence_id for occurrence_id in occurrence_ids
@@ -235,12 +259,15 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                                                recipe.hash, part, todo,
                                                visualize)
 
-    run_id = run_records.start_run(project_path, recipe, subset=subset)
+    run_id = run_records.start_run(
+        project_path, recipe, subset=subset,
+        context={"occurrences": ids_record(occurrence_ids), "limit": limit,
+                 "operations": prepared})
     processed = 0
     failed = 0
 
     with ImageStore(project_path, readonly=True) as images:
-        for occurrence_id in todo:
+        for index, occurrence_id in enumerate(todo):
             try:
                 image = images.get(occurrence_id)
                 if image is None:
@@ -279,11 +306,28 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 logger.warning("metrics failed for %s part '%s': %s",
                                occurrence_id, part, exc)
 
+            # Cheap even when nothing new was collected -- RunReport.save() is
+            # a no-op then -- so this runs on every occurrence regardless of
+            # whether it was itself in the sample.
+            if report is not None and visualize_every and \
+                    (index + 1) % visualize_every == 0:
+                report.save()
+
     if report is not None:
         report.save()
 
     run_records.finish_run(project_path, run_id, processed=processed,
                            skipped=skipped, failed=failed)
+
+    if needs_currency_commit:
+        if processed > 0:
+            run_records.commit_recipe_currency(project_path, "metric",
+                                               run_name, part, recipe.hash)
+        else:
+            logger.warning(
+                "run_name '%s': force=True allowed a recipe change for part "
+                "'%s', but nothing was processed -- it still points at the "
+                "previous recipe", run_name, part)
 
     return {"processed": processed, "skipped": skipped, "failed": failed,
             "run_id": run_id}

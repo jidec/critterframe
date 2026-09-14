@@ -93,6 +93,25 @@ def test_the_non_organism_vocabulary_belongs_to_the_extension():
         "determination_name": ["Not Lepidoptera"]}
 
 
+def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
+    """
+    An export dominated by a few common species is thinned back out by
+    forwarding straight through to critterframe.ingest.ingest_occurrences,
+    against an already-downloaded CSV so this never touches the network.
+    """
+    csv_path = tmp_path / "export.csv"
+    pd.DataFrame({
+        "id": ["1", "2", "3", "4"],
+        "best_detection_url": [f"https://x/crop_{index}.jpg" for index in range(4)],
+        "determination_name": ["moth"] * 4,
+    }).to_csv(csv_path, index=False)
+
+    table = ingest.ingest_occurrences(tmp_path / "project", import_csv_path=csv_path,
+                                      drop=None, group_col="determination_name",
+                                      max_per_group=1)
+    assert len(table) == 1
+
+
 # ---------------------------------------------------------------------------
 # The API surface, against a fake session
 # ---------------------------------------------------------------------------

@@ -21,9 +21,13 @@ IMAGES_DIR = "images.lmdb"
 MASKS_FILE = "masks.parquet"
 REFERENCE_MASKS_FILE = "reference_masks.parquet"
 MASK_SHARDS_DIR = "mask_shards"
+FAILURES_FILE = "failures.parquet"
 CALIBRATIONS_FILE = "calibrations.parquet"
 RUNS_AND_METRICS_FILE = "runs_and_metrics.sqlite"
-IMPORTS_DIR = "imports"
+RUNS_LOG_FILE = "runs.jsonl"
+RAW_IMPORTS_DIR = "raw_imports"
+IMPORTS_LOG_FILE = "imports.jsonl"
+IMPORT_SIDECAR_SUFFIX = ".import.json"
 DEFINITIONS_DIR = "definitions"
 SUBSETS_FILE = "subsets.toml"
 RECIPES_FILE = "recipes.py"
@@ -32,6 +36,9 @@ PIPELINE_DIR = "pipeline"
 PRODUCTS_DIR = "products"
 MODELS_DIR = "models"
 MODELS_REGISTRY_FILE = "registry.json"
+EXPORTS_DIR = "exports"
+EXPORTS_LOG_FILE = "exports.jsonl"
+EXPORT_SIDECAR_SUFFIX = ".export.json"
 
 
 def project_dir(project_path):
@@ -91,6 +98,15 @@ def mask_shard_path(project_path, part, reference=False):
             / f"{time.time_ns():020d}-{uuid.uuid4().hex[:8]}.parquet")
 
 
+def failures_path(project_path):
+    """
+    The ledger of failed download/segmentation attempts, keyed by
+    occurrence-part-stage -- what a rerun consults so a failure that hasn't
+    changed isn't retried (see records.failures).
+    """
+    return project_dir(project_path) / FAILURES_FILE
+
+
 def calibrations_path(project_path):
     """
     What is known about the imaging system rather than any organism, e.g. px/mm.
@@ -106,22 +122,37 @@ def runs_and_metrics_path(project_path):
     return project_dir(project_path) / RUNS_AND_METRICS_FILE
 
 
-def imports_dir(project_path):
-    """Immutable source imports -- the recovery path if an ingest was ever wrong."""
-    return project_dir(project_path) / IMPORTS_DIR
-
-
-def import_path(project_path, name_prefix, extension=".csv"):
+def runs_log_path(project_path):
     """
-    Where one archived source file lands: `<prefix>_<today>[_n]<extension>`.
+    The append-only, human-readable mirror of runs_and_metrics.sqlite's runs
+    table -- one JSON line per finished run, readable without opening the
+    database. See records.runs.finish_run.
+    """
+    return project_dir(project_path) / RUNS_LOG_FILE
 
-    The `_n` suffix stops a same-day re-import clobbering the earlier one, so
-    this reads the directory to find a free name. It still creates nothing.
+
+def raw_imports_dir(project_path):
+    """
+    Immutable, byte-exact copies of every raw import this project has read --
+    the recovery path if turning one into an import was ever wrong.
+    """
+    return project_dir(project_path) / RAW_IMPORTS_DIR
+
+
+def raw_import_path(project_path, name_prefix, extension=".csv"):
+    """
+    Where one archived raw import lands: `<prefix>_<today>[_n]<extension>`.
+
+    The `_n` suffix stops a same-day archive of genuinely different content
+    clobbering the earlier one, so this reads the directory to find a free
+    name. It still creates nothing. Content-identical raw imports never reach
+    here at all -- see ingest._archive_raw_import, which reuses the existing
+    file instead.
 
     name_prefix -- import kind, usually carrying the source, e.g.
                    "occurrences_antenna_199".
     """
-    directory = imports_dir(project_path)
+    directory = raw_imports_dir(project_path)
     base = f"{name_prefix}_{date.today().isoformat()}"
     extension = extension or ".csv"
 
@@ -131,6 +162,35 @@ def import_path(project_path, name_prefix, extension=".csv"):
         dest = directory / f"{base}_{n}{extension}"
         n += 1
     return dest
+
+
+def imports_log_path(project_path):
+    """
+    The append-only log of every import this project has produced from a raw
+    import -- one line per call to ingest_occurrences that actually did work.
+
+    JSON Lines for the same reason exports_log_path is: it only ever grows,
+    and a read-merge-rewrite of a growing file is what an appending writer
+    should not be doing.
+    """
+    return raw_imports_dir(project_path) / IMPORTS_LOG_FILE
+
+
+def import_sidecar_path(raw_path, import_hash):
+    """
+    The manifest for one import derived from a raw import: `<raw file
+    stem>.<import hash>.import.json`, beside the raw file it describes.
+
+    The hash is in the name, the same reasoning pipeline_grid_path gives for
+    putting a recipe hash in a grid's filename: one raw import can become
+    several imports under different decisions (a different drop=, a different
+    cap), so two imports of one raw file leave two manifests to compare rather
+    than one overwriting the other.
+
+    raw_path -- the archived raw import the manifest describes.
+    """
+    raw_path = Path(raw_path)
+    return raw_path.with_name(f"{raw_path.stem}.{import_hash}.import.json")
 
 
 def definitions_dir(project_path):
@@ -226,6 +286,46 @@ def models_registry_path(project_path):
     hand-edits it, unlike subsets.toml.
     """
     return models_dir(project_path) / MODELS_REGISTRY_FILE
+
+
+def exports_dir(project_path):
+    """What this project has handed out: one manifest line per export written."""
+    return project_dir(project_path) / EXPORTS_DIR
+
+
+def exports_log_path(project_path):
+    """
+    The append-only log of every export this project has produced.
+
+    JSON Lines rather than one JSON document, because it only ever grows and a
+    read-merge-rewrite of a growing file is what an appending writer should not
+    be doing.
+    """
+    return exports_dir(project_path) / EXPORTS_LOG_FILE
+
+
+def export_sidecar_path(path):
+    """
+    The manifest that travels with one written export: `traits.csv` ->
+    `traits.export.json`.
+
+    Takes any path, not a project one, since an export is usually written
+    outside the project it came from.
+
+    path -- the exported file the manifest describes.
+    """
+    return Path(path).with_suffix(EXPORT_SIDECAR_SUFFIX)
+
+
+def default_export_path(project_path):
+    """
+    A fresh, never-before-used CSV path under this project's exports/ folder.
+
+    Timestamp-plus-uuid, the same scheme mask_shard_path uses, so exporting
+    repeatedly without naming a file never overwrites a previous export.
+    """
+    return (exports_dir(project_path)
+            / f"traits_{time.time_ns():020d}-{uuid.uuid4().hex[:8]}.csv")
 
 
 def require_project(project_path):

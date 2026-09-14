@@ -7,8 +7,13 @@ before those columns were removed -- and until now nothing exercised it at all.
 It has to run: the old `created_at` was NOT NULL, so a database still carrying
 it rejects every new insert. The test below builds that old schema by hand and
 checks both halves: the columns go, and writing works afterward.
+
+The additive migration beside it is gentler -- a nullable column an old database
+merely lacks -- but it has to run for the same reason: start_run names the
+column whether or not the database has it yet.
 """
 
+import json
 import sqlite3
 
 import pytest
@@ -211,5 +216,254 @@ def test_runs_can_be_filtered(tmp_path):
     assert run_records.load_runs(tmp_path, recipe_hash="nothing").empty
 
 
+def test_runs_can_be_filtered_by_run_id(tmp_path):
+    first = run_records.start_run(tmp_path, a_recipe(name="run0"))
+    run_records.start_run(tmp_path, a_recipe(name="run1"))
+
+    found = run_records.load_runs(tmp_path, run_id=first)
+    assert found["name"].tolist() == ["run0"]
+    assert run_records.load_runs(tmp_path, run_id=999).empty
+
+
 def test_a_project_with_no_runs_reads_as_empty(tmp_path):
     assert run_records.load_runs(tmp_path).empty
+
+
+# ---------------------------------------------------------------------------
+# The run context: what a run covered, beside what it was
+# ---------------------------------------------------------------------------
+
+
+def test_a_run_records_what_it_covered(tmp_path):
+    """
+    The recipe says what the work was; the context says what it was done to.
+    Neither is derivable from the other, and only the recipe is hashed.
+    """
+    context = {"occurrences": {"count": 40, "ids_hash": "abcd"}, "limit": None}
+    run_records.start_run(tmp_path, a_recipe(), context=context)
+
+    assert run_records.load_runs(tmp_path)["context"].iloc[0] == context
+
+
+def test_a_run_with_nothing_to_say_stores_nothing(tmp_path):
+    """No context is None, not an empty dict -- the column is genuinely unset."""
+    run_records.start_run(tmp_path, a_recipe())
+    assert run_records.load_runs(tmp_path)["context"].iloc[0] is None
+
+
+def test_a_database_written_before_the_context_column_gains_it(tmp_path):
+    """
+    Adding a nullable column is not like dropping the legacy NOT NULL one: an
+    old database is merely missing it rather than broken by it. But start_run
+    names the column, so an unmigrated database would reject every new run.
+    """
+    from critterframe.storage.sqlite import connect
+
+    connection = connect(paths.runs_and_metrics_path(tmp_path))
+    connection.execute(
+        """
+        CREATE TABLE runs (
+            run_id INTEGER PRIMARY KEY, kind TEXT NOT NULL, name TEXT NOT NULL,
+            part TEXT NOT NULL, subset TEXT, recipe_hash TEXT NOT NULL,
+            recipe_json TEXT NOT NULL, status TEXT NOT NULL,
+            created_at TEXT NOT NULL, finished_at TEXT,
+            n_processed INTEGER NOT NULL DEFAULT 0,
+            n_skipped INTEGER NOT NULL DEFAULT 0,
+            n_failed INTEGER NOT NULL DEFAULT 0
+        )
+        """
+    )
+    connection.execute(
+        "INSERT INTO runs (kind, name, part, recipe_hash, recipe_json, status, "
+        "created_at) VALUES ('metric','old','organism','abc','{}','complete','2020-01-01')"
+    )
+    connection.commit()
+    connection.close()
+
+    run_records.start_run(tmp_path, a_recipe(name="new"),
+                          context={"occurrences": {"count": 1}})
+
+    runs = run_records.load_runs(tmp_path).set_index("name")
+    assert runs.loc["old", "context"] is None       # nothing to recover
+    assert runs.loc["new", "context"] == {"occurrences": {"count": 1}}
+
+
+# ---------------------------------------------------------------------------
+# Recipe currency: the metric-side pointer masks get for free from upserting
+# ---------------------------------------------------------------------------
+
+
+def test_segment_kind_is_always_a_no_op(tmp_path):
+    """
+    Masks.parquet upserts to a single current row per occurrence-part, so a
+    segment run_name pointing at several hashes over a project's life is
+    exactly what resegmenting is, not ambiguity to guard against.
+    """
+    first = run_records.resolve_recipe_currency(
+        tmp_path, "segment", "segments", "organism", "hash_a", force=False)
+    second = run_records.resolve_recipe_currency(
+        tmp_path, "segment", "segments", "organism", "hash_b", force=False)
+    assert (first, second) == (False, False)
+    assert run_records.current_recipe_pointers(tmp_path, kind="segment") == {}
+
+
+def test_first_use_adopts_silently(tmp_path):
+    needs_commit = run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    assert needs_commit is False
+    assert run_records.current_recipe_pointers(tmp_path) == {
+        ("traits", "organism"): "hash_a"}
+
+
+def test_the_same_hash_again_is_never_a_conflict(tmp_path):
+    """An identical rerun -- retrying after an interruption, say -- has
+    nothing to acknowledge, whether or not force is passed."""
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    for force in (False, True):
+        needs_commit = run_records.resolve_recipe_currency(
+            tmp_path, "metric", "traits", "organism", "hash_a", force=force)
+        assert needs_commit is False
+
+
+def test_a_different_hash_without_force_raises(tmp_path):
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    with pytest.raises(ValueError, match="currently points at a different"):
+        run_records.resolve_recipe_currency(
+            tmp_path, "metric", "traits", "organism", "hash_b", force=False)
+    # Refused, so nothing moved.
+    assert run_records.current_recipe_pointers(tmp_path) == {
+        ("traits", "organism"): "hash_a"}
+
+
+def test_a_different_hash_with_force_does_not_move_the_pointer_by_itself(tmp_path):
+    """
+    resolve_recipe_currency only checks and reports what's owed -- it doesn't
+    write a forced change itself, because the caller hasn't yet confirmed the
+    new recipe produced anything.
+    """
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    needs_commit = run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_b", force=True)
+    assert needs_commit is True
+    assert run_records.current_recipe_pointers(tmp_path) == {
+        ("traits", "organism"): "hash_a"}
+
+
+def test_commit_recipe_currency_moves_the_pointer(tmp_path):
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", "hash_b", force=True)
+    run_records.commit_recipe_currency(tmp_path, "metric", "traits",
+                                       "organism", "hash_b")
+    assert run_records.current_recipe_pointers(tmp_path) == {
+        ("traits", "organism"): "hash_b"}
+
+
+def test_commit_recipe_currency_is_a_no_op_for_segment(tmp_path):
+    run_records.commit_recipe_currency(tmp_path, "segment", "segments",
+                                       "organism", "hash_a")
+    assert run_records.current_recipe_pointers(tmp_path, kind="segment") == {}
+
+
+def test_parts_are_independent(tmp_path):
+    """A shared run_name across parts -- run_segments' outputs= pattern, ported
+    to metrics -- never conflicts, since each part is its own key."""
+    run_records.resolve_recipe_currency(
+        tmp_path, "metric", "body_parts", "head", "hash_head", force=False)
+    needs_commit = run_records.resolve_recipe_currency(
+        tmp_path, "metric", "body_parts", "abdomen", "hash_abdomen", force=False)
+    assert needs_commit is False
+    assert run_records.current_recipe_pointers(tmp_path) == {
+        ("body_parts", "head"): "hash_head",
+        ("body_parts", "abdomen"): "hash_abdomen",
+    }
+
+
+def test_an_existing_project_s_history_seeds_the_pointer(tmp_path):
+    """
+    A project with runs recorded from before this pointer existed must not
+    have its next call silently adopt whatever hash happens to run next --
+    it's seeded from the most recent run in history, so a rerun of THAT
+    recipe stays silent and only a genuinely different one is caught.
+    """
+    run_records.start_run(tmp_path, a_recipe(name="traits"))   # hash from a_recipe()
+    old_hash = a_recipe(name="traits").hash
+
+    # No pointer row exists yet -- only run history, as an old database would
+    # have. The same hash running again must not raise.
+    needs_commit = run_records.resolve_recipe_currency(
+        tmp_path, "metric", "traits", "organism", old_hash, force=False)
+    assert needs_commit is False
+
+    # A genuinely different hash is still caught, seeded from that history.
+    run_records.start_run(tmp_path, a_recipe(name="fresh"))
+    with pytest.raises(ValueError, match="currently points at a different"):
+        run_records.resolve_recipe_currency(
+            tmp_path, "metric", "fresh", "organism", "hash_b", force=False)
+
+
+# ---------------------------------------------------------------------------
+# runs.jsonl: a human-readable mirror of finish_run, for grep/jq without
+# opening the database -- the same reasoning exports.jsonl/imports.jsonl exist.
+# ---------------------------------------------------------------------------
+
+
+def _read_log(project_path):
+    log = paths.runs_log_path(project_path)
+    if not log.exists():
+        return []
+    with open(log, encoding="utf-8") as handle:
+        return [json.loads(line) for line in handle if line.strip()]
+
+
+def test_finishing_a_run_appends_to_the_log(tmp_path):
+    run_id = run_records.start_run(tmp_path, a_recipe(name="traits"))
+    run_records.finish_run(tmp_path, run_id, processed=3)
+
+    entries = _read_log(tmp_path)
+    assert len(entries) == 1
+    assert entries[0]["run_id"] == run_id
+    assert entries[0]["name"] == "traits"
+    assert entries[0]["n_processed"] == 3
+
+
+def test_the_log_entry_s_recipe_and_context_are_parsed_back(tmp_path):
+    """
+    Same shape load_runs() hands back -- dicts, not the raw JSON strings the
+    sqlite row stores them as.
+    """
+    recipe = a_recipe(name="traits")
+    context = {"occurrences": {"count": 4}}
+    run_id = run_records.start_run(tmp_path, recipe, context=context)
+    run_records.finish_run(tmp_path, run_id)
+
+    entry = _read_log(tmp_path)[0]
+    assert entry["recipe"] == recipe.spec()
+    assert entry["context"] == context
+    assert "recipe_json" not in entry
+    assert "context_json" not in entry
+
+
+def test_a_run_left_running_is_not_logged(tmp_path):
+    """An interrupted process that never reaches finish_run keeps its sqlite
+    row but leaves no log line -- the log is "calls that completed", not
+    "runs that started"."""
+    run_records.start_run(tmp_path, a_recipe())
+    assert _read_log(tmp_path) == []
+
+
+def test_two_finished_runs_append_two_lines_in_order(tmp_path):
+    first = run_records.start_run(tmp_path, a_recipe(name="run0"))
+    second = run_records.start_run(tmp_path, a_recipe(name="run1"))
+    run_records.finish_run(tmp_path, first)
+    run_records.finish_run(tmp_path, second)
+
+    assert [entry["run_id"] for entry in _read_log(tmp_path)] == [first, second]
+
+
+def test_a_project_with_no_finished_runs_has_no_log_file(tmp_path):
+    assert not paths.runs_log_path(tmp_path).exists()

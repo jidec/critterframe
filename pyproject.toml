@@ -23,16 +23,20 @@ Documentation = "https://jidec.github.io/critterframe/"
 
 [project.optional-dependencies]
 # Torch, and what's built on it: the bundled GroundedSAM2 segmenter
-# (segmentation/groundedsam.py) and inat_insects' embedding-based metrics
-# (extensions/inat_insects/metrics/bioencoder.py). Named for the dependency
-# itself, not "segmentation" -- it isn't only that, and the core pipeline --
-# ingest, storage, transforms, metrics, export, validation -- runs without
-# torch, deliberately: a project segmenting with its own model (torch-based
-# or not) shouldn't be made to install SAM2 to use it.
+# (segmentation/groundedsam.py), inat_insects' embedding-based metrics
+# (extensions/inat_insects/metrics/bioencoder.py), and smp_segmenter's
+# trainable UNet++ segmenter (extensions/smp_segmenter). Named for the
+# dependency itself, not "segmentation" -- it isn't only that, and the core
+# pipeline -- ingest, storage, transforms, metrics, export, validation -- runs
+# without torch, deliberately: a project segmenting with its own model
+# (torch-based or not) shouldn't be made to install SAM2 to use it.
 torch = [
     "torch",
     "transformers",
     "pillow",
+    "segmentation-models-pytorch",
+    "tqdm",
+    "matplotlib",
 ]
 
 # Running the test suite. pytest-timeout is not a nicety here: two functions in

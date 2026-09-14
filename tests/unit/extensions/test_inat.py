@@ -13,6 +13,7 @@ metric, and dropping it would silently bias the reference population toward
 well-studied taxa.
 """
 
+import pandas as pd
 import pytest
 
 from critterframe.extensions.inat_insects import api, ingest
@@ -233,6 +234,31 @@ def test_an_empty_result_ends_the_walk(monkeypatch):
     monkeypatch.setattr(api, "REQUEST_INTERVAL", 0)
     session = paged([])
     assert list(api.search_observations(session=session)) == []
+
+
+# ---------------------------------------------------------------------------
+# ingest_occurrences: group_col/max_per_group pass-through
+# ---------------------------------------------------------------------------
+
+
+def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
+    """
+    A search dominated by a few common species is thinned back out by
+    forwarding straight through to critterframe.ingest.ingest_occurrences,
+    against an already-fetched CSV so this never touches the network.
+    """
+    csv_path = tmp_path / "observations.csv"
+    pd.DataFrame({
+        "occurrence_id": ["1", "2", "3", "4"],
+        "taxon": ["common", "common", "common", "rare"],
+    }).to_csv(csv_path, index=False)
+
+    table = ingest.ingest_occurrences(tmp_path / "project", import_csv_path=csv_path,
+                                      group_col="taxon", max_per_group=1)
+
+    counts = table["taxon"].value_counts()
+    assert counts["common"] == 1
+    assert counts["rare"] == 1
 
 
 # ---------------------------------------------------------------------------

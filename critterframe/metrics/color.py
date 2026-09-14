@@ -80,11 +80,11 @@ def hue_fraction(hue, min_saturation=MIN_SATURATION, min_value=MIN_VALUE,
     """
     Metric: fraction of masked pixels falling in one named hue band.
 
-    hue            -- one of HUE_BANDS ("red", "yellow", "green", ...).
-    min_saturation -- pixels greyer than this are excluded rather than assigned
-                      a hue they don't really have.
-    min_value      -- pixels darker than this are excluded for the same reason;
-                      hue is meaningless in shadow.
+    - `hue` -- one of `HUE_BANDS` (`"red"`, `"yellow"`, `"green"`, ...).
+    - `min_saturation` -- pixels greyer than this are excluded rather than
+      assigned a hue they don't really have.
+    - `min_value` -- pixels darker than this are excluded for the same
+      reason; hue is meaningless in shadow.
     """
     if hue not in HUE_BANDS:
         raise ValueError(f"unknown hue {hue!r} -- expected one of {sorted(HUE_BANDS)}")

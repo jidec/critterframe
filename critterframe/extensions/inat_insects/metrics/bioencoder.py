@@ -51,18 +51,18 @@ class BioEncoderModel:
     Whether the model is a BioEncoder checkpoint, a fine-tuned timm backbone, or
     something else entirely doesn't matter to anything downstream.
 
-    model          -- an object with encode() as above (usually a
-                      torch.nn.Module).
-    checkpoint     -- path or identifier of the weights loaded. Goes into
-                      identity() and therefore into the recipe hash, which is
-                      what makes "these embeddings came from that checkpoint" a
-                      recorded fact rather than something to remember.
-    input_size     -- (height, width) the model was trained at.
-    normalize      -- L2-normalize embeddings before storing. On by default:
-                      metric-learning models are trained with cosine distance,
-                      so unnormalized vectors carry a magnitude that means
-                      nothing and distorts any Euclidean comparison made later.
-    device         -- torch device string; autodetects CUDA if omitted.
+    - `model` -- an object with `encode()` as above (usually a
+      `torch.nn.Module`).
+    - `checkpoint` -- path or identifier of the weights loaded. Goes into
+      `identity()` and therefore into the recipe hash, which is what makes
+      "these embeddings came from that checkpoint" a recorded fact rather
+      than something to remember.
+    - `input_size` -- (height, width) the model was trained at.
+    - `normalize` -- L2-normalize embeddings before storing. On by default:
+      metric-learning models are trained with cosine distance, so
+      unnormalized vectors carry a magnitude that means nothing and
+      distorts any Euclidean comparison made later.
+    - `device` -- torch device string; autodetects CUDA if omitted.
     """
 
     def __init__(self, model, checkpoint, input_size=DEFAULT_INPUT_SIZE,

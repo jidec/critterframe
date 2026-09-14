@@ -1,18 +1,3 @@
-"""
-Human labels: annotate_flags, click_two_points.
-
-No model, no heuristic -- these produce the labels everything else is graded
-against. They are metrics like any other, so a human label stores in the same
-table as body length and can be compared against an automated metric with no
-special plumbing (see validation.filters).
-
-There is deliberately no "grade this mask" metric: correct the mask instead
-(segmentation.manual) and validation.masks reports the IoU, which is the same
-judgement measured rather than estimated.
-
-Each opens an OpenCV window and blocks on a person, so scope a run to a subset.
-"""
-
 import logging
 
 import cv2
@@ -138,7 +123,6 @@ def _annotate_flags(segment):
     return _ask(segment, _panel(segment),
                 "flag? (1=usable 2=not-an-organism 3=cut-off 4=multiple)",
                 FLAG_KEYS)
-
 
 def _click_two_points(segment, labels=DEFAULT_POINT_LABELS):
     image = overlay_mask(np.asarray(segment.image), segment.require_mask())

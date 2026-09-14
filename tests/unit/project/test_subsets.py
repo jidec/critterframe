@@ -63,7 +63,7 @@ def test_what_we_write_is_what_tomllib_reads_back(collections_project):
     which is where correctness actually matters, since that is what has to cope
     with whatever a human hand-edits.
     """
-    written = subset_selection.save_subsets(collections_project, {
+    written = subset_selection._save_subsets(collections_project, {
         "quoted": {"column": 'a "difficult" name', "values": ["x\\y", "z"]},
         "numeric": {"column": "year", "values": [2019, 2020]},
         "flagged": {"column": "ok", "values": [True]},
@@ -75,7 +75,7 @@ def test_what_we_write_is_what_tomllib_reads_back(collections_project):
 def test_saving_replaces_the_whole_table(collections_project):
     cf.define_subset(collections_project, "amnh", column="collection",
                      values=["AMNH"])
-    subset_selection.save_subsets(collections_project, {"only": {"query": "year > 2020"}})
+    subset_selection._save_subsets(collections_project, {"only": {"query": "year > 2020"}})
     assert list(subset_selection.load_subsets(collections_project)) == ["only"]
 
 
@@ -178,7 +178,7 @@ def test_an_unknown_subset_name_raises_and_lists_the_real_ones(collections_proje
 
 
 def test_a_subset_selecting_on_a_missing_column_raises(collections_project):
-    subset_selection.save_subsets(collections_project,
+    subset_selection._save_subsets(collections_project,
                                   {"ghost": {"column": "site", "values": ["x"]}})
     with pytest.raises(KeyError, match="which the occurrence table doesn't have"):
         subset_selection.select_occurrences(collections_project, subset="ghost")
@@ -228,3 +228,37 @@ def test_ids_come_back_as_a_list_of_strings(collections_project):
     ids = subset_selection.select_ids(collections_project)
     assert isinstance(ids, list)
     assert all(isinstance(occurrence_id, str) for occurrence_id in ids)
+
+
+# ---------------------------------------------------------------------------
+# grow_subset
+# ---------------------------------------------------------------------------
+
+
+def test_grow_subset_creates_the_subset_on_the_first_call(collections_project):
+    """No KeyError reaches the caller for a name subsets.toml doesn't have yet."""
+    ids = cf.grow_subset(collections_project, "review", 2)
+    assert len(ids) == 2
+    assert subset_selection.select_ids(collections_project, subset="review") == ids
+
+
+def test_raising_the_target_only_adds_the_shortfall(collections_project):
+    first = cf.grow_subset(collections_project, "review", 2)
+    second = cf.grow_subset(collections_project, "review", 4)
+
+    assert set(first) <= set(second)
+    assert len(second) == 4
+
+
+def test_candidate_ids_default_to_the_whole_project(collections_project):
+    ids = cf.grow_subset(collections_project, "review", 6)
+    assert sorted(ids) == sorted(subset_selection.select_ids(collections_project))
+
+
+def test_a_narrower_candidate_pool_restricts_what_is_drawn(collections_project):
+    cf.define_subset(collections_project, "amnh", column="collection",
+                     values=["AMNH"])
+    amnh_ids = subset_selection.select_ids(collections_project, subset="amnh")
+
+    ids = cf.grow_subset(collections_project, "review", 2, candidate_ids=amnh_ids)
+    assert set(ids) <= set(amnh_ids)

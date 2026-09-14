@@ -7,7 +7,10 @@ downloads a hundred images. A stored image is NEVER replaced -- it is the
 evidence every mask and measurement was derived from, and swapping it would
 leave all of them silently describing pixels that are no longer there.
 
-Individual failures are logged and counted, never fatal.
+Individual failures are logged, counted, and recorded in records.failures
+against the URL that failed, so a rerun does not re-fetch a dead URL --
+retry_failed=True asks anyway, and a URL that changes (a corrected re-ingest)
+is retried automatically with no flag needed.
 """
 
 import logging
@@ -18,7 +21,9 @@ import numpy as np
 import requests
 
 from .project import paths, subsets as subset_selection
+from .records import failures as failure_records
 from .records.occurrences import ID_COL, IMAGE_URL_COL, load_occurrences
+from .recipes import hash_spec
 from .storage.imagestore import ImageStore
 
 logger = logging.getLogger(__name__)
@@ -79,13 +84,23 @@ def _download_image(url, session, occurrence_id=None, timeout=DEFAULT_TIMEOUT):
     return _check_decodable(response.content, occurrence_id=occurrence_id)
 
 
+def _url_context_hash(url):
+    """The identity of one download attempt: what failed_keys() scopes a
+    recorded failure to, so a corrected URL is retried with no flag needed."""
+    return hash_spec({"url": url})
+
+
 def _pending_occurrences(project_path, store, url_col=IMAGE_URL_COL, subset=None,
-                         limit=None):
+                         limit=None, retry_failed=False):
     """
-    Occurrences with a URL whose image isn't in the store yet.
+    Occurrences with a URL whose image isn't in the store yet and, unless
+    retry_failed, whose URL hasn't already failed.
 
     Occurrences that already have an image are excluded with no way to ask
-    otherwise -- see the module docstring.
+    otherwise -- see the module docstring. A previously-failed URL is skipped
+    the same way, but retry_failed=True or a changed URL both let it through.
+
+    Returns (pending_df, previously_failed_count).
     """
     # A URL column is optional in a project -- one whose images came from a
     # local folder has none at all -- so its absence is a wrong-function
@@ -108,38 +123,54 @@ def _pending_occurrences(project_path, store, url_col=IMAGE_URL_COL, subset=None
     stored = set(store.keys())
     occurrences = occurrences[~occurrences[ID_COL].isin(stored)]
 
+    previously_failed = 0
+    if not retry_failed and len(occurrences):
+        context_hashes = {
+            (occurrence_id, failure_records.NO_PART): _url_context_hash(url)
+            for occurrence_id, url in zip(occurrences[ID_COL], occurrences[url_col])
+        }
+        failed = failure_records.failed_keys(project_path, "download", context_hashes)
+        if failed:
+            failed_ids = {occurrence_id for occurrence_id, _ in failed}
+            previously_failed = len(failed_ids)
+            occurrences = occurrences[~occurrences[ID_COL].isin(failed_ids)]
+
     if limit is not None:
         occurrences = occurrences.head(limit)
 
-    return occurrences
+    return occurrences, previously_failed
 
 
 def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None,
                     batch_size=DEFAULT_BATCH_SIZE, timeout=DEFAULT_TIMEOUT,
-                    session=None, max_workers=DEFAULT_MAX_WORKERS):
+                    session=None, max_workers=DEFAULT_MAX_WORKERS,
+                    retry_failed=False):
     """
     Download images for a project's occurrences into its image store.
 
     Only occurrences with no image are fetched; a stored image is never
     replaced. Bytes are stored exactly as served, and checked to be decodable on
-    the way past.
+    the way past. A URL that has already failed is skipped on a rerun too,
+    unless retry_failed asks for it or the URL itself has changed.
 
     Fetches run concurrently, but only the fetch: batching and every
     store.put_many() happen on the calling thread, so nothing new touches the
     image store concurrently.
 
-    project_path -- project whose occurrences to download for.
-    url_col      -- occurrence column holding the URLs.
-    subset       -- name of a subset to download, or None for all.
-    limit        -- optional cap, for trying a source out.
-    batch_size   -- images written to the store per LMDB transaction, flushed
-                    periodically so an interruption costs at most one batch.
-    timeout      -- (connect, read) timeout tuple.
-    session      -- optional requests.Session to reuse.
-    max_workers  -- concurrent fetches. 1 downloads strictly one at a time, e.g.
-                    for a source with a strict rate limit.
+    - `project_path` -- project whose occurrences to download for.
+    - `url_col` -- occurrence column holding the URLs.
+    - `subset` -- name of a subset to download, or None for all.
+    - `limit` -- optional cap, for trying a source out.
+    - `batch_size` -- images written to the store per LMDB transaction, flushed
+      periodically so an interruption costs at most one batch.
+    - `timeout` -- (connect, read) timeout tuple.
+    - `session` -- optional `requests.Session` to reuse.
+    - `max_workers` -- concurrent fetches. 1 downloads strictly one at a time,
+      e.g. for a source with a strict rate limit.
+    - `retry_failed` -- attempt occurrences whose URL already failed on a
+      previous call. False (the default) leaves them recorded as failed.
 
-    Returns a summary dict (attempted, saved, failed, failures).
+    Returns a summary dict (attempted, saved, failed, previously_failed, failures).
     """
     paths.require_project(project_path)
 
@@ -152,10 +183,12 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
 
     try:
         with ImageStore(project_path) as store:
-            pending = _pending_occurrences(project_path, store, url_col=url_col,
-                                           subset=subset, limit=limit)
+            pending, previously_failed = _pending_occurrences(
+                project_path, store, url_col=url_col, subset=subset,
+                limit=limit, retry_failed=retry_failed)
             attempted = len(pending)
-            logger.info("%d image(s) pending download", attempted)
+            logger.info("%d image(s) pending download (%d previously failed, skipped)",
+                        attempted, previously_failed)
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_row = {
@@ -172,6 +205,9 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                         batch.append((occurrence_id, future.result()))
                         if len(batch) >= batch_size:
                             store.put_many(batch)
+                            failure_records.clear_failures(
+                                project_path, "download",
+                                keys=[(oid, failure_records.NO_PART) for oid, _ in batch])
                             saved += len(batch)
                             batch.clear()
                             logger.info("saved %d/%d", saved, attempted)
@@ -183,7 +219,18 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
 
             if batch:
                 store.put_many(batch)
+                failure_records.clear_failures(
+                    project_path, "download",
+                    keys=[(oid, failure_records.NO_PART) for oid, _ in batch])
                 saved += len(batch)
+
+            if failures:
+                failure_records.record_failures(project_path, "download", [
+                    {"occurrence_id": failure["occurrence_id"],
+                     "context_hash": _url_context_hash(failure["url"]),
+                     "error": failure["error"]}
+                    for failure in failures
+                ])
     finally:
         if owns_session:
             session.close()
@@ -191,4 +238,4 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     logger.info("image download complete: attempted=%d saved=%d failed=%d",
                 attempted, saved, len(failures))
     return {"attempted": attempted, "saved": saved, "failed": len(failures),
-            "failures": failures}
+            "previously_failed": previously_failed, "failures": failures}

@@ -192,6 +192,28 @@ def test_a_non_default_part_is_in_the_filename_too(tmp_path):
     assert report.save().name == "segments__wing_abc123.jpg"
 
 
+def test_a_second_save_with_nothing_new_writes_nothing(tmp_path):
+    """
+    What makes it safe for a long run to checkpoint the grid periodically:
+    a save between two collects that touched no sample member is a no-op
+    rather than a redundant re-encode of an unchanged grid.
+    """
+    report = a_report(tmp_path)
+    report.collect("specimen0", "mask", panel())
+    assert report.save() is not None
+
+    assert report.save() is None
+
+
+def test_collecting_again_after_a_save_makes_the_next_save_write(tmp_path):
+    report = a_report(tmp_path)
+    report.collect("specimen0", "mask", panel())
+    report.save()
+
+    report.collect("specimen1", "mask", panel())
+    assert report.save() is not None
+
+
 # ---------------------------------------------------------------------------
 # panel_sink / PanelFanout
 # ---------------------------------------------------------------------------

@@ -121,6 +121,81 @@ def test_unmasked_occurrences_are_skipped_by_default(image_project):
     assert list(iterate_segments(image_project)) == []
 
 
+def _segment_core(project_path, reference=False):
+    """A 'core' part carved out of the organism mask -- CLAUDE.md's own
+    from_part example, reused so this file exercises the real dependency."""
+    from helpers.models import ThresholdModel
+
+    return cf.run_segments(project_path, run_name="core", part="core",
+                           from_part="organism",
+                           shared_steps=[cf.remove_background()],
+                           steps=[cf.segment(ThresholdModel(erode=3))],
+                           reference=reference, visualize=False)["core"]
+
+
+def test_from_part_reads_the_upstream_mask_from_canonical_even_for_a_reference_part(
+        segmented_project):
+    """
+    Regression: a hand-drawn part correction (draw_mask()/correct_mask(), run
+    with reference=True) starts from the upstream part's CANONICAL mask -- the
+    upstream was never itself written to the reference table, only the
+    correction was. from_part must read canonical regardless of `reference`,
+    matching run_segments(from_part=...) exactly, or every occurrence looks
+    like it has "no organism mask" and gets skipped.
+    """
+    _segment_core(segmented_project, reference=True)
+
+    view = dict(iterate_segments(segmented_project, part="core",
+                                 from_part="organism", reference=True,
+                                 transforms=[cf.crop_to_mask()]))
+    assert len(view) == SPECIMENS
+    assert all(segment.mask is not None for segment in view.values())
+
+
+def test_from_part_frames_the_image_by_the_upstream_masks_crop(segmented_project):
+    """
+    A part carved out of another was trained -- and runs at inference -- against
+    the shared upstream crop, not one cropped to its own, usually much smaller,
+    mask, so exporting has to reproduce that same frame.
+    """
+    _segment_core(segmented_project)
+
+    organism_view = dict(iterate_segments(segmented_project,
+                                          transforms=[cf.crop_to_mask()]))
+    core_view = dict(iterate_segments(segmented_project, part="core",
+                                      from_part="organism",
+                                      transforms=[cf.crop_to_mask()]))
+
+    assert core_view["specimen0"].shape == organism_view["specimen0"].shape
+
+
+def test_without_from_part_the_crop_follows_the_parts_own_mask(segmented_project):
+    """The mismatch from_part exists to avoid, made explicit."""
+    _segment_core(segmented_project)
+
+    organism_view = dict(iterate_segments(segmented_project,
+                                          transforms=[cf.crop_to_mask()]))
+    core_view = dict(iterate_segments(segmented_project, part="core",
+                                      transforms=[cf.crop_to_mask()]))
+
+    assert core_view["specimen0"].shape != organism_view["specimen0"].shape
+
+
+def test_the_parts_own_mask_still_rides_along_reprojected(segmented_project):
+    """
+    from_part swaps in `part`'s own mask, not the upstream one -- reprojected
+    into the frame the upstream mask's transforms produced, not discarded.
+    """
+    _segment_core(segmented_project)
+
+    core_view = dict(iterate_segments(segmented_project, part="core",
+                                      from_part="organism",
+                                      transforms=[cf.crop_to_mask()]))
+    segment = core_view["specimen0"]
+
+    assert 0 < segment.mask.sum() < segment.mask.size
+
+
 def test_they_can_be_included_for_training_on_whole_images(image_project):
     """
     A classifier over photographs the project never segmented: an unsegmented
@@ -250,6 +325,21 @@ def test_reference_masks_can_be_exported_instead(segmented_project, tmp_path):
     assert len(manifest) == 4
 
 
+def test_export_can_frame_a_part_by_its_upstream(segmented_project, tmp_path):
+    _segment_core(segmented_project)
+
+    core_manifest = cf.export_training_data(
+        segmented_project, tmp_path / "core", part="core", from_part="organism",
+        transforms=[cf.crop_to_mask()], masks=True)
+    organism_manifest = cf.export_training_data(
+        segmented_project, tmp_path / "organism", transforms=[cf.crop_to_mask()])
+
+    joined = core_manifest.merge(organism_manifest, on="occurrence_id",
+                                 suffixes=("_core", "_organism"))
+    assert (joined["height_core"] == joined["height_organism"]).all()
+    assert (joined["width_core"] == joined["width_organism"]).all()
+
+
 def test_metadata_and_metrics_ride_along_in_the_manifest(measured_project,
                                                           tmp_path):
     """
@@ -271,10 +361,19 @@ def test_the_dataset_record_says_what_was_exported(segmented_project, tmp_path):
     record = dataset_record(out)
 
     assert record["part"] == "organism"
+    assert record["from_part"] is None
     assert record["masks"] is True
     assert record["splits"]["train"]["count"] == 6
     assert [operation["name"] for operation in record["transforms"]] == [
         "remove_background"]
+
+
+def test_the_dataset_record_names_its_from_part(segmented_project, tmp_path):
+    _segment_core(segmented_project)
+    out = tmp_path / "core"
+    cf.export_training_data(segmented_project, out, part="core",
+                            from_part="organism", masks=True)
+    assert dataset_record(out)["from_part"] == "organism"
 
 
 def test_the_record_identifies_the_data_without_listing_it(segmented_project,

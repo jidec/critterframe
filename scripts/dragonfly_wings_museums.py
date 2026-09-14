@@ -31,7 +31,7 @@ import critterframe as cf
 logging.basicConfig(level=logging.INFO)
 
 PROJECT_PATH = "projects/dragonfly_wings"
-IMPORT_CSV = "imports/specimens.csv"
+IMPORT_CSV = "source/specimens.csv"
 
 cf.ingest_occurrences(
     PROJECT_PATH,

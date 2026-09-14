@@ -61,12 +61,14 @@ print("  Occurrence 4 survives -- unclassified is not the same as classified as"
 print("  debris, so a missing value never matches a drop rule. A low score (3)")
 print("  survives too: that's a judgement to make at export, not here.")
 
-print("\n== the archived import ==")
-imports_dir = os.path.join(PROJECT_PATH, "imports")
-for name in sorted(os.listdir(imports_dir)):
-    rows = pd.read_csv(os.path.join(imports_dir, name))
+print("\n== the archived raw import ==")
+raw_imports_dir = os.path.join(PROJECT_PATH, "raw_imports")
+for name in sorted(os.listdir(raw_imports_dir)):
+    if not name.endswith(".csv"):
+        continue   # skip the *.import.json manifest sitting beside it
+    rows = pd.read_csv(os.path.join(raw_imports_dir, name))
     print(f"  {name}: {len(rows)} rows")
-    assert len(rows) == 4, "the import must keep what the source sent"
+    assert len(rows) == 4, "the raw import must keep what the source sent"
 print("  <- 4 rows. Nothing was lost; the source file is archived before it is")
 print("     parsed, so a dropped row is always recoverable and auditable.")
 

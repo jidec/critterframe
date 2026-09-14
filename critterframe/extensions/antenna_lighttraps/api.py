@@ -143,10 +143,10 @@ def paginate(session, path, params=None, page_size=PAGE_SIZE, timeout=60):
     a hang -- the first page's `count` is logged immediately so the size of the
     job is known before committing to it.
 
-    session -- authenticated session from get_session().
-    path    -- endpoint path relative to the API root, e.g. "captures/".
-    params  -- query parameters for the FIRST request; `next` already encodes
-               them for the rest.
+    - `session` -- authenticated session from `get_session()`.
+    - `path` -- endpoint path relative to the API root, e.g. `"captures/"`.
+    - `params` -- query parameters for the FIRST request; `next` already
+      encodes them for the rest.
     """
     url = f"{base()}/{path}"
     params = dict(params or {}, page_size=page_size)
@@ -195,13 +195,13 @@ def fetch_captures(session, project=None, event=None, page_size=PAGE_SIZE):
     so a caller needs neither a bucket nor credentials to fetch the image
     itself; see calibrations/scale.py, the reason this exists.
 
-    project -- Antenna project id; from the environment if omitted. Required by
-               the endpoint, which 400s without it.
-    event   -- narrow to one event's captures. Worth doing whenever you can: the
-               whole-project walk is 3,451 records over 173 requests for this
-               project, and one event is a single request. Filtering happens
-               server-side under EVENT_PARAM -- read the note there before
-               changing the name.
+    - `project` -- Antenna project id; from the environment if omitted.
+      Required by the endpoint, which 400s without it.
+    - `event` -- narrow to one event's captures. Worth doing whenever you
+      can: the whole-project walk is 3,451 records over 173 requests for
+      this project, and one event is a single request. Filtering happens
+      server-side under `EVENT_PARAM` -- read the note there before
+      changing the name.
     """
     params = {"project_id": project_id(project)}
     if event is not None:
@@ -217,12 +217,13 @@ def request_export(session, fmt=OCCURRENCES_FORMAT, project=None, filters=None):
     Every Antenna export is a FULL project snapshot rather than a delta, which
     is why ingest replaces the occurrence table wholesale rather than merging.
 
-    session -- authenticated session from get_session().
-    fmt     -- registered export format, e.g. OCCURRENCES_FORMAT.
-    project -- Antenna project id; taken from the environment if omitted.
-    filters -- optional server-side filter dict. Only collection_id is
-               supported server-side at present; date and deployment filtering
-               are not, so narrowing by those has to happen after ingest.
+    - `session` -- authenticated session from `get_session()`.
+    - `fmt` -- registered export format, e.g. `OCCURRENCES_FORMAT`.
+    - `project` -- Antenna project id; taken from the environment if
+      omitted.
+    - `filters` -- optional server-side filter dict. Only `collection_id`
+      is supported server-side at present; date and deployment filtering
+      are not, so narrowing by those has to happen after ingest.
     """
     project = project_id(project)
     payload = {"project": project, "format": fmt}
@@ -242,12 +243,12 @@ def poll_export(session, export_id, interval=5, timeout=1800):
     Poll until an export is ready; returns its metadata dict, including
     file_url.
 
-    export_id -- id from request_export().
-    interval  -- seconds between polls.
-    timeout   -- give up and raise after this many seconds. Exports of a large
-                 project take a while; raise this rather than lowering it if
-                 you start seeing timeouts, since a timed-out poll doesn't
-                 cancel the export -- it can be fetched later by id.
+    - `export_id` -- id from `request_export()`.
+    - `interval` -- seconds between polls.
+    - `timeout` -- give up and raise after this many seconds. Exports of a
+      large project take a while; raise this rather than lowering it if you
+      start seeing timeouts, since a timed-out poll doesn't cancel the
+      export -- it can be fetched later by id.
     """
     started = time.time()
     while time.time() - started < timeout:
@@ -269,9 +270,9 @@ def download_export(session, export, dest):
     """
     Stream a finished export to disk and return the path.
 
-    session -- authenticated session.
-    export  -- export metadata dict from poll_export().
-    dest    -- local path to write to.
+    - `session` -- authenticated session.
+    - `export` -- export metadata dict from `poll_export()`.
+    - `dest` -- local path to write to.
 
     To fetch a previously-completed export without polling:
         export = session.get(f"{base()}/exports/{export_id}/").json()

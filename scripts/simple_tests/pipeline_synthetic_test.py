@@ -6,13 +6,14 @@ Builds a throwaway project of drawn "specimens", segments them with a trivial
 threshold model, measures them, exports, then resegments and does it again.
 Worth running after any change to the core machinery: it exercises ingest, the
 image store, recipe hashing, repeat-awareness, coordinate inversion, the mask
-table, the metric log, metric staleness after a resegmentation, and export in
-one pass, and it finishes in a second.
+table, the metric log, metric staleness after a resegmentation, and export with
+its manifest in one pass, and it finishes in a second.
 
 Run from the repo root:
     python scripts/simple_tests/pipeline_synthetic_test.py
 """
 
+import json
 import logging
 import os
 import shutil
@@ -24,6 +25,7 @@ import cv2
 import pandas as pd
 
 import critterframe as cf
+from critterframe.project import paths
 from critterframe.records import calibrations as calibration_records
 from critterframe.records.metrics import load_metrics
 
@@ -101,6 +103,19 @@ print("choice is noise. compute_orientation reports it as unreliable via its")
 print("eigenvalue ratio; run transforms/orient_test.py on real crops to see it")
 print("working on shapes that actually have an asymmetry to find.")
 print("\nunits:", cf.export_units(PROJECT_PATH))
+
+print()
+print("== export manifest ==")
+CSV = os.path.join(PROJECT_PATH, "traits.csv")
+manifest = json.loads(paths.export_sidecar_path(CSV).read_text(encoding="utf-8"))
+print("wrote", paths.export_sidecar_path(CSV).name, "beside the CSV:")
+print("  export_hash :", manifest["export_hash"])
+print("  occurrences :", manifest["occurrences"])
+print("  runs        :", [(r["name"], r["recipe_hash"]) for r in manifest["runs"]])
+print("  masks       :", manifest["source_masks"]["derivations"],
+      " <- expect these to change after the resegmentation below")
+print("  columns     :", sorted(manifest["columns"]))
+print("and one line in", paths.exports_log_path(PROJECT_PATH))
 
 print("\n== filtered export ==")
 filtered = cf.export_metrics(PROJECT_PATH,

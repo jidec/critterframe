@@ -33,10 +33,10 @@ def orient(body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
     """
     Operation: rotate the segment so the body axis is vertical.
 
-    body_axis_is_higher_skew -- pick the body axis as the more asymmetric
-                                principal component (see module constants).
-    isotropy_warn_ratio      -- eigenvalue ratio above which the orientation is
-                                reported unreliable.
+    - `body_axis_is_higher_skew` -- pick the body axis as the more asymmetric
+      principal component (see module constants).
+    - `isotropy_warn_ratio` -- eigenvalue ratio above which the orientation
+      is reported unreliable.
     """
     return Transform("orient", _orient, {
         "body_axis_is_higher_skew": body_axis_is_higher_skew,

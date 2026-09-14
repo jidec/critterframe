@@ -51,39 +51,41 @@ def compare_metrics(project_path, predicted_run, reference_run,
     """
     Join two runs' values per occurrence and report how far apart they are.
 
-    project_path  -- project to read from.
-    predicted_run -- run name holding the automated values.
-    reference_run -- run name holding the reference values.
-    metric_names  -- None compares every metric the two runs share; a list
-                     compares those metrics under the same name on both sides; a
-                     dict pairs {predicted_metric: reference_metric}, which is
-                     what makes a human annotation comparable, e.g.
-                     {"body_length": "click_two_points__length_px"}.
-    part          -- part to compare.
-    current_only  -- ignore values measured from masks since replaced. On by
-                     default: agreement between a current reference and a stale
-                     prediction reports the old segmenter's error under the new
-                     one's name.
-    show_worst    -- how many of the largest percent disagreements to log by id,
-                     signed. 0 disables. A prediction hugely LARGER than its
-                     reference is the signature of a bad reference value.
+    - `project_path` -- project to read from.
+    - `predicted_run` -- run name holding the automated values.
+    - `reference_run` -- run name holding the reference values.
+    - `metric_names` -- None compares every metric the two runs share; a
+      list compares those metrics under the same name on both sides; a dict
+      pairs `{predicted_metric: reference_metric}`, which is what makes a
+      human annotation comparable, e.g. `{"body_length":
+      "click_two_points__length_px"}`.
+    - `part` -- part to compare.
+    - `current_only` -- ignore values measured from masks since replaced.
+      On by default: agreement between a current reference and a stale
+      prediction reports the old segmenter's error under the new one's
+      name.
+    - `show_worst` -- how many of the largest percent disagreements to log
+      by id, signed. 0 disables. A prediction hugely LARGER than its
+      reference is the signature of a bad reference value.
 
     Returns one row per pair with:
-      metric, reference_metric -- what was compared against what.
-      n               -- occurrences with both values present.
-      mean_abs_diff   -- mean absolute difference, in the metric's own unit.
-      mean_pct_diff   -- mean absolute percent difference, relative to the
-                         reference. Occurrences whose reference is 0 are excluded
-                         from this but still counted elsewhere.
-      median_pct_diff -- the same, median instead of mean. Read together they
-                         separate two questions: the median says whether the
-                         population agrees, and a mean far above it says the
-                         reference set contains a value that needs redoing.
-      bias            -- mean signed difference, predicted minus reference. A
-                         metric 5% high on every specimen is correctable; one
-                         randomly 5% off in both directions is not.
-      correlation     -- Pearson r. High correlation with a large bias means the
-                         measurement is fine and the scale is off.
+
+    - `metric`, `reference_metric` -- what was compared against what.
+    - `n` -- occurrences with both values present.
+    - `mean_abs_diff` -- mean absolute difference, in the metric's own
+      unit.
+    - `mean_pct_diff` -- mean absolute percent difference, relative to the
+      reference. Occurrences whose reference is 0 are excluded from this
+      but still counted elsewhere.
+    - `median_pct_diff` -- the same, median instead of mean. Read together
+      they separate two questions: the median says whether the population
+      agrees, and a mean far above it says the reference set contains a
+      value that needs redoing.
+    - `bias` -- mean signed difference, predicted minus reference. A metric
+      5% high on every specimen is correctable; one randomly 5% off in both
+      directions is not.
+    - `correlation` -- Pearson r. High correlation with a large bias means
+      the measurement is fine and the scale is off.
     """
     # metrics_wide rather than a pivot of its own: newest-wins, currency, and
     # the splitting of dict values into one column per key are all decisions

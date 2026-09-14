@@ -1,13 +1,21 @@
 """
-px/mm from a target of known size in the frame.
+px/mm from a target of known size in the frame, matched automatically or
+clicked by hand.
 
-The detector is generic: target, size, and search region are all arguments. A
-weak match is accepted but warned about, since clutter can out-correlate an
-absent target and a plausible wrong scale is worse than none -- a high match
-score is NOT evidence the millimetres are right, so check the panel.
+scale_from_target()'s detector is generic: target, size, and search region are
+all arguments. A weak match is accepted but warned about, since clutter can
+out-correlate an absent target and a plausible wrong scale is worse than none
+-- a high match score is NOT evidence the millimetres are right, so check the
+panel.
 
 The template must be cropped tight to the target's outer edge: the matched
 width IS the measurement, so margin in the template measures the margin too.
+
+scale_from_click() is the by-hand alternative for a scale object not worth
+writing a detector for -- an irregular ruler, a printed scale bar on a
+light-trap sheet -- where a person looking at the image is faster and no less
+reliable than a template match. measure_scale_by_hand() is the recording half:
+one click-through of one scene image, applied to many occurrences at once.
 """
 
 import logging
@@ -31,6 +39,12 @@ logger = logging.getLogger(__name__)
 CALIBRATION_TYPE = "scale"
 SCALE_COL = "px_per_mm"
 
+# Longest side, in pixels, scale_from_click() shrinks its window to. A
+# full-resolution scene image (a light-trap sheet, easily 4000px+) routinely
+# exceeds any screen; cv2 does not scale a window to fit one on its own, so
+# without this the scale bar it's meant to show can end up off-screen.
+DEFAULT_MAX_DISPLAY = 1200
+
 # Scales to try the template at, as multiples of its own size. Wide because a
 # template cropped from one project's photo may meet a camera at a different
 # resolution entirely.
@@ -49,23 +63,23 @@ MATCH_SCORE_MIN = 0.4
 # light also lands here and refusing it would lose real data, but said out loud.
 WEAK_MATCH_SCORE = 0.6
 
-
 def _match_at_scales(gray, template, scales):
     """
     Multi-scale template match. Returns (cx, cy, radius, score, matched_width)
     in `gray`'s frame for the scale with the highest correlation peak, or None
     if nothing fits.
     """
-    template_height, template_width = template.shape[:2]
+
+    template_height, template_width = template.shape[:2] # get height and width
     best = None
 
-    for scale in scales:
-        width, height = int(template_width * scale), int(template_height * scale)
+    for scale in scales: # for each scale
+        width, height = int(template_width * scale), int(template_height * scale) # get scaled h/w
         if width < 8 or height < 8 or height > gray.shape[0] or width > gray.shape[1]:
             continue
 
-        resized = cv2.resize(template, (width, height), interpolation=cv2.INTER_AREA)
-        result = cv2.matchTemplate(gray, resized, cv2.TM_CCOEFF_NORMED)
+        resized = cv2.resize(template, (width, height), interpolation=cv2.INTER_AREA) # resize
+        result = cv2.matchTemplate(gray, resized, cv2.TM_CCOEFF_NORMED) # match template
         _, peak, _, location = cv2.minMaxLoc(result)
 
         if best is None or peak > best[3]:
@@ -97,7 +111,7 @@ def _region_slice(image, region):
     return image[top:bottom, left:right], (left, top)
 
 
-def detect_target(image, template, region=None, coarse_scales=DEFAULT_SCALES,
+def _detect_target(image, template, region=None, coarse_scales=DEFAULT_SCALES,
                   match_score_min=MATCH_SCORE_MIN):
     """
     Find a target by multi-scale template matching. Returns
@@ -132,18 +146,18 @@ def scale_from_target(image, template, target_mm, region=None,
     """
     Pixels per millimetre from an image containing a target of known width.
 
-    image     -- BGR (or grayscale) array showing the target.
-    template  -- grayscale template image, cropped tightly to the target.
-    target_mm -- the target's real width in millimetres. A US 1-inch quadrant
-                 circle is 25.4; measure yours rather than trusting a spec
-                 sheet, since printers scale.
+    - `image` -- BGR (or grayscale) array showing the target.
+    - `template` -- grayscale template image, cropped tightly to the target.
+    - `target_mm` -- the target's real width in millimetres. A US 1-inch
+      quadrant circle is 25.4; measure yours rather than trusting a spec
+      sheet, since printers scale.
 
     Returns the measurement as a dict, or None if no target was found -- not
     zero, and not a raise: an image without a visible target is a normal thing
     in a large collection, and the caller decides whether it's a problem.
     """
     started = time.perf_counter()
-    found = detect_target(image, template, region=region,
+    found = _detect_target(image, template, region=region,
                           coarse_scales=coarse_scales,
                           match_score_min=match_score_min)
     elapsed = time.perf_counter() - started
@@ -173,7 +187,6 @@ def scale_from_target(image, template, target_mm, region=None,
             "cx": int(cx), "cy": int(cy), "radius_px": int(radius),
             "diameter_px": int(diameter_px)}
 
-
 def scale_panel(image, result):
     """
     The measurement drawn on the image: the matched circle, its centre, and the
@@ -188,6 +201,145 @@ def scale_panel(image, result):
                (0, 255, 0), 2)
     cv2.circle(panel, (result["cx"], result["cy"]), 2, (0, 0, 255), 3)
     annotate(panel, f"{result['px_per_mm']:.4f} px/mm  match {result['score']:.3f}")
+    return panel
+
+def scale_from_click(image, target_mm=None, name=None, max_display=DEFAULT_MAX_DISPLAY):
+    """
+    Pixels per millimetre from two points a person clicks, a known length
+    apart.
+
+    The by-hand alternative to scale_from_target(): for a scale object not
+    worth writing a detector for -- an irregular ruler, a printed scale bar on
+    a light-trap sheet -- where a person looking at the image is faster and no
+    less reliable than a template match.
+
+    image       -- BGR (or grayscale) array showing the scale object.
+                   Typically loaded directly (e.g. cv2.imread()), not read
+                   from a project's ImageStore -- that holds per-occurrence
+                   crops, not a standalone scene image like a light-trap
+                   sheet.
+    target_mm   -- the object's real length in millimetres. None (the
+                   default) prompts for it on the terminal once both points
+                   are clicked, so a project re-measuring one recurring scale
+                   bar doesn't have to hardcode its length at every call site.
+    name        -- shown in the window title and the log line.
+    max_display -- longest side, in pixels, the window is shrunk to for
+                   display -- a full-resolution scene image (a light-trap
+                   sheet, easily 4000px+) is routinely bigger than the screen,
+                   and cv2 neither scales nor letterboxes a window to fit one
+                   on its own. None shows the image at full resolution. Either
+                   way, the two clicked points are converted back to the
+                   ORIGINAL image's pixel coordinates before being returned,
+                   so shrinking the window for display doesn't touch
+                   px_per_mm.
+
+    Left-click the two ends of the scale object, in either order; Esc cancels
+    before both points land, and a blank or non-positive typed length cancels
+    the same way. Returns a dict (px_per_mm, length_px, point_a, point_b) --
+    shaped so make_scale_row() takes it exactly like scale_from_target()'s
+    result, minus the match score neither a click nor a stated length has one
+    of -- or None if cancelled.
+    """
+    original = np.asarray(image)
+    height, width = original.shape[:2]
+    display_scale = 1.0
+    if max_display is not None and max(height, width) > max_display:
+        display_scale = max_display / max(height, width)
+
+    display = original.copy()
+    if display.ndim == 2:
+        display = cv2.cvtColor(display, cv2.COLOR_GRAY2BGR)
+    if display_scale != 1.0:
+        display = cv2.resize(display, None, fx=display_scale, fy=display_scale,
+                             interpolation=cv2.INTER_AREA)
+
+    window = f"{name or 'scale'} - click the two ends of the scale object (Esc=cancel)"
+    cv2.imshow(window, display)
+
+    display_points = []   # in the (possibly shrunk) DISPLAYED frame
+
+    def on_click(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN and len(display_points) < 2:
+            display_points.append((x, y))
+            color = (0, 255, 0) if len(display_points) == 1 else (0, 0, 255)
+            cv2.circle(display, (x, y), 6, color, -1)
+            if len(display_points) == 2:
+                cv2.line(display, display_points[0], display_points[1],
+                         (0, 255, 255), 2)
+            cv2.imshow(window, display)
+
+    cv2.setMouseCallback(window, on_click)
+
+    cancelled = False
+    while len(display_points) < 2:
+        if cv2.waitKey(20) & 0xFF == 27:
+            cancelled = True
+            break
+    cv2.destroyWindow(window)
+
+    if cancelled:
+        logger.info("%s: scale click cancelled", name or "image")
+        return None
+
+    # Back to ORIGINAL-image pixels -- the only frame px_per_mm can mean
+    # anything in, since that's the frame every other measurement is made in.
+    (x0, y0), (x1, y1) = (
+        (round(x / display_scale), round(y / display_scale))
+        for x, y in display_points
+    )
+    length_px = float(np.hypot(x1 - x0, y1 - y0))
+
+    if target_mm is None:
+        target_mm = _prompt_length_mm(name)
+    if target_mm is None:
+        return None
+
+    px_per_mm = length_px / float(target_mm)
+    logger.info("%s: clicked %.1fpx over %gmm -> %.4f px/mm",
+                name or "image", length_px, target_mm, px_per_mm)
+
+    return {"px_per_mm": float(px_per_mm), "length_px": length_px,
+            "point_a": [x0, y0], "point_b": [x1, y1]}
+
+
+def _prompt_length_mm(name=None):
+    """
+    Ask on the terminal for the scale object's real length, or None if what
+    comes back is blank or not a positive number.
+
+    A plain input() rather than a second cv2 window: nothing else in this
+    package mixes clicking with typing, and a person who just clicked two
+    points on an image is already at a terminal that launched the script.
+    """
+    raw = input(f"{name or 'image'}: length of the clicked scale object, in mm: ")
+    try:
+        value = float(raw.strip())
+    except ValueError:
+        logger.warning("%s: %r is not a number -- scale not recorded",
+                       name or "image", raw)
+        return None
+    if not value > 0:
+        logger.warning("%s: length must be positive, got %s -- scale not "
+                       "recorded", name or "image", raw)
+        return None
+    return value
+
+
+def click_scale_panel(image, result):
+    """
+    The measurement drawn on the image: the two clicked points, the line
+    between them, and the resulting px/mm -- scale_panel()'s counterpart for a
+    by-hand measurement instead of a matched target.
+    """
+    panel = np.asarray(image).copy()
+    if panel.ndim == 2:
+        panel = cv2.cvtColor(panel, cv2.COLOR_GRAY2BGR)
+
+    point_a, point_b = tuple(result["point_a"]), tuple(result["point_b"])
+    cv2.line(panel, point_a, point_b, (0, 255, 255), 2)
+    cv2.circle(panel, point_a, 6, (0, 255, 0), -1)
+    cv2.circle(panel, point_b, 6, (0, 0, 255), -1)
+    annotate(panel, f"{result['px_per_mm']:.4f} px/mm  ({result['length_px']:.1f}px)")
     return panel
 
 
@@ -228,11 +380,11 @@ def declare_scale(project_path, px_per_mm, scope=ID_COL, scope_value=None,
     fixed height, a microscope objective, a scanner at a stated dpi. There's
     nothing to detect in those images and no reason to pretend otherwise.
 
-    project_path -- project to record it in.
-    px_per_mm    -- pixels per millimetre.
-    scope        -- occurrence column this applies across; ID_COL (the default)
-                    means one occurrence.
-    scope_value  -- the value in that column. Required.
+    - `project_path` -- project to record it in.
+    - `px_per_mm` -- pixels per millimetre.
+    - `scope` -- occurrence column this applies across; `ID_COL` (the default)
+      means one occurrence.
+    - `scope_value` -- the value in that column. Required.
 
     A scanner's dpi converts as px_per_mm = dpi / 25.4.
     """
@@ -295,17 +447,18 @@ def measure_scales(project_path, template, target_mm, scope=ID_COL, region=None,
     crops were cut from), measure that image yourself and write the row directly
     -- see the antenna_lighttraps extension.
 
-    project_path -- project to measure and record in.
-    template     -- grayscale template, cropped tightly to the target.
-    target_mm    -- the target's real width in millimetres.
-    scope        -- occurrence column the rows are keyed on. ID_COL by default,
-                    the honest answer when every frame is measured separately.
-                    Naming a grouping column records one measurement as covering
-                    the whole group, true only if the rig really was fixed.
-    subset       -- named subset to restrict to.
-    limit        -- optional cap, for checking a template works first.
-    force        -- re-measure scope values that already have a scale.
-    visualize    -- save one panel per measurement under visualizations/scale/.
+    - `project_path` -- project to measure and record in.
+    - `template` -- grayscale template, cropped tightly to the target.
+    - `target_mm` -- the target's real width in millimetres.
+    - `scope` -- occurrence column the rows are keyed on. `ID_COL` by
+      default, the honest answer when every frame is measured separately.
+      Naming a grouping column records one measurement as covering the whole
+      group, true only if the rig really was fixed.
+    - `subset` -- named subset to restrict to.
+    - `limit` -- optional cap, for checking a template works first.
+    - `force` -- re-measure scope values that already have a scale.
+    - `visualize` -- save one panel per measurement under
+      `visualizations/scale/`.
 
     Returns a summary dict (measured, skipped, failed, missed).
     """
@@ -372,3 +525,114 @@ def measure_scales(project_path, template, target_mm, scope=ID_COL, region=None,
                 len(rows), skipped, failed, missed)
     return {"measured": len(rows), "skipped": skipped, "failed": failed,
             "missed": missed}
+
+def measure_scale_by_hand(project_path, image, target_mm=None, scope=ID_COL,
+                          scope_value=None, occurrence_ids=None, subset=None,
+                          source="clicked", name=None, visualize=False,
+                          force=False, max_display=DEFAULT_MAX_DISPLAY):
+    """
+    Click two points spanning a known length in a standalone scene image --
+    e.g. a light-trap sheet's printed scale bar -- and record the resulting
+    scale for the occurrences it covers.
+
+    Measures ONCE and applies the same px_per_mm broadly, unlike
+    scale_from_target()/measure_scales(), which need the scale object to sit
+    INSIDE every occurrence's own image. Here it lives in a separate scene
+    image nothing in the ImageStore corresponds to, so `image` is loaded by
+    the caller (see scale_from_click) rather than read from the project.
+
+    - `project_path` -- project to record the calibration in.
+    - `image` -- BGR (or grayscale) array showing the scale object.
+    - `target_mm` -- the object's real length in millimetres; None prompts
+      for it after the two points are clicked.
+    - `scope` -- occurrence column the resulting row(s) are keyed on.
+      `ID_COL`, the default, writes one row per occurrence named by
+      `occurrence_ids`/`subset` -- every occurrence currently in the project
+      when both are None, which is what "one scale bar for the whole
+      deployment" usually means. Name an existing column instead (e.g.
+      `"device"`, `"session_path"`) for one row covering everything sharing
+      `scope_value` -- pass `scope_value`, not `occurrence_ids` or `subset`,
+      in that case.
+    - `scope_value` -- required when `scope` isn't `ID_COL`: the value in
+      `scope` this measurement covers. Rejected when `scope` is `ID_COL`,
+      where `occurrence_ids`/`subset` says the same thing instead.
+    - `occurrence_ids`, `subset` -- with `scope=ID_COL`, which occurrences
+      this measurement covers; pass at most one. Both None means every
+      occurrence in the project.
+    - `source` -- recorded as this calibration's provenance; `"clicked"` by
+      default, distinguishing a by-hand measurement from an automated match
+      (`"target"`) or an asserted fact (`"declared"`).
+    - `name` -- shown in the window title, the log line, and recorded as
+      `measured_from`.
+    - `visualize` -- save one panel of the clicked points under
+      `visualizations/scale/`.
+    - `force` -- re-measure and overwrite occurrences/scope values that
+      already have a scale. Repeat-aware like `measure_scales()` otherwise:
+      only what has no scale yet counts toward what gets written, so a rerun
+      after adding new occurrences only asks to click once more, not measure
+      everyone again.
+    - `max_display` -- passed through to `scale_from_click()`; shrinks the
+      window so a full-resolution scene image fits on screen.
+
+    Returns scale_from_click()'s result dict with `covered` added -- how many
+    rows were written -- or None if cancelled (nothing is recorded) or if
+    everything named was already covered (nothing to click for).
+    """
+    paths.require_project(project_path)
+
+    if scope != ID_COL:
+        if occurrence_ids is not None or subset is not None:
+            raise ValueError(
+                "occurrence_ids/subset only apply with scope=ID_COL -- pass "
+                "scope_value for any other scope"
+            )
+        if scope_value is None:
+            raise ValueError(
+                f"scope={scope!r} needs a scope_value -- which {scope} is "
+                "this measurement true of?"
+            )
+        calibration_records.require_scope_column(project_path, scope)
+        targets = [str(scope_value)]
+    else:
+        if scope_value is not None:
+            raise ValueError(
+                "scope_value doesn't apply with scope=ID_COL -- pass "
+                "occurrence_ids or subset instead"
+            )
+        if occurrence_ids is not None and subset is not None:
+            raise ValueError("pass occurrence_ids or subset, not both")
+        if occurrence_ids is not None:
+            targets = [str(occurrence_id) for occurrence_id in occurrence_ids]
+        else:
+            targets = subset_selection.select_ids(project_path, subset=subset)
+
+    if force:
+        skipped = 0
+    else:
+        measured = _measured_values(project_path, scope)
+        pending = [value for value in targets if value not in measured]
+        skipped = len(targets) - len(pending)
+        targets = pending
+
+    if not targets:
+        logger.info("every requested '%s' value already has a scale -- "
+                    "nothing to measure", scope)
+        return None
+
+    result = scale_from_click(image, target_mm=target_mm, name=name,
+                              max_display=max_display)
+    if result is None:
+        return None
+
+    if visualize:
+        save_panel(project_path, click_scale_panel(image, result),
+                  name or "scale", subdir="scale")
+
+    rows = [make_scale_row(scope, value, result["px_per_mm"], source=source,
+                           measured_from=name)
+           for value in targets]
+    calibration_records.save_calibrations(project_path, rows)
+
+    logger.info("recorded %.4f px/mm for %d '%s' value(s) (%d already covered)",
+               result["px_per_mm"], len(rows), scope, skipped)
+    return {**result, "covered": len(rows)}

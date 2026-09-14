@@ -25,8 +25,10 @@ import numpy as np
 from .. import selectionhelpers
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe, Segment, Segmentation
+from ..records import failures as failure_records
 from ..records import masks as mask_records
 from ..records import runs as run_records
+from ..records.occurrences import ids_record
 from ..storage.imagestore import ImageStore
 from ..visualization import pipeline as pipeline_visualization
 from ..visualization.panels import annotate, overlay_mask
@@ -45,22 +47,25 @@ def segment(model, mask_threshold=0.0):
     """
     Operation: derive a mask for the current segment using a model.
 
-    model -- anything meeting the segmenter contract:
+    A model meets the segmenter contract if it exposes:
 
-               predict(image) -> (mask, score, info)
+    ```
+    predict(image) -> (mask, score, info)
+    ```
 
-             where image is RGB, mask is boolean of the same height/width, score
-             is the model's confidence or None, and info is diagnostics.
-             Optionally also identity() -> dict and visualize(...).
+    where image is RGB, mask is boolean of the same height/width, score is
+    the model's confidence or None, and info is diagnostics. Optionally also
+    `identity() -> dict` and `visualize(...)`.
 
-             identity() is how a checkpoint reaches the recipe hash; without one
-             a model is identified only by its class name, so two fine-tunes
-             would be mistaken for equivalent work.
+    `identity()` is how a checkpoint reaches the recipe hash; without one a
+    model is identified only by its class name, so two fine-tunes would be
+    mistaken for equivalent work.
 
-    mask_threshold -- cutoff passed to models that take one. For SAM2 it is a
-                      LOGIT, not a probability: 0.0 is the neutral default,
-                      negative grows the mask, positive shrinks it. A tenth of a
-                      logit is a meaningful step.
+    - `model` -- anything meeting the segmenter contract above.
+    - `mask_threshold` -- cutoff passed to models that take one. For SAM2 it
+      is a LOGIT, not a probability: 0.0 is the neutral default, negative
+      grows the mask, positive shrinks it. A tenth of a logit is a
+      meaningful step.
     """
     return Segmentation("segment", _segment, {"mask_threshold": mask_threshold},
                         version="1", model=model)
@@ -146,48 +151,92 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
     }
 
 
+def _resolve_force(force, recipes):
+    """
+    Settle whether this run may skip completed work, refusing to guess for a
+    recipe that won't reproduce itself.
+
+    force   -- run_segments' force argument, None where the caller said nothing.
+    recipes -- {part: Recipe} about to run.
+
+    Returns force as a bool.
+    """
+    if force is not None:
+        return bool(force)
+
+    named = sorted({operation.name for recipe in recipes.values()
+                    for operation in recipe.nondeterministic_operations()})
+    if not named:
+        return False
+
+    raise ValueError(
+        f"{', '.join(named)} is not deterministic -- running it again can "
+        "produce a different mask, so this run will not decide on its own "
+        "whether the occurrence-parts it has already covered count as done. "
+        "Pass force=False to keep what is recorded and continue where you "
+        "stopped, or force=True to redo them."
+    )
+
+
 def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PART,
                  outputs=None, shared_steps=None, from_part=None, subset=None,
-                 limit=None, force=False, visualize=True, reference=False,
-                 batch_size=DEFAULT_BATCH_SIZE, shard=None):
+                 limit=None, force=None, visualize=True, visualize_every=None,
+                 reference=False, batch_size=DEFAULT_BATCH_SIZE, shard=None,
+                 retry_failed=False):
     """
     Run a segmentation recipe over a project's occurrences.
 
-    project_path -- the project to process.
-    steps        -- ordered operations producing one part's mask. Use this OR
-                    outputs.
-    run_name     -- what to call this run; recorded on the run and part of
-                    recipe identity.
-    part         -- which part `steps` produces; the whole organism by default.
-    outputs      -- {part: steps} for producing several parts in one pass.
-    shared_steps -- operations run once per occurrence before forking into each
-                    output's own steps.
-    from_part    -- start each segment from an existing part's mask instead of
-                    from none. How refinement chains work: a part-specific model
-                    starts from the organism mask rather than rediscovering it.
-                    Which upstream mask each output came from is recorded, so
-                    resegmenting the upstream recomputes everything below it.
-    subset       -- name of a subset to process, or None for every occurrence.
-    limit        -- optional cap on occurrences, for trying a recipe out.
-    force        -- redo occurrence-parts this recipe already covered from the
-                    same upstream mask. A part whose upstream has been replaced
-                    is redone regardless.
-    visualize    -- how much of a pipeline grid to produce: 25 samples 25
-                    occurrences, True uses the default sample size, a list names
-                    occurrences specifically, False (default) produces none. A
-                    grid can only show work that happened, so a fully cached
-                    rerun writes none -- use force=True to see it again.
-    reference    -- write to the reference mask table instead of the canonical
-                    one, as a human-drawn validation pass does.
-    batch_size   -- masks accumulated before each write.
-    shard        -- (index, total): process only this shard of the occurrences,
-                    for running several workers over one project at once. Shards
-                    are deterministic and disjoint, so workers need no
-                    coordination. A sharded run stages its writes; call
-                    merge_mask_shards() once afterwards. Note that every shard's
-                    QC grid shares one filename, so pass visualize=False.
+    - `project_path` -- the project to process.
+    - `steps` -- ordered operations producing one part's mask. Use this OR
+      `outputs`.
+    - `run_name` -- what to call this run; recorded on the run and part of
+      recipe identity.
+    - `part` -- which part `steps` produces; the whole organism by default.
+    - `outputs` -- `{part: steps}` for producing several parts in one pass.
+    - `shared_steps` -- operations run once per occurrence before forking
+      into each output's own steps.
+    - `from_part` -- start each segment from an existing part's mask instead
+      of from none. How refinement chains work: a part-specific model starts
+      from the organism mask rather than rediscovering it. Which upstream
+      mask each output came from is recorded, so resegmenting the upstream
+      recomputes everything below it.
+    - `subset` -- name of a subset to process, or None for every occurrence.
+    - `limit` -- optional cap on occurrences, for trying a recipe out.
+    - `force` -- redo occurrence-parts this recipe already covered from the
+      same upstream mask. A part whose upstream has been replaced is redone
+      regardless. None (the default) means False for a deterministic recipe;
+      where an operation is `deterministic=False` it raises instead, since
+      neither answer is safe to assume.
+    - `visualize` -- how much of a pipeline grid to produce: 25 samples 25
+      occurrences, True uses the default sample size, a list names
+      occurrences specifically, False (default) produces none. A grid can
+      only show work that happened, so a fully cached rerun writes none --
+      use `force=True` to see it again.
+    - `visualize_every` -- refresh the grid on disk every N occurrences
+      processed, in addition to the save at the end. None (default) saves
+      only at the end. Lets a very long run be watched as it goes, and means
+      a killed run still leaves a grid showing what it got through. No
+      effect without `visualize`.
+    - `reference` -- write to the reference mask table instead of the
+      canonical one, as a human-drawn validation pass does.
+    - `batch_size` -- masks accumulated before each write.
+    - `shard` -- (index, total): process only this shard of the occurrences,
+      for running several workers over one project at once. Shards are
+      deterministic and disjoint, so workers need no coordination. A sharded
+      run stages its writes; call `merge_mask_shards()` once afterwards.
+      Note that every shard's QC grid shares one filename, so pass
+      `visualize=False`. A sharded run does not persist failures (see
+      `records.failures`) for the same reason it doesn't upsert
+      `masks.parquet` directly -- failed occurrence-parts are still logged
+      and counted, just retried on the next run.
+    - `retry_failed` -- attempt occurrence-parts that already failed under
+      this exact recipe (and, for a `from_part` recipe, this exact upstream
+      mask). False (the default) leaves them recorded as failed; a changed
+      recipe or upstream retries them automatically with no flag needed.
 
-    Returns {part: {"processed", "skipped", "failed", "run_id"}}.
+    Returns {part: {"processed", "skipped", "failed", "previously_failed", "run_id"}}.
+    skipped includes occurrence-parts excluded for either reason -- already
+    done, or already failed and not retried.
     """
     paths.require_project(project_path)
 
@@ -206,6 +255,14 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                 "disk. Pass visualize=False for a sharded run to avoid the "
                 "clobbering, or ignore this if only one shard's sample matters.",
                 shard, visualize)
+
+    if visualize_every and not visualize:
+        logger.warning(
+            "visualize_every=%d with visualize=%r: there's no report to "
+            "checkpoint without visualize, so visualize_every has no effect",
+            visualize_every, visualize)
+
+    force = _resolve_force(force, recipes)
 
     logger.info("run_segments '%s': %d occurrence(s), part(s): %s",
                 run_name, len(occurrence_ids), ", ".join(sorted(recipes)))
@@ -229,6 +286,7 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     # fully-cached run does no image loading at all rather than loading every
     # image and discarding it.
     pending = {}
+    failed_by_part = {}
     for output_part, recipe in recipes.items():
         upstream = None if from_part is None else {
             (occurrence_id, output_part): source_hash
@@ -237,24 +295,46 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
         done = set() if force else mask_records.completed_keys(
             project_path, recipe.hash, reference=reference,
             source_mask_hashes=upstream)
+
+        failed = set()
+        if not force and not retry_failed:
+            context_hashes = {
+                (occurrence_id, output_part): mask_records.derivation_hash(
+                    recipe.hash, source_hashes.get(occurrence_id))
+                for occurrence_id in occurrence_ids
+            }
+            failed = failure_records.failed_keys(project_path, "segment", context_hashes)
+        failed_by_part[output_part] = failed
+
+        skip = done | failed
         pending[output_part] = [
             occurrence_id for occurrence_id in occurrence_ids
-            if (occurrence_id, output_part) not in done
+            if (occurrence_id, output_part) not in skip
         ]
-        logger.info("  %s: %d pending, %d already done by recipe %s",
-                    output_part, len(pending[output_part]),
-                    len(occurrence_ids) - len(pending[output_part]), recipe.hash)
+        logger.info("  %s: %d pending, %d already done by recipe %s, "
+                    "%d previously failed (retry_failed=True to retry)",
+                    output_part, len(pending[output_part]), len(done), recipe.hash,
+                    len(failed))
 
+    # The covered set is this run row's own -- for a sharded run that is the
+    # shard's slice, which is what this row actually processed.
+    run_context = {"occurrences": ids_record(occurrence_ids), "limit": limit,
+                   "shard": None if shard is None else list(shard)}
     run_ids = {
-        output_part: run_records.start_run(project_path, recipe, subset=subset)
+        output_part: run_records.start_run(project_path, recipe, subset=subset,
+                                           context=run_context)
         for output_part, recipe in recipes.items()
     }
 
     shared = list(shared_steps or [])
-    counts = {output_part: {"processed": 0, "skipped": len(occurrence_ids) - len(ids),
-                            "failed": 0}
-              for output_part, ids in pending.items()}
+    counts = {
+        output_part: {"processed": 0, "skipped": len(occurrence_ids) - len(ids),
+                      "failed": 0, "previously_failed": len(failed_by_part[output_part])}
+        for output_part, ids in pending.items()
+    }
     batches = {output_part: [] for output_part in recipes}
+    failure_batches = {output_part: [] for output_part in recipes}
+    resolved_keys = {output_part: [] for output_part in recipes}
 
     # Walked in occurrence-table order, and only for occurrences some part
     # still needs -- so one pass over the image store covers every part.
@@ -289,8 +369,33 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                 mask_records.save_masks(project_path, rows, reference=reference)
             rows.clear()
 
+        # A sharded run stages mask writes rather than upserting directly,
+        # because upsert_table has no locking and concurrent writers would
+        # silently lose each other's rows -- the same hazard applies to
+        # failures.parquet, so a sharded run simply doesn't persist failures:
+        # they're still logged and counted, just retried on the next run.
+        if shard is None:
+            failure_rows = failure_batches[output_part]
+            if failure_rows:
+                failure_records.record_failures(project_path, "segment", failure_rows)
+                failure_rows.clear()
+
+            resolved = resolved_keys[output_part]
+            if resolved:
+                failure_records.clear_failures(project_path, "segment", resolved)
+                resolved.clear()
+
+    def maybe_checkpoint(index):
+        # Cheap even when nothing new was collected -- RunReport.save() is a
+        # no-op then (see its dirty flag) -- so this is safe to call on every
+        # occurrence's periodic boundary regardless of whether that occurrence
+        # was itself in the sample.
+        if visualize_every and (index + 1) % visualize_every == 0:
+            for report in active:
+                report.save()
+
     with ImageStore(project_path, readonly=True) as images:
-        for occurrence_id in todo:
+        for index, occurrence_id in enumerate(todo):
             try:
                 image = images.get(occurrence_id)
                 if image is None:
@@ -321,6 +426,15 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                 for output_part in recipes:
                     if occurrence_id in pending_sets[output_part]:
                         counts[output_part]["failed"] += 1
+                        failure_batches[output_part].append({
+                            "occurrence_id": occurrence_id,
+                            "part": output_part,
+                            "context_hash": mask_records.derivation_hash(
+                                recipes[output_part].hash,
+                                source_hashes.get(occurrence_id)),
+                            "error": str(exc),
+                        })
+                maybe_checkpoint(index)
                 continue
 
             for output_part, recipe in recipes.items():
@@ -351,6 +465,7 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                         source_mask_hash=source_hashes.get(occurrence_id),
                     ))
                     counts[output_part]["processed"] += 1
+                    resolved_keys[output_part].append((occurrence_id, output_part))
 
                     if len(batches[output_part]) >= batch_size:
                         flush(output_part)
@@ -359,6 +474,15 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                     counts[output_part]["failed"] += 1
                     logger.warning("segmentation failed for %s part '%s': %s",
                                    occurrence_id, output_part, exc)
+                    failure_batches[output_part].append({
+                        "occurrence_id": occurrence_id,
+                        "part": output_part,
+                        "context_hash": mask_records.derivation_hash(
+                            recipe.hash, source_hashes.get(occurrence_id)),
+                        "error": str(exc),
+                    })
+
+            maybe_checkpoint(index)
 
     for report in active:
         report.save()

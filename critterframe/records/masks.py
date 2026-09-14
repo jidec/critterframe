@@ -50,7 +50,7 @@ COLUMNS = [
 IDENTITY_COLUMNS = ["occurrence_id", "part", "recipe_hash", "source_mask_hash"]
 
 
-def encode_mask(mask):
+def _encode_mask(mask):
     """
     RLE-encode a boolean mask into the columns a mask row stores.
 
@@ -138,7 +138,7 @@ def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
         "source_mask_hash": source_mask_hash,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
-    row.update(encode_mask(mask))
+    row.update(_encode_mask(mask))
     return {column: row.get(column) for column in COLUMNS}
 
 
@@ -193,10 +193,10 @@ def merge_mask_shards(project_path, part=None, reference=False, cleanup=True):
     upsert, safe because only one process ever does. An occurrence-part staged
     twice resolves to the newest write.
 
-    part      -- merge only this part's shards, or None for every staged part.
-    reference -- merge the reference-mask shards instead.
-    cleanup   -- delete each staged file once merged. False leaves them, e.g.
-                 to inspect before trusting the merge.
+    - `part` -- merge only this part's shards, or None for every staged part.
+    - `reference` -- merge the reference-mask shards instead.
+    - `cleanup` -- delete each staged file once merged. False leaves them,
+      e.g. to inspect before trusting the merge.
 
     Returns {part: n_rows_merged}, for parts that had anything staged.
     """

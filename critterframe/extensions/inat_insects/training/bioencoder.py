@@ -55,23 +55,22 @@ def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
     Build a training dataset out of a project: image/mask pairs on disk, labels
     attached, split into train/val/test.
 
-    project_path  -- project to build from.
-    output_dir    -- directory to write into.
-    part          -- part to train on.
-    transforms    -- operations applied to each segment. Pass the SAME chain
-                    the embedding metric will use at inference time, typically
-                    [remove_background(), crop_to_mask(), orient()] -- a model
-                    trained on background-removed, oriented segments and then
-                    run on raw photographs will embed badly and give no
-                    indication of why.
-    label_col     -- occurrence column holding the label.
-    group_col     -- occurrence column to group by when splitting, so
-                    near-duplicates can't straddle train and validation.
-    min_per_label -- labels with fewer images than this are dropped.
-    fractions     -- split fractions; 70/15/15 by default.
-    reference     -- train on reference masks rather than canonical ones.
-    subset, limit -- restrict which occurrences are used.
-    seed          -- split seed, so the split is reproducible across runs.
+    - `project_path` -- project to build from.
+    - `output_dir` -- directory to write into.
+    - `part` -- part to train on.
+    - `transforms` -- operations applied to each segment. Pass the SAME
+      chain the embedding metric will use at inference time, typically
+      `[remove_background(), crop_to_mask(), orient()]` -- a model trained
+      on background-removed, oriented segments and then run on raw
+      photographs will embed badly and give no indication of why.
+    - `label_col` -- occurrence column holding the label.
+    - `group_col` -- occurrence column to group by when splitting, so
+      near-duplicates can't straddle train and validation.
+    - `min_per_label` -- labels with fewer images than this are dropped.
+    - `fractions` -- split fractions; 70/15/15 by default.
+    - `reference` -- train on reference masks rather than canonical ones.
+    - `subset`, `limit` -- restrict which occurrences are used.
+    - `seed` -- split seed, so the split is reproducible across runs.
 
     Returns the manifest DataFrame, with `split` and `label` columns added.
     """
@@ -120,32 +119,31 @@ def train(manifest, output_dir, backbone=None, loss=None, augmentations=None,
     decide; the training loop itself is deliberately left out rather than
     guessed at.
 
-    manifest      -- DataFrame from prepare_dataset(), with image_path, label,
-                    and split columns.
-    output_dir    -- where to write the checkpoint and training log. The
-                    checkpoint path becomes a BioEncoderModel's `checkpoint`,
-                    and therefore part of the recipe hash of every embedding it
-                    ever produces -- so write a distinct path per training run
-                    rather than overwriting one file, or two different models'
-                    embeddings become indistinguishable in the record.
-                    records.models.register_model() removes that trap by
-                    hashing the weights themselves, and is also where the
-                    training data behind the checkpoint gets recorded.
-    backbone      -- pretrained feature extractor to fine-tune. The decision
-                    that most affects the result and the one most dependent on
-                    dataset size: a large backbone on a few thousand images
-                    overfits, a small one on a hundred thousand underuses them.
-    loss          -- metric-learning loss (triplet, ArcFace, supervised
-                    contrastive...). Interacts with batch size, since
-                    pair-based losses need enough examples per class IN A BATCH
-                    to form informative pairs -- which is why a batch sampler
-                    matters here in a way it doesn't for classification.
-    augmentations -- training augmentations. Be careful what you make the model
-                     invariant to: colour jitter is standard practice and
-                     directly destroys the colour signal an entomological
-                     embedding probably wants, and horizontal flip is safe for
-                     a dorsal view and wrong for anything asymmetric.
-    epochs, batch_size, embedding_dim, seed -- the usual.
+    - `manifest` -- DataFrame from `prepare_dataset()`, with `image_path`,
+      `label`, and `split` columns.
+    - `output_dir` -- where to write the checkpoint and training log. The
+      checkpoint path becomes a `BioEncoderModel`'s `checkpoint`, and
+      therefore part of the recipe hash of every embedding it ever
+      produces -- so write a distinct path per training run rather than
+      overwriting one file, or two different models' embeddings become
+      indistinguishable in the record. `records.models.register_model()`
+      removes that trap by hashing the weights themselves, and is also
+      where the training data behind the checkpoint gets recorded.
+    - `backbone` -- pretrained feature extractor to fine-tune. The decision
+      that most affects the result and the one most dependent on dataset
+      size: a large backbone on a few thousand images overfits, a small
+      one on a hundred thousand underuses them.
+    - `loss` -- metric-learning loss (triplet, ArcFace, supervised
+      contrastive...). Interacts with batch size, since pair-based losses
+      need enough examples per class IN A BATCH to form informative pairs
+      -- which is why a batch sampler matters here in a way it doesn't for
+      classification.
+    - `augmentations` -- training augmentations. Be careful what you make
+      the model invariant to: colour jitter is standard practice and
+      directly destroys the colour signal an entomological embedding
+      probably wants, and horizontal flip is safe for a dorsal view and
+      wrong for anything asymmetric.
+    - `epochs`, `batch_size`, `embedding_dim`, `seed` -- the usual.
 
     Should return the checkpoint path, ready to hand to
     metrics.bioencoder.BioEncoderModel.

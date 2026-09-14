@@ -8,7 +8,9 @@ record a run and a recipe hash the same way. That is what lets validation
 simply compare a human's mask against a model's.
 
 Both open an OpenCV window and block on a person, so scope them to a subset of
-a few dozen occurrences rather than a whole project.
+a few dozen occurrences rather than a whole project. Both are
+deterministic=False, since two people painting one crop produce two different
+masks under one recipe hash -- so run_segments asks for an explicit force=.
 """
 
 import logging
@@ -29,8 +31,9 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     Operation: show the current mask over the image and let a human fix it.
 
     Left-drag erases pixels wrongly included, right-drag paints in pixels that
-    were missed; 's' saves, Esc cancels. Covering both failure directions is
-    what makes the result usable as a reference either way.
+    were missed; '+'/'-' grow/shrink the brush, 's' saves, Esc cancels.
+    Covering both failure directions is what makes the result usable as a
+    reference either way.
 
     The mask corrected is whatever the segment arrives with, which in a run means
     run_segments(from_part=...). With no from_part the segment starts empty and
@@ -43,11 +46,12 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     validate_masks reports as if the segmenter had erred. Screen with
     annotate_flags first, then run this over the crops flagged usable.
 
-    brush_radius -- brush size in pixels.
+    brush_radius -- starting brush size in pixels; adjustable in-session with
+                    '+'/'-' and not itself re-hashed by that adjustment.
     """
     return Segmentation("correct_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": False},
-                        version="1")
+                        version="1", deterministic=False)
 
 
 def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
@@ -58,11 +62,12 @@ def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     first training set where there's nothing to correct yet. Same window and
     controls as correct_mask(), just starting from an empty mask.
 
-    brush_radius -- brush size in pixels.
+    brush_radius -- starting brush size in pixels; adjustable in-session with
+                    '+'/'-' and not itself re-hashed by that adjustment.
     """
     return Segmentation("draw_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": True},
-                        version="1")
+                        version="1", deterministic=False)
 
 
 def _wait_for_key(valid_keys):
@@ -102,14 +107,16 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
 
     edited = (original.astype(np.uint8) * 255).copy()
     painting = {"mode": None}       # "erase", "add", or None when not dragging
-    instructions = "left=erase right=add ('s'=save, Esc=cancel)"
+    brush = {"radius": brush_radius}
+    instructions = "left=erase right=add (+/-=brush, 's'=save, Esc=cancel)"
     window = f"{segment.occurrence_id} {segment.part} - {instructions}"
 
     def redraw():
-        cv2.imshow(window, overlay_mask(image, edited))
+        shown = annotate(overlay_mask(image, edited), f"brush radius: {brush['radius']}")
+        cv2.imshow(window, shown)
 
     def paint_at(x, y, value):
-        cv2.circle(edited, (x, y), brush_radius, value, -1)
+        cv2.circle(edited, (x, y), brush["radius"], value, -1)
 
     def on_mouse(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -130,7 +137,20 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
     cv2.setMouseCallback(window, on_mouse)
     redraw()
 
-    key = _wait_for_key({ord("s"), 27})
+    # '=' and '-' need no shift key, so both they and their shifted partners
+    # ('+' and '_') grow/shrink the brush; growing and shrinking loop back to
+    # wait for another key instead of ending the session.
+    grow_keys = {ord("+"), ord("=")}
+    shrink_keys = {ord("-"), ord("_")}
+    while True:
+        key = _wait_for_key({ord("s"), 27} | grow_keys | shrink_keys)
+        if key in grow_keys:
+            brush["radius"] += 1
+        elif key in shrink_keys:
+            brush["radius"] = max(1, brush["radius"] - 1)
+        else:
+            break
+        redraw()
     cv2.destroyWindow(window)
 
     corrected = original if key == 27 else (edited > 0)

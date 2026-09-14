@@ -32,6 +32,7 @@ import numpy as np
 
 from ....recipes import Metric
 from ....metrics.outliers import POPULATION, group_lookup
+from ....records.occurrences import ids_record
 
 logger = logging.getLogger(__name__)
 
@@ -114,18 +115,18 @@ class ColorClusterMetric(Metric):
     once and reusing, but it's a property the per-occurrence group metrics never
     had to think about.
 
-    n_colors       -- palette size per group.
-    group_col      -- occurrence column to group by, e.g. "taxon". None fits one
-                     palette for the whole project.
-    color_space    -- "lab" (default) or "hsv". Lab because distance in it
-                     approximates perceived colour difference, so clusters
-                     correspond to colours a person would call distinct.
-    transforms     -- operations applied when gathering the reference pixels.
-                     Pass the SAME ones the run uses, or the palette is fit on a
-                     different representation than the one being scored against
-                     it.
-    min_group_size -- groups smaller than this share the population palette.
-    sample_pixels  -- pixels sampled per reference occurrence.
+    - `n_colors` -- palette size per group.
+    - `group_col` -- occurrence column to group by, e.g. `"taxon"`. None
+      fits one palette for the whole project.
+    - `color_space` -- `"lab"` (default) or `"hsv"`. Lab because distance
+      in it approximates perceived colour difference, so clusters
+      correspond to colours a person would call distinct.
+    - `transforms` -- operations applied when gathering the reference
+      pixels. Pass the SAME ones the run uses, or the palette is fit on a
+      different representation than the one being scored against it.
+    - `min_group_size` -- groups smaller than this share the population
+      palette.
+    - `sample_pixels` -- pixels sampled per reference occurrence.
     """
 
     def __init__(self, n_colors=5, group_col=None, color_space="lab",
@@ -170,6 +171,10 @@ class ColorClusterMetric(Metric):
         This is the expensive step -- it reads every reference occurrence's
         image -- and it happens once per run rather than once per occurrence,
         which is exactly what the prepare() hook is for.
+
+        Returns the fit record the run stores: each palette's contributing
+        occurrences as a count and a digest, with the groups too small to get
+        their own palette marked fitted=False.
         """
         from ....training.datasets import iterate_segments
 
@@ -177,6 +182,7 @@ class ColorClusterMetric(Metric):
                                         context.occurrence_ids)
 
         pooled = {}
+        contributors = {}
         for occurrence_id, segment in iterate_segments(
                 context.project_path, part=context.part,
                 transforms=self.transforms, reference=self.reference,
@@ -185,8 +191,9 @@ class ColorClusterMetric(Metric):
             if pixels is None:
                 continue
             group = self.group_by_id.get(occurrence_id, POPULATION)
-            pooled.setdefault(group, []).append(pixels)
-            pooled.setdefault(POPULATION, []).append(pixels)
+            for key in {group, POPULATION}:
+                pooled.setdefault(key, []).append(pixels)
+                contributors.setdefault(key, []).append(occurrence_id)
 
         if POPULATION not in pooled:
             raise ValueError(
@@ -194,18 +201,33 @@ class ColorClusterMetric(Metric):
                 "part before fitting a colour palette on it"
             )
 
+        groups = {}
         for group, chunks in pooled.items():
-            if group is not POPULATION and len(chunks) < self.min_group_size:
+            fitted = group is POPULATION or len(chunks) >= self.min_group_size
+            if fitted:
+                self.palettes[group] = self._fit(np.concatenate(chunks))
+            else:
                 logger.warning("group %r has only %d reference occurrences "
                                "(< min_group_size=%d) -- using the "
                                "population-wide palette", group, len(chunks),
                                self.min_group_size)
-                continue
-            self.palettes[group] = self._fit(np.concatenate(chunks))
+            if group is not POPULATION:
+                groups[str(group)] = dict(ids_record(contributors[group]),
+                                          fitted=fitted)
 
         logger.info("%s fit: %d group palette(s) of %d colours + 1 "
                     "population-wide fallback", self.metric_name,
                     len(self.palettes) - 1, self.n_colors)
+
+        return {
+            "group_col": self.group_col,
+            "color_space": self.color_space,
+            "n_colors": self.n_colors,
+            "min_group_size": self.min_group_size,
+            "reference": self.reference,
+            "population": ids_record(contributors[POPULATION]),
+            "groups": groups,
+        }
 
     def _convert(self, pixels):
         """BGR pixels into the working colour space, as float."""

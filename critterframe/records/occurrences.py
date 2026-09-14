@@ -131,8 +131,8 @@ def save_occurrences(project_path, df):
     Replace the working occurrence table with a full snapshot.
 
     Replace rather than merge: external exports are full snapshots, not deltas,
-    so the newest one IS the complete desired state. The archived import in
-    project_path/imports/ is the recovery path if a replacement is ever wrong.
+    so the newest one IS the complete desired state. The archived raw import in
+    project_path/raw_imports/ is the recovery path if a replacement is ever wrong.
 
     Ids are validated here as well as in normalize(), because this is the one
     place every write passes through -- ingest_images() builds its rows from
@@ -211,6 +211,17 @@ def ids_digest(occurrence_ids):
     manifest for that.
     """
     return hash_spec(sorted({str(occurrence_id) for occurrence_id in occurrence_ids}))
+
+
+def ids_record(occurrence_ids):
+    """
+    A set of occurrence ids as {"count", "ids_hash"} -- how every record in the
+    package names the occurrences something covered.
+
+    occurrence_ids -- iterable of ids; consumed once, so a generator is fine.
+    """
+    occurrence_ids = list(occurrence_ids)
+    return {"count": len(occurrence_ids), "ids_hash": ids_digest(occurrence_ids)}
 
 
 def occurrence_count(project_path):

@@ -7,11 +7,37 @@ tables built up across many runs.
 """
 
 import logging
+import os
+import uuid
 from pathlib import Path
 
 import pandas as pd
 
 logger = logging.getLogger(__name__)
+
+
+def _atomic_to_parquet(df, table_path):
+    """
+    Write df to table_path so an interrupted write can never leave a
+    truncated file behind.
+
+    Writes to a uniquely-named temp file beside table_path, then
+    os.replace()s it into place -- atomic on the same volume on both POSIX
+    and Windows, so table_path is always either the old complete file or the
+    new complete file, never a partial one (see CLAUDE.md's storage
+    invariants). The temp name deliberately doesn't end in .parquet, so a
+    leftover from an interrupted write is never mistaken for a real table or,
+    in a mask-shard directory, for a staged shard by merge_mask_shards'
+    *.parquet glob.
+    """
+    table_path = Path(table_path)
+    tmp_path = table_path.with_name(f"{table_path.name}.tmp-{uuid.uuid4().hex}")
+    try:
+        df.to_parquet(tmp_path)
+        os.replace(tmp_path, table_path)
+    except BaseException:
+        tmp_path.unlink(missing_ok=True)
+        raise
 
 
 def write_table(new_df, table_path):
@@ -24,7 +50,7 @@ def write_table(new_df, table_path):
     table_path = Path(table_path)
     table_path.parent.mkdir(parents=True, exist_ok=True)
     out = new_df.reset_index(drop=True)
-    out.to_parquet(table_path)
+    _atomic_to_parquet(out, table_path)
     logger.info("wrote table -> %s (%d rows)", table_path, len(out))
     return out
 
@@ -102,7 +128,7 @@ def upsert_table(new_df, table_path, key_cols):
 
     table_path.parent.mkdir(parents=True, exist_ok=True)
     combined = combined.reset_index(drop=True)
-    combined.to_parquet(table_path)
+    _atomic_to_parquet(combined, table_path)
     logger.info("upserted %d rows -> %s (%d total)",
                 len(new_df), table_path, len(combined))
     return combined

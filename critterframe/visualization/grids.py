@@ -23,7 +23,7 @@ LABEL_HEIGHT = 18
 TITLE_HEIGHT = 26
 
 
-def as_bgr(image):
+def _as_bgr(image):
     """
     A display-ready panel as 3-channel 8-bit BGR.
 
@@ -61,7 +61,7 @@ def fit_cell(image, cell=DEFAULT_CELL, background=BACKGROUND):
     make a long specimen and a round one look alike, which is exactly the
     judgement a QC grid exists to support.
     """
-    image = as_bgr(image)
+    image = _as_bgr(image)
     height, width = cell
     source_height, source_width = image.shape[:2]
     if source_height == 0 or source_width == 0:
@@ -118,13 +118,14 @@ def image_grid(images, labels=None, title=None, columns=DEFAULT_COLUMNS,
     """
     A grid of images, row-major, each captioned.
 
-    images  -- list of arrays. Any sizes; each is fitted into a cell.
-    labels  -- caption per image (occurrence ids, usually). None for no captions.
-    title   -- headline drawn across the top.
-    columns -- images per row. The last row is padded with empty cells rather
-               than being narrower, so the grid stays rectangular and the eye
-               can track columns.
-    cell    -- (height, width) of one image cell.
+    - `images` -- list of arrays. Any sizes; each is fitted into a cell.
+    - `labels` -- caption per image (occurrence ids, usually). None for no
+      captions.
+    - `title` -- headline drawn across the top.
+    - `columns` -- images per row. The last row is padded with empty cells
+      rather than being narrower, so the grid stays rectangular and the eye
+      can track columns.
+    - `cell` -- (height, width) of one image cell.
     """
     images = list(images)
     if not images:
@@ -160,14 +161,14 @@ def comparison_grid(rows, column_titles=None, row_labels=None, title=None,
     """
     One row per occurrence, one column per processing stage.
 
-    rows          -- list of image lists, one list per occurrence, in stage
-                     order. Rows may be ragged: a recipe that skipped a stage
-                     for one occurrence leaves that cell empty rather than
-                     shifting everything left, which would silently compare one
-                     specimen's crop against another's rotation.
-    column_titles -- stage names, drawn once across the top.
-    row_labels    -- occurrence ids, drawn down the left edge.
-    title         -- headline drawn across the top.
+    - `rows` -- list of image lists, one list per occurrence, in stage
+      order. Rows may be ragged: a recipe that skipped a stage for one
+      occurrence leaves that cell empty rather than shifting everything
+      left, which would silently compare one specimen's crop against
+      another's rotation.
+    - `column_titles` -- stage names, drawn once across the top.
+    - `row_labels` -- occurrence ids, drawn down the left edge.
+    - `title` -- headline drawn across the top.
 
     Ragged rows are padded, so `rows` is addressed as `rows[occurrence][stage]`.
     """

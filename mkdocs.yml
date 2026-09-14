@@ -57,6 +57,10 @@ plugins:
 nav:
   - Home: index.md
   - API Reference:
+      # Pipeline reference first, deliberately out of the package-layout order
+      # below: it's the cf.* surface (everything __init__.py re-exports), not
+      # one more module.
+      - public package-level API (for composing pipelines): api/index.md
       - recipes: api/recipes.md
       - ingest: api/ingest.md
       - download: api/download.md
@@ -67,6 +71,7 @@ nav:
       - records:
           - occurrences: api/records/occurrences.md
           - masks: api/records/masks.md
+          - failures: api/records/failures.md
           - runs: api/records/runs.md
           - metrics: api/records/metrics.md
           - calibrations: api/records/calibrations.md

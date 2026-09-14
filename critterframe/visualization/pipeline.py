@@ -96,6 +96,7 @@ class RunReport:
         self._sample_set = set(self.sample)
         self._panels = {}     # occurrence_id -> {stage: fitted panel}
         self._stages = []     # stage names, in the order first seen
+        self._dirty = False   # collected since the last save()?
 
     def __bool__(self):
         """Truthy only when there's actually something to collect."""
@@ -124,6 +125,7 @@ class RunReport:
         self._panels.setdefault(occurrence_id, {})[stage] = fitted
         if stage not in self._stages:
             self._stages.append(stage)
+        self._dirty = True
 
     def rows(self):
         """(row images, row labels) in sample order, skipping occurrences with nothing."""
@@ -140,14 +142,23 @@ class RunReport:
     def save(self):
         """
         Write this report's grid, and return its path (None if nothing was
-        collected).
+        collected, or nothing new has been collected since the last save).
 
         A single stage becomes an image grid -- the same view across specimens,
         which is what you scan for outliers. Several stages become a comparison
         grid -- a row per specimen, a column per stage, which is what shows
         WHERE in a recipe something went wrong. The layout follows the question
         the collected panels can answer.
+
+        Safe to call more than once: it always overwrites the same path, so a
+        run may checkpoint this mid-run (see run_segments'/run_metrics'
+        visualize_every) and save again at the end with no special handling.
+        The dirty check keeps a checkpoint between two collects that touched no
+        sample member from re-encoding an unchanged grid.
         """
+        if not self._dirty:
+            return None
+
         rows, labels = self.rows()
         if not rows:
             logger.info("no pipeline panels collected for '%s' part '%s' -- no "
@@ -164,6 +175,7 @@ class RunReport:
                                          row_labels=labels, title=heading,
                                          cell=self.cell)
 
+        self._dirty = False
         return self._write(grid)
 
     def _write(self, grid):

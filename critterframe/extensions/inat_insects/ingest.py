@@ -97,7 +97,7 @@ def fetch_observations(project_path, taxon_name=None, place_id=None, limit=None,
     if not rows:
         raise ValueError("the search returned no observations with usable photos")
 
-    destination = paths.imports_dir(project_path) / ".inat_observations.csv"
+    destination = paths.raw_imports_dir(project_path) / ".inat_observations.csv"
     destination.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(rows).to_csv(destination, index=False)
 
@@ -107,6 +107,7 @@ def fetch_observations(project_path, taxon_name=None, place_id=None, limit=None,
 
 def ingest_occurrences(project_path, import_csv_path=None, taxon_name=None,
                        place_id=None, limit=None, transform=None,
+                       group_col=None, max_per_group=None, cap_rule="random",
                        session=None, **search_kwargs):
     """
     Ingest iNaturalist observations into a project, as a full snapshot.
@@ -119,14 +120,22 @@ def ingest_occurrences(project_path, import_csv_path=None, taxon_name=None,
     written down as one file you can re-ingest, rather than as a sequence of
     calls someone has to remember to repeat in order.
 
-    project_path    -- project to ingest into; created lazily by the first
-                      writer, so the directory needn't exist yet.
-    import_csv_path -- a CSV already written by fetch_observations(). Omit to
-                      search the API now.
-    taxon_name      -- taxon to search under, e.g. "Odonata".
-    place_id        -- iNaturalist place id to restrict to.
-    limit           -- cap on observations fetched.
-    transform       -- optional callable(df) -> df run after normalization.
+    - `project_path` -- project to ingest into; created lazily by the first
+      writer, so the directory needn't exist yet.
+    - `import_csv_path` -- a CSV already written by `fetch_observations()`.
+      Omit to search the API now.
+    - `taxon_name` -- taxon to search under, e.g. `"Odonata"`.
+    - `place_id` -- iNaturalist place id to restrict to.
+    - `limit` -- cap on observations fetched.
+    - `transform` -- optional `callable(df) -> df` run after normalization.
+    - `group_col`, `max_per_group`, `cap_rule` -- cap ingest at
+      `max_per_group` rows per distinct value of `group_col`, e.g.
+      `group_col="taxon"`, `max_per_group=200` against a search dominated
+      by a few common species. See `critterframe.ingest.ingest_occurrences`.
+      Applied AFTER the API pull completes, since the search endpoint's
+      `id_above` pagination isn't taxon-partitioned -- this thins an
+      over-represented species out of what was already fetched rather than
+      saving the requests to fetch it.
 
     Returns the resulting occurrence table.
     """
@@ -144,6 +153,9 @@ def ingest_occurrences(project_path, import_csv_path=None, taxon_name=None,
             datetime_cols=DATETIME_COLS,
             numeric_cols=NUMERIC_COLS,
             transform=transform,
+            group_col=group_col,
+            max_per_group=max_per_group,
+            cap_rule=cap_rule,
             name_prefix=f"occurrences_inat_{taxon_name or 'query'}".replace(" ", "_"),
         )
     finally:

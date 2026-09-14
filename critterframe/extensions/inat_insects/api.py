@@ -61,23 +61,24 @@ def search_observations(taxon_name=None, place_id=None, quality_grade="research"
     thousands of observations, and a caller filtering as it goes shouldn't have
     to hold them all first.
 
-    taxon_name    -- taxon to search under, e.g. "Odonata". Matched by name,
-                     so it covers every descendant.
-    place_id      -- iNaturalist place id to restrict to. Names aren't accepted
-                     by the API; look the id up once on the website.
-    quality_grade -- "research" (default) restricts to community-verified
-                     identifications. Worth keeping: an unverified
-                     identification makes a per-species group metric
-                     meaningless, since the groups themselves would be wrong.
-    photos        -- require at least one photo. An observation without one
-                     can't become a CritterFrame occurrence.
-    licensed      -- require a license permitting reuse. Downloading and
-                     analyzing all-rights-reserved photos in bulk isn't
-                     something to do by default.
-    limit         -- stop after this many observations.
-    session       -- requests.Session to reuse; one is made if omitted.
-    per_page      -- results per request.
-    extra_params  -- any other API parameters, passed through untouched.
+    - `taxon_name` -- taxon to search under, e.g. `"Odonata"`. Matched by
+      name, so it covers every descendant.
+    - `place_id` -- iNaturalist place id to restrict to. Names aren't
+      accepted by the API; look the id up once on the website.
+    - `quality_grade` -- `"research"` (default) restricts to
+      community-verified identifications. Worth keeping: an unverified
+      identification makes a per-species group metric meaningless, since
+      the groups themselves would be wrong.
+    - `photos` -- require at least one photo. An observation without one
+      can't become a CritterFrame occurrence.
+    - `licensed` -- require a license permitting reuse. Downloading and
+      analyzing all-rights-reserved photos in bulk isn't something to do
+      by default.
+    - `limit` -- stop after this many observations.
+    - `session` -- `requests.Session` to reuse; one is made if omitted.
+    - `per_page` -- results per request.
+    - `extra_params` -- any other API parameters, passed through
+      untouched.
     """
     session = session or make_session()
 

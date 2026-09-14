@@ -21,7 +21,7 @@ import pytest
 from critterframe.project import paths
 from critterframe.records import models as model_records
 from critterframe.records.models import RegisteredModel, register_model
-from critterframe.recipes import Recipe, model_identity
+from critterframe.recipes import Recipe, _model_identity
 from critterframe.segmentation.run import segment
 from helpers.models import ThresholdModel
 
@@ -203,7 +203,7 @@ def test_moving_the_project_does_not_change_the_identity(metadata_project,
 def test_a_registered_model_reaches_a_recipe_hash_like_any_other(metadata_project,
                                                                   checkpoint):
     model = register_model(metadata_project, "blobnet_v1", path=checkpoint)
-    assert model_identity(model) == model.identity()
+    assert _model_identity(model) == model.identity()
 
 
 # ---------------------------------------------------------------------------

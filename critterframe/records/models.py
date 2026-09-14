@@ -27,7 +27,7 @@ from pathlib import Path
 
 from ..project import paths
 from ..recipes import hash_spec
-from .occurrences import ids_digest
+from .occurrences import ids_record
 
 logger = logging.getLogger(__name__)
 
@@ -50,27 +50,29 @@ def register_model(project_path, name, path=None, task=None, framework=None,
     fingerprint moves, since every recipe using it then hashes differently and
     correctly redoes its work.
 
-    project_path    -- project the model belongs to; models are registered per
-                       project.
-    name            -- what this model is called, e.g. "dragonfly_segmenter_v1".
-    path            -- checkpoint file or directory, absolute or relative to the
-                       project. Stored relative when inside it, so a copied
-                       project still resolves. None for weights this package
-                       can't see, e.g. a hosted endpoint.
-    task            -- what it does: "segment", "embedding", "classify". Free
-                       text; nothing dispatches on it.
-    framework       -- what it was trained with, e.g. "torch", "ultralytics".
-    base_model      -- what it was fine-tuned from, e.g. "sam2_hiera_large".
-    training_data   -- directory written by export_training_data(), its
-                       dataset.json, or a dict you assembled yourself.
-    training_splits -- {split name: occurrence ids} for a model trained without
-                       an export. Stored as counts and id digests, not lists.
-    parameters      -- opaque dict of training settings, stored as given and
-                       never interpreted.
-    notes           -- free text.
-    fingerprint     -- False skips hashing the checkpoint, for a large file on
-                       slow storage. Costs the guarantee that replacing the file
-                       changes the recipe hash, so it warns.
+    - `project_path` -- project the model belongs to; models are registered
+      per project.
+    - `name` -- what this model is called, e.g. `"dragonfly_segmenter_v1"`.
+    - `path` -- checkpoint file or directory, absolute or relative to the
+      project. Stored relative when inside it, so a copied project still
+      resolves. None for weights this package can't see, e.g. a hosted
+      endpoint.
+    - `task` -- what it does: `"segment"`, `"embedding"`, `"classify"`. Free
+      text; nothing dispatches on it.
+    - `framework` -- what it was trained with, e.g. `"torch"`,
+      `"ultralytics"`.
+    - `base_model` -- what it was fine-tuned from, e.g. `"sam2_hiera_large"`.
+    - `training_data` -- directory written by `export_training_data()`, its
+      `dataset.json`, or a dict you assembled yourself.
+    - `training_splits` -- `{split name: occurrence ids}` for a model
+      trained without an export. Stored as counts and id digests, not
+      lists.
+    - `parameters` -- opaque dict of training settings, stored as given and
+      never interpreted.
+    - `notes` -- free text.
+    - `fingerprint` -- False skips hashing the checkpoint, for a large file
+      on slow storage. Costs the guarantee that replacing the file changes
+      the recipe hash, so it warns.
 
     Returns a RegisteredModel with no network attached -- call .attach(network)
     to run it.
@@ -95,7 +97,7 @@ def register_model(project_path, name, path=None, task=None, framework=None,
     }
     record.update(_checkpoint_record(project_path, path, fingerprint))
 
-    registry = load_registry(project_path)
+    registry = _load_registry(project_path)
     previous = registry.get(str(name))
     if previous and previous.get("fingerprint") != record["fingerprint"]:
         logger.warning(
@@ -105,7 +107,7 @@ def register_model(project_path, name, path=None, task=None, framework=None,
             name, previous.get("fingerprint"), record["fingerprint"])
 
     registry[str(name)] = record
-    save_registry(project_path, registry)
+    _save_registry(project_path, registry)
     logger.info("registered model '%s' (%s%s)", name, record["fingerprint"],
                 f", {task}" if task else "")
     return RegisteredModel(record, project_path)
@@ -118,7 +120,7 @@ def load_model(project_path, name):
     Provenance only until something is attached to it: the returned object
     knows which weights it is and nothing about how to run them.
     """
-    registry = load_registry(project_path)
+    registry = _load_registry(project_path)
     if str(name) not in registry:
         raise KeyError(
             f"no model named '{name}' in "
@@ -130,7 +132,7 @@ def load_model(project_path, name):
 
 def list_models(project_path):
     """Every registered model as {name: record}, empty if none are registered."""
-    return load_registry(project_path)
+    return _load_registry(project_path)
 
 
 def unregister_model(project_path, name):
@@ -142,17 +144,17 @@ def unregister_model(project_path, name):
     a recipe whose hash still names those weights. Forgetting the record only
     means nothing new can be run under that name.
     """
-    registry = load_registry(project_path)
+    registry = _load_registry(project_path)
     record = registry.pop(str(name), None)
     if record is None:
         raise KeyError(f"no model named '{name}' to unregister")
-    save_registry(project_path, registry)
+    _save_registry(project_path, registry)
     logger.info("unregistered model '%s' (its checkpoint and results are untouched)",
                 name)
     return record
 
 
-def load_registry(project_path):
+def _load_registry(project_path):
     """
     The raw registry as {name: record}. Empty when nothing has been registered
     -- a project with no models of its own is the normal case, not an error.
@@ -164,7 +166,7 @@ def load_registry(project_path):
         return json.load(handle).get("models", {})
 
 
-def save_registry(project_path, registry):
+def _save_registry(project_path, registry):
     """Write the whole registry, replacing whatever was there."""
     registry_path = paths.models_registry_path(project_path)
     registry_path.parent.mkdir(parents=True, exist_ok=True)
@@ -370,10 +372,8 @@ def _training_data_record(project_path, training_data, training_splits):
             record["dataset"] = _read_dataset_record(project_path, training_data)
 
     if training_splits is not None:
-        record["splits"] = {
-            name: {"count": len(list(ids)), "ids_hash": ids_digest(ids)}
-            for name, ids in training_splits.items()
-        }
+        record["splits"] = {name: ids_record(ids)
+                            for name, ids in training_splits.items()}
 
     return record or None
 

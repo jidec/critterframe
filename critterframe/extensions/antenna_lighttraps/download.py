@@ -24,12 +24,12 @@ def download_images(project_path, subset=None, limit=None, session=None, **kwarg
     """
     Download the crop images for a project's Antenna occurrences.
 
-    project_path -- project whose occurrences to download for.
-    subset       -- name of a subset to download, or None for all.
-    limit        -- optional cap.
-    session      -- optional requests.Session to reuse. An authenticated
-                    Antenna session works but isn't required: crop URLs are
-                    served from public object storage, not the API.
+    - `project_path` -- project whose occurrences to download for.
+    - `subset` -- name of a subset to download, or None for all.
+    - `limit` -- optional cap.
+    - `session` -- optional `requests.Session` to reuse. An authenticated
+      Antenna session works but isn't required: crop URLs are served from
+      public object storage, not the API.
 
     Everything else is passed through to critterframe.download.download_images.
     """

@@ -32,7 +32,6 @@ session, so there are no separate cloud credentials to arrange.
 import logging
 import critterframe as cf
 from critterframe.extensions.antenna_lighttraps import ingest as antenna_ingest
-from critterframe.project.subsets import select_ids
 from critterframe.extensions.antenna_lighttraps.calibrations import (  # noqa: E402
     scale as antenna_scale,
 )
@@ -77,15 +76,14 @@ cf.run_metrics(
 # the below more advanced code is for validation and filtering (including validation set creation) specific to Antenna data
 # as well as the final export
 
-# run metrics used for quality control filtering
-cf.run_metrics(
-    PROJECT_PATH,
-    run_name="qc",
-    metrics=[
-        cf.edge_fraction(),
-    ],
-)
-# bilateral_asymmetry needs both transforms
+# run metrics used for quality control filtering. One run_name, one recipe --
+# a metric run_name is pinned to a single recipe per part
+# (records.runs.resolve_recipe_currency), so edge_fraction and
+# bilateral_asymmetry share these transforms in one call rather than each
+# getting their own run_metrics() under the same "qc" name (which would raise,
+# and get_validated_filters below needs both under one predicted_run= anyway).
+# bilateral_asymmetry is the one that actually needs remove_appendages+orient;
+# edge_fraction doesn't mind measuring the same oriented segment.
 cf.run_metrics(
     PROJECT_PATH,
     run_name="qc",
@@ -94,6 +92,7 @@ cf.run_metrics(
         cf.orient(),
     ],
     metrics=[
+        cf.edge_fraction(),
         cf.bilateral_asymmetry(),
     ],
 )
@@ -113,18 +112,7 @@ cf.run_metrics(
 # ones removed has nothing to detect and can't be scored at all.
 
 REVIEW_TARGET = 50  # total screening sample size; raise to grow
-try:
-    already_reviewed = select_ids(PROJECT_PATH, subset="review")
-except KeyError:  # first run, subsets.toml has no "review" yet
-    already_reviewed = []
-
-candidates = [i for i in select_ids(PROJECT_PATH) if i not in set(already_reviewed)]
-cf.define_subset(
-    PROJECT_PATH,
-    "review",
-    occurrence_ids=sorted(set(already_reviewed) | set(
-        cf.sample_occurrences(candidates, max(0, REVIEW_TARGET - len(already_reviewed))))),
-)
+cf.grow_subset(PROJECT_PATH, "review", REVIEW_TARGET)
 cf.run_metrics(
     PROJECT_PATH,
     run_name="human_annotation_labels",

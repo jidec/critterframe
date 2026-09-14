@@ -88,17 +88,23 @@ def test_traits_can_be_measured_from_the_reference_masks_too(graded):
 
 def test_measuring_both_tables_is_two_runs_not_one(graded):
     """
-    `inputs={"masks": ...}` is in the recipe hash, so the second run is not
-    mistaken for a repeat of the first -- which it would be, since every other
-    part of the recipe is identical.
+    `inputs={"masks": ...}` is in the recipe hash, so measuring the reference
+    table is not mistaken for a repeat of the canonical one -- which it would
+    be, since every other part of the recipe is identical. Two different
+    run_names, deliberately: canonical and reference values are meant to
+    coexist for comparison, not for one to supersede the other the way
+    run_name's recipe pointer would treat them if they shared a name.
     """
     cf.run_metrics(graded, run_name="both", metrics=[cf.body_length()],
                    visualize=False)
-    second = cf.run_metrics(graded, run_name="both", metrics=[cf.body_length()],
+    second = cf.run_metrics(graded, run_name="both_reference",
+                            metrics=[cf.body_length()],
                             reference=True, visualize=False)["organism"]
 
     assert second["processed"] == SPECIMENS
-    assert load_runs(graded, name="both")["recipe_hash"].nunique() == 2
+    canonical_hash = load_runs(graded, name="both")["recipe_hash"].iloc[0]
+    reference_hash = load_runs(graded, name="both_reference")["recipe_hash"].iloc[0]
+    assert canonical_hash != reference_hash
 
 
 def test_predicted_and_reference_values_are_compared_per_metric(graded):

@@ -21,11 +21,11 @@ import critterframe as cf
 logging.basicConfig(level=logging.INFO)
 
 PROJECT_PATH = "projects/antweb_ants"
-IMPORT_CSV = "imports/antweb_specimens.csv"
+IMPORT_CSV = "source/antweb_specimens.csv"
 
 # 1. Ingest the occurrence table. Creates the project. The source CSV is
-#    archived into the project's imports/ before anything is parsed, so this is
-#    always recoverable.
+#    archived as the raw import into the project's raw_imports/ before
+#    anything is parsed, so this is always recoverable.
 cf.ingest_occurrences(
     PROJECT_PATH,
     IMPORT_CSV,

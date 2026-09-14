@@ -53,11 +53,14 @@ def mask_iou(mask, reference):
     return (int((mask & reference).sum()) / union) if union else 1.0, mask, reference
 
 
-def validate_masks(project_path, part=DEFAULT_PART, transforms=(), limit=None,
-                   show_worst=5, visualize=False):
+def validate_masks(project_path, part=DEFAULT_PART, transforms=(), steps=None,
+                   limit=None, show_worst=5, visualize=False):
     """
-    Compare the canonical masks against the reference masks, per occurrence, by
-    IoU.
+    Compare masks against the reference masks, per occurrence, by IoU.
+
+    By default the predicted side is the stored canonical masks. Pass `steps`
+    to compute the predicted side live instead, so a candidate recipe can be
+    checked against the reference set without a prior `run_segments()` pass.
 
     The comparison population is wherever a reference mask exists, so choosing
     where to make reference masks IS choosing what this measures. On a project
@@ -65,47 +68,63 @@ def validate_masks(project_path, part=DEFAULT_PART, transforms=(), limit=None,
     called usable, so the result is "IoU over the crops a human called usable" --
     narrower than "IoU", and worth naming as such when reporting it.
 
-    project_path -- project to validate.
-    part         -- part to compare.
-    transforms   -- optional transforms applied to BOTH masks before comparing.
-                    Use this when the reference represents something other than
-                    raw model output: if the human correction also erased
-                    appendages, comparing raw masks counts every appendage they
-                    correctly removed as a disagreement. Applying to both is the
-                    point -- a transform is held constant, not tested.
-    limit        -- optional cap on how many occurrences to compare.
-    show_worst   -- how many of the lowest-IoU occurrences to log by id. 0
-                    disables.
-    visualize    -- save a diff panel per compared occurrence: white where the
-                    two agree, yellow where only the prediction covers, red where
-                    only the reference does. One image each, so pair with limit.
+    - `project_path` -- project to validate.
+    - `part` -- part to compare.
+    - `transforms` -- optional transforms applied to BOTH masks before
+      comparing. Use this when the reference represents something other
+      than raw model output: if the human correction also erased
+      appendages, comparing raw masks counts every appendage they correctly
+      removed as a disagreement. Applying to both is the point -- a
+      transform is held constant, not tested.
+    - `steps` -- ordered operations computing the predicted mask live from
+      each occurrence's image, e.g. `[segment(candidate_model)]`, in place
+      of the stored canonical masks. Skips the canonical table entirely, so
+      the population becomes every occurrence with a reference mask rather
+      than the intersection with it. Nothing computed here is persisted.
+    - `limit` -- optional cap on how many occurrences to compare.
+    - `show_worst` -- how many of the lowest-IoU occurrences to log by id. 0
+      disables.
+    - `visualize` -- save a diff panel per compared occurrence: white where
+      the two agree, yellow where only the prediction covers, red where
+      only the reference does. One image each, so pair with `limit`.
 
     Returns a DataFrame indexed by occurrence_id with an `iou` column.
     """
     transforms = list(transforms)
 
-    predicted = mask_records.mask_lookup(project_path, part=part)
     reference = mask_records.mask_lookup(project_path, part=part, reference=True)
 
-    occurrence_ids = sorted(set(predicted) & set(reference))
-    missing = len(reference) - len(occurrence_ids)
+    if steps is None:
+        predicted = mask_records.mask_lookup(project_path, part=part)
+        occurrence_ids = sorted(set(predicted) & set(reference))
+        missing = len(reference) - len(occurrence_ids)
+        if missing:
+            logger.warning("%d reference mask(s) have no canonical mask to "
+                           "compare against -- segment those occurrences "
+                           "first", missing)
+    else:
+        predicted = None
+        occurrence_ids = sorted(reference)
+
     if limit is not None:
         occurrence_ids = occurrence_ids[:limit]
 
-    if missing:
-        logger.warning("%d reference mask(s) have no canonical mask to compare "
-                       "against -- segment those occurrences first", missing)
-
-    needs_images = bool(transforms) or visualize
+    needs_images = bool(transforms) or visualize or steps is not None
     rows = []
 
     with ImageStore(project_path, readonly=True) as images:
         for occurrence_id in occurrence_ids:
             try:
-                mask = mask_records.decode_mask(predicted[occurrence_id])
+                image = images.get(occurrence_id) if needs_images else None
                 gt = mask_records.decode_mask(reference[occurrence_id])
 
-                image = images.get(occurrence_id) if needs_images else None
+                if steps is not None:
+                    if image is None:
+                        raise ValueError("no image in the image store")
+                    mask = _compute(project_path, image, occurrence_id, part, steps)
+                else:
+                    mask = mask_records.decode_mask(predicted[occurrence_id])
+
                 if transforms:
                     if image is None:
                         raise ValueError("no image in the image store")
@@ -143,6 +162,19 @@ def _apply(project_path, image, mask, occurrence_id, part, transforms):
     for operation in transforms:
         state, _info = operation(state)
     return state.mask
+
+
+def _compute(project_path, image, occurrence_id, part, steps):
+    """
+    Run a segmentation chain over one image and return the resulting mask,
+    warped back to original coordinates -- the frame reference masks are
+    stored in, in case `steps` moved pixels before segmenting.
+    """
+    state = Segment(image, occurrence_id=occurrence_id, part=part,
+                    project_path=project_path)
+    for operation in steps:
+        state, _info = operation(state)
+    return state.mask_in_original_coordinates()
 
 
 def _visualize(project_path, image, mask, gt, iou, occurrence_id, part):
