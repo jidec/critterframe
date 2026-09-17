@@ -44,7 +44,7 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     organism, or one running off the edge there is no single boundary to paint,
     so whatever gets painted is invented and then drags down the IoU
     validate_masks reports as if the segmenter had erred. Screen with
-    annotate_flags first, then run this over the crops flagged usable.
+    usability_annotation first, then run this over the crops flagged usable.
 
     brush_radius -- starting brush size in pixels; adjustable in-session with
                     '+'/'-' and not itself re-hashed by that adjustment.

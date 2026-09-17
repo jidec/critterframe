@@ -160,3 +160,28 @@ def smp_segmenter(**kwargs):
     every parameter.
     """
     return SMPSegmenter(**kwargs)
+
+
+def load_registered(project_path, name):
+    """
+    A model registered via records.models.register_model(), loaded and ready
+    to run.
+
+    Delegates to records.models.load_and_attach(), the shared load-record/
+    pull-parameters/attach sequence every registered model type uses. It
+    reads `encoder_name`/`size` back from the registry's own `parameters`,
+    recorded once at registration time (see extensions.smp_segmenter.training's
+    caller), rather than this module's current DEFAULT_ENCODER/DEFAULT_SIZE --
+    so a later change to those module defaults can never silently swap the
+    architecture under an already-trained checkpoint. A model registered
+    before `parameters` carried them falls back to SMPSegmenter's own
+    constructor defaults, which are these same module constants.
+
+    - `project_path` -- project the model is registered in.
+    - `name` -- registered model name.
+
+    Returns a RegisteredModel with an SMPSegmenter attached.
+    """
+    from ...records.models import load_and_attach
+
+    return load_and_attach(project_path, name, SMPSegmenter)

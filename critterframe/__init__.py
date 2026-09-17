@@ -26,7 +26,7 @@ from .ingest import ingest_images, ingest_occurrences, load_imports
 from .recipes import DEFAULT_PART
 
 # --- segmentation ----------------------------------------------------------
-from .records.masks import merge_mask_shards
+from .records.masks import merge_mask_shards, merge_masks
 from .segmentation.groundedsam import groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
 from .segmentation.run import run_segments, segment
@@ -37,7 +37,7 @@ from .transforms.crop import crop, crop_to_mask, remove_background, resize, rota
 from .transforms.orient import orient
 
 # --- metrics ---------------------------------------------------------------
-from .metrics.annotation import annotate_flags, click_two_points
+from .metrics.annotation import click_two_points, usability_annotation
 from .metrics.color import (
     black_fraction,
     hue_fraction,
@@ -89,7 +89,6 @@ from .validation.metrics import compare_metrics
 
 __all__ = [
     "DEFAULT_PART",
-    "annotate_flags",
     "bilateral_asymmetry",
     "black_fraction",
     "blur_variance",
@@ -138,6 +137,7 @@ __all__ = [
     "measure_scale_by_hand",
     "measure_scales",
     "merge_mask_shards",
+    "merge_masks",
     "occurrences_matching",
     "orient",
     "outlier",
@@ -165,6 +165,7 @@ __all__ = [
     "summarize",
     "sweep_thresholds",
     "unregister_model",
+    "usability_annotation",
     "validate_masks",
     "yellow_fraction",
 ]

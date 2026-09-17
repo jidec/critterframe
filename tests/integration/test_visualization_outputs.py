@@ -21,7 +21,6 @@ import pytest
 
 import critterframe as cf
 from critterframe.project import paths
-from critterframe.visualization.pipeline import RunReport
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow
@@ -66,7 +65,7 @@ def test_the_grid_is_named_for_the_run_and_its_recipe(image_project):
                     visualize=4)
     written = grids(image_project)
 
-    assert first.startswith("segments_")
+    assert first.startswith("organism_")
     assert len(written) == 2
 
 
@@ -163,45 +162,62 @@ def test_the_sample_is_the_same_specimens_across_two_recipes(segmented_project):
 
 
 # ---------------------------------------------------------------------------
-# visualize_every: checkpointing a long run's grid before it finishes
+# visualize_every: a timelapse of checkpoint grids before a run finishes
 # ---------------------------------------------------------------------------
 
 
-def _counting_save(monkeypatch):
-    """Wrap RunReport.save so a test can count how many times it ran."""
-    calls = []
-    original = RunReport.save
-
-    def counted(self):
-        calls.append(1)
-        return original(self)
-
-    monkeypatch.setattr(RunReport, "save", counted)
-    return calls
+def checkpoints(project_path):
+    """This project's visualize_every checkpoint files, distinct from the
+    one unsuffixed final grid each run also writes."""
+    return sorted(name for name in grids(project_path) if "__at" in name)
 
 
 def test_visualize_every_checkpoints_a_segmentation_run_before_it_finishes(
-        image_project, monkeypatch):
+        image_project):
     """
-    The whole point: a very long run can be watched as it goes, and a killed
-    run still leaves a grid showing what it got through, rather than only ever
-    writing one at the very end.
+    The whole point: a very long run can be watched as it goes. Each
+    checkpoint window writes its own file rather than overwriting the last,
+    so a killed run leaves the whole progression, not just one snapshot.
     """
-    calls = _counting_save(monkeypatch)
-
     segment(image_project, visualize=8, visualize_every=3)
 
-    # 8 specimens, a checkpoint every 3 -- after the 3rd and 6th, plus the
-    # final save after the loop.
-    assert len(calls) == 3
+    # 8 specimens, a checkpoint every 3: windows ending at 3 and 6 checkpoint
+    # mid-run, and the trailing partial window (6-8) is flushed once the run
+    # completes -- three distinct checkpoint files, plus the one final grid.
+    written = grids(image_project)
+    assert len(checkpoints(image_project)) == 3
+    assert len(written) - len(checkpoints(image_project)) == 1
 
 
 def test_visualize_every_checkpoints_a_metric_run_before_it_finishes(
-        segmented_project, monkeypatch):
-    calls = _counting_save(monkeypatch)
-
+        segmented_project):
     measure(segmented_project, visualize=8, visualize_every=3)
-    assert len(calls) == 3
+
+    written = grids(segmented_project)
+    assert len(checkpoints(segmented_project)) == 3
+    assert len(written) - len(checkpoints(segmented_project)) == 1
+
+
+def test_a_checkpoint_window_has_content_even_when_the_whole_run_sample_misses_it(
+        image_project):
+    """
+    The reported bug: a run's one fixed, whole-population sample is drawn once
+    and can go many checkpoints without landing on any of it, especially when
+    it's much smaller than the run -- exactly what happened on a 481K-occurrence
+    project with the default sample of 25. A checkpoint window must not depend
+    on that luck: it resamples fresh from what THAT window actually processed.
+    visualize=1 makes the fixed sample as unlikely to land in any one window as
+    possible, and every checkpoint should still have real content regardless.
+    """
+    segment(image_project, visualize=1, visualize_every=2)
+
+    # 8 specimens, a checkpoint every 2 -- four windows, all landing exactly
+    # (8 / 2), each with its own non-empty file.
+    written = checkpoints(image_project)
+    assert len(written) == 4
+    for name in written:
+        size = (paths.pipeline_dir(image_project) / name).stat().st_size
+        assert size > 0
 
 
 def test_visualize_every_without_visualize_warns_and_changes_nothing(
@@ -219,13 +235,17 @@ def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(
     """
     visualize_every changes WHEN the grid is written, not what it becomes --
     same run_name and recipe (force=True redoes it), same specimens, same
-    resulting sheet.
+    resulting sheet. The checkpoint files it also writes are a separate
+    concern, covered above.
     """
+    def final_grid():
+        return next(name for name in grids(segmented_project) if "__at" not in name)
+
     measure(segmented_project, visualize=8)
-    plain_size = (paths.pipeline_dir(segmented_project) / grids(segmented_project)[0]).stat().st_size
+    plain_size = (paths.pipeline_dir(segmented_project) / final_grid()).stat().st_size
 
     measure(segmented_project, force=True, visualize=8, visualize_every=2)
-    checkpointed_size = (paths.pipeline_dir(segmented_project) / grids(segmented_project)[0]).stat().st_size
+    checkpointed_size = (paths.pipeline_dir(segmented_project) / final_grid()).stat().st_size
 
     assert checkpointed_size == plain_size
 

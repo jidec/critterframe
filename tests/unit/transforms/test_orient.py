@@ -99,6 +99,35 @@ def test_choosing_by_length_instead_is_available_and_reports_the_wingspan():
     assert info["chose_longer_axis"] is True
 
 
+def test_axis_strategy_longer_ignores_skew_and_picks_the_longer_axis():
+    """
+    A body shape that's reliably elongate on its own (unlike a spread moth)
+    doesn't need skew to find its axis -- axis_strategy="longer" skips
+    asymmetry entirely and always takes the higher-eigenvalue PC, which for
+    winged_body() is the wingspan (the wrong answer for THIS shape, but the
+    point: this strategy trusts length outright rather than asymmetry).
+    """
+    _rotation, _cx, _cy, info = compute_orientation(
+        winged_body(), axis_strategy="longer")
+    assert info["chose_longer_axis"] is True
+    assert info["axis_strategy"] == "longer"
+    # skew is still reported for diagnostics even though it didn't decide
+    assert {"skew_pc0", "skew_pc1"} <= set(info)
+
+
+def test_axis_strategy_longer_agrees_with_skew_on_a_plain_elongate_body():
+    """For a body with no competing wing axis, both strategies land on the same PC."""
+    _rotation, _cx, _cy, skew_info = compute_orientation(tapered_body())
+    _rotation, _cx, _cy, longer_info = compute_orientation(
+        tapered_body(), axis_strategy="longer")
+    assert skew_info["chosen_pc"] == longer_info["chosen_pc"]
+
+
+def test_an_unknown_axis_strategy_raises():
+    with pytest.raises(ValueError, match="axis_strategy"):
+        compute_orientation(tapered_body(), axis_strategy="bogus")
+
+
 def test_the_centroid_is_the_rotation_centre():
     mask = tapered_body()
     _rotation, cx, cy, _info = compute_orientation(mask)

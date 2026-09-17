@@ -203,7 +203,7 @@ critterframe/
         quality.py          blur, asymmetry, edge fraction -- automated QC
         color.py             mean color, hue/lightness fractions
         outliers.py        group metrics: outlier(), cluster()
-        annotation.py    human labels: annotate_flags, click_two_points
+        annotation.py    human labels: usability_annotation, click_two_points
         run.py                run_metrics() + RunContext + _completed_keys
     calibrations/
         scale.py            px/mm from a target of known size

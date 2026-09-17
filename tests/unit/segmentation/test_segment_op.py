@@ -133,6 +133,54 @@ def test_several_outputs_get_a_recipe_each():
     assert recipes["head"].hash != recipes["wing"].hash
 
 
+def test_no_run_name_defaults_to_the_part_it_produces():
+    """
+    name isn't part of identity (Recipe.hash), so the common case -- one
+    segmentation recipe per part -- needs no name decision at all.
+    """
+    recipes = _build_recipes(None, [cf.segment(ThresholdModel())], None,
+                             None, "organism", None, False)
+    assert recipes["organism"].name == "organism"
+
+
+def test_no_run_name_defaults_each_output_to_its_own_part():
+    """outputs= with no name given: each part gets its own label, not one
+    generic name shared across all of them."""
+    recipes = _build_recipes(None, None,
+                             {"head": [cf.segment(ThresholdModel())],
+                              "wing": [cf.segment(ThresholdModel(cutoff=120))]},
+                             None, "organism", None, False)
+    assert recipes["head"].name == "head"
+    assert recipes["wing"].name == "wing"
+
+
+def test_no_run_name_folds_reference_into_the_default():
+    """
+    Without this, a canonical and a reference recipe over the same part would
+    both default to plain "organism" -- and since resolve_recipe_currency is
+    a no-op for segments, nothing would catch the collision. History would
+    silently read as one recipe superseding the other instead of two meant
+    to coexist for comparison.
+    """
+    recipes = _build_recipes(None, [cf.draw_mask()], None,
+                             None, "organism", None, True)
+    assert recipes["organism"].name == "organism_reference"
+
+
+def test_no_run_name_folds_reference_into_each_outputs_own_default():
+    recipes = _build_recipes(None, None,
+                             {"head": [cf.draw_mask()], "wing": [cf.draw_mask()]},
+                             None, "organism", None, True)
+    assert recipes["head"].name == "head_reference"
+    assert recipes["wing"].name == "wing_reference"
+
+
+def test_an_explicit_run_name_is_used_as_is_even_when_reference():
+    recipes = _build_recipes("chosen_name", [cf.draw_mask()], None,
+                             None, "organism", None, True)
+    assert recipes["organism"].name == "chosen_name"
+
+
 def test_shared_steps_go_in_front_of_every_output_s_own():
     """
     How a multi-output run forks one preprocessed segment into a branch per

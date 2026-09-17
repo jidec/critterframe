@@ -169,11 +169,11 @@ def test_a_qc_threshold_is_calibrated_against_human_labels(graded, monkeypatch):
     monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=flags))
 
     cf.run_metrics(graded, run_name="screening",
-                   metrics=[cf.annotate_flags()], visualize=False)
+                   metrics=[cf.usability_annotation()], visualize=False)
 
     wide = metrics_wide(graded)
     sweep = sweep_thresholds(wide, "traits__organism__blur_variance", "below",
-                             "screening__organism__annotate_flags")
+                             "screening__organism__usability_annotation")
 
     assert not sweep.empty
     assert set(sweep["n_bad"]) == {2}
@@ -194,10 +194,10 @@ def test_the_labels_pick_out_the_crops_worth_more_human_time(graded, monkeypatch
     monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=flags))
 
     cf.run_metrics(graded, run_name="screening",
-                   metrics=[cf.annotate_flags()], visualize=False)
+                   metrics=[cf.usability_annotation()], visualize=False)
 
     usable = cf.occurrences_matching(graded, "screening",
-                                     {"annotate_flags": "usable"})
+                                     {"usability_annotation": "usable"})
     assert len(usable) == SPECIMENS - 1
 
     cf.define_subset(graded, "usable", occurrence_ids=usable)

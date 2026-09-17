@@ -403,16 +403,26 @@ class Metric(Operation):
     metric_name -- what to store the value under, defaulting to the operation
                    name. Override so one operation can appear twice in a recipe
                    without the second overwriting the first.
+    requires_mask -- False for a metric that judges the raw image itself
+                   rather than a segmented boundary, e.g. a pre-segmentation
+                   screening pass. run_metrics then measures every occurrence
+                   with an image, not just ones already segmented, and builds
+                   a maskless Segment for them. Deliberately NOT in spec(),
+                   the same reasoning Segmentation.deterministic isn't: it
+                   changes which occurrences a run reaches, not what a given
+                   occurrence's value is, so hashing it would move every
+                   recipe hash already stored for unrelated reasons.
     """
 
     kind = "metric"
 
     def __init__(self, name, function, parameters=None, version="1", model=None,
-                 unit=None, metric_name=None):
+                 unit=None, metric_name=None, requires_mask=True):
         super().__init__(name, function, parameters=parameters, version=version,
                          model=model)
         self.unit = unit
         self.metric_name = metric_name or name
+        self.requires_mask = bool(requires_mask)
 
     def spec(self):
         spec = super().spec()
@@ -452,8 +462,11 @@ class Recipe:
     kind       -- what the chain is for. "segment" and "metric" execute as runs
                   and get a run record; "render" identifies a transform chain
                   whose output is images rather than data.
-    name       -- the run name, e.g. "traits". Part of identity, so rerunning
-                  the same operations under a new name records a new run.
+    name       -- the run name, e.g. "traits". Recorded on the run and shown by
+                  describe_run(), but NOT part of identity, like `subset` --
+                  a label a human picks doesn't change what running the recipe
+                  produces, so renaming must not force every occurrence to be
+                  treated as unfinished work. See Recipe.hash.
     operations -- ordered Operations; for a metric recipe, transforms then
                   metrics.
     part       -- the part this recipe produces or measures.
@@ -490,8 +503,20 @@ class Recipe:
         Stable identity of this recipe. Two recipes hash alike exactly when
         running them would do the same work, which is what lets a run skip
         occurrence-parts that already carry this hash.
+
+        `name` is excluded from what's hashed, even though spec() carries it:
+        it's a label a human picks for a run, not something that changes what
+        running it produces. Hashing it would mean renaming a run -- with no
+        other change -- forces every occurrence to be treated as unfinished,
+        and for a from_part chain, cascades a full resegmentation through
+        every part and metric below it. `records.masks.completed_keys` relies
+        on that exclusion directly; `metrics.run._completed_keys` deliberately
+        re-adds a name scope of its own, because a metric's run_name is also
+        the export column values are read back by (see its docstring).
         """
-        return hash_spec(self.spec())
+        identity = self.spec()
+        del identity["name"]
+        return hash_spec(identity)
 
     def operations_of(self, kind):
         """The operations of one kind, in order -- e.g. the transforms of a metric recipe."""

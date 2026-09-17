@@ -32,7 +32,7 @@ from critterframe.export import (
     metrics_wide,
     occurrences_matching,
 )
-from critterframe.metrics.annotation import annotate_flags
+from critterframe.metrics.annotation import usability_annotation
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.occurrences import ID_COL, load_occurrences
 from critterframe.records.runs import start_run
@@ -401,10 +401,10 @@ def test_only_millimetres_are_supported(measured_project):
 
 def store_flags(project_path, flags, run_name="screening",
                 source_mask_hash=None):
-    recipe = Recipe("metric", run_name, [annotate_flags()], part="organism")
+    recipe = Recipe("metric", run_name, [usability_annotation()], part="organism")
     run_id = start_run(project_path, recipe)
     append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", "annotate_flags",
+                   [make_metric_row(occurrence_id, "organism", "usability_annotation",
                                     flag, unit="category",
                                     source_mask_hash=source_mask_hash)
                     for occurrence_id, flag in flags.items()])
@@ -413,12 +413,12 @@ def store_flags(project_path, flags, run_name="screening",
 def test_stored_labels_can_be_selected_on_by_bare_metric_name(metadata_project):
     """
     The run and part prefixes are added for you, so a screening pass's usable
-    crops are {"annotate_flags": "usable"}.
+    crops are {"usability_annotation": "usable"}.
     """
     store_flags(metadata_project, {"specimen0": "usable", "specimen1": "cut_off",
                                    "specimen2": "usable"})
     assert occurrences_matching(metadata_project, "screening",
-                                {"annotate_flags": "usable"}) == ["specimen0",
+                                {"usability_annotation": "usable"}) == ["specimen0",
                                                                   "specimen2"]
 
 
@@ -443,7 +443,7 @@ def test_a_run_nobody_has_done_yet_selects_none_and_says_so(metadata_project,
     """
     with caplog.at_level("WARNING"):
         assert occurrences_matching(metadata_project, "screening",
-                                    {"annotate_flags": "usable"}) == []
+                                    {"usability_annotation": "usable"}) == []
     assert "nothing to match" in caplog.text
 
 
@@ -464,15 +464,15 @@ def test_labels_survive_a_resegmentation_by_default(metadata_project):
                                    recipe_hash="brand_new")])
 
     assert occurrences_matching(metadata_project, "screening",
-                                {"annotate_flags": "usable"}) == ["specimen0"]
+                                {"usability_annotation": "usable"}) == ["specimen0"]
     assert occurrences_matching(metadata_project, "screening",
-                                {"annotate_flags": "usable"},
+                                {"usability_annotation": "usable"},
                                 current_only=True) == []
 
 
 def test_numeric_labels_match_as_stored(metadata_project):
     """Values are compared as they were stored, without coercion."""
-    recipe = Recipe("metric", "qc", [annotate_flags()], part="organism")
+    recipe = Recipe("metric", "qc", [usability_annotation()], part="organism")
     run_id = start_run(metadata_project, recipe)
     append_metrics(metadata_project, run_id, recipe.hash, [
         make_metric_row("specimen0", "organism", "grade", 3),

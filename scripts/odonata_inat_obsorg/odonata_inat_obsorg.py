@@ -1,45 +1,8 @@
 """
-Dragonfly bodies from iNaturalist observations published through GBIF:
-refinement chains, group metrics, and embeddings.
-
-Ingest reads a GBIF Darwin Core Archive rather than calling the iNaturalist API
-directly -- gbif_darwincore_inat works for any GBIF-published occurrence data,
-and iNaturalist's research-grade observations happen to be the dataset this
-script targets. See extensions/gbif_darwincore_inat for the archive shape and
-extensions/inat_insects for the live-API alternative.
-
-The source archive is a combined Odonata pull covering more than one
-GBIF-mediated aggregator (iNaturalist and Observation.org both feed GBIF), but
-this project keeps only the iNaturalist-published rows (_inaturalist_only,
-below) -- simpler than cross-source deduplication
-(gbif_ingest.dedupe_key_cols) when a single source's photos are all a project
-actually needs.
+Dragonfly bodies from iNaturalist observations published through GBIF
 
 The most elaborate of the reference pipelines, and the one that shows what the
-package is actually for:
-
-  REFINEMENT. Whole-organism segmentation runs first and is persisted, then
-  body-part segmentation starts FROM that mask (from_part="organism") rather
-  than rediscovering the animal. The organism mask is worth persisting on all
-  three counts -- it's a real part, everything downstream depends on it, and
-  producing it is expensive.
-
-  SHARED PREPROCESSING. Head, thorax, and abdomen share their background
-  removal and orientation; those run once per occurrence and the segment forks
-  per part, so three parts cost one preprocessing pass rather than three.
-
-  GROUP METRICS. Outlier detection and colour clustering can't score an
-  occurrence in isolation -- they need to know what the rest of the species
-  looks like first. They're still metrics: they compose into a recipe and store
-  like anything else, and the fitting happens once before the run's loop.
-
-  EMBEDDINGS. A learned vector per organism, stored beside the hand-designed
-  traits, for the differences nobody has written a measurement for.
-
-iNaturalist photographs are uncontrolled, so QC matters more here than in a
-specimen-imaging project, and absolute size is not recoverable at all -- there
-is no reference object, so every trait is in pixels and comparable only as a
-ratio.
+package is actually for
 """
 
 import logging
@@ -70,20 +33,21 @@ gbif_ingest.ingest_occurrences(
 cf.download_images(PROJECT_PATH)
 
 #2. Whole organism. Persisted, and everything below starts from it.
-cf.run_segments(
-   PROJECT_PATH,
-   run_name="organism_sam2",
-   steps=[
-       cf.segment(cf.groundedsam2(text_prompt="dragonfly.")),
-   ],
-)
+# cf.run_segments(
+#    PROJECT_PATH,
+#    run_name="organism_sam2",
+#    steps=[
+#        cf.segment(cf.groundedsam2(text_prompt="dragonfly.")),
+#    ],
+# )
 
 # 3. Body parts, refined from the organism mask, using the UNet++ segmenters
 #    trained -- and IoU-checked against a held-out test split -- in
-#    dragonfly_bodies_inat_training.py's steps 5/6. load_part_segmenter()
-#    reads each one out of the model registry (models/registry.json), so
-#    retraining and re-registering a checkpoint under the same name is all a
-#    rerun of this script needs to pick up the new weights.
+#    odonata_inat_obsorg_part_segmenters_training_validation.py's steps 1/2.
+#    segmentation.load_registered() reads each one out of the model registry
+#    (models/registry.json), so retraining and re-registering a checkpoint
+#    under the same name is all a rerun of this script needs to pick up the
+#    new weights.
 #
 #    shared_steps MUST match BODY_PART_TRANSFORMS from that same script
 #    exactly: the whole reason its dataset export used from_part="organism"
@@ -91,20 +55,19 @@ cf.run_segments(
 #    cropped to its own, usually much smaller, mask. Importing the constant
 #    (rather than repeating the three transforms here) is what keeps the two
 #    from silently drifting apart.
-from scripts.dragonfly_bodies_inat_training import (
-    BODY_PART_TRANSFORMS, load_part_segmenter,
-)
+from critterframe.extensions.smp_segmenter import segmentation
 
 cf.run_segments(
     PROJECT_PATH,
     run_name="body_parts",
     from_part="organism",
-    shared_steps=BODY_PART_TRANSFORMS,
+    shared_steps=[cf.remove_background(), cf.crop_to_mask(), cf.orient(axis_strategy="longer")],
     outputs={
-        "head":    [cf.segment(load_part_segmenter("head_segmenter_v1"))],
-        "thorax":  [cf.segment(load_part_segmenter("thorax_segmenter_v1"))],
-        "abdomen": [cf.segment(load_part_segmenter("abdomen_segmenter_v1"))],
+        "head":    [cf.segment(segmentation.load_registered(PROJECT_PATH, "head_segmenter_v1"))],
+        "thorax":  [cf.segment(segmentation.load_registered(PROJECT_PATH, "thorax_segmenter_v1"))],
+        "abdomen": [cf.segment(segmentation.load_registered(PROJECT_PATH, "abdomen_segmenter_v1"))],
     },
+    visualize_every=500,
 )
 
 # 4. Whole-organism traits and QC. The traits run is named separately from the
@@ -201,7 +164,7 @@ cf.run_segments(
 #     metrics=[embedding(BioEncoderModel(my_network, "checkpoints/odonata_v1.pt"))],
 # )
 
-# # 8. Export, dropping the occurrences flagged as outliers or as poor images.
+# # export, dropping the occurrences flagged as outliers or as poor images.
 # cf.export_metrics(
 #     PROJECT_PATH,
 #     f"{PROJECT_PATH}/dragonfly_traits.csv",

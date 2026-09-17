@@ -8,12 +8,20 @@ groups once, then point a different recipe at each.
 Definitions live in definitions/subsets.toml, hand-editable by design. A subset
 selects rows and never copies them, so an occurrence can belong to several, and
 running over one leaves every other subset's masks and metrics untouched.
+
+Every subset also gets `created_at` and, where given, a free-text `note` --
+provenance a person reads later, never resolved or replayed, the same
+manifest pattern imports, exports, and model registration already use
+elsewhere in the package. An `occurrence_ids` subset additionally stores its
+own resolved `{count, ids_hash}`, since unlike a `column`/`query` rule its
+membership is frozen and that digest can never go stale.
 """
 
 import logging
+from datetime import datetime, timezone
 
 from .. import selectionhelpers
-from ..records.occurrences import ID_COL, load_occurrences
+from ..records.occurrences import ID_COL, ids_record, load_occurrences
 from . import paths
 
 logger = logging.getLogger(__name__)
@@ -83,7 +91,7 @@ def _save_subsets(project_path, subsets):
 
 
 def define_subset(project_path, name, column=None, values=None, query=None,
-                  occurrence_ids=None):
+                  occurrence_ids=None, from_subset=None, note=None):
     """
     Define (or redefine) one subset. Exactly one selection rule must be given.
 
@@ -94,22 +102,57 @@ def define_subset(project_path, name, column=None, values=None, query=None,
       `"year >= 2020 and country == 'Panama'"`.
     - `occurrence_ids` -- an explicit list, for a hand-picked selection with
       no rule behind it.
+    - `from_subset` -- freeze another (possibly live) subset's CURRENT
+      membership under this new name. Shorthand for `occurrence_ids=
+      select_ids(project_path, subset=from_subset)` -- the new subset is an
+      independent snapshot afterward, so redefining `from_subset` later, or
+      the project growing under it, never moves this one. For locking in a
+      `column`/`query` subset's matches as a stable id list something else
+      (a training split, say) can depend on.
+    - `note` -- optional free text on why this subset exists, e.g. "held-out
+      test set, reviewed by hand 2026-03". Never read back by anything --
+      purely for a human reading subsets.toml later, the same way
+      records.models.register_model's `notes` works. Most worth giving to an
+      `occurrence_ids` subset, since unlike `column`/`query` the rule itself
+      (a bare list of ids) explains nothing about why those ids.
+      `from_subset` fills in a default note naming the source subset when
+      none is given.
     """
-    given = [rule is not None for rule in (values, query, occurrence_ids)]
+    given = [rule is not None for rule in (values, query, occurrence_ids, from_subset)]
     if sum(given) != 1:
         raise ValueError(
-            "define_subset needs exactly one of values=, query=, or "
-            "occurrence_ids="
+            "define_subset needs exactly one of values=, query=, "
+            "occurrence_ids=, or from_subset="
         )
     if values is not None and column is None:
         raise ValueError("values= needs column= to say which column to match on")
+
+    if from_subset is not None:
+        occurrence_ids = select_ids(project_path, subset=from_subset)
+        if note is None:
+            note = f"frozen from subset {from_subset!r}"
 
     if values is not None:
         definition = {"column": column, "values": list(values)}
     elif query is not None:
         definition = {"query": query}
     else:
-        definition = {"occurrence_ids": [str(i) for i in occurrence_ids]}
+        # A frozen list's own digest is cheap (no table read) and never goes
+        # stale the way it would for a live column/query rule, whose
+        # resolution is meant to drift as the project does -- see
+        # select_occurrences. Flattened rather than nested (resolved_count,
+        # resolved_ids_hash): _dump_toml only writes one shallow table per
+        # subset, the same {count, ids_hash} shape ids_record() gives every
+        # other record in the package that names a set of occurrences.
+        occurrence_ids = [str(i) for i in occurrence_ids]
+        resolved = ids_record(occurrence_ids)
+        definition = {"occurrence_ids": occurrence_ids,
+                     "resolved_count": resolved["count"],
+                     "resolved_ids_hash": resolved["ids_hash"]}
+
+    definition["created_at"] = datetime.now(timezone.utc).isoformat()
+    if note is not None:
+        definition["note"] = note
 
     subsets = load_subsets(project_path)
     subsets[name] = definition
@@ -117,7 +160,7 @@ def define_subset(project_path, name, column=None, values=None, query=None,
     return definition
 
 
-def define_subsets(project_path, column, mapping):
+def define_subsets(project_path, column, mapping, note=None):
     """
     Define several subsets at once from one column -- the usual shape, where a
     single metadata column already separates the groups and only the names need
@@ -127,14 +170,20 @@ def define_subsets(project_path, column, mapping):
     - `mapping` -- `{column value: subset name}`, e.g.
       `{"Alabama Museum": "alabama", "AMNH": "amnh"}`. Several values may map
       to the same subset name, which merges them.
+    - `note` -- optional free text, applied to every subset this call defines.
+      See define_subset().
     """
     grouped = {}
     for value, name in mapping.items():
         grouped.setdefault(name, []).append(value)
 
+    created_at = datetime.now(timezone.utc).isoformat()
     subsets = load_subsets(project_path)
     for name, values in grouped.items():
-        subsets[name] = {"column": column, "values": values}
+        definition = {"column": column, "values": values, "created_at": created_at}
+        if note is not None:
+            definition["note"] = note
+        subsets[name] = definition
     _save_subsets(project_path, subsets)
 
     logger.info("defined %d subset(s) from column '%s': %s",
@@ -210,7 +259,7 @@ def select_ids(project_path, subset=None, limit=None):
 
 
 def grow_subset(project_path, name, target_size, candidate_ids=None,
-                seed=selectionhelpers.SAMPLE_SEED):
+                from_subset=None, seed=selectionhelpers.SAMPLE_SEED):
     """
     Define a subset if it doesn't exist yet, or grow (or shrink) it toward
     target_size otherwise, keeping every id it already holds.
@@ -225,24 +274,56 @@ def grow_subset(project_path, name, target_size, candidate_ids=None,
     target_size   -- desired size. Lowering it trims deterministically rather
                      than raising or reshuffling who is in.
     candidate_ids -- pool to draw new ids from; the whole project
-                     (select_ids(project_path)) if None. Pass a narrower list,
-                     e.g. from another subset, to draw from less than the
-                     whole project.
+                     (select_ids(project_path)) if neither this nor
+                     from_subset is given. For a pool computed some other
+                     way, e.g. occurrences_matching(); for a named subset,
+                     from_subset reads more plainly and, unlike this, names
+                     the source in the note (below) instead of a bare count.
+    from_subset   -- name of a subset to draw candidates from -- re-resolved
+                     to its CURRENT membership on every call, so growing
+                     from a live column/query subset picks up whatever it
+                     now matches. For capping an expensive pass (hand-drawn
+                     reference masks, say) to a deliberately smaller,
+                     independently-sized subset of a cheaper one (a screened
+                     "usable" set), so raising the cheap pass's size doesn't
+                     silently raise the expensive one's too. Mutually
+                     exclusive with candidate_ids.
     seed          -- passed through to grow_sample.
+
+    Records target_size, seed, and the candidate pool as the subset's `note`
+    (see define_subset), since this is the one place that opaque occurrence_ids
+    list actually has a reason behind it worth writing down.
 
     Returns the subset's ids after growing -- the same ids now on disk.
     """
+    if candidate_ids is not None and from_subset is not None:
+        raise ValueError("grow_subset takes candidate_ids= or from_subset=, not both")
+
     try:
         already = select_ids(project_path, subset=name)
     except KeyError:
         already = []
 
-    if candidate_ids is None:
+    if from_subset is not None:
+        candidate_ids = select_ids(project_path, subset=from_subset)
+        pool_description = from_subset
+    elif candidate_ids is not None:
+        candidate_ids = list(candidate_ids)
+        pool_description = f"{len(candidate_ids)} given candidate id(s)"
+    else:
         candidate_ids = select_ids(project_path)
+        pool_description = "whole project"
 
     ids = selectionhelpers.grow_sample(candidate_ids, target_size,
                                        keep_ids=already, seed=seed)
-    define_subset(project_path, name, occurrence_ids=ids)
+    # grow_subset already knows exactly how these ids were chosen, so it
+    # records that as the note rather than leaving an opaque occurrence_ids
+    # list with nothing explaining why those specimens -- see define_subset's
+    # note= for the general reasoning.
+    define_subset(
+        project_path, name, occurrence_ids=ids,
+        note=f"grow_subset(target_size={target_size}, seed={seed}, "
+             f"candidate_pool={pool_description!r})")
 
     logger.info("subset '%s': %d -> %d occurrence(s) (target %d)",
                 name, len(already), len(ids), target_size)

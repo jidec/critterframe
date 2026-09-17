@@ -1,4 +1,5 @@
 import logging
+import cv2
 import critterframe as cf
 from critterframe.extensions.antenna_lighttraps import ingest as antenna_ingest
 from critterframe.extensions.antenna_lighttraps.calibrations import (  # noqa: E402
@@ -40,6 +41,9 @@ cf.run_metrics(
     ],
 )
 
+# add scale
+cf.measure_scale_by_hand(PROJECT_PATH, cv2.imread(PROJECT_PATH + "/ama_2025-10-06_23_50_02_extra.jpg"), target_mm=10.0)  # applies to every occurrence
+
 cf.print_summary(PROJECT_PATH)
 cf.export_metrics(PROJECT_PATH,path="D:/GitProjects/cf_projects/mothitor_antenna_insects/metrics.csv",
                   occurrence_columns=["event_id","deployment_id","deployment_name","best_machine_prediction_name"])
@@ -50,23 +54,11 @@ cf.export_metrics(PROJECT_PATH,path="D:/GitProjects/cf_projects/mothitor_antenna
 # run metrics used for quality control filtering
 cf.run_metrics(
     PROJECT_PATH,
-    run_name="qc",
+    run_name="qc_filters",
     metrics=[
         cf.edge_fraction(),
     ],
 )
-# # bilateral_asymmetry needs both transforms
-# cf.run_metrics(
-#     PROJECT_PATH,
-#     run_name="qc",
-#     transforms=[
-#         cf.remove_appendages(),
-#         cf.orient(),
-#     ],
-#     metrics=[
-#         cf.bilateral_asymmetry(),
-#     ],
-# )
 
 # Human review, in two passes: screen the sample first, then make reference data
 # only for the crops a reference is definable for. The order is the whole point.
@@ -82,88 +74,55 @@ cf.run_metrics(
 # bilateral_asymmetry at catching flagged crops, and a sample with the flagged
 # ones removed has nothing to detect and can't be scored at all.
 
-REVIEW_TARGET = 50  # total screening sample size; raise to grow
-cf.grow_subset(PROJECT_PATH, "review", REVIEW_TARGET)
-cf.run_metrics(
-    PROJECT_PATH,
-    run_name="human_annotation_labels",
-    subset="review",
-    metrics=[
-        cf.annotate_flags(),
-    ],
-)
-#
-# # The crops a reference is even definable for. Defined by the HUMAN flag, never
-# # by whether the automated filter passed them: those are independent on purpose.
-# # The segmenter is graded on the crops a person called usable, and the filter is
-# # graded against that same person's flags -- draw the mask sample from "whatever
-# # the filter let through" instead and every filter mistake becomes invisible to
-# # both. On a fresh project nobody has screened yet this selects nothing and the
-# # two passes below process nothing, which is correct rather than broken.
+# grow a subset of occurrence images intended to get usability annotations
+cf.grow_subset(PROJECT_PATH, name="usability_annotation_set", target_size=55)
+
+cf.run_metrics(PROJECT_PATH, subset="usability_annotation_set",
+               metrics=[cf.usability_annotation()])
+
+# define a subset of usable occurrence images
 cf.define_subset(
-    PROJECT_PATH,
-    "reference",
+    PROJECT_PATH, name="usability_annotation_set_usable",
     occurrence_ids=cf.occurrences_matching(
-        PROJECT_PATH, "human_annotation_labels",
-        {"annotate_flags": "usable"}),
+        PROJECT_PATH, "usability_annotation", {"usability_annotation": "usable"}),
 )
-#
-# # pass 2: reference data, over those only -- correct the mask and click the axis
-# # in one visit, since both are being asked of the same crops.
-# # from_part puts SAM2's mask in front of the person to correct.
-# # reference=True writes to reference_masks.parquet, so these coexist with the
-# # canonical masks rather than replacing them
+
+# grow a subset of occurrence images intended to get reference masks
+cf.grow_subset(PROJECT_PATH, name="reference_set", target_size=50,
+               from_subset="usability_annotation_set_usable")
+
 cf.run_segments(
     PROJECT_PATH,
-    run_name="human_corrected",
-    subset="reference",
+    subset="reference_set",
     from_part=cf.DEFAULT_PART,
     steps=[cf.correct_mask()],
     reference=True,
     force=False,
 )
+
 cf.run_metrics(
     PROJECT_PATH,
-    run_name="human_measurements",
-    subset="reference",
+    run_name="manual_click_head_tail",
+    subset="reference_set",
     metrics=[
         cf.click_two_points(labels=("head","tail")),
     ],
 )
-#
-# validate the reference masks against the automated masks
-# make sure transforms line up with how you're doing the reference
-# in this case, the reference mask is really the sam2 mask with appendages removed, so that's what we're comparing here
-# The population is wherever a reference mask exists, so what this reports is
-# IoU over the crops a human called usable -- which is the honest number, and
-# the one that describes the exported dataset, since the export filters to
-# approximately that same population.
+
 cf.validate_masks(PROJECT_PATH, transforms=[cf.remove_appendages()])
 
 # compare automated body length to length obtained by clicking points manually (the reference)
 cf.compare_metrics(
-    PROJECT_PATH, "traits", "human_measurements",
+    PROJECT_PATH, "traits", "manual_click_head_tail",
     metric_names={"body_length": "click_two_points__length_px"},
 )
 
-# measure physical scale once per event (one trap night)
-import cv2
-import critterframe as cf
-
-sheet = cv2.imread(PROJECT_PATH + "/ama_2025-10-06_23_50_02_extra.jpg")
-cf.measure_scale_by_hand(PROJECT_PATH, sheet, target_mm=10.0)  # applies to every occurrence
-
-# calibrate the QC cutoffs against the human flags: every observed value of each
-# metric is scored as a candidate cutoff, and the one kept is the highest-recall
-# cutoff that still throws away no more than X% (2% default) of the crops a person called
-# usable. The sweeps are logged in full, so the evidence behind each choice is
-# in the run output. This reads the screening run, which covers the whole sample
-# -- both classes present, which is what makes a cutoff scorable.
+# calibrate qc cutoffs
 filters = cf.get_validated_filters(
     PROJECT_PATH,
     metric_specs=["edge_fraction"],
-    predicted_run="qc",
-    annotation_run="human_annotation_labels",
+    predicted_run="qc_filters",
+    annotation_run="usability_annotation_set",
     max_fpr=0.20,   # "Don't throw away more than 10% of good data"
     min_precision=0.5, # "at least 50% of what I exclude should genuinely be bad"
 )

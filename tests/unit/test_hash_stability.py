@@ -59,23 +59,28 @@ def test_canonical_json_is_sorted_and_compact():
 
 def test_segmentation_recipe_digest():
     """
-    A fully-specified segmentation recipe: kind, name, part, from_part, inputs,
-    and one operation with its own name, kind, version, parameters, and model
-    identity. Every key of `spec()` at both levels is inside this number.
+    A fully-specified segmentation recipe: kind, part, from_part, inputs, and
+    one operation with its own name, kind, version, parameters, and model
+    identity. Every key of `spec()` at the operation level is inside this
+    number; the RECIPE's own `name` is deliberately not (see Recipe.hash) --
+    updated 2026-09 when that exclusion shipped: renaming a run must not force
+    every occurrence to be treated as unfinished work.
     """
     recipe = Recipe("segment", "organisms", [segment(FrozenModel())],
                     part="organism")
-    assert recipe.hash == "8bac4483268b4304"
+    assert recipe.hash == "cdcefe5567bb1c27"
 
 
 def test_metric_recipe_digest():
     """
     The metric side of the same structure -- `Metric.spec()` adds `metric_name`
     and `unit`, and `unit` being in here is what makes measuring in millimetres
-    a different recipe from measuring in pixels.
+    a different recipe from measuring in pixels. As above, the RECIPE's own
+    `name` ("traits") is not in this number -- updated 2026-09 alongside the
+    segmentation digest, same reason.
     """
     recipe = Recipe("metric", "traits", [body_length()], part="organism")
-    assert recipe.hash == "c708c1489971f5c6"
+    assert recipe.hash == "d03ec33defb22ec2"
 
 
 def test_derivation_hash_chain_digest():

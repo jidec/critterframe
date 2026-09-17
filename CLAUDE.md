@@ -238,7 +238,9 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
   part/from_part/inputs, and a hash over all of it. `kind` is open-ended; `segment` and `metric` execute as
   runs and get a run record, `render` identifies a transform chain whose output is images
   (`visualization/products`). `records.runs.RUN_KINDS` deliberately accepts only the first two — a render
-  derives no data, so the hash naming its folder is the whole of its provenance.
+  derives no data, so the hash naming its folder is the whole of its provenance. `name` is the one field
+  `spec()` carries that `Recipe.hash` doesn't — recorded on the run and shown by `describe_run()`, but not
+  identity, the same treatment `subset`/`context` get and for the same reason (see Repeat-awareness).
 
 ### Repeat-awareness
 
@@ -266,6 +268,25 @@ Completion is keyed on `(recipe hash, source mask)`, not the recipe hash alone, 
 for this; tables written before it exist are read without the column (`storage.tables.table_columns` decides),
 which makes their masks look upstream-less — true of everything recorded at the time, and it costs one
 recompute of any from_part chain.
+
+`Recipe.hash` deliberately excludes `name` (see the `Recipe` bullet above), which is where the two
+`completed_keys` functions genuinely diverge for the first time. `records.masks.completed_keys` needs no name
+scope: nothing ever reads a mask BY `run_name` (`masks.parquet`'s key is `occurrence_id`+`part`), so once the
+hash no longer encodes it, a segmentation run renamed with no other change simply recognizes the existing
+canonical mask as its own — free, and correct, since there is no per-name copy for anything to leave empty.
+`metrics.run._completed_keys` is the opposite: `run_name` is what `export.column_name` and
+`records.metrics.latest_values` key values back by, so an unscoped check would let a brand-new name silently
+inherit another name's completion and process nothing, leaving that name's export column permanently empty.
+It therefore takes an explicit `run_name` and joins to `runs.name`; `run_metrics` calls it twice — once scoped
+to the run's own name (what to skip outright) and once unscoped (what some OTHER name already computed under
+this exact recipe) — and for the second set, `_copyable_rows` re-inserts the existing values under the new
+run's `run_id` instead of recomputing them, a plain `INSERT`-shaped read with no image, transform, or model
+involved. The `copied` count in `run_metrics`' return dict is this, distinct from `processed`.
+
+This copy step is only safe because of one more check: `metrics.run._current_for_population` (see the group
+model bullet below) narrows both the same-name and cross-name candidate sets to rows whose reference
+population actually matches this run's own fit, so a group metric never copies — or silently treats as
+current — a score fit against a population this run wouldn't have used.
 
 Skipping is sound only because an identical hash means identical work, and for one kind of operation it
 doesn't. `Operation.deterministic` (True everywhere but `manual.draw_mask`/`correct_mask`) says whether a
@@ -319,9 +340,23 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   record and `Recipe.prepare_all()` collects them. Added as a nullable column, so an old database is missing
   it rather than broken by it, but `records.runs` still has to migrate on open because `start_run` names it.
 - **A fitted group model is deliberately NOT in the recipe hash.** It is determined by the reference values,
-  which are determined by `from_run`, so hashing it would add nothing but instability from model randomness.
-- **`subset` is recorded on the run but not hashed.** Processing the rest of the project later continues the
-  same work rather than counting as a different recipe.
+  which are determined by `from_run` AND by `context.occurrence_ids` (this run's own `subset`/`limit`) — and
+  the latter is exactly as unhashed as `subset` always is, for the same reason: hashing it would defeat
+  incremental processing, since every occurrence added to a growing project would move the hash and force a
+  full rescore of everyone already measured. Unlike every other operation, though, a group metric's VALUE
+  genuinely depends on that population, so two runs can share a hash while having fit different models — the
+  gap `runs.context_json` above exists to make visible. `metrics.run._current_for_population` is what
+  actually CHECKS it, using data `prepare()` already returns and `context_json` already stores (no new
+  column): a stored group-metric value only counts as current, or safe to copy onto a differently-named run,
+  when the reference population it was fit against matches this run's own. This closes the gap for real —
+  growing the reference population and rerunning the same `run_name` now correctly rescopes previously-scored
+  occurrences instead of leaving them silently stale — and it costs nothing extra, because `prepare()` already
+  runs, unconditionally, before the completion check even looks at it.
+- **`subset` and `name` are recorded on the run but not hashed.** Processing the rest of the project later
+  continues the same work rather than counting as a different recipe (`subset`); renaming a run doesn't change
+  what running it produces, so it must not force every occurrence to be treated as unfinished work, or cascade
+  a resegmentation through every `from_part` chain below it (`name` — see the `Recipe` bullet and
+  Repeat-awareness above for how the two kinds diverge once it isn't hashed).
 - **A metric `run_name` is pinned to one recipe per part, and moving it onto a different one has to be said out
   loud.** `records.runs.resolve_recipe_currency` raises if `(kind="metric", name, part)` already points at a
   different `recipe_hash`, unless `force=True` — `run_metrics`' own `force` argument, doing double duty. This
@@ -339,7 +374,19 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   before this pointer existed seeds it from run history's own insertion order on first use, so upgrading
   doesn't move anything under a name that hasn't actually changed. Canonical and reference measurements need
   their own names for the same reason a resegmented part does: they're meant to coexist for comparison, not
-  supersede one another, and `force=True` would make whichever ran last win.
+  supersede one another, and `force=True` would make whichever ran last win. `run_segments`' `run_name`
+  defaults to `part` (each output's own part, for `outputs=`) rather than one fixed generic label, since name
+  carries no such weight there — except `reference=True`, which folds into the default too
+  (`<part>_reference`), for exactly the coexist-not-supersede reason just given: `resolve_recipe_currency`
+  never runs for segments, so nothing else would stop a default-named reference pass from silently reading, in
+  history and `describe_run(name=...)`, as though it superseded the canonical recipe over the same part rather
+  than existing alongside it. `run_metrics`' `run_name` defaults too, but only where a default is genuinely
+  unambiguous: measuring exactly one metric defaults to that metric's own `metric_name` (`metrics=
+  [usability_annotation()]` needs no `run_name=` at all), since typing the same name twice is pure repetition
+  for the single most common shape of call (a lone screening pass). Measuring more than one metric in a call
+  has no single obvious name and keeps raising rather than guessing one — guessing wrong would silently rename
+  an export column the moment a second metric gets added to an existing call, exactly the instability a
+  meaningful, human-chosen `run_name` exists to avoid.
 - **A metric run's transforms are not persisted.** They shape what gets measured, and they're in the recipe
   hash, but the segment they produce is thrown away — only the value is kept.
 - **Metric runs distinguish "no mask" from "measured nothing"** with a sentinel, so an occurrence segmentation
@@ -391,12 +438,16 @@ for, not by what's in it.
   summarizes those panels for a sample of the occurrences a run processed.* Segmentation and metric runs are
   the same object here — a stage per column, an occurrence per row — so `visualize=` means the same thing in
   both. One grid per run, `<run name>_<recipe hash>.jpg` (with `__<part>` when the part isn't the default).
-  `visualize=25` samples 25, `True` samples a default 25, `["a","b"]` names them, `False` is the default.
-  **There is no per-occurrence file mode** — a 10,000-occurrence run can't be inspected as 10,000 files, so
-  every form samples. The sample is deterministic (`selectionhelpers.sample_occurrences`), so two versions of a
-  recipe show the SAME specimens and can be compared cell by cell. One stage → `image_grid`; several →
+  `visualize=25` samples 25, `True` (default) samples a default 25, `["a","b"]` names them, `False` produces
+  none. **There is no per-occurrence file mode** — a 10,000-occurrence run can't be inspected as 10,000 files,
+  so every form samples. The sample is deterministic (`selectionhelpers.sample_occurrences`), so two versions
+  of a recipe show the SAME specimens and can be compared cell by cell. One stage → `image_grid`; several →
   `comparison_grid`. A grid can only show work that happened, so a fully-cached rerun writes none — that's what
-  `force=True` is for.
+  `force=True` is for. `visualize_every=N` adds a second, independent series of checkpoint grids on top of that
+  one: `<run name>_<recipe hash>__at<N>.jpg`, one file per checkpoint, each resampled fresh from only the
+  occurrences THAT window processed rather than the fixed whole-run sample above — so a very long run's
+  checkpoints always have real content, even on a checkpoint the fixed sample hasn't been reached by yet,
+  instead of the fixed sample's grid staying empty for however long chance takes to land one of its ids.
 - **`products/<name>_<hash>/`** — assets deliberately materialized for downstream use, **one file per
   occurrence-part**, named `<occurrence_id>.png` (or `<occurrence_id>__<part>.png` when a render covers several
   parts). `render_segments()` is the one that exists. Loose files, not LMDB, because these are for figures and

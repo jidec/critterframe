@@ -231,19 +231,22 @@ def pipeline_dir(project_path):
     return visualizations_dir(project_path, PIPELINE_DIR)
 
 
-def pipeline_grid_path(project_path, run_name, recipe_hash, part=None):
+def pipeline_grid_path(project_path, run_name, recipe_hash, part=None, suffix=None):
     """
-    One run's QC grid: `<run>[__<part>]_<hash>.jpg`.
+    One run's QC grid: `<run>[__<part>]_<hash>[<suffix>].jpg`.
 
     The hash is in the name so two versions of a recipe leave two grids to
     compare rather than one overwriting the other.
 
-    part -- None omits it, giving a whole-organism run the plain
-            `<run>_<hash>.jpg`. Pass it so each part of a multi-part run gets
-            its own file.
+    part   -- None omits it, giving a whole-organism run the plain
+              `<run>_<hash>.jpg`. Pass it so each part of a multi-part run gets
+              its own file.
+    suffix -- None omits it. Pass e.g. `__at00012500` for one of
+              `visualize_every`'s checkpoint grids, so each checkpoint gets its
+              own file rather than overwriting the last.
     """
     stem = run_name if part is None else f"{run_name}__{part}"
-    return pipeline_dir(project_path) / f"{stem}_{recipe_hash}.jpg"
+    return pipeline_dir(project_path) / f"{stem}_{recipe_hash}{suffix or ''}.jpg"
 
 
 def products_dir(project_path, name=""):

@@ -125,7 +125,7 @@
     options:
       show_root_full_path: false
 
-::: critterframe.annotate_flags
+::: critterframe.usability_annotation
     options:
       show_root_full_path: false
 

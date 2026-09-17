@@ -131,6 +131,19 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
 
     The single- and multi-output forms differ only here; everything after
     handles a dict of recipes either way.
+
+    run_name=None defaults each recipe's name to the part it produces --
+    "organism", "head" -- rather than one generic label shared by every part,
+    since name isn't part of identity (Recipe.hash) and exists only for a
+    human reading history to have something better than a bare hash to go on.
+    A reference pass gets "<part>_reference" instead of plain "<part>": with
+    nothing said, a canonical and a reference recipe over the same part would
+    otherwise default to the identical name, and since resolve_recipe_currency
+    is a no-op for segments nothing would catch the collision -- history and
+    describe_run(name=...) would silently read as one recipe superseding the
+    other rather than two meant to coexist for comparison (the same reasoning
+    CLAUDE.md already gives for why canonical and reference METRICS need
+    their own names).
     """
     if steps is not None and outputs is not None:
         raise ValueError("run_segments takes either steps= or outputs=, not both")
@@ -140,13 +153,19 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
     shared = list(shared_steps or [])
     inputs = {"masks": "reference" if reference else "canonical"}
 
+    def default_name(output_part):
+        return f"{output_part}_reference" if reference else output_part
+
     if steps is not None:
-        return {part: Recipe("segment", run_name, shared + list(steps), part=part,
+        name = run_name if run_name is not None else default_name(part)
+        return {part: Recipe("segment", name, shared + list(steps), part=part,
                              from_part=from_part, inputs=inputs)}
 
     return {
-        output_part: Recipe("segment", run_name, shared + list(output_steps),
-                            part=output_part, from_part=from_part, inputs=inputs)
+        output_part: Recipe("segment",
+                            run_name if run_name is not None else default_name(output_part),
+                            shared + list(output_steps), part=output_part,
+                            from_part=from_part, inputs=inputs)
         for output_part, output_steps in outputs.items()
     }
 
@@ -178,7 +197,7 @@ def _resolve_force(force, recipes):
     )
 
 
-def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PART,
+def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                  outputs=None, shared_steps=None, from_part=None, subset=None,
                  limit=None, force=None, visualize=True, visualize_every=None,
                  reference=False, batch_size=DEFAULT_BATCH_SIZE, shard=None,
@@ -189,8 +208,17 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     - `project_path` -- the project to process.
     - `steps` -- ordered operations producing one part's mask. Use this OR
       `outputs`.
-    - `run_name` -- what to call this run; recorded on the run and part of
-      recipe identity.
+    - `run_name` -- what to call this run; recorded on the run, not part of
+      recipe identity (see Recipe.hash) -- renaming costs nothing, since
+      nothing looks a mask up by run_name. Defaults to `part` (or each
+      output's own part, for `outputs=`), and to `<part>_reference` when
+      `reference=True`, so the common case -- one segmentation recipe per
+      part -- needs no name at all, and a canonical pass and a reference
+      pass over the same part never collide on one default. Pass one
+      explicitly to keep two coexisting recipes for one part apart in
+      history, e.g. comparing two candidate models
+      (`dragonfly_bodies_inat_training.py` does this by hand with
+      `f"{part}_test_predictions"`).
     - `part` -- which part `steps` produces; the whole organism by default.
     - `outputs` -- `{part: steps}` for producing several parts in one pass.
     - `shared_steps` -- operations run once per occurrence before forking
@@ -208,15 +236,19 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
       where an operation is `deterministic=False` it raises instead, since
       neither answer is safe to assume.
     - `visualize` -- how much of a pipeline grid to produce: 25 samples 25
-      occurrences, True uses the default sample size, a list names
-      occurrences specifically, False (default) produces none. A grid can
-      only show work that happened, so a fully cached rerun writes none --
-      use `force=True` to see it again.
-    - `visualize_every` -- refresh the grid on disk every N occurrences
-      processed, in addition to the save at the end. None (default) saves
-      only at the end. Lets a very long run be watched as it goes, and means
-      a killed run still leaves a grid showing what it got through. No
-      effect without `visualize`.
+      occurrences, True (default) uses the default sample size, a list names
+      occurrences specifically, False produces none. A grid can only show
+      work that happened, so a fully cached rerun writes none -- use
+      `force=True` to see it again.
+    - `visualize_every` -- in addition to the one grid above (sampled once
+      from the whole run and comparable cell-by-cell across two recipe
+      versions), write a second, independent series of checkpoint grids
+      every N occurrences processed: one file per checkpoint, each resampled
+      fresh from whatever that checkpoint's window actually processed, so it
+      always has real content even when the whole-run sample above hasn't
+      been reached yet. None (default) writes none of these; a killed run
+      still leaves the checkpoint for its last completed window. No effect
+      without `visualize`.
     - `reference` -- write to the reference mask table instead of the
       canonical one, as a human-drawn validation pass does.
     - `batch_size` -- masks accumulated before each write.
@@ -250,8 +282,9 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
         occurrence_ids = selectionhelpers.shard_occurrences(occurrence_ids, index, total)
         if visualize:
             logger.warning(
-                "shard=%s with visualize=%r: every shard's QC grid shares one "
-                "filename, so only the last shard to finish will leave one on "
+                "shard=%s with visualize=%r: every shard's QC grid(s) share the "
+                "same filename(s) (including visualize_every's checkpoints), so "
+                "only the last shard to write a given file will leave it on "
                 "disk. Pass visualize=False for a sharded run to avoid the "
                 "clobbering, or ignore this if only one shard's sample matters.",
                 shard, visualize)
@@ -264,8 +297,9 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
 
     force = _resolve_force(force, recipes)
 
-    logger.info("run_segments '%s': %d occurrence(s), part(s): %s",
-                run_name, len(occurrence_ids), ", ".join(sorted(recipes)))
+    logger.info("run_segments %s: %d occurrence(s), part(s): %s",
+                {output_part: recipe.name for output_part, recipe in recipes.items()},
+                len(occurrence_ids), ", ".join(sorted(recipes)))
 
     # The upstream masks a from_part recipe starts from, loaded BEFORE the
     # pending check rather than alongside the images, because what still needs
@@ -350,7 +384,7 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     # a fully cached rerun has none to show (pass force=True to see it again).
     reports = {
         output_part: pipeline_visualization.run_report(
-            project_path, run_name, recipe.hash, output_part,
+            project_path, recipe.name, recipe.hash, output_part,
             pending[output_part], visualize)
         for output_part, recipe in recipes.items()
     }
@@ -358,6 +392,44 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
     # panels belong to every part's grid -- they're in every part's recipe.
     active = [report for report in reports.values() if report is not None]
     shared_sink = pipeline_visualization.PanelFanout(active) if active else None
+
+    # visualize_every's checkpoint series: a second RunReport per part,
+    # resampled fresh each window from whatever that window actually
+    # processes rather than the fixed whole-population sample above, so a
+    # checkpoint always has real content -- see pipeline_visualization's
+    # module docstring. window_reports/part_sinks/shared_sink are rebuilt by
+    # rotate_windows() at every checkpoint; when visualize_every is unset this
+    # is a no-op and part_sinks/shared_sink stay exactly what they are above.
+    window_reports = {output_part: None for output_part in recipes}
+    part_sinks = dict(reports)
+
+    def rotate_windows(start_index):
+        nonlocal shared_sink
+        if not (visualize_every and visualize) or start_index >= len(todo):
+            return
+        end = min(start_index + visualize_every, len(todo))
+        window_ids = todo[start_index:end]
+        window_active = []
+        for output_part in recipes:
+            ids = [oid for oid in window_ids if oid in pending_sets[output_part]]
+            sample = pipeline_visualization.resolve_sample(ids, visualize)
+            report = None
+            if sample:
+                report = pipeline_visualization.RunReport(
+                    project_path, recipes[output_part].name,
+                    recipes[output_part].hash, output_part, sample,
+                    suffix=f"__at{end:08d}")
+                window_active.append(report)
+            window_reports[output_part] = report
+            combined = [existing for existing in (reports[output_part], report)
+                       if existing is not None]
+            part_sinks[output_part] = (
+                pipeline_visualization.PanelFanout(combined) if len(combined) > 1
+                else (combined[0] if combined else None))
+        shared_sink = (pipeline_visualization.PanelFanout(active + window_active)
+                      if (active or window_active) else None)
+
+    rotate_windows(0)
 
     def flush(output_part):
         rows = batches[output_part]
@@ -393,6 +465,10 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
         if visualize_every and (index + 1) % visualize_every == 0:
             for report in active:
                 report.save()
+            for report in window_reports.values():
+                if report is not None:
+                    report.save()
+            rotate_windows(index + 1)
 
     with ImageStore(project_path, readonly=True) as images:
         for index, occurrence_id in enumerate(todo):
@@ -445,7 +521,7 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
                     # Past the fork, panels are this part's alone: the fanout
                     # was only right while the work was genuinely shared.
                     state.panel_sink = pipeline_visualization.panel_sink(
-                        reports[output_part], occurrence_id)
+                        part_sinks[output_part], occurrence_id)
                     score = None
                     for operation in recipe.operations[len(shared):]:
                         state, info = operation(state)
@@ -486,6 +562,11 @@ def run_segments(project_path, steps=None, run_name="segments", part=DEFAULT_PAR
 
     for report in active:
         report.save()
+    # A run that completes without landing exactly on a checkpoint boundary
+    # still leaves a grid for its trailing partial window.
+    for report in window_reports.values():
+        if report is not None:
+            report.save()
 
     for output_part in recipes:
         flush(output_part)

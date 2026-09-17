@@ -130,6 +130,34 @@ def load_model(project_path, name):
     return RegisteredModel(registry[str(name)], project_path)
 
 
+def load_and_attach(project_path, name, factory, **extra_kwargs):
+    """
+    Load a registered model and bind a freshly built runtime to it, in one call.
+
+    The load-record/pull-parameters/attach sequence every extension's own
+    loader needs is identical regardless of what it's loading; only the
+    construction itself is extension-specific, which is exactly what
+    `factory` supplies. Stays framework-agnostic like the rest of this
+    module: `factory` is the one place a real network gets built.
+
+    - `project_path`, `name` -- as `load_model()`.
+    - `factory` -- called as `factory(checkpoint_path, **parameters,
+      **extra_kwargs)` to construct the runtime. `parameters` is whatever
+      `register_model(parameters=...)` stored for this model, so an
+      extension's own construction knobs (encoder name, input size,
+      backbone, ...) round-trip automatically without this function
+      needing to know what they are.
+    - `extra_kwargs` -- passed to `factory` after `parameters`, so a caller
+      can override or add to what was stored (e.g. `device=`).
+
+    Returns a RegisteredModel with `factory`'s result attached.
+    """
+    registered = load_model(project_path, name)
+    parameters = dict(registered.record.get("parameters") or {})
+    parameters.update(extra_kwargs)
+    return registered.attach(factory(registered.path, **parameters))
+
+
 def list_models(project_path):
     """Every registered model as {name: record}, empty if none are registered."""
     return _load_registry(project_path)

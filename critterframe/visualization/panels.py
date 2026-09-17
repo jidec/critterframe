@@ -83,10 +83,16 @@ class PanelFiles:
 
     Files land in visualizations/<stage>/<occurrence_id>.png, one folder per
     stage, so one operation's output never mixes with another's.
+
+    prefix -- optional, namespaces every stage under
+             visualizations/<prefix>/<stage>/ instead, for a caller who runs
+             several batches of hand-built segments and needs each batch's
+             panels kept apart from the others.
     """
 
-    def __init__(self, project_path):
+    def __init__(self, project_path, prefix=""):
         self.project_path = project_path
+        self.prefix = prefix
         self.paths = []
 
     def wants(self, occurrence_id):
@@ -95,8 +101,9 @@ class PanelFiles:
 
     def collect(self, occurrence_id, stage, image):
         """Write one panel, recording its path on self.paths."""
+        subdir = f"{self.prefix}/{stage}" if self.prefix else stage
         dest = save_panel(self.project_path, image, str(occurrence_id),
-                          subdir=stage)
+                          subdir=subdir)
         self.paths.append(dest)
         return dest
 

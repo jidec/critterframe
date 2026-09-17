@@ -109,14 +109,15 @@ def test_runs_and_values_are_reported(measured_project):
 
 def test_runs_are_broken_down_by_name(measured_project):
     """
-    measured_project carries one segment run (default name 'segments') and one
-    metric run ('traits'), neither ever rerun -- so each gets exactly one
-    by_name row, and its current recipe is its only recipe.
+    measured_project carries one segment run (default name 'organism', the
+    part it produces) and one metric run ('traits'), neither ever rerun -- so
+    each gets exactly one by_name row, and its current recipe is its only
+    recipe.
     """
     by_name = {(row["kind"], row["name"]): row
                for row in summarize(measured_project)["runs"]["by_name"]}
 
-    assert set(by_name) == {("segment", "segments"), ("metric", "traits")}
+    assert set(by_name) == {("segment", "organism"), ("metric", "traits")}
     for row in by_name.values():
         assert row["part"] == "organism"
         assert row["n_runs"] == 1
@@ -145,7 +146,7 @@ def test_print_summary_lists_each_run_by_name(measured_project, capsys):
     cf.print_summary(measured_project)
     output = capsys.readouterr().out
 
-    assert "'segments'" in output
+    assert "'organism'" in output
     assert "'traits'" in output
 
 

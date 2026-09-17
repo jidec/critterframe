@@ -20,8 +20,15 @@ from ..metrics.quality import WARN_THRESHOLDS
 logger = logging.getLogger(__name__)
 
 # Annotation labels that mean "this occurrence should have been filtered" --
-# everything except the one label that means it's fine.
-BAD_FLAGS = ("not_an_organism", "cut_off", "multiple_organisms")
+# everything except the one label that means it's fine. Includes flags whose
+# organism still segments cleanly (wrong_life_stage, bad_angle, dead, blurry,
+# overexposed, underexposed, wrong_organism_for_project) alongside the ones
+# that mean no boundary exists at all -- metrics.annotation.FLAG_KEYS treats
+# both the same way today, so this does too.
+BAD_FLAGS = ("not_an_organism", "cut_off", "multiple_organisms",
+            "wrong_life_stage", "bad_angle", "dead", "broken_body",
+            "obscured", "blurry", "overexposed", "underexposed",
+            "wrong_organism_for_project")
 
 # How much genuinely good data a filter may throw away, unless told otherwise.
 # There has to be a default constraint of SOME kind: read with no constraint at
@@ -143,7 +150,7 @@ def _resolve_specs(metric_specs):
 
 
 def get_validated_filters(project_path, metric_specs, predicted_run,
-                          annotation_run, flag_metric="annotate_flags",
+                          annotation_run, flag_metric="usability_annotation",
                           part=DEFAULT_PART, bad_flags=BAD_FLAGS,
                           max_fpr=DEFAULT_MAX_FPR, min_precision=None,
                           defaults=None):
@@ -165,7 +172,7 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
       names; run and part prefixes are added for you.
     - `predicted_run` -- run the candidate QC metrics were computed under.
     - `annotation_run` -- run the human labels were recorded under.
-    - `flag_metric` -- metric holding those labels, `annotate_flags` by
+    - `flag_metric` -- metric holding those labels, `usability_annotation` by
       default. A dict-valued one needs the key too, as `"<metric>__<key>"`.
     - `part` -- part both runs measured.
     - `bad_flags` -- passed through to `sweep_thresholds`.

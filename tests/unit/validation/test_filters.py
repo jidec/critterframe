@@ -35,14 +35,14 @@ def labelled():
         "occurrence_id": [f"occ{index}" for index in range(10)],
         "qc__organism__blur_variance": [5.0, 8.0, 12.0, 20.0, 30.0,
                                         40.0, 50.0, 60.0, 70.0, 80.0],
-        "screening__organism__annotate_flags": [
+        "screening__organism__usability_annotation": [
             "not_an_organism", "cut_off", "cut_off", "usable", "usable",
             "usable", "usable", "usable", "usable", "usable"],
     })
 
 
 METRIC = "qc__organism__blur_variance"
-FLAG = "screening__organism__annotate_flags"
+FLAG = "screening__organism__usability_annotation"
 
 
 def sweep():

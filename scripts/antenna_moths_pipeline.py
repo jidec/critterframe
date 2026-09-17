@@ -118,7 +118,7 @@ cf.run_metrics(
     run_name="human_annotation_labels",
     subset="review",
     metrics=[
-        cf.annotate_flags(),
+        cf.usability_annotation(),
     ],
 )
 
@@ -134,7 +134,7 @@ cf.define_subset(
     "reference",
     occurrence_ids=cf.occurrences_matching(
         PROJECT_PATH, "human_annotation_labels",
-        {"annotate_flags": "usable"}),
+        {"usability_annotation": "usable"}),
 )
 
 # pass 2: reference data, over those only -- correct the mask and click the axis

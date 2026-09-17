@@ -434,7 +434,6 @@ def test_the_same_configuration_hashes_the_same():
 
 
 @pytest.mark.parametrize("difference", [
-    {"name": "other_run"},
     {"part": "wing"},
     {"from_part": "organism"},
     {"inputs": {"masks": "reference"}},
@@ -522,6 +521,39 @@ def test_a_panel_sink_is_not_part_of_a_segments_identity():
     on produces identical results, so a rerun must recognize the cached work.
     """
     assert base_recipe().hash == base_recipe().hash
+
+
+def test_renaming_a_run_does_not_move_the_hash():
+    """
+    name is a label a human picks, not something that changes what running the
+    recipe produces -- unlike a renamed metric's own metric_name (see
+    test_a_renamed_metric_moves_the_hash), which really is different work.
+    Hashing the run's own name would mean renaming forces every occurrence to
+    be treated as unfinished, and cascades a full resegmentation through every
+    from_part chain below it.
+    """
+    assert base_recipe(name="a").hash == base_recipe(name="b").hash
+
+
+def test_requires_mask_is_not_part_of_identity():
+    """
+    Like Segmentation.deterministic, this changes which occurrences a run
+    reaches, not what a given occurrence's value is -- hashing it would move
+    every recipe hash already stored for a reason that has nothing to do
+    with it.
+    """
+    needs_one = Metric("thing", None, version="1", requires_mask=True)
+    does_not = Metric("thing", None, version="1", requires_mask=False)
+    assert needs_one.spec() == does_not.spec()
+
+
+def test_name_still_appears_in_spec_even_though_not_hashed():
+    """
+    spec() is what's stored on a run record and shown by describe_run() --
+    dropping name from the HASH must not drop it from the description too.
+    """
+    assert base_recipe(name="a").spec()["name"] == "a"
+    assert base_recipe(name="b").spec()["name"] == "b"
 
 
 def test_describe_carries_the_spec_as_well_as_the_hash():

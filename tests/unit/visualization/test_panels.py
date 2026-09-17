@@ -145,6 +145,18 @@ def test_panel_files_writes_one_file_per_stage(tmp_path):
     assert len(written) == 2
 
 
+def test_panel_files_prefix_namespaces_every_stage(tmp_path):
+    """
+    A caller running several batches of hand-built segments -- a parameter
+    sweep, say -- needs each batch's panels kept apart from the others.
+    """
+    sink = PanelFiles(tmp_path, prefix="sweep_a")
+    dest = sink.collect("specimen0", "orientation", an_image())
+
+    assert dest.parent == paths.visualizations_dir(tmp_path, "sweep_a/orientation")
+    assert not paths.visualizations_dir(tmp_path, "orientation").exists()
+
+
 def test_panel_files_wants_every_occurrence(tmp_path):
     """
     Unlike a run's report, which wants only its sample: this sink exists for

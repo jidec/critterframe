@@ -100,13 +100,64 @@ def test_a_skipped_occurrence_keeps_the_shape_with_nothing_in_it():
 # ---------------------------------------------------------------------------
 
 
-def test_the_four_flags_are_the_reasons_worth_telling_apart():
+def test_the_flags_are_the_reasons_worth_telling_apart():
     """
     A metric that catches every cut-off organism while missing every
     non-organism is a different instrument from one aggregate "bad" rate.
     """
-    assert set(FLAG_KEYS.values()) == {"usable", "not_an_organism", "cut_off",
-                                       "multiple_organisms"}
+    assert set(FLAG_KEYS.values()) == {
+        "usable", "not_an_organism", "cut_off", "multiple_organisms",
+        "wrong_life_stage", "bad_angle", "dead", "broken_body", "obscured",
+        "blurry", "overexposed", "underexposed", "wrong_organism_for_project",
+    }
+
+
+def test_every_key_is_distinct():
+    """cv2.waitKey returns a byte; two flags sharing a key would make one
+    unreachable without any error saying so."""
+    assert len(FLAG_KEYS) == len(set(FLAG_KEYS.values()))
+
+
+def test_the_legend_covers_every_flag_exactly_once():
+    """
+    Generated from FLAG_KEYS rather than hand-typed, so the on-screen prompt
+    and the stored vocabulary can never drift apart -- see _legend_lines.
+    """
+    from critterframe.metrics.annotation import _legend_lines
+
+    shown = " ".join(_legend_lines()).split()
+    assert len(shown) == len(FLAG_KEYS)
+    assert {entry.split("=", 1)[1] for entry in shown} == set(FLAG_KEYS.values())
+
+
+def test_usability_annotation_does_not_require_a_mask():
+    """
+    The whole point of it being the SCREENING pass: it has to be runnable
+    before segmentation, not after.
+    """
+    assert cf.usability_annotation().requires_mask is False
+
+
+def test_click_two_points_still_requires_a_mask():
+    """It clicks points ON the segment, so unlike usability_annotation there's
+    nothing to click without one."""
+    assert cf.click_two_points().requires_mask is True
+
+
+def test_the_panel_falls_back_to_the_image_alone_without_a_mask():
+    from critterframe.metrics.annotation import _panel
+
+    image = np.zeros((10, 10, 3), np.uint8)
+    panel = _panel(Segment(image, occurrence_id="x"))
+    assert panel.shape == image.shape
+
+
+def test_the_panel_is_the_wider_side_by_side_view_with_a_mask():
+    from critterframe.metrics.annotation import _panel
+
+    panel = _panel(a_segment())
+    # side_by_side of three 100x100 panels is much wider than any one of them.
+    assert panel.shape[1] > 100 * 2
 
 
 def test_point_labels_must_be_two_and_distinct():
@@ -126,7 +177,7 @@ def test_the_labels_are_part_of_the_recipe():
 
 
 def test_a_label_metric_is_a_category_not_a_measurement():
-    assert cf.annotate_flags().unit == "category"
+    assert cf.usability_annotation().unit == "category"
     assert cf.click_two_points().unit == "px_xy"
 
 
@@ -149,8 +200,17 @@ def test_click_units_do_not_convert_to_millimetres():
 @pytest.mark.parametrize("key, expected", sorted(FLAG_KEYS.items()))
 def test_each_key_records_its_flag(gui, key, expected):
     fake = gui(keys=[key])
-    assert cf.annotate_flags()(a_segment()) == expected
+    assert cf.usability_annotation()(a_segment()) == expected
     assert fake.shown, "the annotator was never shown anything"
+
+
+def test_it_works_end_to_end_on_a_segment_with_no_mask(gui):
+    """The real point of requires_mask=False: this has to be usable on a
+    fresh, unsegmented occurrence, not just tolerate one in theory."""
+    fake = gui(keys=[ord("7")])   # 7 = dead
+    image = np.zeros((10, 10, 3), np.uint8)
+    assert cf.usability_annotation()(Segment(image, occurrence_id="x")) == "dead"
+    assert fake.shown
 
 
 def test_a_key_that_means_nothing_is_ignored_rather_than_recorded(gui):
@@ -159,12 +219,12 @@ def test_a_key_that_means_nothing_is_ignored_rather_than_recorded(gui):
     the valid keys.
     """
     gui(keys=[ord("z"), ord("q"), ord("1")])
-    assert cf.annotate_flags()(a_segment()) == "usable"
+    assert cf.usability_annotation()(a_segment()) == "usable"
 
 
 def test_the_window_is_closed_afterwards(gui):
     fake = gui(keys=[ord("1")])
-    cf.annotate_flags()(a_segment())
+    cf.usability_annotation()(a_segment())
     assert fake.destroyed
 
 
@@ -209,7 +269,7 @@ def test_a_stub_that_runs_dry_fails_instead_of_hanging(gui):
     """
     gui(keys=[])
     with pytest.raises(AssertionError, match="ran dry"):
-        cf.annotate_flags()(a_segment())
+        cf.usability_annotation()(a_segment())
 
 
 @pytest.mark.slow
@@ -221,15 +281,15 @@ def test_labels_run_and_store_like_any_other_metric(gui, segmented_project):
     """
     gui(keys=[ord("1")] * 8)
     first = cf.run_metrics(segmented_project, run_name="screening",
-                           metrics=[cf.annotate_flags()],
+                           metrics=[cf.usability_annotation()],
                            visualize=False)["organism"]
     assert first["processed"] == 8
 
     gui(keys=[])            # a second pass must ask nobody anything
     second = cf.run_metrics(segmented_project, run_name="screening",
-                            metrics=[cf.annotate_flags()],
+                            metrics=[cf.usability_annotation()],
                             visualize=False)["organism"]
     assert second["skipped"] == 8
 
     exported = cf.export_metrics(segmented_project, runs=["screening"])
-    assert set(exported["screening__organism__annotate_flags"]) == {"usable"}
+    assert set(exported["screening__organism__usability_annotation"]) == {"usable"}

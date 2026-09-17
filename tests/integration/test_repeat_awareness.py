@@ -72,16 +72,43 @@ def test_a_changed_model_parameter_is_new_work(segmented_project):
     assert (result["processed"], result["skipped"]) == (SPECIMENS, 0)
 
 
-def test_a_changed_run_name_is_new_work(segmented_project):
+def test_a_renamed_run_is_not_new_work(segmented_project):
     """
-    Deliberately rerunning the same operations under a new name records a
-    genuinely new run rather than being skipped -- the name is part of identity
-    because it is also what the export column is called.
+    name is recorded on the run but not part of identity (see Recipe.hash) --
+    unlike a metric's run_name, nothing ever reads a segment mask BY run_name
+    (masks.parquet's key is occurrence_id+part, full stop), so recognizing
+    identical operations under a new name as the same work is a pure win: the
+    run is recorded, but nothing is recomputed and the canonical mask stays
+    exactly as it was.
     """
     result = cf.run_segments(segmented_project, run_name="second_pass",
                              steps=[cf.segment(ThresholdModel())],
                              visualize=False)["organism"]
-    assert result["processed"] == SPECIMENS
+    assert (result["processed"], result["skipped"]) == (0, SPECIMENS)
+
+
+def test_a_default_named_canonical_and_reference_run_do_not_collide(segmented_project):
+    """
+    Both default to the same part ("organism") -- without folding reference
+    into the default, they'd default to the identical name, and since
+    resolve_recipe_currency is a no-op for segments nothing would catch a
+    reference pass silently reading as though it superseded the canonical
+    one in history.
+    """
+    canonical = run_records.load_runs(segmented_project, kind="segment").iloc[0]
+    assert canonical["name"] == "organism"   # from the segmented_project template
+
+    reference = cf.run_segments(segmented_project, from_part="organism",
+                                steps=[cf.segment(ThresholdModel())],
+                                reference=True, visualize=False)["organism"]
+    assert reference["processed"] == SPECIMENS
+
+    runs = run_records.load_runs(segmented_project, kind="segment")
+    assert set(runs["name"]) == {"organism", "organism_reference"}
+
+    # And the canonical recipe is still untouched and still recognized as done.
+    rerun = segment_run(segmented_project)
+    assert (rerun["processed"], rerun["skipped"]) == (0, SPECIMENS)
 
 
 def test_an_interrupted_run_resumes_where_it_stopped(image_project):
@@ -178,6 +205,82 @@ def test_an_identical_metric_rerun_does_no_work(segmented_project):
 
     assert (first["processed"], first["skipped"]) == (SPECIMENS, 0)
     assert (second["processed"], second["skipped"]) == (0, SPECIMENS)
+
+
+def test_a_renamed_metric_run_is_copied_and_its_own_column_is_populated(segmented_project):
+    """
+    Unlike a segment's run_name, a metric's run_name is the key every export
+    column and records.metrics.latest_values read values back by -- so a
+    rename must not silently do nothing (that would leave the new name's
+    column empty forever). Instead the existing values are copied onto the
+    new run_id: no model call, but the new name gets its own real rows.
+    """
+    metric_run(segmented_project)   # run_name="traits"
+    result = cf.run_metrics(segmented_project, run_name="traits_v2",
+                            metrics=[cf.body_length()], visualize=False)["organism"]
+    assert (result["processed"], result["copied"]) == (0, SPECIMENS)
+
+    original = cf.load_metrics(segmented_project, run_names=["traits"])
+    renamed = cf.load_metrics(segmented_project, run_names=["traits_v2"])
+    assert len(renamed) == SPECIMENS
+    assert set(renamed["value"]) == set(original["value"])
+
+
+# ---------------------------------------------------------------------------
+# Group metrics: the reference population, not just the recipe, decides
+# whether a stored score is still current.
+# ---------------------------------------------------------------------------
+
+
+def outlier_run(project_path, run_name="species_qc", **kwargs):
+    kwargs.setdefault("visualize", False)
+    return cf.run_metrics(
+        project_path, run_name=run_name,
+        metrics=[cf.outlier(features=[cf.body_length()], from_run="traits")],
+        **kwargs,
+    )["organism"]
+
+
+def test_a_group_metric_rerun_after_the_population_grows_rescopes_everything(
+        segmented_project):
+    """
+    prepare() fits against context.occurrence_ids, which is deliberately not
+    part of the hash -- so growing the reference population from 5 to 8 must
+    invalidate the first 5's scores, fit against a population that no longer
+    describes the project, rather than leaving them silently stale.
+    """
+    metric_run(segmented_project)   # 'traits': body_length for all 8
+
+    first = outlier_run(segmented_project, limit=5)
+    assert first["processed"] == 5
+
+    second = outlier_run(segmented_project)
+    assert second["processed"] == SPECIMENS
+    assert second["copied"] == 0
+
+
+def test_a_group_metric_run_under_a_new_name_with_the_same_population_is_copied(
+        segmented_project):
+    metric_run(segmented_project)
+    first = outlier_run(segmented_project, run_name="species_qc")
+    assert first["processed"] == SPECIMENS
+
+    second = outlier_run(segmented_project, run_name="species_qc_v2")
+    assert (second["processed"], second["copied"]) == (0, SPECIMENS)
+
+
+def test_a_group_metric_run_under_a_new_name_with_a_different_population_recomputes(
+        segmented_project):
+    """
+    A narrower population is a different fit, even at an unchanged recipe_hash
+    -- copying the wider run's values here would attribute a score to a model
+    this narrower run never actually fit.
+    """
+    metric_run(segmented_project)
+    outlier_run(segmented_project, run_name="species_qc")
+
+    result = outlier_run(segmented_project, run_name="species_qc_v2", limit=5)
+    assert (result["processed"], result["copied"]) == (5, 0)
 
 
 def test_adding_a_metric_to_a_recipe_is_new_work(segmented_project):

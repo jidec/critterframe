@@ -9,6 +9,13 @@ column, an occurrence per row. There is no per-occurrence file mode: a
 The sample is deterministic, so two versions of a recipe show the same
 specimens and can be compared cell by cell. A grid can only show work that
 happened, so a fully cached rerun writes none.
+
+`visualize_every` adds a second, independent series of checkpoint grids
+alongside the one deterministic sample above: each window resamples fresh
+from whatever that window actually processed (see `RunReport.suffix`), so a
+long run's checkpoints always have real content to show even when the fixed
+whole-population sample hasn't been reached yet, and each checkpoint writes
+its own file rather than overwriting the last.
 """
 
 import logging
@@ -81,10 +88,15 @@ class RunReport:
     recipe_hash  -- identity of the recipe whose behaviour this shows.
     part         -- the part being produced or measured.
     sample       -- occurrence ids to collect from, in row order.
+    suffix       -- appended to the filename (see paths.pipeline_grid_path).
+                    None for the run's one canonical grid; a checkpoint label
+                    (e.g. `__at00012500`) for one of visualize_every's
+                    per-window reports, so each window's grid is its own file.
     """
 
     def __init__(self, project_path, name, recipe_hash, part, sample,
-                 cell=grids.DEFAULT_CELL, columns=grids.DEFAULT_COLUMNS):
+                 cell=grids.DEFAULT_CELL, columns=grids.DEFAULT_COLUMNS,
+                 suffix=None):
         self.project_path = project_path
         self.name = name
         self.recipe_hash = recipe_hash
@@ -92,6 +104,7 @@ class RunReport:
         self.sample = [str(occurrence_id) for occurrence_id in sample]
         self.cell = cell
         self.columns = columns
+        self.suffix = suffix
 
         self._sample_set = set(self.sample)
         self._panels = {}     # occurrence_id -> {stage: fitted panel}
@@ -186,7 +199,8 @@ class RunReport:
         # name; deciding which part counts as default is this layer's call.
         dest = paths.pipeline_grid_path(
             self.project_path, self.name, self.recipe_hash,
-            part=None if self.part == DEFAULT_PART else self.part)
+            part=None if self.part == DEFAULT_PART else self.part,
+            suffix=self.suffix)
         dest.parent.mkdir(parents=True, exist_ok=True)
 
         cv2.imwrite(str(dest), grid, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])

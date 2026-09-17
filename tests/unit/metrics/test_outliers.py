@@ -383,7 +383,7 @@ def test_a_metric_run_stores_the_fit_on_the_run(measured_project):
     """
     from critterframe.records.runs import load_runs
 
-    cf.run_metrics(measured_project, "scores",
+    cf.run_metrics(measured_project, run_name="scores",
                    metrics=[cf.outlier([cf.body_length()], from_run="traits",
                                        group_col="species")],
                    visualize=False)
