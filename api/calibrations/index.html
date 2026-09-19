@@ -1,0 +1,3084 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/calibrations/">
+      
+      
+        <link rel="prev" href="../metrics/">
+      
+      
+        <link rel="next" href="../validation/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>calibrations - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.calibrations" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              calibrations
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    public package-level API (for composing pipelines)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/failures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    failures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.calibrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calibrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="calibrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="scale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.click_scale_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_scale_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.declare_scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        declare_scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.image_digest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_digest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.make_scale_row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        make_scale_row
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.measure_scale_by_hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        measure_scale_by_hand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.measure_scales" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        measure_scales
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.pending_scope_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pending_scope_values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_for_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_for_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_from_click" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_from_click
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_from_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_from_target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.calibrations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        calibrations
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="calibrations">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="scale">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.click_scale_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        click_scale_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.declare_scale" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        declare_scale
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.image_digest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        image_digest
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.make_scale_row" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        make_scale_row
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.measure_scale_by_hand" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        measure_scale_by_hand
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.measure_scales" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        measure_scales
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.pending_scope_values" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        pending_scope_values
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_for_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_for_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_from_click" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_from_click
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_from_target" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_from_target
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.calibrations.scale.scale_panel" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        scale_panel
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/calibrations.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>calibrations</h1>
+
+<div class="admonition note">
+<p class="admonition-title">For extending the package</p>
+<p>Documents every public member of <code>critterframe.calibrations</code>, not just what <code>cf.*</code> re-exports. See the
+<a href="../">pipeline reference</a> for what a pipeline calls directly.</p>
+</div>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.calibrations" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.calibrations</span>
+
+
+<a href="#critterframe.calibrations" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Calibration: recovering what an image can't tell you on its own.</p>
+<p>An image records pixels and relative colours. Turning those into physical
+lengths, or into colours comparable across two cameras, needs something in the
+frame whose true properties are known -- a target of measured size, a colour
+checker with published patches -- or a rig whose behaviour was established
+elsewhere. Recovering that relationship is what this package does.</p>
+<p>One module per kind of calibration, because the kinds have almost nothing in
+common except their bookkeeping:</p>
+<p>scale -- pixels per millimetre, from a target of known width.
+  color -- not written yet. When it is, it lands beside scale.py rather than
+           inside it: a colour correction is a method, a matrix, an offset and
+           an illuminant, and pretending it's shaped like one number would
+           distort both.</p>
+<p>The bookkeeping they DO share -- which occurrences a calibration applies to,
+where it came from, and how it's stored -- is <code>records.calibrations</code>, and it is
+deliberately incurious about the payload. That split is the whole design: this
+package knows what a calibration MEANS, that one knows who it applies TO.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h3 id="critterframe.calibrations.scale" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">scale</span>
+
+
+<a href="#critterframe.calibrations.scale" class="headerlink" title="Permanent link">&para;</a></h3>
+
+    <div class="doc doc-contents ">
+
+        <p>px/mm from a target of known size in the frame, matched automatically or
+clicked by hand.</p>
+<p>scale_from_target()'s detector is generic: target, size, and search region are
+all arguments. A weak match is accepted but warned about, since clutter can
+out-correlate an absent target and a plausible wrong scale is worse than none
+-- a high match score is NOT evidence the millimetres are right, so check the
+panel.</p>
+<p>The template must be cropped tight to the target's outer edge: the matched
+width IS the measurement, so margin in the template measures the margin too.</p>
+<p>scale_from_click() is the by-hand alternative for a scale object not worth
+writing a detector for -- an irregular ruler, a printed scale bar on a
+light-trap sheet -- where a person looking at the image is faster and no less
+reliable than a template match. measure_scale_by_hand() is the recording half:
+one click-through of one scene image, applied to many occurrences at once.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.click_scale_panel" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">click_scale_panel</span>
+
+
+<a href="#critterframe.calibrations.scale.click_scale_panel" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">click_scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The measurement drawn on the image: the two clicked points, the line
+between them, and the resulting px/mm -- scale_panel()'s counterpart for a
+by-hand measurement instead of a matched target.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">click_scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The measurement drawn on the image: the two clicked points, the line</span>
+<span class="sd">    between them, and the resulting px/mm -- scale_panel()'s counterpart for a</span>
+<span class="sd">    by-hand measurement instead of a matched target.</span>
+<span class="sd">    """</span>
+    <span class="n">panel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">panel</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">panel</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+
+    <span class="n">point_a</span><span class="p">,</span> <span class="n">point_b</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"point_a"</span><span class="p">]),</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"point_b"</span><span class="p">])</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">point_a</span><span class="p">,</span> <span class="n">point_b</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">point_a</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">point_b</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">annotate</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'px_per_mm'</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> px/mm  (</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'length_px'</span><span class="p">]</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">px)"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">panel</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.declare_scale" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">declare_scale</span>
+
+
+<a href="#critterframe.calibrations.scale.declare_scale" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">declare_scale</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span> <span class="n">scope_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">measured_from</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Record a scale you already know, rather than one measured off an image.</p>
+<p>For a rig whose calibration is a fact about the equipment: a copy stand at a
+fixed height, a microscope objective, a scanner at a stated dpi. There's
+nothing to detect in those images and no reason to pretend otherwise.</p>
+<ul>
+<li><code>project_path</code> -- project to record it in.</li>
+<li><code>px_per_mm</code> -- pixels per millimetre.</li>
+<li><code>scope</code> -- occurrence column this applies across; <code>ID_COL</code> (the default)
+  means one occurrence.</li>
+<li><code>scope_value</code> -- the value in that column. Required.</li>
+</ul>
+<p>A scanner's dpi converts as px_per_mm = dpi / 25.4.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">declare_scale</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span> <span class="n">scope_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                  <span class="n">measured_from</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Record a scale you already know, rather than one measured off an image.</span>
+
+<span class="sd">    For a rig whose calibration is a fact about the equipment: a copy stand at a</span>
+<span class="sd">    fixed height, a microscope objective, a scanner at a stated dpi. There's</span>
+<span class="sd">    nothing to detect in those images and no reason to pretend otherwise.</span>
+
+<span class="sd">    - `project_path` -- project to record it in.</span>
+<span class="sd">    - `px_per_mm` -- pixels per millimetre.</span>
+<span class="sd">    - `scope` -- occurrence column this applies across; `ID_COL` (the default)</span>
+<span class="sd">      means one occurrence.</span>
+<span class="sd">    - `scope_value` -- the value in that column. Required.</span>
+
+<span class="sd">    A scanner's dpi converts as px_per_mm = dpi / 25.4.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">scope_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"declare_scale needs a scope_value -- which occurrence, session, or "</span>
+            <span class="sa">f</span><span class="s2">"device is </span><span class="si">{</span><span class="n">px_per_mm</span><span class="si">}</span><span class="s2"> px/mm true of?"</span>
+        <span class="p">)</span>
+
+    <span class="n">row</span> <span class="o">=</span> <span class="n">make_scale_row</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">scope_value</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s2">"declared"</span><span class="p">,</span>
+                         <span class="n">measured_from</span><span class="o">=</span><span class="n">measured_from</span><span class="p">)</span>
+    <span class="n">calibration_records</span><span class="o">.</span><span class="n">save_calibrations</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="p">[</span><span class="n">row</span><span class="p">])</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"declared </span><span class="si">%.4f</span><span class="s2"> px/mm for </span><span class="si">%s</span><span class="s2">=</span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">scope_value</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">row</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.image_digest" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">image_digest</span>
+
+
+<a href="#critterframe.calibrations.scale.image_digest" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">image_digest</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A short digest of an image array's shape and pixels, for naming what a calibration measured.</p>
+<ul>
+<li><code>image</code> -- any numpy array.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span>
+<span class="normal">445</span>
+<span class="normal">446</span>
+<span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">image_digest</span><span class="p">(</span><span class="n">image</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A short digest of an image array's shape and pixels, for naming what a calibration measured.</span>
+
+<span class="sd">    - `image` -- any numpy array.</span>
+<span class="sd">    """</span>
+    <span class="n">array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ascontiguousarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">digest</span> <span class="o">=</span> <span class="n">hashlib</span><span class="o">.</span><span class="n">sha256</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s2">"utf-8"</span><span class="p">))</span>
+    <span class="n">digest</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">array</span><span class="o">.</span><span class="n">tobytes</span><span class="p">())</span>
+    <span class="k">return</span> <span class="n">digest</span><span class="o">.</span><span class="n">hexdigest</span><span class="p">()[:</span><span class="mi">16</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.make_scale_row" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">make_scale_row</span>
+
+
+<a href="#critterframe.calibrations.scale.make_scale_row" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">make_scale_row</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">scope_value</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">score</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">measured_from</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Build one scale calibration record, ready for
+records.calibrations.save_calibrations.</p>
+<p>The type-specific wrapper around a generic row: it knows the
+calibration_type, it knows the parameter is called px_per_mm, and it knows
+what a valid one looks like. The record layer knows none of those and
+shouldn't -- validating a colour matrix and validating a scale have nothing
+in common but the word.</p>
+<p>px_per_mm must be positive. A zero or negative scale is a failed
+measurement that got written by mistake, and dividing by it later produces
+infinities in a trait table rather than an error anyone notices.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">make_scale_row</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">scope_value</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">source</span><span class="p">,</span> <span class="n">score</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="n">measured_from</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Build one scale calibration record, ready for</span>
+<span class="sd">    records.calibrations.save_calibrations.</span>
+
+<span class="sd">    The type-specific wrapper around a generic row: it knows the</span>
+<span class="sd">    calibration_type, it knows the parameter is called px_per_mm, and it knows</span>
+<span class="sd">    what a valid one looks like. The record layer knows none of those and</span>
+<span class="sd">    shouldn't -- validating a colour matrix and validating a scale have nothing</span>
+<span class="sd">    in common but the word.</span>
+
+<span class="sd">    px_per_mm must be positive. A zero or negative scale is a failed</span>
+<span class="sd">    measurement that got written by mistake, and dividing by it later produces</span>
+<span class="sd">    infinities in a trait table rather than an error anyone notices.</span>
+<span class="sd">    """</span>
+    <span class="n">px_per_mm</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">px_per_mm</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">px_per_mm</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"px_per_mm must be positive, got </span><span class="si">{</span><span class="n">px_per_mm</span><span class="si">}</span><span class="s2"> for "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">scope</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">scope_value</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">calibration_records</span><span class="o">.</span><span class="n">make_calibration_row</span><span class="p">(</span>
+        <span class="n">CALIBRATION_TYPE</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">scope_value</span><span class="p">,</span> <span class="p">{</span><span class="n">SCALE_COL</span><span class="p">:</span> <span class="n">px_per_mm</span><span class="p">},</span>
+        <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span> <span class="n">score</span><span class="o">=</span><span class="n">score</span><span class="p">,</span> <span class="n">measured_from</span><span class="o">=</span><span class="n">measured_from</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.measure_scale_by_hand" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">measure_scale_by_hand</span>
+
+
+<a href="#critterframe.calibrations.scale.measure_scale_by_hand" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">measure_scale_by_hand</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">target_mm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span> <span class="n">scope_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">source</span><span class="o">=</span><span class="s1">'clicked'</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_display</span><span class="o">=</span><span class="n">DEFAULT_MAX_DISPLAY</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Click two points spanning a known length in a standalone scene image --
+e.g. a light-trap sheet's printed scale bar -- and record the resulting
+scale for the occurrences it covers.</p>
+<p>Measures ONCE and applies the same px_per_mm broadly, unlike
+scale_from_target()/measure_scales(), which need the scale object to sit
+INSIDE every occurrence's own image. Here it lives in a separate scene
+image nothing in the ImageStore corresponds to, so <code>image</code> is loaded by
+the caller (see scale_from_click) rather than read from the project.</p>
+<ul>
+<li><code>project_path</code> -- project to record the calibration in.</li>
+<li><code>image</code> -- BGR (or grayscale) array showing the scale object.</li>
+<li><code>target_mm</code> -- the object's real length in millimetres; None prompts
+  for it after the two points are clicked.</li>
+<li><code>scope</code> -- occurrence column the resulting row(s) are keyed on.
+  <code>ID_COL</code>, the default, writes one row per occurrence named by
+  <code>occurrence_ids</code>/<code>subset</code> -- every occurrence currently in the project
+  when both are None, which is what "one scale bar for the whole
+  deployment" usually means. Name an existing column instead (e.g.
+  <code>"device"</code>, <code>"session_path"</code>) for one row covering everything sharing
+  <code>scope_value</code> -- pass <code>scope_value</code>, not <code>occurrence_ids</code> or <code>subset</code>,
+  in that case.</li>
+<li><code>scope_value</code> -- required when <code>scope</code> isn't <code>ID_COL</code>: the value in
+  <code>scope</code> this measurement covers. Rejected when <code>scope</code> is <code>ID_COL</code>,
+  where <code>occurrence_ids</code>/<code>subset</code> says the same thing instead.</li>
+<li><code>occurrence_ids</code>, <code>subset</code> -- with <code>scope=ID_COL</code>, which occurrences
+  this measurement covers; pass at most one. Both None means every
+  occurrence in the project.</li>
+<li><code>source</code> -- recorded as this calibration's provenance; <code>"clicked"</code> by
+  default, distinguishing a by-hand measurement from an automated match
+  (<code>"target"</code>) or an asserted fact (<code>"declared"</code>).</li>
+<li><code>name</code> -- shown in the window title, the log line, and recorded as
+  <code>measured_from</code>.</li>
+<li><code>visualize</code> -- True (default): a one-panel pipeline grid of the clicked
+  points and the resulting px/mm. False writes nothing.</li>
+<li><code>force</code> -- re-measure and overwrite occurrences/scope values that
+  already have a scale. Repeat-aware like <code>measure_scales()</code> otherwise:
+  only what has no scale yet counts toward what gets written, so a rerun
+  after adding new occurrences only asks to click once more, not measure
+  everyone again.</li>
+<li><code>max_display</code> -- passed through to <code>scale_from_click()</code>; shrinks the
+  window so a full-resolution scene image fits on screen.</li>
+</ul>
+<p>Returns scale_from_click()'s result dict with <code>covered</code> added -- how many
+rows were written -- or None if cancelled (nothing is recorded) or if
+everything named was already covered (nothing to click for).</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">575</span>
+<span class="normal">576</span>
+<span class="normal">577</span>
+<span class="normal">578</span>
+<span class="normal">579</span>
+<span class="normal">580</span>
+<span class="normal">581</span>
+<span class="normal">582</span>
+<span class="normal">583</span>
+<span class="normal">584</span>
+<span class="normal">585</span>
+<span class="normal">586</span>
+<span class="normal">587</span>
+<span class="normal">588</span>
+<span class="normal">589</span>
+<span class="normal">590</span>
+<span class="normal">591</span>
+<span class="normal">592</span>
+<span class="normal">593</span>
+<span class="normal">594</span>
+<span class="normal">595</span>
+<span class="normal">596</span>
+<span class="normal">597</span>
+<span class="normal">598</span>
+<span class="normal">599</span>
+<span class="normal">600</span>
+<span class="normal">601</span>
+<span class="normal">602</span>
+<span class="normal">603</span>
+<span class="normal">604</span>
+<span class="normal">605</span>
+<span class="normal">606</span>
+<span class="normal">607</span>
+<span class="normal">608</span>
+<span class="normal">609</span>
+<span class="normal">610</span>
+<span class="normal">611</span>
+<span class="normal">612</span>
+<span class="normal">613</span>
+<span class="normal">614</span>
+<span class="normal">615</span>
+<span class="normal">616</span>
+<span class="normal">617</span>
+<span class="normal">618</span>
+<span class="normal">619</span>
+<span class="normal">620</span>
+<span class="normal">621</span>
+<span class="normal">622</span>
+<span class="normal">623</span>
+<span class="normal">624</span>
+<span class="normal">625</span>
+<span class="normal">626</span>
+<span class="normal">627</span>
+<span class="normal">628</span>
+<span class="normal">629</span>
+<span class="normal">630</span>
+<span class="normal">631</span>
+<span class="normal">632</span>
+<span class="normal">633</span>
+<span class="normal">634</span>
+<span class="normal">635</span>
+<span class="normal">636</span>
+<span class="normal">637</span>
+<span class="normal">638</span>
+<span class="normal">639</span>
+<span class="normal">640</span>
+<span class="normal">641</span>
+<span class="normal">642</span>
+<span class="normal">643</span>
+<span class="normal">644</span>
+<span class="normal">645</span>
+<span class="normal">646</span>
+<span class="normal">647</span>
+<span class="normal">648</span>
+<span class="normal">649</span>
+<span class="normal">650</span>
+<span class="normal">651</span>
+<span class="normal">652</span>
+<span class="normal">653</span>
+<span class="normal">654</span>
+<span class="normal">655</span>
+<span class="normal">656</span>
+<span class="normal">657</span>
+<span class="normal">658</span>
+<span class="normal">659</span>
+<span class="normal">660</span>
+<span class="normal">661</span>
+<span class="normal">662</span>
+<span class="normal">663</span>
+<span class="normal">664</span>
+<span class="normal">665</span>
+<span class="normal">666</span>
+<span class="normal">667</span>
+<span class="normal">668</span>
+<span class="normal">669</span>
+<span class="normal">670</span>
+<span class="normal">671</span>
+<span class="normal">672</span>
+<span class="normal">673</span>
+<span class="normal">674</span>
+<span class="normal">675</span>
+<span class="normal">676</span>
+<span class="normal">677</span>
+<span class="normal">678</span>
+<span class="normal">679</span>
+<span class="normal">680</span>
+<span class="normal">681</span>
+<span class="normal">682</span>
+<span class="normal">683</span>
+<span class="normal">684</span>
+<span class="normal">685</span>
+<span class="normal">686</span>
+<span class="normal">687</span>
+<span class="normal">688</span>
+<span class="normal">689</span>
+<span class="normal">690</span>
+<span class="normal">691</span>
+<span class="normal">692</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">measure_scale_by_hand</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">image</span><span class="p">,</span> <span class="n">target_mm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span>
+                          <span class="n">scope_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                          <span class="n">source</span><span class="o">=</span><span class="s2">"clicked"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                          <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">max_display</span><span class="o">=</span><span class="n">DEFAULT_MAX_DISPLAY</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Click two points spanning a known length in a standalone scene image --</span>
+<span class="sd">    e.g. a light-trap sheet's printed scale bar -- and record the resulting</span>
+<span class="sd">    scale for the occurrences it covers.</span>
+
+<span class="sd">    Measures ONCE and applies the same px_per_mm broadly, unlike</span>
+<span class="sd">    scale_from_target()/measure_scales(), which need the scale object to sit</span>
+<span class="sd">    INSIDE every occurrence's own image. Here it lives in a separate scene</span>
+<span class="sd">    image nothing in the ImageStore corresponds to, so `image` is loaded by</span>
+<span class="sd">    the caller (see scale_from_click) rather than read from the project.</span>
+
+<span class="sd">    - `project_path` -- project to record the calibration in.</span>
+<span class="sd">    - `image` -- BGR (or grayscale) array showing the scale object.</span>
+<span class="sd">    - `target_mm` -- the object's real length in millimetres; None prompts</span>
+<span class="sd">      for it after the two points are clicked.</span>
+<span class="sd">    - `scope` -- occurrence column the resulting row(s) are keyed on.</span>
+<span class="sd">      `ID_COL`, the default, writes one row per occurrence named by</span>
+<span class="sd">      `occurrence_ids`/`subset` -- every occurrence currently in the project</span>
+<span class="sd">      when both are None, which is what "one scale bar for the whole</span>
+<span class="sd">      deployment" usually means. Name an existing column instead (e.g.</span>
+<span class="sd">      `"device"`, `"session_path"`) for one row covering everything sharing</span>
+<span class="sd">      `scope_value` -- pass `scope_value`, not `occurrence_ids` or `subset`,</span>
+<span class="sd">      in that case.</span>
+<span class="sd">    - `scope_value` -- required when `scope` isn't `ID_COL`: the value in</span>
+<span class="sd">      `scope` this measurement covers. Rejected when `scope` is `ID_COL`,</span>
+<span class="sd">      where `occurrence_ids`/`subset` says the same thing instead.</span>
+<span class="sd">    - `occurrence_ids`, `subset` -- with `scope=ID_COL`, which occurrences</span>
+<span class="sd">      this measurement covers; pass at most one. Both None means every</span>
+<span class="sd">      occurrence in the project.</span>
+<span class="sd">    - `source` -- recorded as this calibration's provenance; `"clicked"` by</span>
+<span class="sd">      default, distinguishing a by-hand measurement from an automated match</span>
+<span class="sd">      (`"target"`) or an asserted fact (`"declared"`).</span>
+<span class="sd">    - `name` -- shown in the window title, the log line, and recorded as</span>
+<span class="sd">      `measured_from`.</span>
+<span class="sd">    - `visualize` -- True (default): a one-panel pipeline grid of the clicked</span>
+<span class="sd">      points and the resulting px/mm. False writes nothing.</span>
+<span class="sd">    - `force` -- re-measure and overwrite occurrences/scope values that</span>
+<span class="sd">      already have a scale. Repeat-aware like `measure_scales()` otherwise:</span>
+<span class="sd">      only what has no scale yet counts toward what gets written, so a rerun</span>
+<span class="sd">      after adding new occurrences only asks to click once more, not measure</span>
+<span class="sd">      everyone again.</span>
+<span class="sd">    - `max_display` -- passed through to `scale_from_click()`; shrinks the</span>
+<span class="sd">      window so a full-resolution scene image fits on screen.</span>
+
+<span class="sd">    Returns scale_from_click()'s result dict with `covered` added -- how many</span>
+<span class="sd">    rows were written -- or None if cancelled (nothing is recorded) or if</span>
+<span class="sd">    everything named was already covered (nothing to click for).</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">scope</span> <span class="o">!=</span> <span class="n">ID_COL</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"occurrence_ids/subset only apply with scope=ID_COL -- pass "</span>
+                <span class="s2">"scope_value for any other scope"</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">scope_value</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"scope=</span><span class="si">{</span><span class="n">scope</span><span class="si">!r}</span><span class="s2"> needs a scope_value -- which </span><span class="si">{</span><span class="n">scope</span><span class="si">}</span><span class="s2"> is "</span>
+                <span class="s2">"this measurement true of?"</span>
+            <span class="p">)</span>
+        <span class="n">calibration_records</span><span class="o">.</span><span class="n">require_scope_column</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">scope_value</span><span class="p">)]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">scope_value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">"scope_value doesn't apply with scope=ID_COL -- pass "</span>
+                <span class="s2">"occurrence_ids or subset instead"</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">subset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"pass occurrence_ids or subset, not both"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">occurrence_ids</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="p">[</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">targets</span> <span class="o">=</span> <span class="n">subset_selection</span><span class="o">.</span><span class="n">select_ids</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">force</span><span class="p">:</span>
+        <span class="n">skipped</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">measured</span> <span class="o">=</span> <span class="n">_measured_values</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+        <span class="n">pending</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">targets</span> <span class="k">if</span> <span class="n">value</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">measured</span><span class="p">]</span>
+        <span class="n">skipped</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">targets</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">pending</span><span class="p">)</span>
+        <span class="n">targets</span> <span class="o">=</span> <span class="n">pending</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">targets</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"every requested '</span><span class="si">%s</span><span class="s2">' value already has a scale -- "</span>
+                    <span class="s2">"nothing to measure"</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">scale_from_click</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">target_mm</span><span class="o">=</span><span class="n">target_mm</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span>
+                              <span class="n">max_display</span><span class="o">=</span><span class="n">max_display</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="k">if</span> <span class="n">visualize</span><span class="p">:</span>
+        <span class="n">item</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">"scene"</span>
+        <span class="n">identity</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"measure_scale_by_hand"</span><span class="p">,</span> <span class="s2">"image"</span><span class="p">:</span> <span class="n">image_digest</span><span class="p">(</span><span class="n">image</span><span class="p">),</span>
+                    <span class="s2">"name"</span><span class="p">:</span> <span class="n">name</span><span class="p">,</span> <span class="s2">"scope"</span><span class="p">:</span> <span class="n">scope</span><span class="p">,</span> <span class="s2">"scope_value"</span><span class="p">:</span> <span class="n">scope_value</span><span class="p">,</span>
+                    <span class="s2">"source"</span><span class="p">:</span> <span class="n">source</span><span class="p">,</span> <span class="s2">"target_mm"</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"target_mm"</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">)}</span>
+        <span class="k">with</span> <span class="n">pipeline_visualization</span><span class="o">.</span><span class="n">open_report</span><span class="p">(</span>
+                <span class="n">project_path</span><span class="p">,</span> <span class="s2">"measure_scale_by_hand"</span><span class="p">,</span> <span class="n">hash_spec</span><span class="p">(</span><span class="n">identity</span><span class="p">),</span>
+                <span class="n">visualize</span><span class="o">=</span><span class="p">[</span><span class="n">item</span><span class="p">],</span>
+                <span class="n">identity</span><span class="o">=</span><span class="n">identity</span><span class="p">)</span><span class="o">.</span><span class="n">begin</span><span class="p">([</span><span class="n">item</span><span class="p">])</span> <span class="k">as</span> <span class="n">report</span><span class="p">:</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">panel</span><span class="p">(</span><span class="n">item</span><span class="p">,</span> <span class="s2">"clicked"</span><span class="p">,</span> <span class="n">click_scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
+            <span class="n">report</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">item</span><span class="p">)</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="n">make_scale_row</span><span class="p">(</span><span class="n">scope</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s2">"px_per_mm"</span><span class="p">],</span> <span class="n">source</span><span class="o">=</span><span class="n">source</span><span class="p">,</span>
+                           <span class="n">measured_from</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+           <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">targets</span><span class="p">]</span>
+    <span class="n">calibration_records</span><span class="o">.</span><span class="n">save_calibrations</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"recorded </span><span class="si">%.4f</span><span class="s2"> px/mm for </span><span class="si">%d</span><span class="s2"> '</span><span class="si">%s</span><span class="s2">' value(s) (</span><span class="si">%d</span><span class="s2"> already covered)"</span><span class="p">,</span>
+               <span class="n">result</span><span class="p">[</span><span class="s2">"px_per_mm"</span><span class="p">],</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">),</span> <span class="n">scope</span><span class="p">,</span> <span class="n">skipped</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="o">**</span><span class="n">result</span><span class="p">,</span> <span class="s2">"covered"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.measure_scales" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">measure_scales</span>
+
+
+<a href="#critterframe.calibrations.scale.measure_scales" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">measure_scales</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">match_score_min</span><span class="o">=</span><span class="n">MATCH_SCORE_MIN</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_new</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Measure a scale target in each occurrence's own image and record the result.</p>
+<p>The per-image case: a specimen photographed with a target beside it. Where
+the target is on a separate image not in the store (a light-trap sheet the
+crops were cut from), measure that image yourself and write the row directly
+-- see the antenna_lighttraps extension.</p>
+<ul>
+<li><code>project_path</code> -- project to measure and record in.</li>
+<li><code>template</code> -- grayscale template, cropped tightly to the target.</li>
+<li><code>target_mm</code> -- the target's real width in millimetres.</li>
+<li><code>scope</code> -- occurrence column the rows are keyed on. <code>ID_COL</code> by
+  default, the honest answer when every frame is measured separately.
+  Naming a grouping column records one measurement as covering the whole
+  group, true only if the rig really was fixed.</li>
+<li><code>subset</code> -- named subset to restrict to.</li>
+<li><code>limit</code> -- cap on the occurrences CONSIDERED, applied before the
+  already-measured scope values are excluded -- the same meaning every
+  driver's <code>limit</code> has.</li>
+<li><code>max_new</code> -- cap on what is actually MEASURED, applied after that. The
+  "check a template works on ten of them first" argument, and the one
+  that measures ten more each time it runs.</li>
+<li><code>force</code> -- re-measure scope values that already have a scale.</li>
+<li><code>visualize</code> -- True (default) or an int: a pipeline grid of the
+  weakest template matches, weakest first, plus a px/mm histogram. A
+  list names scope values instead. False writes nothing.</li>
+</ul>
+<p>Returns a summary dict (see <code>segments.Tally.summary</code>) plus <code>missed</code>:
+images searched where no target matched at all.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span>
+<span class="normal">505</span>
+<span class="normal">506</span>
+<span class="normal">507</span>
+<span class="normal">508</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span>
+<span class="normal">512</span>
+<span class="normal">513</span>
+<span class="normal">514</span>
+<span class="normal">515</span>
+<span class="normal">516</span>
+<span class="normal">517</span>
+<span class="normal">518</span>
+<span class="normal">519</span>
+<span class="normal">520</span>
+<span class="normal">521</span>
+<span class="normal">522</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span>
+<span class="normal">569</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">measure_scales</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span> <span class="n">scope</span><span class="o">=</span><span class="n">ID_COL</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="n">match_score_min</span><span class="o">=</span><span class="n">MATCH_SCORE_MIN</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">limit</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                   <span class="n">max_new</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Measure a scale target in each occurrence's own image and record the result.</span>
+
+<span class="sd">    The per-image case: a specimen photographed with a target beside it. Where</span>
+<span class="sd">    the target is on a separate image not in the store (a light-trap sheet the</span>
+<span class="sd">    crops were cut from), measure that image yourself and write the row directly</span>
+<span class="sd">    -- see the antenna_lighttraps extension.</span>
+
+<span class="sd">    - `project_path` -- project to measure and record in.</span>
+<span class="sd">    - `template` -- grayscale template, cropped tightly to the target.</span>
+<span class="sd">    - `target_mm` -- the target's real width in millimetres.</span>
+<span class="sd">    - `scope` -- occurrence column the rows are keyed on. `ID_COL` by</span>
+<span class="sd">      default, the honest answer when every frame is measured separately.</span>
+<span class="sd">      Naming a grouping column records one measurement as covering the whole</span>
+<span class="sd">      group, true only if the rig really was fixed.</span>
+<span class="sd">    - `subset` -- named subset to restrict to.</span>
+<span class="sd">    - `limit` -- cap on the occurrences CONSIDERED, applied before the</span>
+<span class="sd">      already-measured scope values are excluded -- the same meaning every</span>
+<span class="sd">      driver's `limit` has.</span>
+<span class="sd">    - `max_new` -- cap on what is actually MEASURED, applied after that. The</span>
+<span class="sd">      "check a template works on ten of them first" argument, and the one</span>
+<span class="sd">      that measures ten more each time it runs.</span>
+<span class="sd">    - `force` -- re-measure scope values that already have a scale.</span>
+<span class="sd">    - `visualize` -- True (default) or an int: a pipeline grid of the</span>
+<span class="sd">      weakest template matches, weakest first, plus a px/mm histogram. A</span>
+<span class="sd">      list names scope values instead. False writes nothing.</span>
+
+<span class="sd">    Returns a summary dict (see `segments.Tally.summary`) plus `missed`:</span>
+<span class="sd">    images searched where no target matched at all.</span>
+<span class="sd">    """</span>
+    <span class="n">paths</span><span class="o">.</span><span class="n">require_project</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+
+    <span class="n">calibration_records</span><span class="o">.</span><span class="n">require_scope_column</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+    <span class="n">occurrences</span> <span class="o">=</span> <span class="n">subset_selection</span><span class="o">.</span><span class="n">select_occurrences</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="n">subset</span><span class="p">,</span>
+                                                      <span class="n">limit</span><span class="o">=</span><span class="n">limit</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">scope</span><span class="p">])</span>
+
+    <span class="n">done</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span> <span class="k">if</span> <span class="n">force</span> <span class="k">else</span> <span class="n">_measured_values</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">)</span>
+
+    <span class="c1"># One measurement per scope value: with the default ID_COL scope that's one</span>
+    <span class="c1"># per occurrence, and with a grouping scope it's the first occurrence of</span>
+    <span class="c1"># each group, since the rest would re-measure the same physical setup.</span>
+    <span class="n">todo</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">seen</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">occurrences</span><span class="o">.</span><span class="n">itertuples</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="n">value</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">scope</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">seen</span> <span class="ow">or</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">done</span><span class="p">:</span>
+            <span class="k">continue</span>
+        <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+        <span class="n">todo</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="nb">getattr</span><span class="p">(</span><span class="n">row</span><span class="p">,</span> <span class="n">ID_COL</span><span class="p">),</span> <span class="n">value</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">max_new</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">todo</span> <span class="o">=</span> <span class="n">todo</span><span class="p">[:</span><span class="n">max_new</span><span class="p">]</span>
+
+    <span class="n">skipped</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">occurrences</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"measuring scale on </span><span class="si">%d</span><span class="s2"> image(s) keyed by '</span><span class="si">%s</span><span class="s2">'; </span><span class="si">%d</span><span class="s2"> already "</span>
+                <span class="s2">"covered or duplicated"</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">todo</span><span class="p">),</span> <span class="n">scope</span><span class="p">,</span> <span class="n">skipped</span><span class="p">)</span>
+
+    <span class="n">identity</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"kind"</span><span class="p">:</span> <span class="s2">"measure_scales"</span><span class="p">,</span>
+        <span class="s2">"template"</span><span class="p">:</span> <span class="n">image_digest</span><span class="p">(</span><span class="n">template</span><span class="p">),</span>
+        <span class="s2">"target_mm"</span><span class="p">:</span> <span class="n">target_mm</span><span class="p">,</span>
+        <span class="s2">"scope"</span><span class="p">:</span> <span class="n">scope</span><span class="p">,</span>
+        <span class="s2">"region"</span><span class="p">:</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">region</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">list</span><span class="p">(</span><span class="n">region</span><span class="p">),</span>
+        <span class="s2">"match_score_min"</span><span class="p">:</span> <span class="n">match_score_min</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">report</span> <span class="o">=</span> <span class="n">pipeline_visualization</span><span class="o">.</span><span class="n">open_report</span><span class="p">(</span>
+        <span class="n">project_path</span><span class="p">,</span> <span class="s2">"measure_scales"</span><span class="p">,</span> <span class="n">hash_spec</span><span class="p">(</span><span class="n">identity</span><span class="p">),</span>
+        <span class="n">visualize</span><span class="o">=</span><span class="n">visualize</span><span class="p">,</span> <span class="n">rank</span><span class="o">=</span><span class="s2">"lowest"</span><span class="p">,</span>
+        <span class="n">identity</span><span class="o">=</span><span class="n">identity</span><span class="p">)</span><span class="o">.</span><span class="n">begin</span><span class="p">([</span><span class="n">value</span> <span class="k">for</span> <span class="n">_occurrence_id</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">])</span>
+
+    <span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">measured_px</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">missed</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">tally</span> <span class="o">=</span> <span class="n">segment_iteration</span><span class="o">.</span><span class="n">Tally</span><span class="p">(</span><span class="n">attempted</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">todo</span><span class="p">))</span>
+    <span class="n">tally</span><span class="o">.</span><span class="n">skipped</span> <span class="o">=</span> <span class="n">skipped</span>
+
+    <span class="k">with</span> <span class="n">ImageStore</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">readonly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="k">as</span> <span class="n">images</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">todo</span><span class="p">:</span>
+            <span class="n">score</span> <span class="o">=</span> <span class="kc">None</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">images</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">image</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"no image in the image store"</span><span class="p">)</span>
+
+                <span class="n">result</span> <span class="o">=</span> <span class="n">scale_from_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span>
+                                           <span class="n">region</span><span class="o">=</span><span class="n">region</span><span class="p">,</span>
+                                           <span class="n">match_score_min</span><span class="o">=</span><span class="n">match_score_min</span><span class="p">,</span>
+                                           <span class="n">name</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">result</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">missed</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">tally</span><span class="o">.</span><span class="n">no_input</span> <span class="o">+=</span> <span class="mi">1</span>
+                    <span class="n">report</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"no target matched in </span><span class="si">{</span><span class="n">occurrence_id</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">score</span> <span class="o">=</span> <span class="n">result</span><span class="p">[</span><span class="s2">"score"</span><span class="p">]</span>
+                    <span class="k">if</span> <span class="n">report</span><span class="o">.</span><span class="n">wants</span><span class="p">(</span><span class="n">value</span><span class="p">):</span>
+                        <span class="n">report</span><span class="o">.</span><span class="n">panel</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="s2">"scale"</span><span class="p">,</span> <span class="n">scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">))</span>
+                    <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">make_scale_row</span><span class="p">(</span>
+                        <span class="n">scope</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span> <span class="n">result</span><span class="p">[</span><span class="s2">"px_per_mm"</span><span class="p">],</span> <span class="n">source</span><span class="o">=</span><span class="s2">"target"</span><span class="p">,</span>
+                        <span class="n">score</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s2">"score"</span><span class="p">],</span> <span class="n">measured_from</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)))</span>
+                    <span class="n">measured_px</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"px_per_mm"</span><span class="p">])</span>
+                    <span class="n">tally</span><span class="o">.</span><span class="n">processed</span> <span class="o">+=</span> <span class="mi">1</span>
+
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">exc</span><span class="p">:</span>
+                <span class="n">tally</span><span class="o">.</span><span class="n">record_failure</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="n">report</span><span class="o">.</span><span class="n">failure</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"scale measurement failed for </span><span class="si">%s</span><span class="s2">: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                               <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">exc</span><span class="p">)</span>
+
+            <span class="n">report</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">value</span><span class="p">,</span> <span class="n">rank_value</span><span class="o">=</span><span class="n">score</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">report</span> <span class="ow">and</span> <span class="n">measured_px</span><span class="p">:</span>
+        <span class="n">report</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="s2">"px_per_mm"</span><span class="p">,</span> <span class="n">figures</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span>
+            <span class="n">measured_px</span><span class="p">,</span> <span class="n">bins</span><span class="o">=</span><span class="mi">20</span><span class="p">,</span> <span class="n">xlabel</span><span class="o">=</span><span class="s2">"px/mm"</span><span class="p">,</span>
+            <span class="n">title</span><span class="o">=</span><span class="sa">f</span><span class="s2">"scale by '</span><span class="si">{</span><span class="n">scope</span><span class="si">}</span><span class="s2">' (n=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">measured_px</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span><span class="p">))</span>
+    <span class="n">report</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+
+    <span class="n">calibration_records</span><span class="o">.</span><span class="n">save_calibrations</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">rows</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"scale pass complete: measured=</span><span class="si">%d</span><span class="s2"> skipped=</span><span class="si">%d</span><span class="s2"> failed=</span><span class="si">%d</span><span class="s2"> missed=</span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">tally</span><span class="o">.</span><span class="n">processed</span><span class="p">,</span> <span class="n">tally</span><span class="o">.</span><span class="n">skipped</span><span class="p">,</span> <span class="n">tally</span><span class="o">.</span><span class="n">failed</span><span class="p">,</span> <span class="n">missed</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tally</span><span class="o">.</span><span class="n">summary</span><span class="p">(</span><span class="n">missed</span><span class="o">=</span><span class="n">missed</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.pending_scope_values" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">pending_scope_values</span>
+
+
+<a href="#critterframe.calibrations.scale.pending_scope_values" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">pending_scope_values</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">max_new</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Scope values with no scale calibration yet -- see records.calibrations.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">pending_scope_values</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">max_new</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Scope values with no scale calibration yet -- see records.calibrations."""</span>
+    <span class="k">return</span> <span class="n">calibration_records</span><span class="o">.</span><span class="n">pending_scope_values</span><span class="p">(</span>
+        <span class="n">project_path</span><span class="p">,</span> <span class="n">CALIBRATION_TYPE</span><span class="p">,</span> <span class="n">scope</span><span class="p">,</span> <span class="n">max_new</span><span class="o">=</span><span class="n">max_new</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.scale_for_occurrences" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scale_for_occurrences</span>
+
+
+<a href="#critterframe.calibrations.scale.scale_for_occurrences" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scale_for_occurrences</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>px_per_mm per occurrence, as a float Series indexed by occurrence_id, or NaN
+where nothing applies.</p>
+<p>The scale-shaped view of records.calibrations.resolve_for_occurrences, which
+does the work of deciding which row covers which occurrence (and in what
+order of specificity) and hands back parameter dicts. Pulling one number out
+of them is all that's left, and it's this module's job because only this
+module knows the number is called px_per_mm.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scale_for_occurrences</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    px_per_mm per occurrence, as a float Series indexed by occurrence_id, or NaN</span>
+<span class="sd">    where nothing applies.</span>
+
+<span class="sd">    The scale-shaped view of records.calibrations.resolve_for_occurrences, which</span>
+<span class="sd">    does the work of deciding which row covers which occurrence (and in what</span>
+<span class="sd">    order of specificity) and hands back parameter dicts. Pulling one number out</span>
+<span class="sd">    of them is all that's left, and it's this module's job because only this</span>
+<span class="sd">    module knows the number is called px_per_mm.</span>
+<span class="sd">    """</span>
+    <span class="n">resolved</span> <span class="o">=</span> <span class="n">calibration_records</span><span class="o">.</span><span class="n">resolve_for_occurrences</span><span class="p">(</span>
+        <span class="n">project_path</span><span class="p">,</span> <span class="n">CALIBRATION_TYPE</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">occurrence_ids</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">resolved</span><span class="o">.</span><span class="n">empty</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="s2">"float64"</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">SCALE_COL</span><span class="p">)</span>
+
+    <span class="n">values</span> <span class="o">=</span> <span class="n">resolved</span><span class="o">.</span><span class="n">map</span><span class="p">(</span>
+        <span class="k">lambda</span> <span class="n">parameters</span><span class="p">:</span> <span class="n">parameters</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">SCALE_COL</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">values</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">"float64"</span><span class="p">)</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">SCALE_COL</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.scale_from_click" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scale_from_click</span>
+
+
+<a href="#critterframe.calibrations.scale.scale_from_click" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scale_from_click</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">target_mm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_display</span><span class="o">=</span><span class="n">DEFAULT_MAX_DISPLAY</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Pixels per millimetre from two points a person clicks, a known length
+apart.</p>
+<p>The by-hand alternative to scale_from_target(): for a scale object not
+worth writing a detector for -- an irregular ruler, a printed scale bar on
+a light-trap sheet -- where a person looking at the image is faster and no
+less reliable than a template match.</p>
+<ul>
+<li><code>image</code> -- BGR (or grayscale) array showing the scale object. Typically
+  loaded directly (e.g. cv2.imread()), not read from a project's ImageStore
+  -- that holds per-occurrence crops, not a standalone scene image like a
+  light-trap sheet.</li>
+<li><code>target_mm</code> -- the object's real length in millimetres. None (the
+  default) prompts for it on the terminal once both points are clicked, so
+  a project re-measuring one recurring scale bar doesn't have to hardcode
+  its length at every call site.</li>
+<li><code>name</code> -- shown in the window title and the log line.</li>
+<li><code>max_display</code> -- longest side, in pixels, the window is shrunk to for
+  display -- a full-resolution scene image (a light-trap sheet, easily
+  4000px+) is routinely bigger than the screen, and cv2 neither scales nor
+  letterboxes a window to fit one on its own. None shows the image at full
+  resolution. Either way, the two clicked points are converted back to the
+  ORIGINAL image's pixel coordinates before being returned, so shrinking
+  the window for display doesn't touch px_per_mm.</li>
+</ul>
+<p>Left-click the two ends of the scale object, in either order; Esc cancels
+before both points land, and a blank or non-positive typed length cancels
+the same way. Returns a dict (px_per_mm, length_px, point_a, point_b) --
+shaped so make_scale_row() takes it exactly like scale_from_target()'s
+result, minus the match score neither a click nor a stated length has one
+of -- or None if cancelled.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scale_from_click</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">target_mm</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">max_display</span><span class="o">=</span><span class="n">DEFAULT_MAX_DISPLAY</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Pixels per millimetre from two points a person clicks, a known length</span>
+<span class="sd">    apart.</span>
+
+<span class="sd">    The by-hand alternative to scale_from_target(): for a scale object not</span>
+<span class="sd">    worth writing a detector for -- an irregular ruler, a printed scale bar on</span>
+<span class="sd">    a light-trap sheet -- where a person looking at the image is faster and no</span>
+<span class="sd">    less reliable than a template match.</span>
+
+<span class="sd">    - `image` -- BGR (or grayscale) array showing the scale object. Typically</span>
+<span class="sd">      loaded directly (e.g. cv2.imread()), not read from a project's ImageStore</span>
+<span class="sd">      -- that holds per-occurrence crops, not a standalone scene image like a</span>
+<span class="sd">      light-trap sheet.</span>
+<span class="sd">    - `target_mm` -- the object's real length in millimetres. None (the</span>
+<span class="sd">      default) prompts for it on the terminal once both points are clicked, so</span>
+<span class="sd">      a project re-measuring one recurring scale bar doesn't have to hardcode</span>
+<span class="sd">      its length at every call site.</span>
+<span class="sd">    - `name` -- shown in the window title and the log line.</span>
+<span class="sd">    - `max_display` -- longest side, in pixels, the window is shrunk to for</span>
+<span class="sd">      display -- a full-resolution scene image (a light-trap sheet, easily</span>
+<span class="sd">      4000px+) is routinely bigger than the screen, and cv2 neither scales nor</span>
+<span class="sd">      letterboxes a window to fit one on its own. None shows the image at full</span>
+<span class="sd">      resolution. Either way, the two clicked points are converted back to the</span>
+<span class="sd">      ORIGINAL image's pixel coordinates before being returned, so shrinking</span>
+<span class="sd">      the window for display doesn't touch px_per_mm.</span>
+
+<span class="sd">    Left-click the two ends of the scale object, in either order; Esc cancels</span>
+<span class="sd">    before both points land, and a blank or non-positive typed length cancels</span>
+<span class="sd">    the same way. Returns a dict (px_per_mm, length_px, point_a, point_b) --</span>
+<span class="sd">    shaped so make_scale_row() takes it exactly like scale_from_target()'s</span>
+<span class="sd">    result, minus the match score neither a click nor a stated length has one</span>
+<span class="sd">    of -- or None if cancelled.</span>
+<span class="sd">    """</span>
+    <span class="n">original</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span>
+    <span class="n">height</span><span class="p">,</span> <span class="n">width</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">]</span>
+    <span class="n">display_scale</span> <span class="o">=</span> <span class="mf">1.0</span>
+    <span class="k">if</span> <span class="n">max_display</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">max</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">max_display</span><span class="p">:</span>
+        <span class="n">display_scale</span> <span class="o">=</span> <span class="n">max_display</span> <span class="o">/</span> <span class="nb">max</span><span class="p">(</span><span class="n">height</span><span class="p">,</span> <span class="n">width</span><span class="p">)</span>
+
+    <span class="n">display</span> <span class="o">=</span> <span class="n">original</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">display</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">display</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">display</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">display_scale</span> <span class="o">!=</span> <span class="mf">1.0</span><span class="p">:</span>
+        <span class="n">display</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">display</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">fx</span><span class="o">=</span><span class="n">display_scale</span><span class="p">,</span> <span class="n">fy</span><span class="o">=</span><span class="n">display_scale</span><span class="p">,</span>
+                             <span class="n">interpolation</span><span class="o">=</span><span class="n">cv2</span><span class="o">.</span><span class="n">INTER_AREA</span><span class="p">)</span>
+
+    <span class="n">window</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="w"> </span><span class="ow">or</span><span class="w"> </span><span class="s1">'scale'</span><span class="si">}</span><span class="s2"> - click the two ends of the scale object (Esc=cancel)"</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">display</span><span class="p">)</span>
+
+    <span class="n">display_points</span> <span class="o">=</span> <span class="p">[]</span>   <span class="c1"># in the (possibly shrunk) DISPLAYED frame</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_click</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">,</span> <span class="n">flags</span><span class="p">,</span> <span class="n">param</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">event</span> <span class="o">==</span> <span class="n">cv2</span><span class="o">.</span><span class="n">EVENT_LBUTTONDOWN</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">display_points</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">display_points</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">))</span>
+            <span class="n">color</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">display_points</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">)</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">display</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="mi">6</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">display_points</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="n">cv2</span><span class="o">.</span><span class="n">line</span><span class="p">(</span><span class="n">display</span><span class="p">,</span> <span class="n">display_points</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">display_points</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                         <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">imshow</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">display</span><span class="p">)</span>
+
+    <span class="n">cv2</span><span class="o">.</span><span class="n">setMouseCallback</span><span class="p">(</span><span class="n">window</span><span class="p">,</span> <span class="n">on_click</span><span class="p">)</span>
+
+    <span class="n">cancelled</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">display_points</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">cv2</span><span class="o">.</span><span class="n">waitKey</span><span class="p">(</span><span class="mi">20</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mh">0xFF</span> <span class="o">==</span> <span class="mi">27</span><span class="p">:</span>
+            <span class="n">cancelled</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">break</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">destroyWindow</span><span class="p">(</span><span class="n">window</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">cancelled</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">: scale click cancelled"</span><span class="p">,</span> <span class="n">name</span> <span class="ow">or</span> <span class="s2">"image"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="c1"># Back to ORIGINAL-image pixels -- the only frame px_per_mm can mean</span>
+    <span class="c1"># anything in, since that's the frame every other measurement is made in.</span>
+    <span class="p">(</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">),</span> <span class="p">(</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">)</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">x</span> <span class="o">/</span> <span class="n">display_scale</span><span class="p">),</span> <span class="nb">round</span><span class="p">(</span><span class="n">y</span> <span class="o">/</span> <span class="n">display_scale</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="ow">in</span> <span class="n">display_points</span>
+    <span class="p">)</span>
+    <span class="n">length_px</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">hypot</span><span class="p">(</span><span class="n">x1</span> <span class="o">-</span> <span class="n">x0</span><span class="p">,</span> <span class="n">y1</span> <span class="o">-</span> <span class="n">y0</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">target_mm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">target_mm</span> <span class="o">=</span> <span class="n">_prompt_length_mm</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">target_mm</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">px_per_mm</span> <span class="o">=</span> <span class="n">length_px</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">target_mm</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">: clicked </span><span class="si">%.1f</span><span class="s2">px over </span><span class="si">%g</span><span class="s2">mm -&gt; </span><span class="si">%.4f</span><span class="s2"> px/mm"</span><span class="p">,</span>
+                <span class="n">name</span> <span class="ow">or</span> <span class="s2">"image"</span><span class="p">,</span> <span class="n">length_px</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"px_per_mm"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">px_per_mm</span><span class="p">),</span> <span class="s2">"length_px"</span><span class="p">:</span> <span class="n">length_px</span><span class="p">,</span>
+            <span class="s2">"point_a"</span><span class="p">:</span> <span class="p">[</span><span class="n">x0</span><span class="p">,</span> <span class="n">y0</span><span class="p">],</span> <span class="s2">"point_b"</span><span class="p">:</span> <span class="p">[</span><span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">]}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.scale_from_target" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scale_from_target</span>
+
+
+<a href="#critterframe.calibrations.scale.scale_from_target" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scale_from_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">coarse_scales</span><span class="o">=</span><span class="n">DEFAULT_SCALES</span><span class="p">,</span> <span class="n">match_score_min</span><span class="o">=</span><span class="n">MATCH_SCORE_MIN</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Pixels per millimetre from an image containing a target of known width.</p>
+<ul>
+<li><code>image</code> -- BGR (or grayscale) array showing the target.</li>
+<li><code>template</code> -- grayscale template image, cropped tightly to the target.</li>
+<li><code>target_mm</code> -- the target's real width in millimetres. A US 1-inch
+  quadrant circle is 25.4; measure yours rather than trusting a spec
+  sheet, since printers scale.</li>
+</ul>
+<p>Returns the measurement as a dict, or None if no target was found -- not
+zero, and not a raise: an image without a visible target is a normal thing
+in a large collection, and the caller decides whether it's a problem.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scale_from_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">target_mm</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+                      <span class="n">coarse_scales</span><span class="o">=</span><span class="n">DEFAULT_SCALES</span><span class="p">,</span>
+                      <span class="n">match_score_min</span><span class="o">=</span><span class="n">MATCH_SCORE_MIN</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Pixels per millimetre from an image containing a target of known width.</span>
+
+<span class="sd">    - `image` -- BGR (or grayscale) array showing the target.</span>
+<span class="sd">    - `template` -- grayscale template image, cropped tightly to the target.</span>
+<span class="sd">    - `target_mm` -- the target's real width in millimetres. A US 1-inch</span>
+<span class="sd">      quadrant circle is 25.4; measure yours rather than trusting a spec</span>
+<span class="sd">      sheet, since printers scale.</span>
+
+<span class="sd">    Returns the measurement as a dict, or None if no target was found -- not</span>
+<span class="sd">    zero, and not a raise: an image without a visible target is a normal thing</span>
+<span class="sd">    in a large collection, and the caller decides whether it's a problem.</span>
+<span class="sd">    """</span>
+    <span class="n">started</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+    <span class="n">found</span> <span class="o">=</span> <span class="n">_detect_target</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">template</span><span class="p">,</span> <span class="n">region</span><span class="o">=</span><span class="n">region</span><span class="p">,</span>
+                          <span class="n">coarse_scales</span><span class="o">=</span><span class="n">coarse_scales</span><span class="p">,</span>
+                          <span class="n">match_score_min</span><span class="o">=</span><span class="n">match_score_min</span><span class="p">)</span>
+    <span class="n">elapsed</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="n">started</span>
+    <span class="k">if</span> <span class="n">found</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"no scale target detected</span><span class="si">%s</span><span class="s2"> after </span><span class="si">%.1f</span><span class="s2">s -- if it's "</span>
+                       <span class="s2">"visible in the frame, try lowering match_score_min, "</span>
+                       <span class="s2">"widening coarse_scales, or checking region"</span><span class="p">,</span>
+                       <span class="sa">f</span><span class="s2">" in </span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="n">name</span> <span class="k">else</span> <span class="s2">""</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">)</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+    <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">score</span> <span class="o">=</span> <span class="n">found</span>
+    <span class="n">diameter_px</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">radius</span>
+    <span class="n">px_per_mm</span> <span class="o">=</span> <span class="n">diameter_px</span> <span class="o">/</span> <span class="nb">float</span><span class="p">(</span><span class="n">target_mm</span><span class="p">)</span>
+
+    <span class="c1"># The elapsed time is worth reporting: a full-resolution light-trap sheet</span>
+    <span class="c1"># takes tens of seconds to sweep, which is the dominant cost of a scale pass</span>
+    <span class="c1"># and not at all obvious from the outside.</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">: target at (</span><span class="si">%d</span><span class="s2">,</span><span class="si">%d</span><span class="s2">) r=</span><span class="si">%d</span><span class="s2">px match=</span><span class="si">%.3f</span><span class="s2"> -&gt; </span><span class="si">%.4f</span><span class="s2"> px/mm (</span><span class="si">%.1f</span><span class="s2">s)"</span><span class="p">,</span>
+                <span class="n">name</span> <span class="ow">or</span> <span class="s2">"image"</span><span class="p">,</span> <span class="n">cx</span><span class="p">,</span> <span class="n">cy</span><span class="p">,</span> <span class="n">radius</span><span class="p">,</span> <span class="n">score</span><span class="p">,</span> <span class="n">px_per_mm</span><span class="p">,</span> <span class="n">elapsed</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">score</span> <span class="o">&lt;</span> <span class="n">WEAK_MATCH_SCORE</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"</span><span class="si">%s</span><span class="s2">: weak match (</span><span class="si">%.3f</span><span class="s2">) -- this may be clutter rather "</span>
+                       <span class="s2">"than the target, and a wrong scale is worse than none. "</span>
+                       <span class="s2">"Check the panel, or raise match_score_min"</span><span class="p">,</span>
+                       <span class="n">name</span> <span class="ow">or</span> <span class="s2">"image"</span><span class="p">,</span> <span class="n">score</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="p">{</span><span class="s2">"px_per_mm"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">px_per_mm</span><span class="p">),</span> <span class="s2">"score"</span><span class="p">:</span> <span class="nb">float</span><span class="p">(</span><span class="n">score</span><span class="p">),</span>
+            <span class="s2">"cx"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">cx</span><span class="p">),</span> <span class="s2">"cy"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">cy</span><span class="p">),</span> <span class="s2">"radius_px"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">radius</span><span class="p">),</span>
+            <span class="s2">"diameter_px"</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">diameter_px</span><span class="p">)}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h4 id="critterframe.calibrations.scale.scale_panel" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">scale_panel</span>
+
+
+<a href="#critterframe.calibrations.scale.scale_panel" class="headerlink" title="Permanent link">&para;</a></h4>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The measurement drawn on the image: the matched circle, its centre, and the
+numbers -- the view that shows whether a plausible px/mm came from finding
+the target or from finding something else that looked like it.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/calibrations/scale.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">scale_panel</span><span class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">result</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The measurement drawn on the image: the matched circle, its centre, and the</span>
+<span class="sd">    numbers -- the view that shows whether a plausible px/mm came from finding</span>
+<span class="sd">    the target or from finding something else that looked like it.</span>
+<span class="sd">    """</span>
+    <span class="n">panel</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">image</span><span class="p">)</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">panel</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">panel</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">cvtColor</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="n">cv2</span><span class="o">.</span><span class="n">COLOR_GRAY2BGR</span><span class="p">)</span>
+
+    <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"cx"</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s2">"cy"</span><span class="p">]),</span> <span class="n">result</span><span class="p">[</span><span class="s2">"radius_px"</span><span class="p">],</span>
+               <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="p">(</span><span class="n">result</span><span class="p">[</span><span class="s2">"cx"</span><span class="p">],</span> <span class="n">result</span><span class="p">[</span><span class="s2">"cy"</span><span class="p">]),</span> <span class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">),</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="n">annotate</span><span class="p">(</span><span class="n">panel</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'px_per_mm'</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2"> px/mm  match </span><span class="si">{</span><span class="n">result</span><span class="p">[</span><span class="s1">'score'</span><span class="p">]</span><span class="si">:</span><span class="s2">.3f</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">panel</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,2724 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/selectionhelpers/">
+      
+      
+        <link rel="prev" href="../export/">
+      
+      
+        <link rel="next" href="../project/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>selectionhelpers - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.selectionhelpers" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              selectionhelpers
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    public package-level API (for composing pipelines)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        selectionhelpers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="selectionhelpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.cap_per_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cap_per_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.dedupe_by" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dedupe_by
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.exclude_present" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        exclude_present
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.grow_sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grow_sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.require_present" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_present
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.rows_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rows_matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.sample_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.sample_per_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_per_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.shard_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shard_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.worst_n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        worst_n
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/failures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    failures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        selectionhelpers
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="selectionhelpers">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.cap_per_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        cap_per_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.dedupe_by" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        dedupe_by
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.exclude_present" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        exclude_present
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.grow_sample" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        grow_sample
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.require_present" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        require_present
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.rows_matching" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        rows_matching
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.sample_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.sample_per_group" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sample_per_group
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.shard_occurrences" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        shard_occurrences
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.selectionhelpers.worst_n" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        worst_n
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/selectionhelpers.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>selectionhelpers</h1>
+
+<div class="admonition note">
+<p class="admonition-title">For extending the package</p>
+<p>Documents every public member of <code>critterframe.selectionhelpers</code>, not just what <code>cf.*</code> re-exports. See the
+<a href="../">pipeline reference</a> for what a pipeline calls directly.</p>
+</div>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.selectionhelpers" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.selectionhelpers</span>
+
+
+<a href="#critterframe.selectionhelpers" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>Choosing which occurrences something applies to.</p>
+<p>Selection questions recur all over the package and are the same question every
+time: out of these occurrences, which ones? A visualization wants a
+representative handful, a trial run wants a few to test a recipe on, a training
+split wants a held-out set, an annotation pass wants the ones a model is least
+sure about. They differ in the RULE, not in the shape, so they belong together
+rather than one per module.</p>
+<p>Distinct from project.subsets, which is about NAMED, persisted selections that a
+project carries in its definitions -- "the 2019 Peru material", "the specimens
+Ana checked". These are transient: computed when asked for, never stored.</p>
+<p>Everything here takes data and answers from it -- nothing reads a project, and
+nothing else in the package is imported. That is deliberate rather than
+incidental: this module is imported by ingest, by segmentation runs, and by
+pipeline visualization, none of which should acquire a dependency on the
+metrics or export layers just to sample or shard a list of ids.
+export.occurrences_matching is the selection that DOES read stored values, and
+it lives with the wide-form view it reads rather than here.</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.cap_per_group" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">cap_per_group</span>
+
+
+<a href="#critterframe.selectionhelpers.cap_per_group" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">cap_per_group</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">max_count</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="s1">'random'</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Narrow df to at most max_count rows per distinct group_col value.</p>
+<p>A GBIF or iNaturalist pull is routinely dominated by a handful of common
+species with thousands of photos each, next to rare ones with a few -- this
+is how a project caps that at ingest, one group_col value at a time (see
+ingest.ingest_occurrences' group_col/max_per_group).</p>
+<ul>
+<li><code>group_col</code> -- occurrence column naming the group, e.g. "species". An
+  unknown column raises, like rows_matching. A missing value in it is
+  exempt from capping, kept untouched no matter how many rows share that
+  gap -- not knowing which group a row belongs to cannot be the same as
+  knowing it is one of an oversized group's extras, the same reasoning
+  rows_matching applies to a missing value never matching a rule.</li>
+<li><code>max_count</code> -- cap applied independently within each group; a group at or
+  under this size is returned untouched.</li>
+<li><code>rule</code> -- which rows survive an oversized group. "random" (default) is a
+  stable pseudo-random choice, via sample_occurrences' seeded rule applied
+  to the candidates' own row positions -- so which specimens survive
+  doesn't depend on the source's row order. "first"/"last" keep that many
+  rows in the candidates' own order instead. A callable(group_df) -&gt;
+  group_df picks explicitly, for the whole group at once -- keep_ids does
+  not apply to it, since a callable already owns the decision.</li>
+<li><code>seed</code> -- passed through to sample_occurrences for the "random" rule.</li>
+<li><code>id_col</code>, <code>keep_ids</code> -- ids (read from id_col, matched against keep_ids)
+  to prioritize keeping over the rest of an oversized group -- typically
+  the occurrences a previous, smaller-or-equal cap already selected for
+  this project. This is what makes raising max_per_group on a reimport ADDITIVE
+  instead of a reshuffle: ids already kept stay kept (retrimmed by rule if
+  the cap has since shrunk), and only the shortfall is drawn fresh from ids
+  not in keep_ids. Ignored for a group at or under max_count, and for a
+  callable rule.</li>
+<li><code>prefer</code> -- optional <code>{column: values}</code> rule (see rows_matching) naming
+  rows to fill an oversized group from first, e.g. one source over
+  another. Ranks ABOVE keep_ids: the order is preferred &amp; kept, preferred
+  &amp; new, other &amp; kept, other &amp; new, so a preferred newcomer displaces an
+  already-kept row that isn't. Ignored for a callable rule.</li>
+</ul>
+<p>Rows a cap removes are logged as one aggregate count, the same as
+ingest.ingest_occurrences' drop= -- the archived import is the recovery
+path for these too, not a per-row manifest.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span>
+<span class="normal">345</span>
+<span class="normal">346</span>
+<span class="normal">347</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">cap_per_group</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">max_count</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="s2">"random"</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">,</span>
+                  <span class="n">id_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Narrow df to at most max_count rows per distinct group_col value.</span>
+
+<span class="sd">    A GBIF or iNaturalist pull is routinely dominated by a handful of common</span>
+<span class="sd">    species with thousands of photos each, next to rare ones with a few -- this</span>
+<span class="sd">    is how a project caps that at ingest, one group_col value at a time (see</span>
+<span class="sd">    ingest.ingest_occurrences' group_col/max_per_group).</span>
+
+<span class="sd">    - `group_col` -- occurrence column naming the group, e.g. "species". An</span>
+<span class="sd">      unknown column raises, like rows_matching. A missing value in it is</span>
+<span class="sd">      exempt from capping, kept untouched no matter how many rows share that</span>
+<span class="sd">      gap -- not knowing which group a row belongs to cannot be the same as</span>
+<span class="sd">      knowing it is one of an oversized group's extras, the same reasoning</span>
+<span class="sd">      rows_matching applies to a missing value never matching a rule.</span>
+<span class="sd">    - `max_count` -- cap applied independently within each group; a group at or</span>
+<span class="sd">      under this size is returned untouched.</span>
+<span class="sd">    - `rule` -- which rows survive an oversized group. "random" (default) is a</span>
+<span class="sd">      stable pseudo-random choice, via sample_occurrences' seeded rule applied</span>
+<span class="sd">      to the candidates' own row positions -- so which specimens survive</span>
+<span class="sd">      doesn't depend on the source's row order. "first"/"last" keep that many</span>
+<span class="sd">      rows in the candidates' own order instead. A callable(group_df) -&gt;</span>
+<span class="sd">      group_df picks explicitly, for the whole group at once -- keep_ids does</span>
+<span class="sd">      not apply to it, since a callable already owns the decision.</span>
+<span class="sd">    - `seed` -- passed through to sample_occurrences for the "random" rule.</span>
+<span class="sd">    - `id_col`, `keep_ids` -- ids (read from id_col, matched against keep_ids)</span>
+<span class="sd">      to prioritize keeping over the rest of an oversized group -- typically</span>
+<span class="sd">      the occurrences a previous, smaller-or-equal cap already selected for</span>
+<span class="sd">      this project. This is what makes raising max_per_group on a reimport ADDITIVE</span>
+<span class="sd">      instead of a reshuffle: ids already kept stay kept (retrimmed by rule if</span>
+<span class="sd">      the cap has since shrunk), and only the shortfall is drawn fresh from ids</span>
+<span class="sd">      not in keep_ids. Ignored for a group at or under max_count, and for a</span>
+<span class="sd">      callable rule.</span>
+<span class="sd">    - `prefer` -- optional `{column: values}` rule (see rows_matching) naming</span>
+<span class="sd">      rows to fill an oversized group from first, e.g. one source over</span>
+<span class="sd">      another. Ranks ABOVE keep_ids: the order is preferred &amp; kept, preferred</span>
+<span class="sd">      &amp; new, other &amp; kept, other &amp; new, so a preferred newcomer displaces an</span>
+<span class="sd">      already-kept row that isn't. Ignored for a callable rule.</span>
+
+<span class="sd">    Rows a cap removes are logged as one aggregate count, the same as</span>
+<span class="sd">    ingest.ingest_occurrences' drop= -- the archived import is the recovery</span>
+<span class="sd">    path for these too, not a per-row manifest.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">group_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"no '</span><span class="si">{</span><span class="n">group_col</span><span class="si">}</span><span class="s2">' column to group by (columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">keep_ids</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">id_col</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"id_col is required when keep_ids is given"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">keep_ids</span> <span class="ow">and</span> <span class="n">id_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"no '</span><span class="si">{</span><span class="n">id_col</span><span class="si">}</span><span class="s2">' column to match keep_ids against (columns: "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+
+    <span class="n">keep</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">True</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+    <span class="n">keep_ids</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">keep_ids</span><span class="p">}</span> <span class="k">if</span> <span class="n">keep_ids</span> <span class="k">else</span> <span class="nb">set</span><span class="p">()</span>
+    <span class="n">preferred</span> <span class="o">=</span> <span class="n">rows_matching</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">prefer</span><span class="p">)</span> <span class="k">if</span> <span class="n">prefer</span> <span class="k">else</span> <span class="kc">None</span>
+
+    <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">group_col</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_col</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">max_count</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="k">if</span> <span class="nb">callable</span><span class="p">(</span><span class="n">rule</span><span class="p">):</span>
+            <span class="n">survivors</span> <span class="o">=</span> <span class="n">rule</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span><span class="o">.</span><span class="n">index</span>
+        <span class="k">elif</span> <span class="n">rule</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"random"</span><span class="p">,</span> <span class="s2">"first"</span><span class="p">,</span> <span class="s2">"last"</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">keep_ids</span><span class="p">:</span>
+                <span class="n">is_kept</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">id_col</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">keep_ids</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">is_kept</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">rows</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+            <span class="n">tiers</span> <span class="o">=</span> <span class="p">[</span><span class="n">is_kept</span><span class="p">,</span> <span class="o">~</span><span class="n">is_kept</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">preferred</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">is_preferred</span> <span class="o">=</span> <span class="n">preferred</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">rows</span><span class="o">.</span><span class="n">index</span><span class="p">]</span>
+                <span class="n">tiers</span> <span class="o">=</span> <span class="p">[</span><span class="n">is_preferred</span> <span class="o">&amp;</span> <span class="n">tier</span> <span class="k">for</span> <span class="n">tier</span> <span class="ow">in</span> <span class="n">tiers</span><span class="p">]</span> <span class="o">+</span> \
+                        <span class="p">[</span><span class="o">~</span><span class="n">is_preferred</span> <span class="o">&amp;</span> <span class="n">tier</span> <span class="k">for</span> <span class="n">tier</span> <span class="ow">in</span> <span class="n">tiers</span><span class="p">]</span>
+
+            <span class="n">survivors</span> <span class="o">=</span> <span class="n">rows</span><span class="o">.</span><span class="n">index</span><span class="p">[:</span><span class="mi">0</span><span class="p">]</span>
+            <span class="k">for</span> <span class="n">tier</span> <span class="ow">in</span> <span class="n">tiers</span><span class="p">:</span>
+                <span class="n">remaining</span> <span class="o">=</span> <span class="n">max_count</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">survivors</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">remaining</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">break</span>
+                <span class="n">candidates</span> <span class="o">=</span> <span class="n">rows</span><span class="p">[</span><span class="n">tier</span><span class="p">]</span>
+                <span class="n">survivors</span> <span class="o">=</span> <span class="n">survivors</span><span class="o">.</span><span class="n">union</span><span class="p">(</span>
+                    <span class="n">_take</span><span class="p">(</span><span class="n">candidates</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">remaining</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">candidates</span><span class="p">)),</span> <span class="n">rule</span><span class="p">,</span> <span class="n">seed</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"unknown cap rule </span><span class="si">{</span><span class="n">rule</span><span class="si">!r}</span><span class="s2"> -- use 'random', 'first', 'last', "</span>
+                <span class="s2">"or a callable(group_df) -&gt; group_df"</span>
+            <span class="p">)</span>
+
+        <span class="n">keep</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">rows</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">survivors</span><span class="p">)]</span> <span class="o">=</span> <span class="kc">False</span>
+
+    <span class="n">dropped</span> <span class="o">=</span> <span class="nb">int</span><span class="p">((</span><span class="o">~</span><span class="n">keep</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">())</span>
+    <span class="k">if</span> <span class="n">dropped</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"capped </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> row(s) to at most </span><span class="si">%d</span><span class="s2"> per '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                   <span class="n">dropped</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="n">max_count</span><span class="p">,</span> <span class="n">group_col</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">df</span><span class="p">[</span><span class="n">keep</span><span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.dedupe_by" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">dedupe_by</span>
+
+
+<a href="#critterframe.selectionhelpers.dedupe_by" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">dedupe_by</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">key_cols</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="s1">'random'</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefer</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Narrow df to one row per distinct combination of key_cols.</p>
+<p>Distinct from cap_per_group: capping thins an oversized but equally valid
+population (too many photos of one common species), while this is for
+rows that are the same real thing recorded more than once -- the same
+sighting independently published by two aggregators, say, each minting
+its own id, so no id-based check can see the collision. Built on top of
+cap_per_group (max_count=1 over a computed fingerprint column) rather than
+duplicating its group-and-keep logic.</p>
+<ul>
+<li><code>key_cols</code> -- columns that together fingerprint one real occurrence, e.g.
+  ("decimalLatitude", "decimalLongitude", "eventDate") for a sighting
+  published through two different aggregators. A row missing ANY key_col is
+  exempt, kept untouched -- not knowing where or when a row was recorded
+  cannot be the same as knowing it duplicates another, the reasoning
+  cap_per_group already applies to a missing group_col value.</li>
+<li><code>precision</code> -- optional {column: ndigits} rounding a numeric key_col
+  before matching, e.g. {"decimalLatitude": 4, "decimalLongitude": 4} (~11m
+  at the equator) so two sources recording the same spot to different
+  decimal precision still fingerprint alike. A column not named here is
+  matched on its own value exactly.</li>
+<li><code>rule</code>, <code>seed</code>, <code>id_col</code>, <code>keep_ids</code> -- as cap_per_group: which row of a
+  duplicate group survives, and which ids to prioritize keeping over a
+  fresh pick -- the same reimport-additivity guarantee, so a duplicate
+  resolved once (and already carrying masks or metrics) doesn't get
+  orphaned by a later pull that happens to pick differently.</li>
+<li><code>prefer</code> -- optional <code>{column: values}</code> rule (see rows_matching) naming
+  rows trusted to be unique among themselves, e.g. a source that never
+  publishes one sighting twice. A preferred row is never removed, and any
+  other row sharing its fingerprint is, keep_ids or not.</li>
+</ul>
+<p>This is a probabilistic match, not a source-declared fact like drop=' --
+two independent, genuinely different sightings can share a fingerprint by
+coincidence. Choose key_cols and precision no looser than the real risk of
+a false match warrants.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span>
+<span class="normal">414</span>
+<span class="normal">415</span>
+<span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span>
+<span class="normal">433</span>
+<span class="normal">434</span>
+<span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">dedupe_by</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">key_cols</span><span class="p">,</span> <span class="n">precision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="s2">"random"</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">,</span>
+             <span class="n">id_col</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">prefer</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Narrow df to one row per distinct combination of key_cols.</span>
+
+<span class="sd">    Distinct from cap_per_group: capping thins an oversized but equally valid</span>
+<span class="sd">    population (too many photos of one common species), while this is for</span>
+<span class="sd">    rows that are the same real thing recorded more than once -- the same</span>
+<span class="sd">    sighting independently published by two aggregators, say, each minting</span>
+<span class="sd">    its own id, so no id-based check can see the collision. Built on top of</span>
+<span class="sd">    cap_per_group (max_count=1 over a computed fingerprint column) rather than</span>
+<span class="sd">    duplicating its group-and-keep logic.</span>
+
+<span class="sd">    - `key_cols` -- columns that together fingerprint one real occurrence, e.g.</span>
+<span class="sd">      ("decimalLatitude", "decimalLongitude", "eventDate") for a sighting</span>
+<span class="sd">      published through two different aggregators. A row missing ANY key_col is</span>
+<span class="sd">      exempt, kept untouched -- not knowing where or when a row was recorded</span>
+<span class="sd">      cannot be the same as knowing it duplicates another, the reasoning</span>
+<span class="sd">      cap_per_group already applies to a missing group_col value.</span>
+<span class="sd">    - `precision` -- optional {column: ndigits} rounding a numeric key_col</span>
+<span class="sd">      before matching, e.g. {"decimalLatitude": 4, "decimalLongitude": 4} (~11m</span>
+<span class="sd">      at the equator) so two sources recording the same spot to different</span>
+<span class="sd">      decimal precision still fingerprint alike. A column not named here is</span>
+<span class="sd">      matched on its own value exactly.</span>
+<span class="sd">    - `rule`, `seed`, `id_col`, `keep_ids` -- as cap_per_group: which row of a</span>
+<span class="sd">      duplicate group survives, and which ids to prioritize keeping over a</span>
+<span class="sd">      fresh pick -- the same reimport-additivity guarantee, so a duplicate</span>
+<span class="sd">      resolved once (and already carrying masks or metrics) doesn't get</span>
+<span class="sd">      orphaned by a later pull that happens to pick differently.</span>
+<span class="sd">    - `prefer` -- optional `{column: values}` rule (see rows_matching) naming</span>
+<span class="sd">      rows trusted to be unique among themselves, e.g. a source that never</span>
+<span class="sd">      publishes one sighting twice. A preferred row is never removed, and any</span>
+<span class="sd">      other row sharing its fingerprint is, keep_ids or not.</span>
+
+<span class="sd">    This is a probabilistic match, not a source-declared fact like drop=' --</span>
+<span class="sd">    two independent, genuinely different sightings can share a fingerprint by</span>
+<span class="sd">    coincidence. Choose key_cols and precision no looser than the real risk of</span>
+<span class="sd">    a false match warrants.</span>
+<span class="sd">    """</span>
+    <span class="n">key_cols</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">key_cols</span><span class="p">)</span>
+    <span class="n">working</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="n">working</span><span class="p">[</span><span class="s2">"_dedupe_fingerprint"</span><span class="p">]</span> <span class="o">=</span> <span class="n">_fingerprint</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">key_cols</span><span class="p">,</span> <span class="n">precision</span> <span class="ow">or</span> <span class="p">{})</span>
+    <span class="c1"># Carried through cap_per_group's reset_index so the source order survives.</span>
+    <span class="n">working</span><span class="p">[</span><span class="s2">"_dedupe_position"</span><span class="p">]</span> <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">working</span><span class="p">))</span>
+
+    <span class="n">protected</span> <span class="o">=</span> <span class="n">working</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="mi">0</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">prefer</span><span class="p">:</span>
+        <span class="n">is_preferred</span> <span class="o">=</span> <span class="n">rows_matching</span><span class="p">(</span><span class="n">working</span><span class="p">,</span> <span class="n">prefer</span><span class="p">)</span>
+        <span class="n">protected</span> <span class="o">=</span> <span class="n">working</span><span class="p">[</span><span class="n">is_preferred</span><span class="p">]</span>
+        <span class="n">others</span> <span class="o">=</span> <span class="n">working</span><span class="p">[</span><span class="o">~</span><span class="n">is_preferred</span><span class="p">]</span>
+        <span class="n">claimed</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">protected</span><span class="p">[</span><span class="s2">"_dedupe_fingerprint"</span><span class="p">]</span><span class="o">.</span><span class="n">dropna</span><span class="p">())</span>
+        <span class="n">working</span> <span class="o">=</span> <span class="n">others</span><span class="p">[</span><span class="o">~</span><span class="n">others</span><span class="p">[</span><span class="s2">"_dedupe_fingerprint"</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">claimed</span><span class="p">)]</span>
+
+    <span class="n">deduped</span> <span class="o">=</span> <span class="n">cap_per_group</span><span class="p">(</span><span class="n">working</span><span class="p">,</span> <span class="s2">"_dedupe_fingerprint"</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">rule</span><span class="o">=</span><span class="n">rule</span><span class="p">,</span>
+                            <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="n">id_col</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="n">keep_ids</span><span class="p">)</span>
+    <span class="n">deduped</span> <span class="o">=</span> <span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">protected</span><span class="p">,</span> <span class="n">deduped</span><span class="p">])</span>
+               <span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"_dedupe_position"</span><span class="p">)</span>
+               <span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+    <span class="n">removed</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">)</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">deduped</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">removed</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"deduplicated </span><span class="si">%d</span><span class="s2"> of </span><span class="si">%d</span><span class="s2"> row(s) sharing (</span><span class="si">%s</span><span class="s2">)"</span><span class="p">,</span>
+                   <span class="n">removed</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">df</span><span class="p">),</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">key_cols</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">deduped</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"_dedupe_fingerprint"</span><span class="p">,</span> <span class="s2">"_dedupe_position"</span><span class="p">])</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.exclude_present" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">exclude_present</span>
+
+
+<a href="#critterframe.selectionhelpers.exclude_present" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">exclude_present</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="o">**</span><span class="n">named_sets</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The inverse of require_present: keep ids present in NONE of the named
+sets -- the "not already downloaded", "not already measured" shape the
+pending-first drivers use. Same composition, same logging.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">93</span>
+<span class="normal">94</span>
+<span class="normal">95</span>
+<span class="normal">96</span>
+<span class="normal">97</span>
+<span class="normal">98</span>
+<span class="normal">99</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">exclude_present</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="o">**</span><span class="n">named_sets</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The inverse of require_present: keep ids present in NONE of the named</span>
+<span class="sd">    sets -- the "not already downloaded", "not already measured" shape the</span>
+<span class="sd">    pending-first drivers use. Same composition, same logging.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_narrow</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">named_sets</span><span class="p">,</span> <span class="n">keep_if_present</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.grow_sample" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">grow_sample</span>
+
+
+<a href="#critterframe.selectionhelpers.grow_sample" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">grow_sample</span><span class="p">(</span><span class="n">candidate_ids</span><span class="p">,</span> <span class="n">target_size</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Extend (or, if target_size has shrunk, trim) a previous sample toward
+target_size, deterministically.</p>
+<p>For growing a named subset toward a target size over several runs without
+reshuffling who is already in it -- the same guarantee cap_per_group's
+keep_ids gives a capped group, one level up: a subset growing toward a
+size rather than a group shrinking toward a cap.</p>
+<ul>
+<li><code>candidate_ids</code> -- the whole eligible pool, keep_ids included. An id in
+  keep_ids no longer present here is dropped, the same way cap_per_group
+  only prioritizes a keep_ids row still in df.</li>
+<li><code>target_size</code> -- desired size of the result. Raising it across calls only
+  adds; lowering it below len(keep_ids) trims keep_ids down via
+  sample_occurrences rather than an arbitrary set order.</li>
+<li><code>keep_ids</code> -- ids from a previous call to keep if still in
+                 - <code>candidate_ids</code> -- typically what a named subset already
+                 holds. None (or empty) is a first call, equivalent to a
+                 plain sample_occurrences(candidate_ids, target_size).</li>
+<li><code>seed</code> -- passed through to sample_occurrences.</li>
+</ul>
+<p>Returns ids, sorted like sample_occurrences.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">grow_sample</span><span class="p">(</span><span class="n">candidate_ids</span><span class="p">,</span> <span class="n">target_size</span><span class="p">,</span> <span class="n">keep_ids</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Extend (or, if target_size has shrunk, trim) a previous sample toward</span>
+<span class="sd">    target_size, deterministically.</span>
+
+<span class="sd">    For growing a named subset toward a target size over several runs without</span>
+<span class="sd">    reshuffling who is already in it -- the same guarantee cap_per_group's</span>
+<span class="sd">    keep_ids gives a capped group, one level up: a subset growing toward a</span>
+<span class="sd">    size rather than a group shrinking toward a cap.</span>
+
+<span class="sd">    - `candidate_ids` -- the whole eligible pool, keep_ids included. An id in</span>
+<span class="sd">      keep_ids no longer present here is dropped, the same way cap_per_group</span>
+<span class="sd">      only prioritizes a keep_ids row still in df.</span>
+<span class="sd">    - `target_size` -- desired size of the result. Raising it across calls only</span>
+<span class="sd">      adds; lowering it below len(keep_ids) trims keep_ids down via</span>
+<span class="sd">      sample_occurrences rather than an arbitrary set order.</span>
+<span class="sd">    - `keep_ids` -- ids from a previous call to keep if still in</span>
+<span class="sd">                     - `candidate_ids` -- typically what a named subset already</span>
+<span class="sd">                     holds. None (or empty) is a first call, equivalent to a</span>
+<span class="sd">                     plain sample_occurrences(candidate_ids, target_size).</span>
+<span class="sd">    - `seed` -- passed through to sample_occurrences.</span>
+
+<span class="sd">    Returns ids, sorted like sample_occurrences.</span>
+<span class="sd">    """</span>
+    <span class="n">pool</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">candidate_ids</span><span class="p">}</span>
+    <span class="n">kept</span> <span class="o">=</span> <span class="n">pool</span> <span class="o">&amp;</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="p">(</span><span class="n">keep_ids</span> <span class="ow">or</span> <span class="p">[])}</span>
+
+    <span class="n">survivors</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sample_occurrences</span><span class="p">(</span><span class="n">kept</span><span class="p">,</span> <span class="nb">min</span><span class="p">(</span><span class="n">target_size</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">kept</span><span class="p">)),</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">))</span>
+    <span class="n">remaining</span> <span class="o">=</span> <span class="n">target_size</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">survivors</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">remaining</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">survivors</span> <span class="o">|=</span> <span class="nb">set</span><span class="p">(</span><span class="n">sample_occurrences</span><span class="p">(</span><span class="n">pool</span> <span class="o">-</span> <span class="n">kept</span><span class="p">,</span> <span class="n">remaining</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">survivors</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.require_present" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">require_present</span>
+
+
+<a href="#critterframe.selectionhelpers.require_present" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">require_present</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="o">**</span><span class="n">named_sets</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Narrow occurrence_ids to ones present in EVERY named set -- composing
+several "does this exist" checks (has an image, has a mask for a part,
+...) into one call instead of one isin()/set-intersection per condition
+at each call site.</p>
+<ul>
+<li><code>named_sets</code> -- {label: ids}, e.g. <code>has_image=store.keys()</code>,
+  <code>head_mask=occurrence_ids_with_mask(project_path, "head")</code>.</li>
+</ul>
+<p>Every rule must match (AND) -- these name independent preconditions, not
+alternative spellings of one fact, unlike rows_matching's ANY-of-these-
+values OR. Logs how many ids each named set drops, in the order given,
+so a caller can see which condition is the one actually narrowing things.</p>
+<p>Returns a sorted list of str ids present in occurrence_ids and every
+named set.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span>
+<span class="normal">86</span>
+<span class="normal">87</span>
+<span class="normal">88</span>
+<span class="normal">89</span>
+<span class="normal">90</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">require_present</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="o">**</span><span class="n">named_sets</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Narrow occurrence_ids to ones present in EVERY named set -- composing</span>
+<span class="sd">    several "does this exist" checks (has an image, has a mask for a part,</span>
+<span class="sd">    ...) into one call instead of one isin()/set-intersection per condition</span>
+<span class="sd">    at each call site.</span>
+
+<span class="sd">    - `named_sets` -- {label: ids}, e.g. `has_image=store.keys()`,</span>
+<span class="sd">      `head_mask=occurrence_ids_with_mask(project_path, "head")`.</span>
+
+<span class="sd">    Every rule must match (AND) -- these name independent preconditions, not</span>
+<span class="sd">    alternative spellings of one fact, unlike rows_matching's ANY-of-these-</span>
+<span class="sd">    values OR. Logs how many ids each named set drops, in the order given,</span>
+<span class="sd">    so a caller can see which condition is the one actually narrowing things.</span>
+
+<span class="sd">    Returns a sorted list of str ids present in occurrence_ids and every</span>
+<span class="sd">    named set.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">_narrow</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">named_sets</span><span class="p">,</span> <span class="n">keep_if_present</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.rows_matching" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">rows_matching</span>
+
+
+<a href="#critterframe.selectionhelpers.rows_matching" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">rows_matching</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">rules</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Which rows a {column: values} rule set picks out, as a boolean Series.</p>
+<ul>
+<li><code>rules</code> -- {column: value} or {column: [values...]}. A row matches when
+  ANY rule matches: these name several kinds of a thing ("debris, or
+  not-Lepidoptera"), not a conjunction one row must satisfy at once.</li>
+</ul>
+<p>Membership only, deliberately -- no &lt;=, no &gt;, no predicate. A threshold is a
+judgement about degree that a caller will want to revise, and revisable
+judgements belong where they keep the data (export filters, subsets). Keeping
+the vocabulary too small to express one is what stops it being smuggled into
+a place that can't undo it.</p>
+<p>A missing value never matches: not knowing what a row is cannot be the same
+as knowing it is one of these things. A named column that isn't in df raises,
+since a typo matching nothing would read as "there was none of that here".</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">35</span>
+<span class="normal">36</span>
+<span class="normal">37</span>
+<span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span>
+<span class="normal">55</span>
+<span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">rows_matching</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">rules</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Which rows a {column: values} rule set picks out, as a boolean Series.</span>
+
+<span class="sd">    - `rules` -- {column: value} or {column: [values...]}. A row matches when</span>
+<span class="sd">      ANY rule matches: these name several kinds of a thing ("debris, or</span>
+<span class="sd">      not-Lepidoptera"), not a conjunction one row must satisfy at once.</span>
+
+<span class="sd">    Membership only, deliberately -- no &lt;=, no &gt;, no predicate. A threshold is a</span>
+<span class="sd">    judgement about degree that a caller will want to revise, and revisable</span>
+<span class="sd">    judgements belong where they keep the data (export filters, subsets). Keeping</span>
+<span class="sd">    the vocabulary too small to express one is what stops it being smuggled into</span>
+<span class="sd">    a place that can't undo it.</span>
+
+<span class="sd">    A missing value never matches: not knowing what a row is cannot be the same</span>
+<span class="sd">    as knowing it is one of these things. A named column that isn't in df raises,</span>
+<span class="sd">    since a typo matching nothing would read as "there was none of that here".</span>
+<span class="sd">    """</span>
+    <span class="n">matched</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">values</span> <span class="ow">in</span> <span class="n">rules</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="k">if</span> <span class="n">column</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"rule column '</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2">' isn't in the table "</span>
+                <span class="sa">f</span><span class="s2">"(columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+            <span class="p">)</span>
+        <span class="c1"># A bare string is one value, not an iterable of characters -- the</span>
+        <span class="c1"># single-value form is what anyone writes first.</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="nb">bytes</span><span class="p">))</span> <span class="ow">or</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">,</span> <span class="nb">set</span><span class="p">,</span> <span class="nb">frozenset</span><span class="p">)):</span>
+            <span class="n">values</span> <span class="o">=</span> <span class="p">[</span><span class="n">values</span><span class="p">]</span>
+
+        <span class="n">series</span> <span class="o">=</span> <span class="n">df</span><span class="p">[</span><span class="n">column</span><span class="p">]</span>
+        <span class="n">matched</span> <span class="o">|=</span> <span class="n">series</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">values</span><span class="p">))</span> <span class="o">&amp;</span> <span class="n">series</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">matched</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.sample_occurrences" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">sample_occurrences</span>
+
+
+<a href="#critterframe.selectionhelpers.sample_occurrences" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">sample_occurrences</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A stable pseudo-random sample of occurrence ids, in sorted order.</p>
+<p>Sorted input before sampling and sorted output after, from a fixed seed: the
+same ids and the same count give the same specimens every time, in the same
+order. That is the whole point rather than an implementation detail --
+a sample that reshuffled on every call would make two visualizations of two
+versions of a recipe incomparable, and you would be unable to tell a changed
+method from a changed specimen.</p>
+<p>Returns every id when count exceeds how many there are, rather than raising:
+asking for 25 from a project of 8 is a reasonable thing to do.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sample_occurrences</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A stable pseudo-random sample of occurrence ids, in sorted order.</span>
+
+<span class="sd">    Sorted input before sampling and sorted output after, from a fixed seed: the</span>
+<span class="sd">    same ids and the same count give the same specimens every time, in the same</span>
+<span class="sd">    order. That is the whole point rather than an implementation detail --</span>
+<span class="sd">    a sample that reshuffled on every call would make two visualizations of two</span>
+<span class="sd">    versions of a recipe incomparable, and you would be unable to tell a changed</span>
+<span class="sd">    method from a changed specimen.</span>
+
+<span class="sd">    Returns every id when count exceeds how many there are, rather than raising:</span>
+<span class="sd">    asking for 25 from a project of 8 is a reasonable thing to do.</span>
+<span class="sd">    """</span>
+    <span class="n">ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">count</span> <span class="o">&gt;=</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">ids</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">random</span><span class="o">.</span><span class="n">Random</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">count</span><span class="p">))</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.sample_per_group" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">sample_per_group</span>
+
+
+<a href="#critterframe.selectionhelpers.sample_per_group" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">sample_per_group</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="s1">'occurrence_id'</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A stable, stratified sample of up to <code>count</code> ids, spread across group_col.</p>
+<p>Smallest group first: each group's fair share is ceil(what's left / groups
+not yet visited), capped at the group's own size, so a handful of common
+groups can't crowd out a rare one the way a flat sample_occurrences() draw
+over the whole table would -- a rare group is taken in full (or as close
+as its size allows) before a common group absorbs the rollover. Each
+group's own picks still go through sample_occurrences, so the sample is
+stable across runs the same way a flat one is.</p>
+<ul>
+<li><code>group_col</code> -- occurrence column to stratify by, e.g. "taxon". A row with
+  a missing value is excluded, the same way rows_matching and cap_per_group
+  treat one -- not knowing a row's group cannot be the same as knowing it
+  belongs to one being sampled.</li>
+<li><code>count</code> -- total ids wanted, across every group. Returns every qualifying
+  id when count exceeds how many there are, like sample_occurrences -- here
+  that can mean every id in every group, if the whole table is smaller than
+  count.</li>
+<li><code>id_col</code> -- occurrence id column to read and return.</li>
+<li><code>seed</code> -- passed through to sample_occurrences for each group's draw.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">sample_per_group</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">group_col</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">id_col</span><span class="o">=</span><span class="s2">"occurrence_id"</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SAMPLE_SEED</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A stable, stratified sample of up to `count` ids, spread across group_col.</span>
+
+<span class="sd">    Smallest group first: each group's fair share is ceil(what's left / groups</span>
+<span class="sd">    not yet visited), capped at the group's own size, so a handful of common</span>
+<span class="sd">    groups can't crowd out a rare one the way a flat sample_occurrences() draw</span>
+<span class="sd">    over the whole table would -- a rare group is taken in full (or as close</span>
+<span class="sd">    as its size allows) before a common group absorbs the rollover. Each</span>
+<span class="sd">    group's own picks still go through sample_occurrences, so the sample is</span>
+<span class="sd">    stable across runs the same way a flat one is.</span>
+
+<span class="sd">    - `group_col` -- occurrence column to stratify by, e.g. "taxon". A row with</span>
+<span class="sd">      a missing value is excluded, the same way rows_matching and cap_per_group</span>
+<span class="sd">      treat one -- not knowing a row's group cannot be the same as knowing it</span>
+<span class="sd">      belongs to one being sampled.</span>
+<span class="sd">    - `count` -- total ids wanted, across every group. Returns every qualifying</span>
+<span class="sd">      id when count exceeds how many there are, like sample_occurrences -- here</span>
+<span class="sd">      that can mean every id in every group, if the whole table is smaller than</span>
+<span class="sd">      count.</span>
+<span class="sd">    - `id_col` -- occurrence id column to read and return.</span>
+<span class="sd">    - `seed` -- passed through to sample_occurrences for each group's draw.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">group_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"no '</span><span class="si">{</span><span class="n">group_col</span><span class="si">}</span><span class="s2">' column to group by (columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">id_col</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"no '</span><span class="si">{</span><span class="n">id_col</span><span class="si">}</span><span class="s2">' column to read ids from (columns: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">)</span><span class="si">}</span><span class="s2">)"</span>
+        <span class="p">)</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">groups</span> <span class="o">=</span> <span class="p">[</span><span class="n">ids</span> <span class="k">for</span> <span class="n">_</span><span class="p">,</span> <span class="n">ids</span> <span class="ow">in</span>
+             <span class="n">df</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="n">group_col</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()]</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">group_col</span><span class="p">,</span> <span class="n">sort</span><span class="o">=</span><span class="kc">False</span><span class="p">)[</span><span class="n">id_col</span><span class="p">]]</span>
+    <span class="n">groups</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="nb">len</span><span class="p">)</span>
+
+    <span class="n">picked</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">remaining_count</span><span class="p">,</span> <span class="n">remaining_groups</span> <span class="o">=</span> <span class="n">count</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">groups</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">ids</span> <span class="ow">in</span> <span class="n">groups</span><span class="p">:</span>
+        <span class="n">share</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="n">remaining_count</span> <span class="o">//</span> <span class="n">remaining_groups</span><span class="p">)</span>  <span class="c1"># ceil division</span>
+        <span class="n">take</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">),</span> <span class="n">share</span><span class="p">)</span>
+        <span class="n">picked</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">sample_occurrences</span><span class="p">(</span><span class="n">ids</span><span class="p">,</span> <span class="n">take</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">))</span>
+        <span class="n">remaining_count</span> <span class="o">-=</span> <span class="n">take</span>
+        <span class="n">remaining_groups</span> <span class="o">-=</span> <span class="mi">1</span>
+
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">picked</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.shard_occurrences" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">shard_occurrences</span>
+
+
+<a href="#critterframe.selectionhelpers.shard_occurrences" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">shard_occurrences</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">total</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>This shard's disjoint slice of occurrence_ids, out of <code>total</code> shards.</p>
+<p>Sorted first, then handed out round-robin -- deterministic regardless of
+the order occurrence_ids arrives in or which process computes it, so any
+number of workers given the same ids and the same total always agree on
+the same non-overlapping split with no coordination between them. That's
+what lets a cluster job array (or a plain multiprocessing.Pool, or a
+handful of manual terminal invocations) run one shard per worker safely:
+worker i calls run_segments(..., shard=(i, n)) and never touches an
+occurrence any other worker is also touching.</p>
+<p>Sizes differ by at most one shard-to-shard (round-robin, not chunked), so
+no worker sits idle waiting on a shard several times the size of its
+neighbours'.</p>
+<ul>
+<li><code>index</code> -- this shard's number, 0 &lt;= index &lt; total.</li>
+<li><code>total</code> -- how many shards <code>occurrence_ids</code> is being split into.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span>
+<span class="normal">470</span>
+<span class="normal">471</span>
+<span class="normal">472</span>
+<span class="normal">473</span>
+<span class="normal">474</span>
+<span class="normal">475</span>
+<span class="normal">476</span>
+<span class="normal">477</span>
+<span class="normal">478</span>
+<span class="normal">479</span>
+<span class="normal">480</span>
+<span class="normal">481</span>
+<span class="normal">482</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">shard_occurrences</span><span class="p">(</span><span class="n">occurrence_ids</span><span class="p">,</span> <span class="n">index</span><span class="p">,</span> <span class="n">total</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    This shard's disjoint slice of occurrence_ids, out of `total` shards.</span>
+
+<span class="sd">    Sorted first, then handed out round-robin -- deterministic regardless of</span>
+<span class="sd">    the order occurrence_ids arrives in or which process computes it, so any</span>
+<span class="sd">    number of workers given the same ids and the same total always agree on</span>
+<span class="sd">    the same non-overlapping split with no coordination between them. That's</span>
+<span class="sd">    what lets a cluster job array (or a plain multiprocessing.Pool, or a</span>
+<span class="sd">    handful of manual terminal invocations) run one shard per worker safely:</span>
+<span class="sd">    worker i calls run_segments(..., shard=(i, n)) and never touches an</span>
+<span class="sd">    occurrence any other worker is also touching.</span>
+
+<span class="sd">    Sizes differ by at most one shard-to-shard (round-robin, not chunked), so</span>
+<span class="sd">    no worker sits idle waiting on a shard several times the size of its</span>
+<span class="sd">    neighbours'.</span>
+
+<span class="sd">    - `index` -- this shard's number, 0 &lt;= index &lt; total.</span>
+<span class="sd">    - `total` -- how many shards `occurrence_ids` is being split into.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">total</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"total must be at least 1, got </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="mi">0</span> <span class="o">&lt;=</span> <span class="n">index</span> <span class="o">&lt;</span> <span class="n">total</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"index must be in [0, </span><span class="si">{</span><span class="n">total</span><span class="si">}</span><span class="s2">), got </span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span> <span class="ow">in</span> <span class="n">occurrence_ids</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">ids</span><span class="p">[</span><span class="n">index</span><span class="p">::</span><span class="n">total</span><span class="p">]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.selectionhelpers.worst_n" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">worst_n</span>
+
+
+<a href="#critterframe.selectionhelpers.worst_n" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">worst_n</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>The <code>count</code> occurrence ids with the lowest (ascending=True, the default)
+or highest values, sorted worst-first.</p>
+<ul>
+<li><code>values</code> -- {occurrence_id: value} or a pandas Series indexed by id.
+  NaN values are dropped first -- an undefined value can't be ranked.</li>
+<li><code>count</code> -- how many to return. 0 or fewer returns [].</li>
+<li><code>ascending</code> -- True when a LOW value is worst (an IoU, a match score);
+  False when a HIGH value is worst (a percent disagreement).</li>
+</ul>
+<p>Returns [(occurrence_id, value), ...], worst first -- both, not just
+ids, since every existing caller wants the value alongside it for a log
+line. Take just the ids with <code>[i for i, _ in worst_n(...)]</code> when that's
+all that's needed, e.g. to hand to <code>project.subsets.grow_subset</code>.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/selectionhelpers.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">worst_n</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">count</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    The `count` occurrence ids with the lowest (ascending=True, the default)</span>
+<span class="sd">    or highest values, sorted worst-first.</span>
+
+<span class="sd">    - `values` -- {occurrence_id: value} or a pandas Series indexed by id.</span>
+<span class="sd">      NaN values are dropped first -- an undefined value can't be ranked.</span>
+<span class="sd">    - `count` -- how many to return. 0 or fewer returns [].</span>
+<span class="sd">    - `ascending` -- True when a LOW value is worst (an IoU, a match score);</span>
+<span class="sd">      False when a HIGH value is worst (a percent disagreement).</span>
+
+<span class="sd">    Returns [(occurrence_id, value), ...], worst first -- both, not just</span>
+<span class="sd">    ids, since every existing caller wants the value alongside it for a log</span>
+<span class="sd">    line. Take just the ids with `[i for i, _ in worst_n(...)]` when that's</span>
+<span class="sd">    all that's needed, e.g. to hand to `project.subsets.grow_subset`.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">count</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">return</span> <span class="p">[]</span>
+
+    <span class="n">series</span> <span class="o">=</span> <span class="n">values</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">)</span> <span class="k">else</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">values</span><span class="p">)</span>
+    <span class="n">ranked</span> <span class="o">=</span> <span class="n">series</span><span class="o">.</span><span class="n">dropna</span><span class="p">()</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">ascending</span><span class="o">=</span><span class="n">ascending</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">count</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">[(</span><span class="nb">str</span><span class="p">(</span><span class="n">occurrence_id</span><span class="p">),</span> <span class="n">value</span><span class="p">)</span> <span class="k">for</span> <span class="n">occurrence_id</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">ranked</span><span class="o">.</span><span class="n">items</span><span class="p">()]</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
