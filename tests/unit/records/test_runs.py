@@ -467,3 +467,43 @@ def test_two_finished_runs_append_two_lines_in_order(tmp_path):
 
 def test_a_project_with_no_finished_runs_has_no_log_file(tmp_path):
     assert not paths.runs_log_path(tmp_path).exists()
+
+
+# ---------------------------------------------------------------------------
+# the database file itself
+# ---------------------------------------------------------------------------
+
+
+def test_reading_a_project_that_never_ran_creates_no_database(tmp_path):
+    """
+    paths promises it creates nothing, and a summary or an export asking what a
+    project holds is a read -- it shouldn't leave a database behind in one that
+    has never run anything.
+    """
+    from critterframe.project import paths
+
+    assert run_records.load_runs(tmp_path).empty
+    assert run_records.current_recipe_pointers(tmp_path) == {}
+    assert not paths.runs_and_metrics_path(tmp_path).exists()
+
+
+def test_an_empty_run_table_still_has_its_columns(tmp_path):
+    """So a caller can filter or read a column without special-casing empty."""
+    runs = run_records.load_runs(tmp_path)
+    assert "recipe_hash" in runs.columns and "context" in runs.columns
+
+
+def test_a_read_does_not_hold_the_database_open(tmp_path):
+    """
+    An unclosed connection keeps a file handle for the life of the process,
+    which on Windows is enough to stop the project directory being moved.
+    """
+    import os
+
+    recipe = Recipe("metric", "traits", [body_length()], part="organism")
+    run_records.start_run(tmp_path, recipe)
+    run_records.load_runs(tmp_path)
+
+    moved = tmp_path.parent / (tmp_path.name + "_moved")
+    os.rename(tmp_path, moved)          # raises if anything still holds it open
+    assert (moved / "runs_and_metrics.sqlite").exists()

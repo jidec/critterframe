@@ -69,9 +69,9 @@ print(cf.run_segments(PROJECT_PATH, steps=[cf.segment(ThresholdModel())]))
 print("\n== split_ids ==")
 splits = cf.split_ids(
     PROJECT_PATH,
-    proportions={"train": 0.6, "val": 0.2, "test": 0.2},
-    stratify_by="species",
-    group_by="specimen",
+    fractions={"train": 0.6, "val": 0.2, "test": 0.2},
+    stratify_col="species",
+    group_col="specimen",
     seed=123,
 )
 for name, ids in splits.items():
@@ -84,7 +84,7 @@ for name, ids in splits.items():
         sides.setdefault(occurrences.loc[occurrence_id, "specimen"], set()).add(name)
 straddling = [specimen for specimen, names in sides.items() if len(names) > 1]
 print(f"\n  specimens split across sides: {len(straddling)} (expect 0) -- both "
-      "images of\n  a specimen are on one side, which is what group_by "
+      "images of\n  a specimen are on one side, which is what group_col "
       "guarantees exactly")
 
 for name, ids in splits.items():
@@ -97,16 +97,16 @@ print("  <- stratification is approximate where grouping is exact: a group "
 shuffled = cf.split_ids(
     PROJECT_PATH,
     occurrence_ids=list(reversed(metadata["occurrence_id"].tolist())),
-    proportions={"train": 0.6, "val": 0.2, "test": 0.2},
-    stratify_by="species",
-    group_by="specimen",
+    fractions={"train": 0.6, "val": 0.2, "test": 0.2},
+    stratify_col="species",
+    group_col="specimen",
     seed=123,
 )
 print(f"\n  same ids in reverse order give the same split: "
       f"{shuffled == splits} (expect True)")
 
-changed = cf.split_ids(PROJECT_PATH, proportions={"train": 0.6, "val": 0.2, "test": 0.2},
-                       stratify_by="species", group_by="specimen", seed=7)
+changed = cf.split_ids(PROJECT_PATH, fractions={"train": 0.6, "val": 0.2, "test": 0.2},
+                       stratify_col="species", group_col="specimen", seed=7)
 print(f"  a different seed gives a different one: {changed != splits} (expect True)")
 
 print("\n== export_training_data: an ImageFolder-shaped classification set ==")

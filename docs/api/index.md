@@ -149,6 +149,18 @@
     options:
       show_root_full_path: false
 
+::: critterframe.white_balanced_color
+    options:
+      show_root_full_path: false
+
+::: critterframe.background_color
+    options:
+      show_root_full_path: false
+
+::: critterframe.color_clusters
+    options:
+      show_root_full_path: false
+
 ::: critterframe.red_fraction
     options:
       show_root_full_path: false
@@ -210,6 +222,10 @@
       show_root_full_path: false
 
 ::: critterframe.mask_fraction
+    options:
+      show_root_full_path: false
+
+::: critterframe.mask_info
     options:
       show_root_full_path: false
 
@@ -321,31 +337,21 @@
 
 ::: critterframe.extensions.antenna_lighttraps.calibrations.scale.measure_scales
 
+# bioencoder
+
+::: critterframe.extensions.bioencoder.embedding.embedding
+
+::: critterframe.extensions.bioencoder.training.prepare_dataset
+
+::: critterframe.extensions.bioencoder.training.train
+
+::: critterframe.extensions.bioencoder.training.load
+
 # gbif_darwincore_inat
 
 ::: critterframe.extensions.gbif_darwincore_inat.archive.read_darwincore_archive
 
 ::: critterframe.extensions.gbif_darwincore_inat.ingest.ingest_occurrences
-
-# inat_insects
-
-::: critterframe.extensions.inat_insects.ingest.ingest_occurrences
-
-::: critterframe.extensions.inat_insects.download.download_images
-
-::: critterframe.extensions.inat_insects.metrics.color.white_balanced_color
-
-::: critterframe.extensions.inat_insects.metrics.color.background_color
-
-::: critterframe.extensions.inat_insects.metrics.color.color_clusters
-
-::: critterframe.extensions.inat_insects.metrics.bioencoder.embedding
-
-::: critterframe.extensions.inat_insects.training.bioencoder.prepare_dataset
-
-::: critterframe.extensions.inat_insects.training.bioencoder.train
-
-::: critterframe.extensions.inat_insects.training.bioencoder.load
 
 # smp_segmenter
 

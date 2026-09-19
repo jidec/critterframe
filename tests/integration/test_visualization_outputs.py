@@ -53,6 +53,20 @@ def test_a_segmentation_run_writes_one_grid(image_project):
     assert len(grids(image_project)) == 1
 
 
+def test_a_run_leaves_a_sidecar_naming_what_it_shows(image_project):
+    """The grid is bare pixels; the sidecar says which recipe and which specimens they are."""
+    import json
+
+    segment(image_project, visualize=4)
+    sidecars = list(paths.pipeline_dir(image_project).glob("*.report.json"))
+    assert len(sidecars) == 1
+
+    record = json.loads(sidecars[0].read_text(encoding="utf-8"))
+    assert record["files"] == grids(image_project)
+    assert len(record["shown"]) == 4
+    assert record["identity"]["kind"] == "segment"
+
+
 def test_the_grid_is_named_for_the_run_and_its_recipe(image_project):
     """
     So a changed recipe writes a second sheet beside the first rather than
@@ -256,10 +270,10 @@ def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(
 
 
 def test_a_render_writes_one_file_per_occurrence_part(segmented_project):
-    summary = cf.render_segments(segmented_project, "plates",
+    results = cf.render_segments(segmented_project, "plates",
                                  transforms=[cf.remove_background(),
                                              cf.crop_to_mask(pad=0.1)])
-    written = sorted(summary["directory"].glob("*.png"))
+    written = sorted(results["organism"]["directory"].glob("*.png"))
 
     assert len(written) == 8
     assert {path.stem for path in written} == {f"specimen{index}"
@@ -272,9 +286,9 @@ def test_products_and_pipeline_sheets_do_not_share_a_folder(segmented_project):
     belongs to is decided by where it lands.
     """
     measure(segmented_project, visualize=3)
-    summary = cf.render_segments(segmented_project, "plates",
+    results = cf.render_segments(segmented_project, "plates",
                                  transforms=[cf.remove_background()])
 
-    assert summary["directory"].parent == paths.products_dir(segmented_project)
+    assert results["organism"]["directory"].parent == paths.products_dir(segmented_project)
     assert paths.pipeline_dir(segmented_project).exists()
     assert not list(paths.products_dir(segmented_project).glob("*.jpg"))

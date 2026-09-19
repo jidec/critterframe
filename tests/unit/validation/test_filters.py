@@ -251,3 +251,54 @@ def test_an_unknown_metric_has_to_be_told_which_way_round():
 def test_a_dict_says_it_explicitly():
     assert _resolve_specs({"my_custom_score": "above"}) == {
         "my_custom_score": "above"}
+
+
+# ---------------------------------------------------------------------------
+# get_validated_filters(visualize=)
+# ---------------------------------------------------------------------------
+
+
+def _store(project_path, run_name, metric_name, values):
+    import critterframe as cf
+    from critterframe.recipes import Recipe
+    from critterframe.records.metrics import append_metrics, make_metric_row
+    from critterframe.records.runs import start_run
+
+    recipe = Recipe("metric", run_name, [cf.body_length()], part="organism")
+    run_id = start_run(project_path, recipe)
+    append_metrics(project_path, run_id, recipe.hash,
+                   [make_metric_row(occurrence_id, "organism", metric_name, value)
+                    for occurrence_id, value in values.items()])
+
+
+def _labelled_project(project_path):
+    frame = labelled().head(6)
+    frame["occurrence_id"] = [f"specimen{index}" for index in range(6)]
+    _store(project_path, "qc", "blur_variance",
+           dict(zip(frame["occurrence_id"], frame[METRIC])))
+    _store(project_path, "screening", "usability_annotation",
+           dict(zip(frame["occurrence_id"], frame[FLAG])))
+
+
+def test_visualize_writes_one_sweep_figure_per_metric(metadata_project):
+    from critterframe.project import paths
+    from critterframe.validation.filters import get_validated_filters
+
+    _labelled_project(metadata_project)
+    filters = get_validated_filters(metadata_project, ["blur_variance"], "qc", "screening",
+                                    max_fpr=0.5)
+
+    assert filters
+    figures = list(paths.pipeline_dir(metadata_project).glob("filters__qc__vs__screening_*"
+                                                             "__blur_variance.png"))
+    assert len(figures) == 1
+
+
+def test_visualize_false_writes_no_figure(metadata_project):
+    from critterframe.project import paths
+    from critterframe.validation.filters import get_validated_filters
+
+    _labelled_project(metadata_project)
+    get_validated_filters(metadata_project, ["blur_variance"], "qc", "screening",
+                          max_fpr=0.5, visualize=False)
+    assert not paths.pipeline_dir(metadata_project).exists()

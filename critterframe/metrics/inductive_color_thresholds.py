@@ -1,7 +1,9 @@
 """
-A group colour metric that discovers its own hue categories, instead of using
-a fixed vocabulary the way metrics.color.HUE_BANDS or ColorClusterMetric's
-chosen n_colors do.
+Colour thresholds fitted per group: a chroma gate and hue arcs discovered from the group's own pixels.
+
+The fitted counterpart of `color_thresholds`, which takes its thresholds as given; the rest of this docstring is the
+fit. Discovers its own hue categories instead of a fixed vocabulary like `color_thresholds.HUE_BANDS` or the chosen
+`n_colors` of `color_clusters`.
 
 Five steps, run once per group in prepare(), on pooled reference pixels:
 
@@ -12,33 +14,33 @@ Five steps, run once per group in prepare(), on pooled reference pixels:
      (a near-gray/near-black/near-white pixel's hue is close to meaningless)
      and stabilizes past some chroma value -- that stabilization point is the
      gate, derived from this population's own data rather than a fixed
-     cutoff like metrics.color.MIN_SATURATION.
+     cutoff like metrics.color_thresholds.MIN_SATURATION.
   3. Gate on chroma: keep only pixels at or above that threshold as the
      "clean" chromatic subset the hue distribution is read from.
   4. Derive hue thresholds from the gated subset via KDE valley-finding: local
      minima in a circular kernel density estimate of hue are the natural
      boundaries between colour modes, whatever their number turns out to be.
-  5. Apply back to the FULL masked population (gated pixels included, not
-     just the ones that passed the gate) when scoring an occurrence, so the
-     reported fractions describe the whole organism, not just its most
-     colourful pixels.
+  5. Express the gate and arcs as `ColorThreshold`s in lch -- `achromatic` below
+     the gate, one `hue_<i>` per arc at or above it -- and apply them to the
+     FULL masked population (gated pixels included, not just the ones that
+     passed the gate) when scoring an occurrence, so the reported fractions
+     describe the whole organism, not just its most colourful pixels.
 
-Same pooled-pixel shape as ColorClusterMetric, and for the same reason it
-isn't a metrics.outliers.GroupMetric subclass: that one fits on one
-ready-made feature row per reference occurrence, read from stored metric
-values; this fits on thousands of raw pixels per occurrence, gathered from
-the image store. group_lookup/POPULATION are shared with it rather than
-reimplemented.
+Same pooled-pixel shape as the extension's ColorClusterMetric, and both are
+metrics.outliers.PooledPixelGroupMetric subclasses: the pooling, the
+minimum-group-size fallback and the fit record are that base's, and what is
+here is the five-step fit itself.
 """
 
 import logging
 
-import cv2
 import numpy as np
 
-from ....recipes import Metric
-from ....metrics.outliers import POPULATION, group_lookup
-from ....records.occurrences import ids_record
+from ..colorspaces import convert
+from ..visualization import figures
+from .color_thresholds import color_threshold, threshold_masks, threshold_panel
+from .outliers import POPULATION, PooledPixelGroupMetric
+from .pixels import masked_pixels
 
 logger = logging.getLogger(__name__)
 
@@ -52,8 +54,12 @@ PIXELS_PER_OCCURRENCE = 2000
 # definition rather than fitting their own.
 MIN_GROUP_SIZE = 5
 
+# Fitted groups drawn as figures, largest first, beside the population's own;
+# a project grouped by species would otherwise leave hundreds of them.
+FIGURE_GROUPS = 10
 
-class InductiveColorThresholdMetric(Metric):
+
+class InductiveColorThresholdMetric(PooledPixelGroupMetric):
     """
     Group metric: fraction of this organism in each hue range its group's own
     pixels turned out to have, plus the fraction too washed-out to have a
@@ -93,22 +99,17 @@ class InductiveColorThresholdMetric(Metric):
                  sample_pixels=PIXELS_PER_OCCURRENCE, n_chroma_bins=20,
                  min_bin_pixels=50, hue_bandwidth=10.0, valley_relative_height=0.5,
                  max_hue_ranges=8, name=None, unit="fraction", reference=False):
-        super().__init__("inductive_color_thresholds", self._score, version="1",
-                         unit=unit, metric_name=name or "inductive_color_thresholds")
+        super().__init__("inductive_color_thresholds", self._score,
+                         group_col=group_col, transforms=transforms,
+                         min_group_size=min_group_size, sample_pixels=sample_pixels,
+                         reference=reference, unit=unit,
+                         metric_name=name or "inductive_color_thresholds")
 
-        self.group_col = group_col
-        self.transforms = list(transforms)
-        self.min_group_size = min_group_size
-        self.sample_pixels = sample_pixels
         self.n_chroma_bins = n_chroma_bins
         self.min_bin_pixels = min_bin_pixels
         self.hue_bandwidth = hue_bandwidth
         self.valley_relative_height = valley_relative_height
         self.max_hue_ranges = max_hue_ranges
-        self.reference = reference
-
-        self.definitions = {}
-        self.group_by_id = {}
 
     def spec(self):
         spec = super().spec()
@@ -126,90 +127,56 @@ class InductiveColorThresholdMetric(Metric):
         }
         return spec
 
+    def _fit(self, pixels):
+        """The full 5-step fit over one group's pooled pixels (see `_fit_definition`)."""
+        logger.debug("%s: fitting %d pooled pixel(s)", self.metric_name, len(pixels))
+        definition = _fit_definition(pixels, self.n_chroma_bins, self.min_bin_pixels,
+                                     self.hue_bandwidth, self.valley_relative_height,
+                                     self.max_hue_ranges)
+        logger.info("%s: fit gate=%.2f, %d hue range(s)", self.metric_name,
+                   definition["gate"], len(definition["hue_ranges"]))
+        return definition
+
+    def _describe_fit(self, group):
+        """
+        What a human can't infer from the parameters: what this group's fit actually found.
+        """
+        definition = self.fits[group]
+        return {"gate": definition["gate"],
+                "n_hue_ranges": len(definition["hue_ranges"]),
+                "thresholds": [threshold.spec() for threshold in definition["thresholds"]]}
+
     def prepare(self, context):
         """
-        Fit one gate+hue-ranges definition per group by pooling masked pixels
-        across the reference population, plus a population-wide fallback.
+        Fit one gate+hue-ranges definition per group, pooled across the reference population.
 
-        Expensive (reads every reference occurrence's image), so it happens
-        once per run via this hook rather than once per occurrence.
+        The pooling and the fallback are `PooledPixelGroupMetric.prepare`; what
+        is this metric's own is the five-step fit and the figures showing how
+        each definition's gate and hue ranges were arrived at.
 
-        Returns the fit record the run stores: each definition's contributing
-        occurrences as a count and a digest, plus the gate and range count it
-        actually found -- the one thing about a fit a human can't infer from
-        the parameters alone.
+        Returns that base's fit record, plus this metric's own settings.
         """
-        from ....training.datasets import iterate_segments
-
-        self.group_by_id = group_lookup(context.project_path, self.group_col,
-                                        context.occurrence_ids)
-
-        pooled = {}
-        contributors = {}
-        for occurrence_id, segment in iterate_segments(
-                context.project_path, part=context.part,
-                transforms=self.transforms, reference=self.reference,
-                occurrence_ids=context.occurrence_ids):
-            pixels = _sample(segment, self.sample_pixels)
-            if pixels is None:
-                continue
-            group = self.group_by_id.get(occurrence_id, POPULATION)
-            for key in {group, POPULATION}:
-                pooled.setdefault(key, []).append(pixels)
-                contributors.setdefault(key, []).append(occurrence_id)
-
-        if POPULATION not in pooled:
-            raise ValueError(
-                "no reference occurrences with usable pixels -- segment this "
-                "part before fitting inductive colour thresholds on it"
-            )
-
-        groups = {}
-        for group, chunks in pooled.items():
-            fitted = group is POPULATION or len(chunks) >= self.min_group_size
-            if fitted:
-                definition = _fit_definition(
-                    np.concatenate(chunks), self.n_chroma_bins, self.min_bin_pixels,
-                    self.hue_bandwidth, self.valley_relative_height, self.max_hue_ranges)
-                self.definitions[group] = definition
-            else:
-                logger.warning(
-                    "group %r has only %d reference occurrences (< "
-                    "min_group_size=%d) -- using the population-wide "
-                    "definition instead of its own", group, len(chunks),
-                    self.min_group_size)
-            if group is not POPULATION:
-                record = dict(ids_record(contributors[group]), fitted=fitted)
-                if fitted:
-                    record["gate"] = self.definitions[group]["gate"]
-                    record["n_hue_ranges"] = len(self.definitions[group]["hue_ranges"])
-                groups[str(group)] = record
-
+        record = super().prepare(context)
         logger.info("%s fit: %d group definition(s) + 1 population-wide fallback "
                     "(population gate=%.2f, %d hue range(s))", self.metric_name,
-                    len(self.definitions) - 1, self.definitions[POPULATION]["gate"],
-                    len(self.definitions[POPULATION]["hue_ranges"]))
+                    len(self.fits) - 1, self.fits[POPULATION]["gate"],
+                    len(self.fits[POPULATION]["hue_ranges"]))
 
-        return {
-            "group_col": self.group_col,
-            "n_chroma_bins": self.n_chroma_bins,
-            "min_bin_pixels": self.min_bin_pixels,
-            "hue_bandwidth": self.hue_bandwidth,
-            "valley_relative_height": self.valley_relative_height,
-            "max_hue_ranges": self.max_hue_ranges,
-            "reference": self.reference,
-            "population": dict(ids_record(contributors[POPULATION]),
-                              gate=self.definitions[POPULATION]["gate"],
-                              n_hue_ranges=len(self.definitions[POPULATION]["hue_ranges"])),
-            "groups": groups,
-        }
+        if context.report:
+            drawn = [POPULATION] + sorted(
+                (group for group in self.fits if group is not POPULATION),
+                key=lambda group: -record["groups"][str(group)]["count"])[:FIGURE_GROUPS]
+            for group in drawn:
+                label = "population" if group is POPULATION else str(group)
+                for suffix, figure in _definition_figures(self.fits[group], label):
+                    context.report.figure(f"{self.metric_name}__{label}__{suffix}", figure)
 
-    def _definition_for(self, occurrence_id):
-        group = self.group_by_id.get(occurrence_id, POPULATION)
-        definition = self.definitions.get(group)
-        if definition is None:
-            group, definition = POPULATION, self.definitions[POPULATION]
-        return definition, group
+        return dict(record,
+                    n_chroma_bins=self.n_chroma_bins,
+                    min_bin_pixels=self.min_bin_pixels,
+                    hue_bandwidth=self.hue_bandwidth,
+                    valley_relative_height=self.valley_relative_height,
+                    max_hue_ranges=self.max_hue_ranges)
 
     def _score(self, segment):
         """
@@ -221,23 +188,23 @@ class InductiveColorThresholdMetric(Metric):
         group's definition, zero-valued where nothing fell in it, so a wide
         export has no holes that could be misread as "not measured".
         """
-        if not self.definitions:
+        if not self.fits:
             raise RuntimeError(
                 f"{self.metric_name} was never fit -- group metrics are fit by "
                 "their prepare() hook, which run_metrics calls for you"
             )
 
-        pixels = _sample(segment, cap=None)
+        pixels = masked_pixels(segment, required=False)
         if pixels is None:
             raise ValueError("empty mask")
 
-        definition, group = self._definition_for(segment.occurrence_id)
-        lab = _to_lab(pixels)
-        chroma, hue = _chroma_hue(lab)
-        masks = _classify(hue, chroma, definition)
+        definition, group = self._fit_for(segment.occurrence_id)
+        masks = threshold_masks(pixels, definition["thresholds"])
+        result = {label: float(mask.mean()) for label, mask in masks.items()}
 
-        total = len(pixels)
-        result = {label: float(mask.sum()) / total for label, mask in masks.items()}
+        if segment.panel_sink is not None:
+            segment.emit_panel(threshold_panel(segment, masks, result), self.metric_name)
+
         hue_keys = [key for key in result if key.startswith("hue_")]
         result["dominant"] = (max(hue_keys, key=result.get) if any(result[k] > 0 for k in hue_keys)
                               else None)
@@ -250,62 +217,6 @@ class InductiveColorThresholdMetric(Metric):
 def inductive_color_thresholds(**kwargs):
     """Operation: InductiveColorThresholdMetric, in the lowercase factory style of every other metric."""
     return InductiveColorThresholdMetric(**kwargs)
-
-
-# ---------------------------------------------------------------------------
-# Pixel gathering
-# ---------------------------------------------------------------------------
-
-
-def _sample(segment, cap):
-    """
-    A segment's masked pixels, BGR, capped to `cap` by random sample -- or
-    every one of them when `cap` is None, which is what scoring needs (step
-    5 classifies the full population, not a sample of it).
-    """
-    if segment.mask is None or not segment.mask.any():
-        return None
-
-    image = np.asarray(segment.image)
-    if image.ndim == 2:
-        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
-
-    pixels = image[segment.mask]
-    if cap is not None and len(pixels) > cap:
-        rng = np.random.default_rng(0)
-        pixels = pixels[rng.choice(len(pixels), cap, replace=False)]
-    return pixels
-
-
-# ---------------------------------------------------------------------------
-# Colour space
-# ---------------------------------------------------------------------------
-
-
-def _to_lab(bgr_pixels):
-    """
-    (N, 3) uint8 BGR -> (N, 3) float32 Lab in the TRUE range (L: 0-100, a/b:
-    roughly -127..127).
-
-    Deliberately NOT the (N, 3) uint8-in-uint8-out path ColorClusterMetric's
-    _convert uses -- that one leaves a/b offset by +128 (how OpenCV stores
-    Lab in an 8-bit image), which is harmless for KMeans' translation-
-    invariant Euclidean distance but wrong here: chroma is a distance from
-    the TRUE origin, not an arbitrary shifted one. Converting through a
-    float32 0-1 BGR image instead makes OpenCV emit unscaled Lab directly.
-    """
-    bgr = np.asarray(bgr_pixels, dtype=np.float32).reshape(-1, 1, 3) / 255.0
-    lab = cv2.cvtColor(bgr, cv2.COLOR_BGR2LAB)
-    return lab.reshape(-1, 3)
-
-
-def _chroma_hue(lab_pixels):
-    """(N, 3) Lab -> (chroma, hue_degrees), hue in [0, 360)."""
-    a = lab_pixels[:, 1]
-    b = lab_pixels[:, 2]
-    chroma = np.sqrt(a ** 2 + b ** 2)
-    hue = np.degrees(np.arctan2(b, a)) % 360.0
-    return chroma, hue
 
 
 def _circular_variance(hue_degrees):
@@ -345,20 +256,11 @@ def _find_chroma_gate(chroma, hue_degrees, n_bins, min_bin_pixels):
     returns 0.0, the safest fallback: nothing gets gated.
     """
     chroma = np.asarray(chroma)
-    hue_degrees = np.asarray(hue_degrees)
     if len(chroma) == 0:
         logger.warning("no pixels to find a chroma gate from -- using gate 0.0")
         return 0.0
 
-    edges = np.quantile(chroma, np.linspace(0.0, 1.0, n_bins + 1))
-    bin_index = np.clip(np.searchsorted(edges, chroma, side="right") - 1, 0, n_bins - 1)
-
-    trusted = []   # [(lower_edge, circular_variance), ...] in increasing chroma order
-    for index in range(n_bins):
-        members = hue_degrees[bin_index == index]
-        if len(members) >= min_bin_pixels:
-            trusted.append((float(edges[index]), _circular_variance(members)))
-
+    trusted = _chroma_variance_curve(chroma, hue_degrees, n_bins, min_bin_pixels)
     if not trusted:
         logger.warning("no chroma bin had >= %d pixels -- using gate 0.0",
                        min_bin_pixels)
@@ -377,10 +279,33 @@ def _find_chroma_gate(chroma, hue_degrees, n_bins, min_bin_pixels):
     for position, (edge, _variance) in enumerate(trusted):
         rest = variances[position:]
         if np.all(rest <= baseline * tolerance):
+            logger.debug("chroma gate stabilized at %.2f (bin %d/%d, baseline "
+                        "variance %.4f)", edge, position + 1, len(trusted), baseline)
             return edge
 
     logger.warning("hue variance never stabilized across chroma bins -- using gate 0.0")
     return 0.0
+
+
+def _chroma_variance_curve(chroma, hue_degrees, n_bins, min_bin_pixels):
+    """
+    [(lower chroma edge, circular hue variance), ...] for every trusted quantile bin, in
+    increasing chroma order -- what the gate is read off of.
+    """
+    chroma = np.asarray(chroma)
+    hue_degrees = np.asarray(hue_degrees)
+    if len(chroma) == 0:
+        return []
+
+    edges = np.quantile(chroma, np.linspace(0.0, 1.0, n_bins + 1))
+    bin_index = np.clip(np.searchsorted(edges, chroma, side="right") - 1, 0, n_bins - 1)
+
+    trusted = []
+    for index in range(n_bins):
+        members = hue_degrees[bin_index == index]
+        if len(members) >= min_bin_pixels:
+            trusted.append((float(edges[index]), _circular_variance(members)))
+    return trusted
 
 
 # ---------------------------------------------------------------------------
@@ -482,41 +407,68 @@ def _ranges_from_valleys(valley_angles):
 
 def _fit_definition(bgr_pixels, n_chroma_bins, min_bin_pixels, hue_bandwidth,
                     valley_relative_height, max_hue_ranges):
-    """The full 5-step fit (steps 1-4; step 5 is _classify, applied at score
-    time) over one pool of BGR pixels. Returns {"gate", "hue_ranges"}."""
-    lab = _to_lab(bgr_pixels)
-    chroma, hue = _chroma_hue(lab)
+    """
+    The full 5-step fit over one pool of BGR pixels; step 5's thresholds are applied at score time
+    by `threshold_masks`.
+
+    Returns {"gate", "hue_ranges", "thresholds"} plus the curves they were read off of ("chroma_curve",
+    "kde", "valleys"), kept for drawing.
+    """
+    _, chroma, hue = convert(bgr_pixels, "lch").T
     gate = _find_chroma_gate(chroma, hue, n_chroma_bins, min_bin_pixels)
+    curve = _chroma_variance_curve(chroma, hue, n_chroma_bins, min_bin_pixels)
 
     gated_hue = hue[chroma >= gate]
     if len(gated_hue) < min_bin_pixels:
         logger.warning("fewer than %d pixels passed the chroma gate (%.2f) -- "
                        "using one hue range covering the whole circle",
                        min_bin_pixels, gate)
-        return {"gate": gate, "hue_ranges": [(0.0, 360.0)]}
+        return {"gate": gate, "hue_ranges": [(0.0, 360.0)],
+                "thresholds": fitted_thresholds(gate, [(0.0, 360.0)]), "chroma_curve": curve,
+                "kde": None, "valleys": []}
 
     grid, density = _hue_kde(gated_hue, hue_bandwidth)
     valleys = _find_hue_valleys(grid, density, valley_relative_height, max_hue_ranges)
-    return {"gate": gate, "hue_ranges": _ranges_from_valleys(valleys)}
+    logger.debug("%d/%d pixel(s) passed the chroma gate; %d valley(s) found",
+                len(gated_hue), len(hue), len(valleys))
+    ranges = _ranges_from_valleys(valleys)
+    return {"gate": gate, "hue_ranges": ranges, "thresholds": fitted_thresholds(gate, ranges),
+            "chroma_curve": curve, "kde": (grid, density), "valleys": [float(angle) for angle in valleys]}
 
 
-# ---------------------------------------------------------------------------
-# Step 5: apply back to the full masked population
-# ---------------------------------------------------------------------------
-
-
-def _classify(hue_degrees, chroma, definition):
+def fitted_thresholds(gate, hue_ranges):
     """
-    {"achromatic": mask, "hue_0": mask, ...} for every pixel -- a partition,
-    so every pixel gets exactly one label. achromatic is chroma below the
-    gate; otherwise whichever hue_ranges arc contains the pixel's hue.
+    A fitted gate and hue arcs as colour thresholds in lch.
+
+    Disjoint by construction and together covering every pixel: `achromatic` below the gate, then one `hue_<i>` per
+    arc at or above it.
+
+    - `gate` -- the chroma below which a pixel's hue is not trusted.
+    - `hue_ranges` -- `(start, end)` arcs in degrees, covering the circle.
+
+    Returns a list of `ColorThreshold`, `achromatic` first.
     """
-    achromatic = chroma < definition["gate"]
-    masks = {"achromatic": achromatic}
-    for index, (start, end) in enumerate(definition["hue_ranges"]):
-        if start <= end:
-            in_range = (hue_degrees >= start) & (hue_degrees < end)
-        else:
-            in_range = (hue_degrees >= start) | (hue_degrees < end)
-        masks[f"hue_{index}"] = in_range & ~achromatic
-    return masks
+    thresholds = [color_threshold("achromatic", lch_c=(None, gate))]
+    for index, (start, end) in enumerate(hue_ranges):
+        thresholds.append(color_threshold(f"hue_{index}", lch_h=(start, end), lch_c=(gate, None)))
+    return thresholds
+
+
+def _definition_figures(definition, label):
+    """(suffix, Figure) pairs showing how one definition's gate and hue ranges were found."""
+    drawn = []
+    if definition.get("chroma_curve"):
+        edges, variances = zip(*definition["chroma_curve"])
+        drawn.append(("gate", figures.line_chart(
+            {"hue variance": (list(edges), list(variances))},
+            xlabel="chroma (bin lower edge)", ylabel="circular hue variance",
+            title=f"{label}: chroma gate {definition['gate']:.1f}",
+            marks={"gate": definition["gate"]})))
+    if definition.get("kde") is not None:
+        grid, density = definition["kde"]
+        drawn.append(("hue", figures.line_chart(
+            {"density": (list(grid), list(density))},
+            xlabel="hue (degrees)", ylabel="KDE density",
+            title=f"{label}: {len(definition['hue_ranges'])} hue range(s)",
+            marks={f"{angle:.0f}": angle for angle in definition["valleys"]})))
+    return drawn

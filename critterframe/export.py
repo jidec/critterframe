@@ -17,7 +17,6 @@ CSV handed to someone keeps its identity, and into the project's exports log,
 so the project knows what it has handed out.
 """
 
-import json
 import logging
 import operator
 from datetime import datetime, timezone
@@ -27,12 +26,13 @@ import pandas as pd
 
 from .calibrations import scale as scale_calibration
 from .project import paths, subsets as subset_selection
-from .recipes import DEFAULT_PART, canonical_json, hash_spec
+from .recipes import DEFAULT_PART, hash_spec, recorded_callable
 from .records import calibrations as calibration_records
 from .records import runs as run_records
-from .records.metrics import current_rows, load_metrics
+from .records.metrics import TRANSFORM_INFO_UNIT, load_metrics
 from .records.occurrences import ID_COL, ids_record
 from .selectionhelpers import rows_matching
+from .storage.jsonfiles import append_jsonl, read_jsonl, write_json
 
 logger = logging.getLogger(__name__)
 
@@ -71,16 +71,15 @@ def _current_long(project_path, run_names=None, parts=None, metric_names=None,
     Shared by everything reading values for output, so the wide table, the unit
     map and the manifest can never disagree about which rows they describe.
     """
-    long_df = load_metrics(project_path, run_names=run_names, parts=parts,
-                           metric_names=metric_names)
-    return current_rows(project_path, long_df) if current_only else long_df
+    return load_metrics(project_path, run_names=run_names, parts=parts,
+                        metric_names=metric_names, current_only=current_only)
 
 
 def _wide_from_long(long_df):
     """
     Reshape an already-resolved long frame into one row per occurrence.
 
-    long_df -- rows from _current_long.
+    - `long_df` -- rows from _current_long.
 
     Returns a DataFrame with occurrence_id first; empty if nothing matches.
     """
@@ -112,7 +111,7 @@ def _column_provenance(long_df):
     Resolved exactly as the values are: newest wins, so a column's description
     describes the number that column ends up with.
 
-    long_df -- rows from _current_long.
+    - `long_df` -- rows from _current_long.
     """
     provenance = {}
     for row in long_df.sort_values("metric_id").itertuples(index=False):
@@ -129,7 +128,7 @@ def _column_provenance(long_df):
 
 
 def metrics_wide(project_path, run_names=None, parts=None, metric_names=None,
-                 current_only=True):
+                 current_only=True, transform_info=False):
     """
     Reshape stored metric values into one row per occurrence, one column per
     run/part/metric.
@@ -138,19 +137,22 @@ def metrics_wide(project_path, run_names=None, parts=None, metric_names=None,
     decision, not a storage one. Where a metric was computed more than once for
     the same occurrence-part under one run name, the NEWEST value wins.
 
-    current_only -- report only values measured from the masks the project
-                    currently holds. On by default: "newest wins" alone isn't
-                    enough, since a value from a superseded mask can be the
-                    newest there is if the metric was never rerun. False shows
-                    every value regardless, which is a provenance question that
-                    load_metrics answers better.
+    - `current_only` -- report only values measured from the masks the project
+      currently holds. On by default: "newest wins" alone isn't enough, since a
+      value from a superseded mask can be the newest there is if the metric was
+      never rerun. False shows every value regardless, which is a provenance
+      question that load_metrics answers better.
+    - `transform_info` -- include what each metric run's transforms recorded;
+      left out by default unless named in `metric_names`, since it describes
+      how a value was measured rather than being one.
 
     Returns a DataFrame with occurrence_id first; empty if nothing matches.
     """
-    return _wide_from_long(_current_long(project_path, run_names=run_names,
-                                         parts=parts,
-                                         metric_names=metric_names,
-                                         current_only=current_only))
+    long_df = _current_long(project_path, run_names=run_names, parts=parts,
+                            metric_names=metric_names, current_only=current_only)
+    if not transform_info and metric_names is None and not long_df.empty:
+        long_df = long_df[long_df["unit"] != TRANSFORM_INFO_UNIT]
+    return _wide_from_long(long_df)
 
 
 def metric_units(project_path, run_names=None, current_only=True):
@@ -181,8 +183,8 @@ def _converted_name(column, columns):
     """
     The name a pixel column ends up under, once _to_millimetres has renamed it.
 
-    column  -- the column's name before conversion.
-    columns -- the columns of the converted frame.
+    - `column` -- the column's name before conversion.
+    - `columns` -- the columns of the converted frame.
 
     Returns the renamed column, or `column` itself where nothing converted it.
     """
@@ -255,9 +257,9 @@ def _apply_filters(df, filters):
     """
     Narrow df to the rows passing every condition, ANDed together.
 
-    filters -- {column: (op, value)} or {column: predicate}. op is one of "<",
-               "<=", ">", ">=", "==", "!=", "in", "not in"; a predicate is a
-               callable(series) -> boolean series.
+    - `filters` -- {column: (op, value)} or {column: predicate}. op is one of
+      "<", "<=", ">", ">=", "==", "!=", "in", "not in"; a predicate is a
+      callable(series) -> boolean series.
 
     Filtering on a column that doesn't exist raises rather than silently
     matching nothing. A NaN never passes, whatever the operator -- "this metric
@@ -323,8 +325,10 @@ def occurrences_matching(project_path, run_name, rules, part=DEFAULT_PART,
     rules = {column_name(run_name, part, metric_name): values
              for metric_name, values in rules.items()}
 
+    # transform_info on: a rule may name one, e.g. {"orient__unreliable": [True]},
+    # and only the columns the rules name are read.
     df = metrics_wide(project_path, run_names=[run_name], parts=[part],
-                      current_only=current_only)
+                      current_only=current_only, transform_info=True)
     if df.empty:
         logger.warning("run '%s' has no stored values for part '%s' -- nothing "
                        "to match %s against, selecting none", run_name, part,
@@ -355,8 +359,7 @@ def _recorded_filters(filters):
     recorded = {}
     for column, condition in (filters or {}).items():
         if callable(condition):
-            recorded[column] = {"callable": getattr(condition, "__qualname__",
-                                                    "<callable>")}
+            recorded[column] = {"callable": recorded_callable(condition)}
             continue
         op, value = condition
         if isinstance(value, (set, frozenset)):
@@ -376,7 +379,7 @@ def _calibration_record(project_path, resolved):
     project calibrated per occurrence has one row per occurrence and a manifest
     must not grow with the data.
 
-    resolved -- the px/mm actually applied to each exported row.
+    - `resolved` -- the px/mm actually applied to each exported row.
     """
     rows = calibration_records.load_calibrations(
         project_path, calibration_type=scale_calibration.CALIBRATION_TYPE)
@@ -406,11 +409,12 @@ def _export_record(project_path, df, long_df, provenance, selection, path=None):
     where the file was written -- so one table exported twice under two
     filenames is recognizably one export.
 
-    df         -- the finished export.
-    long_df    -- the resolved long frame it was built from.
-    provenance -- _column_provenance for that frame, before unit conversion.
-    selection  -- the arguments that chose these rows and columns.
-    path       -- where the export was written, if it was.
+    - `df` -- the finished export.
+    - `long_df` -- the resolved long frame it was built from.
+    - `provenance` -- _column_provenance for that frame, before unit
+      conversion.
+    - `selection` -- the arguments that chose these rows and columns.
+    - `path` -- where the export was written, if it was.
 
     Returns the record as a dict.
     """
@@ -481,18 +485,13 @@ def _write_manifest(project_path, record, path=None):
     so the project knows what it handed out even when the file was written
     somewhere else entirely.
 
-    path -- the exported file, or None where the export was never written.
+    - `path` -- the exported file, or None where the export was never written.
     """
     if path is not None:
-        sidecar = paths.export_sidecar_path(path)
-        with open(sidecar, "w", encoding="utf-8") as handle:
-            json.dump(record, handle, indent=2, sort_keys=True)
+        sidecar = write_json(paths.export_sidecar_path(path), record)
         logger.info("wrote export manifest -> %s", sidecar)
 
-    log = paths.exports_log_path(project_path)
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with open(log, "a", encoding="utf-8") as handle:
-        handle.write(canonical_json(record) + "\n")
+    append_jsonl(paths.exports_log_path(project_path), record)
     return record
 
 
@@ -505,19 +504,13 @@ def load_exports(project_path):
 
     Returns a DataFrame; empty where this project has exported nothing.
     """
-    log = paths.exports_log_path(project_path)
-    if not log.exists():
-        return pd.DataFrame()
-
-    with open(log, encoding="utf-8") as handle:
-        records = [json.loads(line) for line in handle if line.strip()]
-    return pd.DataFrame(records)
+    return read_jsonl(paths.exports_log_path(project_path), what="export")
 
 
-def export_metrics(project_path, path=None, runs=None, parts=None,
+def export_metrics(project_path, path=None, run_names=None, parts=None,
                    metric_names=None, filters=None, occurrence_columns=None,
                    subset=None, drop_empty=True, current_only=True,
-                   units=None, manifest=True):
+                   units=None, manifest=True, transform_info=False):
     """
     Build the wide, one-row-per-occurrence trait table, optionally write it to
     CSV, and return it.
@@ -531,7 +524,7 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
       file under the project's `exports/` folder, so a call site that names
       nothing never overwrites a previous export; False returns the
       DataFrame without writing anything.
-    - `runs` -- run names to include; every run if None.
+    - `run_names` -- run names to include; every run if None.
     - `parts` -- parts to include; every part if None.
     - `metric_names` -- metric names to include; all if None.
     - `filters` -- `{column: (op, value)}`; see `_apply_filters`.
@@ -545,6 +538,10 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
       calibration; None leaves everything in pixels.
     - `manifest` -- write the export's identity beside the file and into the
       project's exports log. False writes neither.
+    - `transform_info` -- include the columns of what each metric run's
+      transforms recorded, e.g. `body_dimensions__abdomen__orient__unreliable`.
+      Left out by default unless named in `metric_names`; `filters` can target
+      them either way.
 
     Returns the exported DataFrame.
     """
@@ -555,12 +552,23 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
     elif path is None:
         path = paths.default_export_path(project_path)
 
-    long_df = _current_long(project_path, run_names=runs, parts=parts,
+    long_df = _current_long(project_path, run_names=run_names, parts=parts,
                             metric_names=metric_names,
                             current_only=current_only)
     provenance = _column_provenance(long_df)
     df = _wide_from_long(long_df)
-    metric_columns = [column for column in df.columns if column != ID_COL]
+
+    # Transform-info columns stay in the frame until filters have run, so a
+    # filter can target one, and are dropped after unless asked for.
+    hidden = set()
+    if not transform_info and metric_names is None:
+        hidden = {column for column, info in provenance.items()
+                  if info["unit"] == TRANSFORM_INFO_UNIT}
+        long_df = long_df[long_df["unit"] != TRANSFORM_INFO_UNIT]
+        provenance = {column: info for column, info in provenance.items()
+                      if column not in hidden}
+    metric_columns = [column for column in df.columns
+                      if column != ID_COL and column not in hidden]
 
     occurrences = subset_selection.select_occurrences(
         project_path, subset=subset,
@@ -610,6 +618,7 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
 
     if filters:
         df = _apply_filters(df, filters)
+    df = df.drop(columns=[column for column in hidden if column in df.columns])
 
     # occurrence_id first, then joined metadata, then the traits -- so the
     # identifying columns are on the left where anyone opening the CSV expects.
@@ -630,7 +639,10 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
         _write_manifest(project_path, _export_record(
             project_path, df, long_df, provenance,
             selection={
-                "runs": None if runs is None else sorted(runs),
+                # Key stays "runs": it is inside the export hash, so
+                # renaming it would make one table exported before and after
+                # this read as two different exports.
+                "runs": None if run_names is None else sorted(run_names),
                 "parts": None if parts is None else sorted(parts),
                 "metric_names": (None if metric_names is None
                                  else sorted(metric_names)),
@@ -641,13 +653,16 @@ def export_metrics(project_path, path=None, runs=None, parts=None,
                 "drop_empty": bool(drop_empty),
                 "current_only": bool(current_only),
                 "units": units,
+                # Recorded only when on, so an export made before this option
+                # existed keeps the hash it was written under.
+                **({"transform_info": True} if transform_info else {}),
             },
             path=path), path=path)
 
     return df
 
 
-def export_units(project_path, runs=None):
+def export_units(project_path, run_names=None):
     """
     The unit behind each exported column, as {column: unit}.
 
@@ -657,4 +672,4 @@ def export_units(project_path, runs=None):
     an export is in pixels, a fraction, or a category, and which one is not
     guessable from the column name alone.
     """
-    return metric_units(project_path, run_names=runs)
+    return metric_units(project_path, run_names=run_names)

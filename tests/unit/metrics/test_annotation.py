@@ -291,5 +291,5 @@ def test_labels_run_and_store_like_any_other_metric(gui, segmented_project):
                             visualize=False)["organism"]
     assert second["skipped"] == 8
 
-    exported = cf.export_metrics(segmented_project, runs=["screening"])
+    exported = cf.export_metrics(segmented_project, run_names=["screening"])
     assert set(exported["screening__organism__usability_annotation"]) == {"usable"}

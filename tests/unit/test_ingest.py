@@ -158,7 +158,7 @@ def test_reingesting_the_same_raw_import_a_different_way_is_not_a_no_op(
 def test_already_ingested_answers_from_raw_bytes_alone(tmp_path, source_csv):
     """
     already_ingested exists for a caller whose own parse of raw_bytes is
-    itself expensive (see gbif_darwincore_inat.ingest) -- it has to answer
+    itself expensive -- it has to answer
     correctly with no parsed df in hand, and agree exactly with what
     ingest_occurrences(df=...) would decide for the same inputs.
     """
@@ -398,7 +398,8 @@ def test_the_manifest_records_structural_and_judgement_decisions(tmp_path, sourc
     assert manifest["id_col"] == "detection_id"          # structural
     assert manifest["image_url_col"] == "photo"           # structural
     assert manifest["drop"] == {"determination_name": ["Debris"]}   # judgement
-    assert manifest["row_counts"] == {"read": 4, "dropped": 1, "capped": 0, "final": 3}
+    assert manifest["row_counts"] == {"read": 4, "dropped": 1, "deduped": 0,
+                                      "capped": 0, "final": 3}
 
 
 def test_the_manifest_names_a_transform_rather_than_its_repr(tmp_path, source_csv):
@@ -559,8 +560,8 @@ def test_images_become_occurrences_keyed_by_their_stems(tmp_path, image_dir):
     project = tmp_path / "project"
     summary = cf.ingest_images(project, image_dir)
 
-    assert summary == {"attempted": 3, "saved": 3, "failed": 0, "failures": [],
-                       "occurrences": 3}
+    assert summary == {"attempted": 3, "processed": 3, "skipped": 0, "no_input": 0,
+                       "failed": 0, "failures": [], "flags": {}, "occurrences": 3}
     table = pd.read_parquet(paths.occurrences_path(project))
     assert sorted(table[ID_COL]) == ["spec0", "spec1", "spec2"]
 
@@ -662,7 +663,7 @@ def test_an_unreadable_file_is_counted_not_fatal(tmp_path, image_dir):
     (image_dir / "broken.png").write_bytes(b"not an image")
 
     summary = cf.ingest_images(tmp_path / "project", image_dir)
-    assert (summary["saved"], summary["failed"]) == (3, 1)
+    assert (summary["processed"], summary["failed"]) == (3, 1)
     assert summary["failures"][0]["path"].endswith("broken.png")
 
 
@@ -674,7 +675,7 @@ def test_batching_still_saves_the_remainder(tmp_path, image_dir):
     project = tmp_path / "project"
     summary = cf.ingest_images(project, image_dir, batch_size=2)
 
-    assert summary["saved"] == 3
+    assert summary["processed"] == 3
     with ImageStore(project, readonly=True) as store:
         assert sorted(store.keys()) == ["spec0", "spec1", "spec2"]
 
@@ -689,7 +690,7 @@ def test_an_empty_folder_leaves_no_project_behind(tmp_path):
     project = tmp_path / "project"
 
     summary = cf.ingest_images(project, empty)
-    assert summary["saved"] == 0
+    assert summary["processed"] == 0
     assert not paths.occurrences_path(project).exists()
 
 
@@ -704,9 +705,9 @@ def test_subdirectories_are_searched_only_when_asked(tmp_path, image_dir):
     nested.mkdir()
     cv2.imwrite(str(nested / "spec9.png"), draw_specimen(4))
 
-    assert cf.ingest_images(tmp_path / "flat", image_dir)["saved"] == 3
+    assert cf.ingest_images(tmp_path / "flat", image_dir)["processed"] == 3
     assert cf.ingest_images(tmp_path / "deep", image_dir,
-                            recursive=True)["saved"] == 4
+                            recursive=True)["processed"] == 4
 
 
 def test_ids_only_ever_come_from_filenames(tmp_path, image_dir):
@@ -747,3 +748,265 @@ def test_a_removed_file_loses_its_occurrence_row(tmp_path, image_dir):
     # Its image is still in the store, keyed by an id nothing now references.
     with ImageStore(project, readonly=True) as store:
         assert store.has("spec2")
+
+
+# ---------------------------------------------------------------------------
+# visualize=
+# ---------------------------------------------------------------------------
+
+
+def pipeline_files(project_path):
+    directory = paths.pipeline_dir(project_path)
+    return sorted(path.name for path in directory.iterdir()) if directory.exists() else []
+
+
+def test_an_import_draws_its_stages_and_its_capped_groups(tmp_path, lopsided_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, lopsided_csv, group_col="species", max_per_group=2)
+
+    files = pipeline_files(project)
+    assert any(name.endswith("__stages.png") for name in files)
+    assert any(name.endswith("__groups.png") for name in files)
+
+
+def test_a_skipped_reimport_draws_nothing_new(tmp_path, lopsided_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, lopsided_csv)
+    before = pipeline_files(project)
+
+    cf.ingest_occurrences(project, lopsided_csv)
+    assert pipeline_files(project) == before
+
+
+def test_stage_counts_are_not_part_of_the_import(tmp_path, lopsided_csv):
+    """Descriptive only: a caller's own counts must not make an identical import look new."""
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, lopsided_csv, stage_counts={"fetched": 12})
+    cf.ingest_occurrences(project, lopsided_csv, stage_counts={"fetched": 99})
+    assert len(cf.load_imports(project)) == 1
+
+
+def test_an_image_ingest_leaves_a_thumbnail_grid(tmp_path, image_dir):
+    project = tmp_path / "project"
+    cf.ingest_images(project, image_dir)
+
+    files = pipeline_files(project)
+    assert any(name.startswith("ingest_images__images_") and name.endswith(".jpg")
+               for name in files)
+
+
+def test_ingest_visualize_false_writes_nothing(tmp_path, image_dir, lopsided_csv):
+    project = tmp_path / "project"
+    cf.ingest_images(project, image_dir, visualize=False)
+    cf.ingest_occurrences(tmp_path / "other", lopsided_csv, visualize=False)
+    assert pipeline_files(project) == []
+    assert pipeline_files(tmp_path / "other") == []
+
+
+# ---------------------------------------------------------------------------
+# the decisions an import is hashed from
+# ---------------------------------------------------------------------------
+
+
+def add_one(df):
+    return df.assign(derived=1)
+
+
+def add_two(df):
+    return df.assign(derived=2)
+
+
+def test_a_sequence_of_transforms_is_applied_and_recorded_by_name(tmp_path, source_csv):
+    """
+    What an extension stacking its own derivations on a caller's needs. A
+    closure around both would record only the wrapper's name, so two
+    different callers' transforms would share an import hash.
+    """
+    project = tmp_path / "project"
+    table = cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                                  transform=[add_one, add_two])
+
+    assert set(table["derived"]) == {2}          # applied in order
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert manifest["transform"] == ["add_one", "add_two"]
+
+
+def test_two_different_transforms_are_two_different_imports(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id", transform=add_one)
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id", transform=add_two)
+
+    imports = cf.load_imports(project)
+    assert len(imports) == 2
+    assert imports["import_hash"].nunique() == 2
+
+
+def test_a_set_of_drop_values_is_accepted(tmp_path, source_csv):
+    """rows_matching takes a set, so hashing the decision has to as well."""
+    project = tmp_path / "project"
+    table = cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                                  drop={"determination_name": {"Debris",
+                                                               "Not Lepidoptera"}})
+    assert len(table) == 2
+
+
+def test_the_order_drop_values_are_written_in_does_not_matter(tmp_path, source_csv):
+    """Otherwise the same decision, typed two ways, re-ingests the same file."""
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          drop={"determination_name": ["Debris", "Not Lepidoptera"]})
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          drop={"determination_name": ["Not Lepidoptera", "Debris"]})
+
+    assert len(cf.load_imports(project)) == 1
+
+
+def test_deduplication_runs_after_drop(tmp_path):
+    """
+    An ABSENT row must not be able to win a duplicate group and take the real
+    sighting down with it -- which is what deduplicating before drop= did.
+    """
+    path = tmp_path / "duplicated.csv"
+    pd.DataFrame({
+        "occurrence_id": ["absent_copy", "real"],
+        "status": ["ABSENT", "PRESENT"],
+        "lat": [1.0, 1.0],
+        "lon": [2.0, 2.0],
+    }).to_csv(path, index=False)
+
+    table = cf.ingest_occurrences(tmp_path / "project", path,
+                                  drop={"status": ["ABSENT"]},
+                                  dedupe_key_cols=["lat", "lon"])
+    assert table["occurrence_id"].tolist() == ["real"]
+
+
+def test_deduplication_is_recorded_only_when_it_is_on(tmp_path, source_csv):
+    """So every import archived before this stage existed keeps its own hash."""
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert "dedupe" not in manifest
+
+
+# ---------------------------------------------------------------------------
+# ingest_occurrences: prefer= (ranking inside dedupe and the cap)
+# ---------------------------------------------------------------------------
+
+
+def test_prefer_is_recorded_only_when_it_is_set(tmp_path, source_csv):
+    """So every import archived before this option existed keeps its own hash."""
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+    [manifest] = cf.load_imports(project).to_dict("records")
+    assert "prefer" not in manifest
+    assert cf.ingest.already_ingested(
+        project, source_csv.read_bytes(), id_col="detection_id", prefer=None)
+
+
+def test_setting_prefer_is_a_different_import(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id")
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          prefer={"determination_name": ["Noctuidae"]})
+    imports = cf.load_imports(project)
+    assert imports["import_hash"].nunique() == 2
+    assert imports.iloc[-1]["prefer"] == {"determination_name": ["Noctuidae"]}
+
+
+def test_prefer_reaches_both_dedupe_and_the_cap(tmp_path):
+    path = tmp_path / "mixed.csv"
+    pd.DataFrame({
+        "occurrence_id": ["o1", "i1", "o2", "o3", "i2"],
+        "source": ["other", "inat", "other", "other", "inat"],
+        "species": ["common"] * 5,
+        "lat": [1.0, 1.0, 3.0, 4.0, 5.0],   # o1 and i1 are one sighting
+    }).to_csv(path, index=False)
+
+    table = cf.ingest_occurrences(tmp_path / "project", path,
+                                  dedupe_key_cols=["lat"],
+                                  group_col="species", max_per_group=2,
+                                  prefer={"source": ["inat"]})
+    assert sorted(table[ID_COL]) == ["i1", "i2"]
+
+
+# ---------------------------------------------------------------------------
+# ingest_occurrences: no type inference on a CSV
+# ---------------------------------------------------------------------------
+
+
+def test_a_csv_is_read_without_guessing_types(tmp_path):
+    path = tmp_path / "coded.csv"
+    path.write_text("id,country,count,score\n007,NA,3,0.5\n010,,4,0.7\n")
+
+    table = cf.ingest_occurrences(tmp_path / "project", path, id_col="id",
+                                  numeric_cols=["score"])
+    assert table[ID_COL].tolist() == ["007", "010"]
+    assert table["country"].iloc[0] == "NA"          # a value, not a blank
+    assert pd.isna(table["country"].iloc[1])         # only an empty field is missing
+    assert table["count"].tolist() == ["3", "4"]     # not named, so not typed
+    assert table["score"].dtype.kind == "f"
+
+
+# ---------------------------------------------------------------------------
+# ingest_occurrences: read= and raw=
+# ---------------------------------------------------------------------------
+
+
+def _recording_read(calls):
+    def read_source(path):
+        calls.append(path)
+        return pd.read_csv(path, dtype=str), {"source rows": 99}
+    return read_source
+
+
+def test_read_runs_only_for_a_new_import(tmp_path, source_csv):
+    calls = []
+    read = _recording_read(calls)
+    project = tmp_path / "project"
+
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id", read=read)
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id", read=read)
+    assert len(calls) == 1
+
+
+def test_read_stage_counts_come_before_the_read(tmp_path, source_csv, monkeypatch):
+    import critterframe.ingest as core
+
+    drawn = []
+    original = core.figures.funnel
+
+    def capture(stages, **kwargs):
+        drawn.append(list(stages))
+        return original(stages, **kwargs)
+
+    monkeypatch.setattr(core.figures, "funnel", capture)
+    cf.ingest_occurrences(tmp_path / "project", source_csv, id_col="detection_id",
+                          read=_recording_read([]))
+    [stages] = drawn
+    assert stages[:2] == ["source rows", "read"]
+
+
+def test_raw_decides_what_is_archived(tmp_path, source_csv):
+    project = tmp_path / "project"
+    cf.ingest_occurrences(project, source_csv, id_col="detection_id",
+                          raw=lambda path: (b"the real source", ".bin"))
+    [archived] = paths.raw_imports_dir(project).glob("*.bin")
+    assert archived.read_bytes() == b"the real source"
+
+
+def test_a_directory_source_is_never_trusted_on_its_fingerprint(tmp_path, source_csv):
+    """A directory's size says nothing about its contents."""
+    directory = tmp_path / "extracted"
+    directory.mkdir()
+    (directory / "table.csv").write_bytes(source_csv.read_bytes())
+    calls = []
+    kwargs = dict(id_col="detection_id",
+                  read=lambda d: _recording_read(calls)(d / "table.csv"),
+                  raw=lambda d: ((d / "table.csv").read_bytes(), ".csv"),
+                  trust_source_file_unchanged=True)
+    project = tmp_path / "project"
+
+    cf.ingest_occurrences(project, directory, **kwargs)
+    (directory / "table.csv").write_text("detection_id,photo\n9,http://x/9.jpg\n")
+    table = cf.ingest_occurrences(project, directory, **kwargs)
+    assert table[ID_COL].tolist() == ["9"]

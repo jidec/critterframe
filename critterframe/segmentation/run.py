@@ -19,12 +19,14 @@ and thorax masks alone.
 """
 
 import logging
+from collections import Counter
 
 import numpy as np
 
+from .. import segments as segment_iteration
 from .. import selectionhelpers
 from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe, Segment, Segmentation
+from ..recipes import DEFAULT_PART, Recipe, Segmentation
 from ..records import failures as failure_records
 from ..records import masks as mask_records
 from ..records import runs as run_records
@@ -50,12 +52,13 @@ def segment(model, mask_threshold=0.0):
     A model meets the segmenter contract if it exposes:
 
     ```
-    predict(image) -> (mask, score, info)
+    predict(image, mask_threshold=0.0) -> (mask, score, info)
     ```
 
     where image is RGB, mask is boolean of the same height/width, score is
-    the model's confidence or None, and info is diagnostics. Optionally also
-    `identity() -> dict` and `visualize(...)`.
+    the model's confidence or None, and info is diagnostics. `mask_threshold`
+    is optional, for a model that produces nothing thresholdable. Optionally
+    also `identity() -> dict` and `visualize(...)`.
 
     `identity()` is how a checkpoint reaches the recipe hash; without one a
     model is identified only by its class name, so two fine-tunes would be
@@ -170,13 +173,24 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
     }
 
 
+def _failure_row(occurrence_id, part, recipe_hash, source_mask_hash, error):
+    """One row for records.failures, keyed so a changed recipe or upstream retries itself."""
+    return {
+        "occurrence_id": occurrence_id,
+        "part": part,
+        "context_hash": mask_records.derivation_hash(recipe_hash, source_mask_hash),
+        "error": str(error),
+    }
+
+
 def _resolve_force(force, recipes):
     """
     Settle whether this run may skip completed work, refusing to guess for a
     recipe that won't reproduce itself.
 
-    force   -- run_segments' force argument, None where the caller said nothing.
-    recipes -- {part: Recipe} about to run.
+    - `force` -- run_segments' force argument, None where the caller said
+      nothing.
+    - `recipes` -- {part: Recipe} about to run.
 
     Returns force as a bool.
     """
@@ -208,19 +222,16 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
     - `project_path` -- the project to process.
     - `steps` -- ordered operations producing one part's mask. Use this OR
       `outputs`.
-    - `run_name` -- what to call this run; recorded on the run, not part of
-      recipe identity (see Recipe.hash) -- renaming costs nothing, since
-      nothing looks a mask up by run_name. Defaults to `part` (or each
-      output's own part, for `outputs=`), and to `<part>_reference` when
-      `reference=True`, so the common case -- one segmentation recipe per
-      part -- needs no name at all, and a canonical pass and a reference
-      pass over the same part never collide on one default. Pass one
-      explicitly to keep two coexisting recipes for one part apart in
-      history, e.g. comparing two candidate models
-      (`dragonfly_bodies_inat_training.py` does this by hand with
-      `f"{part}_test_predictions"`).
+    - `run_name` -- what to call this run; recorded, not part of recipe
+      identity. Defaults to the part it produces (each output's own part for
+      `outputs=`), or `<part>_reference` when `reference=True`.
     - `part` -- which part `steps` produces; the whole organism by default.
     - `outputs` -- `{part: steps}` for producing several parts in one pass.
+      Segmentation alone takes a per-part CHAIN rather than the plain
+      `parts=` list its siblings take, because it alone runs genuinely
+      different work per part: a wing segmenter and an abdomen segmenter are
+      different models. Measuring, rendering and validating apply one chain
+      to each part, so a list is all they need.
     - `shared_steps` -- operations run once per occurrence before forking
       into each output's own steps.
     - `from_part` -- start each segment from an existing part's mask instead
@@ -266,9 +277,12 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
       mask). False (the default) leaves them recorded as failed; a changed
       recipe or upstream retries them automatically with no flag needed.
 
-    Returns {part: {"processed", "skipped", "failed", "previously_failed", "run_id"}}.
-    skipped includes occurrence-parts excluded for either reason -- already
-    done, or already failed and not retried.
+    Returns {part: summary}, each as `segments.Tally.summary` plus `run_id`
+    and `previously_failed`. `skipped` counts occurrence-parts excluded for
+    either reason -- already done, or already failed and not retried --
+    `no_input` those with no image or no `from_part` mask yet (attempted again
+    once it exists), and `flags` the operations that called their own result
+    doubtful.
     """
     paths.require_project(project_path)
 
@@ -289,13 +303,13 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                 "clobbering, or ignore this if only one shard's sample matters.",
                 shard, visualize)
 
-    if visualize_every and not visualize:
-        logger.warning(
-            "visualize_every=%d with visualize=%r: there's no report to "
-            "checkpoint without visualize, so visualize_every has no effect",
-            visualize_every, visualize)
-
     force = _resolve_force(force, recipes)
+
+    # Reference and canonical passes record failures under their own stage:
+    # records.failures keys on (occurrence_id, part, stage), so one stage for
+    # both would have a reference failure upsert over the canonical one, and a
+    # canonical success's clear_failures delete the reference's record.
+    stage = "segment_reference" if reference else "segment"
 
     logger.info("run_segments %s: %d occurrence(s), part(s): %s",
                 {output_part: recipe.name for output_part, recipe in recipes.items()},
@@ -337,7 +351,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                     recipe.hash, source_hashes.get(occurrence_id))
                 for occurrence_id in occurrence_ids
             }
-            failed = failure_records.failed_keys(project_path, "segment", context_hashes)
+            failed = failure_records.failed_keys(project_path, stage, context_hashes)
         failed_by_part[output_part] = failed
 
         skip = done | failed
@@ -361,11 +375,16 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
     }
 
     shared = list(shared_steps or [])
-    counts = {
-        output_part: {"processed": 0, "skipped": len(occurrence_ids) - len(ids),
-                      "failed": 0, "previously_failed": len(failed_by_part[output_part])}
-        for output_part, ids in pending.items()
-    }
+    # Every step's scalar info is stored with the mask it helped make, keyed by
+    # its label; the shared steps' labels are the same in every part's recipe.
+    labels = {output_part: segment_iteration.operation_labels(recipe.operations)
+              for output_part, recipe in recipes.items()}
+    shared_labels = next(iter(labels.values()))[:len(shared)]
+    tallies = {}
+    for output_part, ids in pending.items():
+        tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+        tally.skipped = len(occurrence_ids) - len(ids)
+        tallies[output_part] = tally
     batches = {output_part: [] for output_part in recipes}
     failure_batches = {output_part: [] for output_part in recipes}
     resolved_keys = {output_part: [] for output_part in recipes}
@@ -378,58 +397,20 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
         if any(occurrence_id in ids for ids in pending_sets.values())
     ]
 
-    # One report per part, because one report is one grid and each part has its
-    # own recipe. Sampled from what this run will actually process, not from
-    # everything it was pointed at: a grid can only show work that happened, and
-    # a fully cached rerun has none to show (pass force=True to see it again).
+    # One report per part, because each part has its own recipe. Every report
+    # walks the whole todo list, so checkpoint windows line up across parts,
+    # but only samples the occurrences its own part still needs: a grid can
+    # only show work that happened (pass force=True to see a cached run again).
     reports = {
-        output_part: pipeline_visualization.run_report(
-            project_path, recipe.name, recipe.hash, output_part,
-            pending[output_part], visualize)
+        output_part: pipeline_visualization.open_report(
+            project_path, recipe.name, recipe.hash, part=output_part,
+            visualize=visualize, visualize_every=visualize_every,
+            identity=recipe.spec()).begin(todo, eligible=pending_sets[output_part])
         for output_part, recipe in recipes.items()
     }
     # The shared steps run once on a segment that then forks per part, so their
     # panels belong to every part's grid -- they're in every part's recipe.
-    active = [report for report in reports.values() if report is not None]
-    shared_sink = pipeline_visualization.PanelFanout(active) if active else None
-
-    # visualize_every's checkpoint series: a second RunReport per part,
-    # resampled fresh each window from whatever that window actually
-    # processes rather than the fixed whole-population sample above, so a
-    # checkpoint always has real content -- see pipeline_visualization's
-    # module docstring. window_reports/part_sinks/shared_sink are rebuilt by
-    # rotate_windows() at every checkpoint; when visualize_every is unset this
-    # is a no-op and part_sinks/shared_sink stay exactly what they are above.
-    window_reports = {output_part: None for output_part in recipes}
-    part_sinks = dict(reports)
-
-    def rotate_windows(start_index):
-        nonlocal shared_sink
-        if not (visualize_every and visualize) or start_index >= len(todo):
-            return
-        end = min(start_index + visualize_every, len(todo))
-        window_ids = todo[start_index:end]
-        window_active = []
-        for output_part in recipes:
-            ids = [oid for oid in window_ids if oid in pending_sets[output_part]]
-            sample = pipeline_visualization.resolve_sample(ids, visualize)
-            report = None
-            if sample:
-                report = pipeline_visualization.RunReport(
-                    project_path, recipes[output_part].name,
-                    recipes[output_part].hash, output_part, sample,
-                    suffix=f"__at{end:08d}")
-                window_active.append(report)
-            window_reports[output_part] = report
-            combined = [existing for existing in (reports[output_part], report)
-                       if existing is not None]
-            part_sinks[output_part] = (
-                pipeline_visualization.PanelFanout(combined) if len(combined) > 1
-                else (combined[0] if combined else None))
-        shared_sink = (pipeline_visualization.PanelFanout(active + window_active)
-                      if (active or window_active) else None)
-
-    rotate_windows(0)
+    shared_sink = pipeline_visualization.PanelFanout(reports.values())
 
     def flush(output_part):
         rows = batches[output_part]
@@ -449,68 +430,67 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
         if shard is None:
             failure_rows = failure_batches[output_part]
             if failure_rows:
-                failure_records.record_failures(project_path, "segment", failure_rows)
+                failure_records.record_failures(project_path, stage, failure_rows)
                 failure_rows.clear()
 
             resolved = resolved_keys[output_part]
             if resolved:
-                failure_records.clear_failures(project_path, "segment", resolved)
+                failure_records.clear_failures(project_path, stage, resolved)
                 resolved.clear()
 
-    def maybe_checkpoint(index):
-        # Cheap even when nothing new was collected -- RunReport.save() is a
-        # no-op then (see its dirty flag) -- so this is safe to call on every
-        # occurrence's periodic boundary regardless of whether that occurrence
-        # was itself in the sample.
-        if visualize_every and (index + 1) % visualize_every == 0:
-            for report in active:
-                report.save()
-            for report in window_reports.values():
-                if report is not None:
-                    report.save()
-            rotate_windows(index + 1)
+    missing = {output_part: Counter() for output_part in recipes}
+
+    def item_done(occurrence_id):
+        for report in reports.values():
+            report.done(occurrence_id)
 
     with ImageStore(project_path, readonly=True) as images:
-        for index, occurrence_id in enumerate(todo):
+        for occurrence_id in todo:
             try:
                 image = images.get(occurrence_id)
                 if image is None:
-                    raise ValueError("no image in the image store")
+                    raise segment_iteration.NoInput(segment_iteration.NO_IMAGE)
 
                 start_mask = None
                 if from_part is not None:
                     source = source_masks.get(occurrence_id)
                     if source is None:
-                        raise ValueError(
-                            f"no '{from_part}' mask to start from -- segment "
-                            f"that part first"
-                        )
+                        raise segment_iteration.NoInput(
+                            segment_iteration.no_mask(from_part))
                     start_mask = mask_records.decode_mask(source)
 
-                base = Segment(image, mask=start_mask, occurrence_id=occurrence_id,
-                               part=from_part or DEFAULT_PART,
-                               project_path=project_path,
-                               panel_sink=pipeline_visualization.panel_sink(
-                                   shared_sink, occurrence_id))
+                base = segment_iteration.build_segment(
+                    image, mask=start_mask, occurrence_id=occurrence_id,
+                    part=from_part or DEFAULT_PART, project_path=project_path,
+                    panel_sink=pipeline_visualization.panel_sink(
+                        shared_sink, occurrence_id))
 
-                for operation in shared:
-                    base, _info = operation(base)
+                shared_info = {}
+                for label, operation in zip(shared_labels, shared):
+                    base, info = operation(base)
+                    shared_info[label] = segment_iteration.scalar_info(info)
+                    for tally in tallies.values():
+                        tally.record_flags(info)
 
+            except segment_iteration.NoInput as exc:
+                for output_part in recipes:
+                    if occurrence_id in pending_sets[output_part]:
+                        tallies[output_part].no_input += 1
+                        missing[output_part][str(exc)] += 1
+                item_done(occurrence_id)
+                continue
             except Exception as exc:
                 logger.warning("segmentation setup failed for %s: %s",
                                occurrence_id, exc)
                 for output_part in recipes:
                     if occurrence_id in pending_sets[output_part]:
-                        counts[output_part]["failed"] += 1
-                        failure_batches[output_part].append({
-                            "occurrence_id": occurrence_id,
-                            "part": output_part,
-                            "context_hash": mask_records.derivation_hash(
-                                recipes[output_part].hash,
-                                source_hashes.get(occurrence_id)),
-                            "error": str(exc),
-                        })
-                maybe_checkpoint(index)
+                        tallies[output_part].record_failure(occurrence_id, exc)
+                        reports[output_part].failure(occurrence_id, exc)
+                        failure_batches[output_part].append(
+                            _failure_row(occurrence_id, output_part,
+                                         recipes[output_part].hash,
+                                         source_hashes.get(occurrence_id), exc))
+                item_done(occurrence_id)
                 continue
 
             for output_part, recipe in recipes.items():
@@ -520,11 +500,15 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                     state = base.for_part(output_part)
                     # Past the fork, panels are this part's alone: the fanout
                     # was only right while the work was genuinely shared.
-                    state.panel_sink = pipeline_visualization.panel_sink(
-                        part_sinks[output_part], occurrence_id)
+                    state.panel_sink = reports[output_part].sink(occurrence_id)
                     score = None
-                    for operation in recipe.operations[len(shared):]:
+                    mask_info = dict(shared_info)
+                    own = zip(labels[output_part][len(shared):],
+                              recipe.operations[len(shared):])
+                    for label, operation in own:
                         state, info = operation(state)
+                        mask_info[label] = segment_iteration.scalar_info(info)
+                        tallies[output_part].record_flags(info)
                         if operation.kind == "segment" and info.get("score") is not None:
                             score = info["score"]
 
@@ -539,41 +523,39 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                         score=score,
                         from_part=from_part,
                         source_mask_hash=source_hashes.get(occurrence_id),
+                        info=mask_info,
                     ))
-                    counts[output_part]["processed"] += 1
+                    tallies[output_part].processed += 1
                     resolved_keys[output_part].append((occurrence_id, output_part))
 
                     if len(batches[output_part]) >= batch_size:
                         flush(output_part)
 
                 except Exception as exc:
-                    counts[output_part]["failed"] += 1
+                    tallies[output_part].record_failure(occurrence_id, exc)
+                    reports[output_part].failure(occurrence_id, exc)
                     logger.warning("segmentation failed for %s part '%s': %s",
                                    occurrence_id, output_part, exc)
-                    failure_batches[output_part].append({
-                        "occurrence_id": occurrence_id,
-                        "part": output_part,
-                        "context_hash": mask_records.derivation_hash(
-                            recipe.hash, source_hashes.get(occurrence_id)),
-                        "error": str(exc),
-                    })
+                    failure_batches[output_part].append(
+                        _failure_row(occurrence_id, output_part, recipe.hash,
+                                     source_hashes.get(occurrence_id), exc))
 
-            maybe_checkpoint(index)
+            item_done(occurrence_id)
 
-    for report in active:
-        report.save()
-    # A run that completes without landing exactly on a checkpoint boundary
-    # still leaves a grid for its trailing partial window.
-    for report in window_reports.values():
-        if report is not None:
-            report.save()
+    for report in reports.values():
+        report.close()
 
+    counts = {}
     for output_part in recipes:
+        segment_iteration.log_no_input(missing[output_part],
+                                       f"run_segments part '{output_part}'")
         flush(output_part)
+        tally = tallies[output_part]
         run_records.finish_run(project_path, run_ids[output_part],
-                               processed=counts[output_part]["processed"],
-                               skipped=counts[output_part]["skipped"],
-                               failed=counts[output_part]["failed"])
-        counts[output_part]["run_id"] = run_ids[output_part]
+                               processed=tally.processed, skipped=tally.skipped,
+                               failed=tally.failed, flags=tally.flags)
+        counts[output_part] = tally.summary(
+            run_id=run_ids[output_part],
+            previously_failed=len(failed_by_part[output_part]))
 
     return counts

@@ -1,22 +1,21 @@
 """
 Assets for downstream use: render_segments, one file per occurrence-part.
 
-The opposite contract to pipeline: outputs, not diagnostics. Loose files rather
-than the image store, because these are for figures and for R.
+The opposite contract to pipeline: outputs, not diagnostics. Loose files rather than the image
+store, because these are for figures and for R.
 
-A render derives nothing and records nothing -- no mask, no metric, no run row.
-It hashes its transform chain only so the folder name identifies what is in it
-and a rerun is a no-op.
+A render derives nothing and records nothing -- no mask, no metric, no run row. It hashes its
+transform chain only so the folder name identifies what is in it and a rerun is a no-op.
 """
 
 import logging
 
 import cv2
 
+from .. import segments as segment_iteration
 from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe, Segment
-from ..records import masks as mask_records
-from ..storage.imagestore import ImageStore
+from ..recipes import DEFAULT_PART, Recipe
+from . import pipeline as pipeline_visualization
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,8 @@ product_filename = paths.product_filename
 
 def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
                     parts=None, subset=None, limit=None, occurrence_ids=None,
-                    reference=False, extension=DEFAULT_FORMAT, force=False):
+                    reference=False, extension=DEFAULT_FORMAT, force=False,
+                    from_part=None, visualize=True, visualize_every=None):
     """
     Render each occurrence-part's segment through a chain of transforms and write
     one image file per occurrence-part.
@@ -58,8 +58,18 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
     - `force` -- re-render occurrence-parts whose file exists. Normally
       skipped, which makes an interrupted render resumable; output is
       deterministic for a given hash, so skipping can't leave a stale file.
+    - `from_part` -- frame each render by an upstream part's CANONICAL mask
+      instead of the rendered part's own, so a part carved out of another is
+      rendered in the shared crop it was segmented in (see
+      `segments.iterate_segments`).
+    - `visualize` -- True (default), an int, or ids: a pipeline grid of what
+      was rendered, with every failure listed in its sidecar. False writes
+      nothing.
+    - `visualize_every` -- also write a grid every N occurrence-parts.
 
-    Returns a summary dict (rendered, skipped, failed, directory).
+    Returns {part: summary}, each as `segments.Tally.summary` plus
+    `directory` -- the same shape `run_segments` and `run_metrics` return, one
+    entry even when only `part` was given.
     """
     paths.require_project(project_path)
 
@@ -67,6 +77,7 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
     qualify = len(target_parts) > 1
 
     recipe = Recipe("render", name, list(transforms), part=part,
+                    from_part=from_part,
                     inputs={"masks": "reference" if reference else "canonical",
                             "parts": sorted(target_parts),
                             "format": extension})
@@ -82,54 +93,41 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
     logger.info("render '%s': %d occurrence(s), part(s): %s -> %s",
                 name, len(occurrence_ids), ", ".join(target_parts), directory)
 
-    rendered = 0
-    skipped = 0
-    failed = 0
+    report = pipeline_visualization.open_report(
+        project_path, f"render__{name}", recipe.hash, visualize=visualize,
+        visualize_every=visualize_every, identity=recipe.spec())
 
-    with ImageStore(project_path, readonly=True) as images:
-        for target_part in target_parts:
-            mask_rows = mask_records.mask_lookup(project_path, part=target_part,
-                                                 occurrence_ids=occurrence_ids,
-                                                 reference=reference)
-            for occurrence_id in occurrence_ids:
-                dest = directory / product_filename(
-                    occurrence_id, target_part if qualify else None, extension)
-                if dest.exists() and not force:
-                    skipped += 1
-                    continue
+    results = {}
+    for target_part in target_parts:
+        tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+        destinations = {
+            occurrence_id: directory / product_filename(
+                occurrence_id, target_part if qualify else None, extension)
+            for occurrence_id in occurrence_ids
+        }
+        pending = [occurrence_id for occurrence_id, dest in destinations.items()
+                   if force or not dest.exists()]
+        tally.skipped += len(occurrence_ids) - len(pending)
 
-                mask_row = mask_rows.get(occurrence_id)
-                if mask_row is None:
-                    # Not a failure: a project legitimately has parts that only
-                    # some occurrences carry, and a render of "every wing" over
-                    # a project where half the specimens have none should write
-                    # the wings it has and say how many it didn't.
-                    skipped += 1
-                    continue
+        for occurrence_id, segment in segment_iteration.iterate_segments(
+                project_path, part=target_part, transforms=recipe.operations,
+                reference=reference, occurrence_ids=pending, from_part=from_part,
+                report=report, tally=tally):
+            try:
+                if not cv2.imwrite(str(destinations[occurrence_id]), segment.image):
+                    raise ValueError(f"could not write {destinations[occurrence_id]}")
+                tally.processed += 1
+                segment.emit_panel(segment.image, "rendered")
+            except Exception as exc:
+                tally.record_failure(occurrence_id, exc)
+                report.failure(occurrence_id, exc)
+                logger.warning("render failed for %s part '%s': %s",
+                               occurrence_id, target_part, exc)
 
-                try:
-                    image = images.get(occurrence_id)
-                    if image is None:
-                        raise ValueError("no image in the image store")
+        logger.info("render '%s' part '%s' complete: rendered=%d skipped=%d "
+                    "failed=%d", name, target_part, tally.processed,
+                    tally.skipped, tally.failed)
+        results[target_part] = tally.summary(directory=directory)
 
-                    state = Segment(image,
-                                    mask=mask_records.decode_mask(mask_row),
-                                    occurrence_id=occurrence_id,
-                                    part=target_part,
-                                    project_path=project_path)
-                    for operation in recipe.operations:
-                        state, _info = operation(state)
-
-                    if not cv2.imwrite(str(dest), state.image):
-                        raise ValueError(f"could not write {dest}")
-                    rendered += 1
-
-                except Exception as exc:
-                    failed += 1
-                    logger.warning("render failed for %s part '%s': %s",
-                                   occurrence_id, target_part, exc)
-
-    logger.info("render '%s' complete: rendered=%d skipped=%d failed=%d",
-                name, rendered, skipped, failed)
-    return {"rendered": rendered, "skipped": skipped, "failed": failed,
-            "directory": directory}
+    report.close()
+    return results

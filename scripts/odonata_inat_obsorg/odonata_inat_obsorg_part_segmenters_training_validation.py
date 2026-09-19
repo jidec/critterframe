@@ -105,39 +105,32 @@ for part in PARTS:
     # just below -- see that call's `parameters=` for why.
     checkpoint = training.train(datasets[part], f"{DATASET_DIR}/{part}",
                                 encoder_name=ENCODER_NAME, size=TRAINING_SIZE,
-                                val_split=None,show=True)
+                                val_split=None, project_path=PROJECT_PATH)
 
-    # cf.register_model() (records/models.py) is provenance, not
-    # training: it never loads the checkpoint into a network, only
-    # reads its bytes to compute a sha256 fingerprint (stored as
-    # `fingerprint`/`fingerprint_method`) and records the checkpoint
+    # training.register_trained() is cf.register_model() with this model
+    # type's own fields filled in. Registration is provenance, not
+    # training: it never loads the checkpoint into a network, only reads
+    # its bytes to compute a sha256 fingerprint and records the checkpoint
     # path RELATIVE to the project directory (so a copied/moved project
     # still resolves it), alongside task/framework/base_model and a
-    # pointer at the dataset.json this part's dataset export just wrote
-    # (`training_data=`). That fingerprint -- not the name or the path --
-    # is what RegisteredModel.identity() feeds into a segmentation
-    # recipe's hash: retraining this same `f"{part}_segmenter_v1"` name
-    # into a new checkpoint file moves the fingerprint, which moves the
-    # recipe hash, which is what makes every mask (and everything
-    # measured off it) downstream of this part correctly count as stale
-    # and get redone on the next run_segments() pass. Registering under
-    # a name that already exists replaces the record and logs loudly
-    # when the fingerprint changed, exactly to make that consequence
-    # visible.
+    # pointer at the dataset.json this part's dataset export just wrote.
+    # That fingerprint -- not the name or the path -- is what
+    # RegisteredModel.identity() feeds into a segmentation recipe's hash:
+    # retraining this same `f"{part}_segmenter_v1"` name into a new
+    # checkpoint file moves the fingerprint, which moves the recipe hash,
+    # which is what makes every mask (and everything measured off it)
+    # downstream of this part correctly count as stale and get redone on
+    # the next run_segments() pass. Registering under a name that already
+    # exists replaces the record and logs loudly when the fingerprint
+    # changed, exactly to make that consequence visible.
     #
-    # `parameters={"encoder_name": ..., "size": ...}` is what closes a
-    # separate gap: SMPSegmenter needs both to load a checkpoint
-    # correctly, and without recording them here, loading later would
-    # have to assume DEFAULT_ENCODER/DEFAULT_SIZE in
-    # extensions/smp_segmenter/segmentation.py hadn't changed since this
-    # model was trained. segmentation.load_registered() reads them back
-    # from exactly this field, so a later change to those module
-    # defaults can never silently swap the architecture under this
-    # checkpoint.
-    cf.register_model(
-        PROJECT_PATH, f"{part}_segmenter_v1", path=checkpoint,
-        task="segment", framework="torch",
-        base_model=ENCODER_NAME,
-        training_data=f"{DATASET_DIR}/{part}",
-        parameters={"encoder_name": ENCODER_NAME, "size": TRAINING_SIZE},
+    # Passing the same encoder_name/size train() was given is what closes
+    # a separate gap: they go into the registry's `parameters`, and
+    # segmentation.load_registered() reads them back from there -- so a
+    # later change to DEFAULT_ENCODER/DEFAULT_SIZE can never silently swap
+    # the architecture under this checkpoint.
+    training.register_trained(
+        PROJECT_PATH, f"{part}_segmenter_v1", checkpoint,
+        f"{DATASET_DIR}/{part}",
+        encoder_name=ENCODER_NAME, size=TRAINING_SIZE,
     )

@@ -10,6 +10,7 @@ import logging
 import cv2
 import numpy as np
 
+from ..maskops import mask_bounds
 from ..recipes import Transform
 from ..visualization.panels import annotate, side_by_side
 from .orient import apply_affine, rotation_matrix
@@ -68,7 +69,7 @@ def crop_to_mask(pad=BBOX_PAD_FRAC):
     at a consistent size in a consistent frame, so the model doesn't have to
     cope with the specimen occupying 2% of one image and 60% of the next.
 
-    pad -- slack around the box as a fraction of its size.
+    - `pad` -- slack around the box as a fraction of its size.
     """
     return Transform("crop_to_mask", _crop_to_mask, {"pad": pad}, version="1")
 
@@ -82,7 +83,7 @@ def rotate(degrees):
     transforms.orient.orient() instead when the angle should be found from the
     organism rather than stated.
 
-    degrees -- rotation in degrees, positive counter-clockwise.
+    - `degrees` -- rotation in degrees, positive counter-clockwise.
     """
     return Transform("rotate", _rotate, {"degrees": degrees}, version="1")
 
@@ -123,7 +124,7 @@ def remove_background(fill=0):
     untouched, and the mask passes through unchanged -- what changes is only
     what the image shows outside it.
 
-    fill -- value written to background pixels; 0 (black) by default.
+    - `fill` -- value written to background pixels; 0 (black) by default.
     """
     return Transform("remove_background", _remove_background, {"fill": fill},
                      version="1")
@@ -190,13 +191,9 @@ def _crop(segment, region=None, x=None, y=None, width=None, height=None):
 
 def _crop_to_mask(segment, pad=BBOX_PAD_FRAC):
     """Crop to the mask's padded bounding box."""
-    mask = segment.require_mask()
-    ys, xs = np.nonzero(mask)
-    if len(xs) == 0:
-        raise ValueError("empty mask")
-
-    y0, y1 = int(ys.min()), int(ys.max()) + 1
-    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    bounds = mask_bounds(segment.require_mask())
+    y0, y1 = bounds["y"], bounds["y"] + bounds["height"]
+    x0, x1 = bounds["x"], bounds["x"] + bounds["width"]
     pad_y = int(round((y1 - y0) * pad))
     pad_x = int(round((x1 - x0) * pad))
 

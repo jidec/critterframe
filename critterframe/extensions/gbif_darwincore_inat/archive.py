@@ -10,11 +10,12 @@ a folder it's already been extracted into.
 
 import io
 import logging
-import time
 import zipfile
 from pathlib import Path
 
 import pandas as pd
+
+from ...timing import timed
 
 logger = logging.getLogger(__name__)
 
@@ -158,13 +159,6 @@ def _find_one(names, filename):
     return matches[0]
 
 
-def _log_timed(label, start, **counts):
-    """One "<label> in Ns" line, plus whatever counts are worth reporting."""
-    detail = ", ".join(f"{key}={value}" for key, value in counts.items())
-    logger.info("%s in %.1fs%s", label, time.monotonic() - start,
-               f" ({detail})" if detail else "")
-
-
 def read_darwincore_archive(path, occurrence_usecols=None, multimedia_usecols=None):
     """
     Read an archive's occurrence and multimedia tables.
@@ -210,17 +204,17 @@ def read_darwincore_archive(path, occurrence_usecols=None, multimedia_usecols=No
 
         logger.info("parsing %s (%.1f MB)", occurrence_path,
                    occurrence_path.stat().st_size / 1e6)
-        start = time.monotonic()
-        occurrence_df = read_darwincore_table(occurrence_path, usecols=occurrence_usecols)
-        _log_timed("parsed occurrence.txt", start, rows=len(occurrence_df),
-                  cols=len(occurrence_df.columns))
+        with timed("parsed occurrence.txt", logger.info) as done:
+            occurrence_df = read_darwincore_table(occurrence_path,
+                                                  usecols=occurrence_usecols)
+            done.update(rows=len(occurrence_df), cols=len(occurrence_df.columns))
 
         logger.info("parsing %s (%.1f MB)", multimedia_path,
                    multimedia_path.stat().st_size / 1e6)
-        start = time.monotonic()
-        multimedia_df = read_darwincore_table(multimedia_path, usecols=multimedia_usecols)
-        _log_timed("parsed multimedia.txt", start, rows=len(multimedia_df),
-                  cols=len(multimedia_df.columns))
+        with timed("parsed multimedia.txt", logger.info) as done:
+            multimedia_df = read_darwincore_table(multimedia_path,
+                                                  usecols=multimedia_usecols)
+            done.update(rows=len(multimedia_df), cols=len(multimedia_df.columns))
 
     elif zipfile.is_zipfile(path):
         with zipfile.ZipFile(path) as archive:
@@ -231,20 +225,22 @@ def read_darwincore_archive(path, occurrence_usecols=None, multimedia_usecols=No
             info = archive.getinfo(occurrence_name)
             logger.info("streaming and parsing %s (%.1f MB compressed, %.1f MB uncompressed)",
                        occurrence_name, info.compress_size / 1e6, info.file_size / 1e6)
-            start = time.monotonic()
-            with archive.open(occurrence_name) as stream:
-                occurrence_df = read_darwincore_table(stream, usecols=occurrence_usecols)
-            _log_timed("parsed occurrence.txt", start, rows=len(occurrence_df),
-                      cols=len(occurrence_df.columns))
+            with timed("parsed occurrence.txt", logger.info) as done:
+                with archive.open(occurrence_name) as stream:
+                    occurrence_df = read_darwincore_table(
+                        stream, usecols=occurrence_usecols)
+                done.update(rows=len(occurrence_df),
+                            cols=len(occurrence_df.columns))
 
             info = archive.getinfo(multimedia_name)
             logger.info("streaming and parsing %s (%.1f MB compressed, %.1f MB uncompressed)",
                        multimedia_name, info.compress_size / 1e6, info.file_size / 1e6)
-            start = time.monotonic()
-            with archive.open(multimedia_name) as stream:
-                multimedia_df = read_darwincore_table(stream, usecols=multimedia_usecols)
-            _log_timed("parsed multimedia.txt", start, rows=len(multimedia_df),
-                      cols=len(multimedia_df.columns))
+            with timed("parsed multimedia.txt", logger.info) as done:
+                with archive.open(multimedia_name) as stream:
+                    multimedia_df = read_darwincore_table(
+                        stream, usecols=multimedia_usecols)
+                done.update(rows=len(multimedia_df),
+                            cols=len(multimedia_df.columns))
 
     else:
         raise ValueError(f"{path} is neither a directory nor a zip archive")
@@ -266,7 +262,7 @@ def raw_archive_bytes(path):
     together untouched, streamed straight from disk rather than read into a
     DataFrame and re-serialized.
 
-    path -- as read_darwincore_archive takes it.
+    - `path` -- as read_darwincore_archive takes it.
 
     Returns (bytes, extension).
     """

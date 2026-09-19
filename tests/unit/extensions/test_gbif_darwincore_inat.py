@@ -710,6 +710,112 @@ def test_reingesting_with_a_changed_dedupe_decision_does_reparse(tmp_path, monke
     assert len(cf.load_imports(project)) == 2
 
 
+def test_a_repeat_ingest_with_dedupe_on_skips_the_parse(tmp_path, monkeypatch):
+    """The skip check has to hash the dedupe decisions too, or it never
+    recognizes an import that deduplicated."""
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
+                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    project = tmp_path / "project"
+    kwargs = dict(archive_path=zpath, dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS)
+
+    ingest.ingest_occurrences(project, **kwargs)
+    monkeypatch.setattr(archive, "read_darwincore_archive", _parse_forbidden)
+    ingest.ingest_occurrences(project, **kwargs)
+
+
+# ---------------------------------------------------------------------------
+# ingest_occurrences: prioritize_inat
+# ---------------------------------------------------------------------------
+
+
+def _parse_forbidden(*a, **kw):
+    raise AssertionError("read_darwincore_archive ran on a repeat ingest")
+
+
+def write_sourced_archive(path, rows):
+    """rows: (gbifID, institutionCode, species, lat) -- one photo each."""
+    occurrence = "gbifID\toccurrenceStatus\tinstitutionCode\tspecies\t" \
+                 "decimalLatitude\tdecimalLongitude\teventDate\n"
+    multimedia = "gbifID\ttype\tidentifier\n"
+    for gbif_id, institution, species, lat in rows:
+        occurrence += f"{gbif_id}\tPRESENT\t{institution}\t{species}\t{lat}\t20.0\t2024-05-01\n"
+        multimedia += f"{gbif_id}\tStillImage\thttps://x/{gbif_id}.jpg\n"
+    return write_archive_zip(path, occurrence=occurrence, multimedia=multimedia)
+
+
+MIXED_SOURCE_ROWS = [
+    ("1", "iNaturalist", "common", 1.0),
+    ("2", "iNaturalist", "common", 2.0),
+    ("3", "iNaturalist", "common", 3.0),
+    ("4", "Observation.org", "common", 4.0),
+    ("5", "Observation.org", "common", 5.0),
+    ("6", "iNaturalist", "rare", 6.0),
+    ("7", "Observation.org", "rare", 7.0),
+    ("8", "", "rare", 8.0),
+    ("9", "Observation.org", "rare", 9.0),
+]
+
+
+def test_prioritize_inat_caps_from_inat_rows_only_when_there_are_enough(tmp_path):
+    zpath = write_sourced_archive(tmp_path / "gbif.zip", MIXED_SOURCE_ROWS)
+
+    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
+                                      group_col="species", max_per_group=2,
+                                      prioritize_inat=True)
+    common = table[table["species"] == "common"]
+    rare = table[table["species"] == "rare"]
+    assert (common["institutionCode"] == "iNaturalist").all()
+    assert len(common) == 2
+    assert "6" in set(rare["occurrence_id"])   # the only iNat row, plus one other
+    assert len(rare) == 2
+
+
+def test_prioritize_inat_lets_dedupe_remove_only_the_other_source(tmp_path):
+    rows = [("1", "Observation.org", "common", 1.0),
+            ("2", "iNaturalist", "common", 1.0),     # same sighting as 1
+            ("3", "iNaturalist", "common", 3.0),
+            ("4", "iNaturalist", "common", 3.0)]     # coincidental iNat match
+    zpath = write_sourced_archive(tmp_path / "gbif.zip", rows)
+
+    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
+                                      dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
+                                      prioritize_inat=True)
+    assert sorted(table["occurrence_id"]) == ["2", "3", "4"]
+
+
+def test_prioritize_inat_off_leaves_the_import_hash_alone(tmp_path):
+    zpath = write_sourced_archive(tmp_path / "gbif.zip", MIXED_SOURCE_ROWS)
+    project = tmp_path / "project"
+
+    ingest.ingest_occurrences(project, archive_path=zpath, prioritize_inat=False)
+    manifest = cf.load_imports(project).iloc[0]
+    assert "prefer" not in manifest.dropna().index
+    assert "prioritize_inat" not in manifest["extra"]
+
+
+def test_toggling_prioritize_inat_reparses_and_repeating_it_does_not(tmp_path, monkeypatch):
+    zpath = write_sourced_archive(tmp_path / "gbif.zip", MIXED_SOURCE_ROWS)
+    project = tmp_path / "project"
+    kwargs = dict(archive_path=zpath, group_col="species", max_per_group=2)
+
+    ingest.ingest_occurrences(project, **kwargs)
+    ingest.ingest_occurrences(project, prioritize_inat=True, **kwargs)
+    assert len(cf.load_imports(project)) == 2
+
+    monkeypatch.setattr(archive, "read_darwincore_archive", _parse_forbidden)
+    ingest.ingest_occurrences(project, prioritize_inat=True, **kwargs)
+    ingest.ingest_occurrences(project, prioritize_inat=True,
+                              trust_source_file_unchanged=True, **kwargs)
+
+
+def test_prioritize_inat_needs_institution_code(tmp_path):
+    zpath = write_archive_zip(tmp_path / "gbif.zip")
+    with pytest.raises(KeyError, match="institutionCode"):
+        ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
+                                  group_col="scientificName", max_per_group=1,
+                                  prioritize_inat=True)
+
+
 def test_occurrence_columns_narrows_the_read_end_to_end(tmp_path):
     """
     The merge needs gbifID -- that survives without being named -- but

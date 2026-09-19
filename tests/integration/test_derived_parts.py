@@ -201,3 +201,62 @@ def test_the_two_parts_measure_independently(segmented_project):
     assert CORE_AREA in exported.columns
     assert "traits__organism__area_px" in exported.columns
     assert (exported[CORE_AREA] <= exported["traits__organism__area_px"]).all()
+
+
+@pytest.mark.slow
+def test_a_derived_part_is_measured_and_rendered_in_its_upstream_frame(segmented_project):
+    """
+    A part carved out of the organism crop was segmented against that shared
+    frame, so measuring or rendering it has to reproduce the same one rather
+    than re-deriving a crop from the part's own, much smaller, mask.
+    """
+    cf.run_segments(segmented_project, run_name="core", from_part="organism",
+                    shared_steps=[cf.crop_to_mask()],
+                    outputs={"core": [cf.segment(ThresholdModel(cutoff=120))]},
+                    visualize=False)
+
+    framed = cf.run_metrics(segmented_project, run_name="core_framed", part="core",
+                            from_part="organism", transforms=[cf.crop_to_mask()],
+                            metrics=[cf.mask_area()], visualize=False)["core"]
+    own = cf.run_metrics(segmented_project, run_name="core_own", part="core",
+                         transforms=[cf.crop_to_mask()],
+                         metrics=[cf.mask_area()], visualize=False)["core"]
+
+    assert framed["processed"] == own["processed"] == 8
+
+    from critterframe.export import column_name, metrics_wide
+
+    values = metrics_wide(segmented_project, parts=["core"])
+    # Cropping to the organism keeps the whole upstream frame, so the part's
+    # area inside it is the same pixels; cropping to the part's own mask makes
+    # the mask fill its frame instead.
+    framed_col = column_name("core_framed", "core", "mask_area")
+    own_col = column_name("core_own", "core", "mask_area")
+    assert (values[framed_col] == values[own_col]).all()
+
+    rendered = cf.render_segments(segmented_project, "core_plates", part="core",
+                                  from_part="organism",
+                                  transforms=[cf.crop_to_mask()], visualize=False)
+    assert rendered["core"]["processed"] == 8
+
+
+@pytest.mark.slow
+def test_an_unreliable_operation_is_counted_on_the_run(image_project):
+    """
+    CLAUDE.md promises `info` reaches the run. Until it did, `unreliable` and
+    `degenerate` existed only as text on whichever panels happened to be
+    sampled.
+    """
+    from critterframe.records.runs import load_runs
+
+    summary = cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
+                              visualize=False)["organism"]
+    assert summary["flags"] == {}
+
+    measured = cf.run_metrics(image_project, run_name="shapes",
+                              transforms=[cf.orient()],
+                              metrics=[cf.body_length()], visualize=False)["organism"]
+
+    runs = load_runs(image_project, name="shapes")
+    recorded = runs.iloc[0]["context"].get("flags", {})
+    assert recorded == measured["flags"]

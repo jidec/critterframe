@@ -14,32 +14,13 @@ import pandas as pd
 import pytest
 
 import critterframe as cf
-from critterframe.extensions.inat_insects.metrics import inductive_color_thresholds as m
+from critterframe.metrics import inductive_color_thresholds as m
+from critterframe.colorspaces import to_bgr
+from critterframe.metrics.color_thresholds import ColorThreshold, threshold_masks
 from critterframe.recipes import Segment
 from critterframe.records.metrics import load_metrics
 from helpers.models import ThresholdModel
 from helpers.synthetic import BACKGROUND, BODY_AXES, BODY_CENTRE, SPECIMEN_SIZE
-
-
-# ---------------------------------------------------------------------------
-# _to_lab / _chroma_hue
-# ---------------------------------------------------------------------------
-
-
-def test_to_lab_is_true_range_not_offset():
-    """Pure gray must land at a=b=0, not OpenCV's 8-bit-storage +128 -- the
-    one detail the whole feature depends on getting right."""
-    gray = np.array([[128, 128, 128]], dtype=np.uint8)
-    lab = m._to_lab(gray)
-    assert lab[0, 1] == pytest.approx(0.0, abs=0.5)
-    assert lab[0, 2] == pytest.approx(0.0, abs=0.5)
-
-
-def test_chroma_hue_of_a_pure_a_axis_pixel():
-    lab = np.array([[50.0, 60.0, 0.0]])   # a=60, b=0 -> hue 0, chroma 60
-    chroma, hue = m._chroma_hue(lab)
-    assert chroma[0] == pytest.approx(60.0)
-    assert hue[0] == pytest.approx(0.0, abs=1e-3)
 
 
 # ---------------------------------------------------------------------------
@@ -150,20 +131,50 @@ def test_ranges_wrap_correctly():
 
 
 # ---------------------------------------------------------------------------
-# _classify
+# fitted_thresholds
 # ---------------------------------------------------------------------------
 
 
-def test_classify_partitions_every_pixel_exactly_once():
-    definition = {"gate": 20.0, "hue_ranges": [(0.0, 180.0), (180.0, 360.0)]}
-    hue = np.array([10.0, 190.0, 10.0])
-    chroma = np.array([5.0, 5.0, 50.0])   # first two below gate -> achromatic
-    masks = m._classify(hue, chroma, definition)
+def lch_pixels(*lch):
+    """uint8 BGR pixels at the given (lightness, chroma, hue) values."""
+    return to_bgr(np.array(lch, dtype=np.float32), "lch")
 
-    stacked = np.stack(list(masks.values()))
-    assert (stacked.sum(axis=0) == 1).all()          # exactly one label per pixel
-    assert masks["achromatic"].tolist() == [True, True, False]
-    assert masks["hue_0"].tolist() == [False, False, True]
+
+def test_fitted_thresholds_partition_every_pixel_exactly_once():
+    """
+    Achromatic below the gate, one hue arc per range above it: disjoint and covering, so every pixel of every
+    occurrence carries exactly one label and the fractions sum to 1.
+    """
+    thresholds = m.fitted_thresholds(20.0, [(300.0, 90.0), (90.0, 300.0)])
+    pixels = np.random.default_rng(0).integers(0, 256, (2000, 3), dtype=np.uint8)
+    masks = threshold_masks(pixels, thresholds)
+
+    assert list(masks) == ["achromatic", "hue_0", "hue_1"]
+    assert (np.stack(list(masks.values())).sum(axis=0) == 1).all()
+
+
+def test_fitted_thresholds_split_on_the_gate_then_the_arc():
+    thresholds = m.fitted_thresholds(20.0, [(0.0, 180.0), (180.0, 360.0)])
+    pixels = lch_pixels((60, 5, 30), (60, 5, 250), (60, 45, 30), (60, 45, 250))
+    masks = threshold_masks(pixels, thresholds)
+
+    assert masks["achromatic"].tolist() == [True, True, False, False]
+    assert masks["hue_0"].tolist() == [False, False, True, False]
+    assert masks["hue_1"].tolist() == [False, False, False, True]
+
+
+def test_the_fit_records_the_thresholds_it_scores_with():
+    """What `_describe_fit` puts in the run's context_json is exactly what `_score` applies."""
+    metric = m.InductiveColorThresholdMetric()
+    definition = m._fit_definition(
+        np.random.default_rng(1).integers(0, 256, (3000, 3), dtype=np.uint8),
+        n_chroma_bins=20, min_bin_pixels=50, hue_bandwidth=10.0,
+        valley_relative_height=0.5, max_hue_ranges=8)
+    metric.fits = {m.POPULATION: definition}
+
+    specs = metric._describe_fit(m.POPULATION)["thresholds"]
+    assert [ColorThreshold.from_spec(spec) for spec in specs] == definition["thresholds"]
+    assert len(specs) == len(definition["hue_ranges"]) + 1
 
 
 # ---------------------------------------------------------------------------
@@ -274,3 +285,23 @@ def test_requires_a_fit_before_scoring():
     mask = np.ones((10, 10), bool)
     with pytest.raises(RuntimeError, match="never fit"):
         metric._score(Segment(image, mask=mask, occurrence_id="x"))
+
+
+@pytest.mark.slow
+def test_a_visualized_run_draws_each_fit_and_recolours_the_sample(colour_grouped_project):
+    import json
+
+    from critterframe.project import paths
+
+    cf.run_metrics(colour_grouped_project,
+                   metrics=[m.inductive_color_thresholds(group_col="color_group",
+                                                         min_group_size=3, sample_pixels=500)],
+                   visualize=4)
+
+    [sidecar] = paths.pipeline_dir(colour_grouped_project).glob(
+        "inductive_color_thresholds_*.report.json")
+    files = json.loads(sidecar.read_text(encoding="utf-8"))["files"]
+    assert any(name.endswith("__inductive_color_thresholds__population__gate.png")
+               for name in files)
+    assert any(name.endswith("__inductive_color_thresholds__warm__gate.png") for name in files)
+    assert any(name.endswith(".jpg") for name in files)

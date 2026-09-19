@@ -9,6 +9,7 @@ calibrate real thresholds against human labels with validation.filters.
 import cv2
 import numpy as np
 
+from ..maskops import mask_iou
 from ..recipes import Metric
 from ..visualization.panels import annotate, diff_panel, mask_to_bgr
 
@@ -149,9 +150,7 @@ def _bilateral_asymmetry(segment):
     valid = (source_x >= 0) & (source_x < mask.shape[1])
     mirrored[ys[valid], source_x[valid]] = True
 
-    intersection = np.logical_and(mask, mirrored).sum()
-    union = np.logical_or(mask, mirrored).sum()
-    asymmetry = float(1.0 - intersection / union) if union else 1.0
+    asymmetry = 1.0 - mask_iou(mask, mirrored)
 
     if segment.panel_sink is not None:
         panel = diff_panel(mask, mirrored)

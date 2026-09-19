@@ -218,6 +218,28 @@ def test_parts_of_one_occurrence_coexist(tmp_path):
     assert len(mask_records.load_masks(tmp_path)) == 2
 
 
+def test_occurrence_ids_with_mask_is_presence_only(tmp_path):
+    """The identity-only read behind mask_lookup(), for a caller that just needs the ids."""
+    mask_records.save_masks(tmp_path, [
+        make_row("a", part="organism"),
+        make_row("b", part="organism"),
+        make_row("a", part="wing"),
+    ])
+    assert mask_records.occurrence_ids_with_mask(tmp_path, part="organism") == {"a", "b"}
+    assert mask_records.occurrence_ids_with_mask(tmp_path, part="wing") == {"a"}
+    assert mask_records.occurrence_ids_with_mask(tmp_path, part="head") == set()
+
+
+def test_occurrence_ids_with_mask_reads_the_reference_table(tmp_path):
+    mask_records.save_masks(tmp_path, [make_row("a")], reference=True)
+    assert mask_records.occurrence_ids_with_mask(tmp_path, reference=True) == {"a"}
+    assert mask_records.occurrence_ids_with_mask(tmp_path) == set()
+
+
+def test_occurrence_ids_with_mask_on_an_empty_project_is_empty(tmp_path):
+    assert mask_records.occurrence_ids_with_mask(tmp_path) == set()
+
+
 def test_the_reference_table_is_a_different_file(tmp_path):
     """
     Validation is comparison between two tables of identical schema. Writing a
@@ -480,6 +502,38 @@ def test_a_table_written_before_upstreams_were_tracked_still_reads(tmp_path):
     assert "source_mask_hash" not in mask_records.load_masks(tmp_path).columns
     assert mask_records.current_derivation_hashes(tmp_path) == {
         ("a", "organism"): row["recipe_hash"]}
+
+
+# ---------------------------------------------------------------------------
+# info: what each step reported about the mask it helped make
+# ---------------------------------------------------------------------------
+
+
+def test_info_round_trips_with_the_mask(tmp_path):
+    info = {"orient": {"unreliable": False, "eigval_ratio": 0.2},
+            "segment": {"score": 0.9, "n_boxes": 1}}
+    mask_records.save_masks(tmp_path, [make_row("a", info=info)])
+
+    [row] = mask_records.mask_lookup(tmp_path).values()
+    assert mask_records.mask_info(row) == info
+
+
+def test_a_mask_with_no_info_reads_as_empty(tmp_path):
+    mask_records.save_masks(tmp_path, [make_row("a")])
+    [row] = mask_records.mask_lookup(tmp_path).values()
+    assert mask_records.mask_info(row) == {}
+
+
+def test_a_table_written_before_info_was_recorded_takes_new_rows(tmp_path):
+    """An upsert over the old schema keeps both: the old row just has none."""
+    legacy_columns = [column for column in mask_records.COLUMNS if column != "info"]
+    row = {key: value for key, value in make_row("a").items() if key in legacy_columns}
+    write_table(pd.DataFrame([row], columns=legacy_columns), paths.masks_path(tmp_path))
+
+    mask_records.save_masks(tmp_path, [make_row("b", info={"segment": {"score": 1.0}})])
+    rows = mask_records.mask_lookup(tmp_path)
+    assert mask_records.mask_info(rows["a"]) == {}
+    assert mask_records.mask_info(rows["b"]) == {"segment": {"score": 1.0}}
 
 
 # ---------------------------------------------------------------------------

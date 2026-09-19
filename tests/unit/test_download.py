@@ -77,7 +77,7 @@ def test_an_empty_response_is_refused():
 def test_every_pending_image_is_fetched_and_stored(url_project, all_ok):
     summary = cf.download_images(url_project, session=all_ok)
 
-    assert summary["attempted"] == 4 and summary["saved"] == 4
+    assert summary["attempted"] == 4 and summary["processed"] == 4
     with ImageStore(url_project, readonly=True) as store:
         assert sorted(store.keys()) == ["a", "b", "c", "d"]
 
@@ -109,7 +109,7 @@ def test_an_interrupted_download_resumes(url_project):
     Batches are flushed periodically rather than at the end, so an interruption
     costs at most one batch.
     """
-    cf.download_images(url_project, limit=2,
+    cf.download_images(url_project, max_new=2,
                        session=FakeSession({"http://example/":
                                             FakeResponse(image_bytes())}))
     summary = cf.download_images(
@@ -129,7 +129,7 @@ def test_a_failure_is_counted_and_the_rest_still_download(url_project):
     })
     summary = cf.download_images(url_project, session=session)
 
-    assert (summary["saved"], summary["failed"]) == (3, 1)
+    assert (summary["processed"], summary["failed"]) == (3, 1)
     assert summary["failures"][0]["occurrence_id"] == "b"
     assert summary["failures"][0]["url"].endswith("b.png")
 
@@ -144,7 +144,7 @@ def test_a_failed_download_is_not_retried_until_asked(url_project):
         "http://example/": FakeResponse(image_bytes()),
     })
     first = cf.download_images(url_project, session=session)
-    assert (first["saved"], first["failed"]) == (3, 1)
+    assert (first["processed"], first["failed"]) == (3, 1)
 
     second = FakeSession({
         "http://example/b.png": FakeResponse(b"<html>gone</html>"),
@@ -157,7 +157,7 @@ def test_a_failed_download_is_not_retried_until_asked(url_project):
     retried = cf.download_images(
         url_project, retry_failed=True,
         session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
-    assert (retried["attempted"], retried["saved"]) == (1, 1)
+    assert (retried["attempted"], retried["processed"]) == (1, 1)
 
 
 def test_a_corrected_url_is_retried_without_asking(url_project):
@@ -176,7 +176,7 @@ def test_a_corrected_url_is_retried_without_asking(url_project):
 
     summary = cf.download_images(
         url_project, session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
-    assert (summary["attempted"], summary["saved"]) == (1, 1)
+    assert (summary["attempted"], summary["processed"]) == (1, 1)
 
 
 def test_an_http_error_is_a_failure_not_a_crash(url_project):
@@ -198,18 +198,35 @@ def test_a_missing_url_is_skipped_not_attempted(url_project, all_ok):
     save_occurrences(url_project, table)
 
     summary = cf.download_images(url_project, session=all_ok)
-    assert (summary["attempted"], summary["saved"]) == (3, 3)
+    assert (summary["attempted"], summary["processed"]) == (3, 3)
 
 
 def test_a_subset_narrows_what_is_fetched(url_project, all_ok):
     cf.define_subset(url_project, "boxA", column="device", values=["boxA"])
     summary = cf.download_images(url_project, subset="boxA", session=all_ok)
-    assert summary["saved"] == 2
+    assert summary["processed"] == 2
 
 
-def test_a_limit_caps_the_attempt(url_project, all_ok):
+def test_max_new_caps_the_attempt(url_project, all_ok):
     """For trying a source out before committing to a collection."""
-    assert cf.download_images(url_project, limit=1, session=all_ok)["saved"] == 1
+    assert cf.download_images(url_project, max_new=1,
+                              session=all_ok)["processed"] == 1
+
+
+def test_limit_caps_candidates_and_max_new_caps_new_work(url_project, all_ok):
+    """
+    The two caps sit on either side of the already-downloaded filter, which is
+    the whole difference between them. `limit` narrows the population the pass
+    considers -- so a limit covering only occurrences that already have an
+    image downloads nothing, exactly like every other driver's `limit`.
+    `max_new` caps what is left after that: "fetch two more", every time.
+    """
+    cf.download_images(url_project, max_new=2, session=all_ok)
+
+    assert cf.download_images(url_project, limit=2,
+                              session=all_ok)["attempted"] == 0
+    assert cf.download_images(url_project, max_new=1,
+                              session=all_ok)["attempted"] == 1
 
 
 def test_max_workers_one_still_downloads_everything(url_project, all_ok):
@@ -221,7 +238,7 @@ def test_max_workers_one_still_downloads_everything(url_project, all_ok):
     """
     summary = cf.download_images(url_project, max_workers=1, session=all_ok)
 
-    assert (summary["attempted"], summary["saved"]) == (4, 4)
+    assert (summary["attempted"], summary["processed"]) == (4, 4)
     with ImageStore(url_project, readonly=True) as store:
         assert sorted(store.keys()) == ["a", "b", "c", "d"]
 
@@ -232,7 +249,7 @@ def test_batching_still_saves_the_remainder(url_project, all_ok):
     every download would be silently lost.
     """
     summary = cf.download_images(url_project, batch_size=3, session=all_ok)
-    assert summary["saved"] == 4
+    assert summary["processed"] == 4
 
 
 def test_a_project_without_urls_says_which_function_to_use(url_project, all_ok):
@@ -250,7 +267,7 @@ def test_a_differently_named_url_column_can_be_named(url_project, all_ok):
     save_occurrences(url_project, table.rename(columns={"image_url": "photo"}))
 
     assert cf.download_images(url_project, url_col="photo",
-                              session=all_ok)["saved"] == 4
+                              session=all_ok)["processed"] == 4
 
 
 def test_downloading_into_a_directory_that_is_not_a_project_raises(empty_project,
@@ -274,3 +291,52 @@ def test_a_16_bit_image_survives_the_round_trip(url_project):
     with ImageStore(url_project, readonly=True) as store:
         assert store.get_bytes("a") == served
         assert store.get("a", flags=cv2.IMREAD_UNCHANGED).dtype == np.uint16
+
+
+# ---------------------------------------------------------------------------
+# download_images(visualize=)
+# ---------------------------------------------------------------------------
+
+
+def _download_sidecar(project_path):
+    import json
+
+    from critterframe.project import paths
+
+    [sidecar] = paths.pipeline_dir(project_path).glob("download_*.report.json")
+    return json.loads(sidecar.read_text(encoding="utf-8"))
+
+
+def test_a_download_leaves_a_thumbnail_grid_and_its_failures(url_project):
+    session = FakeSession({
+        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+        "http://example/": FakeResponse(image_bytes()),
+    })
+    cf.download_images(url_project, session=session)
+
+    record = _download_sidecar(url_project)
+    assert record["counts"] == {"items": 4, "done": 4, "failed": 1}
+    assert record["failures"][0]["item"] == "b"
+    assert "b.png" in record["failures"][0]["error"]
+    assert any(name.endswith(".jpg") for name in record["files"])
+
+
+def test_out_of_order_downloads_still_fill_every_checkpoint(url_project, all_ok):
+    """
+    Concurrent fetches finish in any order, but checkpoint windows are positional --
+    so a window's thumbnails must not be lost to a neighbour finishing first.
+    """
+    cf.download_images(url_project, session=all_ok, max_workers=4, visualize=1,
+                       visualize_every=2)
+
+    record = _download_sidecar(url_project)
+    windows = sorted(name.rsplit("__", 1)[1] for name in record["files"] if "__at" in name)
+    assert windows == ["at00000002.jpg", "at00000004.jpg"]
+
+
+def test_nothing_pending_writes_nothing(url_project, all_ok):
+    from critterframe.project import paths
+
+    cf.download_images(url_project, session=all_ok, visualize=False)
+    cf.download_images(url_project, session=all_ok)
+    assert not paths.pipeline_dir(url_project).exists()

@@ -3,8 +3,10 @@ SAM2, with or without Grounding DINO detection.
 
 detect_bounds=True finds the organism with a text-prompted detector and
 segments inside the box it found, for a photograph where the location is
-unknown. detect_bounds=False prompts SAM2 geometrically instead, for an image
-that is already a crop around one organism.
+unknown. detect_bounds=False skips detection, for an image that is already a
+crop around one organism: SAM2 gets a centre and/or corner point prompt when
+use_center_point/use_corner_points are set, and with neither (sam2()'s
+default) no prompt at all, segmenting the frame's dominant object.
 
 Torch and transformers are imported lazily, so constructing a model and reading
 its identity() work without the [torch] extra installed.
@@ -16,6 +18,7 @@ import time
 import cv2
 import numpy as np
 
+from ..devices import resolve_device
 from ..visualization.panels import annotate, overlay_mask
 
 logger = logging.getLogger(__name__)
@@ -46,28 +49,27 @@ class GroundedSAM2:
     """
     SAM2, optionally preceded by Grounding DINO box detection.
 
-    model_name     -- SAM2 checkpoint to load.
-    detect_bounds  -- run the text-prompted detector to find the organism
-                      first. False when the image is already a crop around one
-                      organism (see module docstring).
-    text_prompt    -- what to look for when detecting, e.g. "dragonfly." or
-                      "moth.". Lowercase, period-terminated.
-    detector_name  -- Grounding DINO checkpoint; only loaded when
-                      detect_bounds is True.
-    box_threshold,
-    text_threshold -- detector confidence floors.
-    size           -- SAM2's working resolution. Lower is faster; the mask is
-                      post-processed back to the input image's size either way.
-    use_center_point,
-    use_corner_points -- geometric prompt used when detect_bounds is False: a
-                      positive point at the center (the organism) and negative
-                      points at the four corners (background), which helps
-                      reject shadows and clutter.
-    retry_without_center -- if a center-prompted mask covers less than
-                      min_area_frac of the frame, retry once with the center
-                      point dropped. If corners are also in use the retry falls
-                      back to corners alone; if not, to no prompt at all.
-    device         -- torch device string; autodetects CUDA if omitted.
+    - `model_name` -- SAM2 checkpoint to load.
+    - `detect_bounds` -- run the text-prompted detector to find the organism
+      first. False when the image is already a crop around one organism (see
+      module docstring).
+    - `text_prompt` -- what to look for when detecting, e.g. "dragonfly." or
+      "moth.". Lowercase, period-terminated; anything else is warned about,
+      since Grounding DINO detects worse without it.
+    - `detector_name` -- Grounding DINO checkpoint; only loaded when
+      detect_bounds is True.
+    - `box_threshold`, `text_threshold` -- detector confidence floors.
+    - `size` -- SAM2's working resolution. Lower is faster; the mask is
+      post-processed back to the input image's size either way.
+    - `use_center_point`, `use_corner_points` -- geometric prompt used when
+      detect_bounds is False: a positive point at the center (the organism)
+      and negative points at the four corners (background), which helps
+      reject shadows and clutter.
+    - `retry_without_center` -- if a center-prompted mask covers less than
+      min_area_frac of the frame, retry once with the center point dropped. If
+      corners are also in use the retry falls back to corners alone; if not, to
+      no prompt at all.
+    - `device` -- torch device string; autodetects CUDA if omitted.
     """
 
     def __init__(self, model_name=DEFAULT_SAM_MODEL, detect_bounds=True,
@@ -88,6 +90,14 @@ class GroundedSAM2:
         self.retry_without_center = retry_without_center
         self.min_area_frac = min_area_frac
         self._device = device
+
+        # Warned about, never rewritten: the prompt is in identity(), so
+        # normalizing it would make every mask already made with it stale.
+        if detect_bounds and (text_prompt != text_prompt.lower()
+                              or not text_prompt.endswith(".")):
+            logger.warning("text_prompt %r: Grounding DINO expects a lowercase "
+                           "phrase ending in a period, e.g. %r", text_prompt,
+                           text_prompt.lower().rstrip(".") + ".")
 
         self.processor = None
         self.model = None
@@ -134,8 +144,7 @@ class GroundedSAM2:
     @property
     def device(self):
         if self._device is None:
-            import torch
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._device = resolve_device()
         return self._device
 
     def _load(self):
@@ -169,13 +178,25 @@ class GroundedSAM2:
         """
         Find the highest-scoring box matching the text prompt.
 
-        image -- PIL RGB image or an RGB array.
+        - `image` -- PIL RGB image or an RGB array.
 
         Returns (box, score) with box as [x0, y0, x1, y1] in image pixels, or
         (None, 0.0) if nothing passed the thresholds -- which the caller treats
         as a failed segmentation rather than falling back silently to a
         different prompting strategy, since a silent fallback would produce a
         mask whose recipe no longer describes how it was made.
+        """
+        boxes = self.detect_boxes(image)
+        return boxes[0] if boxes else (None, 0.0)
+
+    def detect_boxes(self, image):
+        """
+        Every box matching the text prompt above the thresholds, best first.
+
+        - `image` -- PIL RGB image or an RGB array.
+
+        Returns [(box, score), ...], box as [x0, y0, x1, y1] in image pixels;
+        empty when nothing passed.
         """
         import torch
 
@@ -197,13 +218,10 @@ class GroundedSAM2:
             target_sizes=[(height, width)],
         )[0]
 
-        scores = results["scores"]
-        if len(scores) == 0:
-            return None, 0.0
-
-        best = int(scores.argmax())
-        box = [float(v) for v in results["boxes"][best].tolist()]
-        return box, float(scores[best])
+        found = [([float(v) for v in box], float(score))
+                 for box, score in zip(results["boxes"].tolist(),
+                                       results["scores"].tolist())]
+        return sorted(found, key=lambda item: item[1], reverse=True)
 
     def _prompt_points(self, width, height, use_center_point, use_corner_points):
         """
@@ -280,7 +298,7 @@ class GroundedSAM2:
         """
         Segment one organism out of an image.
 
-        image -- PIL RGB image or an RGB array.
+        - `image` -- PIL RGB image or an RGB array.
 
         Returns (mask, score, info): a boolean mask the same height/width as
         image, the model's predicted IoU for it, and diagnostics naming which
@@ -291,14 +309,23 @@ class GroundedSAM2:
         info = {"detect_bounds": self.detect_bounds, "retried": False}
 
         if self.detect_bounds:
-            box, box_score = self.detect(image)
-            info["box"] = box
-            info["box_score"] = box_score
-            if box is None:
+            boxes = self.detect_boxes(image)
+            if not boxes:
                 raise ValueError(
                     f"detector found nothing matching {self.text_prompt!r} "
                     f"above box_threshold={self.box_threshold}"
                 )
+            (box, box_score), runner_up = boxes[0], boxes[1:2]
+            info["box"] = box
+            info["box_score"] = box_score
+            # A second box that clears the threshold and barely overlaps the
+            # first is the likeliest sign of two organisms in one image.
+            # second_box_score is 0.0 rather than missing when there is none,
+            # since a missing value never passes an export filter.
+            info["n_boxes"] = len(boxes)
+            info["second_box_score"] = runner_up[0][1] if runner_up else 0.0
+            info["second_box_iou"] = (_box_iou(box, runner_up[0][0])
+                                      if runner_up else None)
             mask, score = self._predict(image, box=box, mask_threshold=mask_threshold)
             info["prompt"] = "box"
             return mask, score, info
@@ -347,6 +374,16 @@ class GroundedSAM2:
         annotate(panel, f"{info['prompt']} score {score:.3f}"
                         f"{'  RETRIED' if info['retried'] else ''}")
         segment.emit_panel(panel, "segment")
+
+
+def _box_iou(a, b):
+    """Intersection over union of two [x0, y0, x1, y1] boxes."""
+    width = max(0.0, min(a[2], b[2]) - max(a[0], b[0]))
+    height = max(0.0, min(a[3], b[3]) - max(a[1], b[1]))
+    intersection = width * height
+    union = ((a[2] - a[0]) * (a[3] - a[1]) + (b[2] - b[0]) * (b[3] - b[1])
+             - intersection)
+    return intersection / union if union > 0 else 0.0
 
 
 def groundedsam2(**kwargs):

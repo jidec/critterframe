@@ -27,18 +27,23 @@ COLUMNS = ["occurrence_id", "part", "stage", "context_hash", "error", "failed_at
 # part for a stage with no part concept, e.g. download.
 NO_PART = ""
 
+# Errors recorded before a missing input counted as no_input rather than a
+# failure. The context_hash never changes when the image finally arrives, so
+# honouring these rows would skip the occurrence forever.
+NOT_FAILURES = {"no image in the image store"}
+
 
 def record_failures(project_path, stage, rows):
     """
     Persist one failed attempt per row, replacing any prior failure recorded
     for the same occurrence-part under this stage.
 
-    project_path -- the project.
-    stage         -- what kind of attempt failed, e.g. "download" or "segment".
-    rows          -- [{"occurrence_id", "part" (optional, NO_PART if omitted),
-                       "context_hash", "error"}, ...]. context_hash identifies
-                       what was attempted, so failed_keys() can tell a repeat
-                       of the same attempt from a changed one.
+    - `project_path` -- the project.
+    - `stage` -- what kind of attempt failed, e.g. "download" or "segment".
+    - `rows` -- [{"occurrence_id", "part" (optional, NO_PART if omitted),
+      "context_hash", "error"}, ...]. context_hash identifies what was
+      attempted, so failed_keys() can tell a repeat of the same attempt from a
+      changed one.
     """
     if not rows:
         return 0
@@ -70,14 +75,16 @@ def failed_keys(project_path, stage, context_hashes):
     needed, the same way a changed source_mask_hash drops a mask from
     completed_keys.
 
-    context_hashes -- {(occurrence_id, part): context_hash} of what is about
-                      to be attempted.
+    - `context_hashes` -- {(occurrence_id, part): context_hash} of what is
+      about to be attempted.
     """
     if not context_hashes:
         return set()
 
     df = load_table(paths.failures_path(project_path), missing_ok=True)
     df = df[df["stage"] == stage] if "stage" in df.columns and not df.empty else df
+    if not df.empty:
+        df = df[~df["error"].isin(NOT_FAILURES)]
     if df.empty:
         return set()
 
@@ -100,7 +107,7 @@ def clear_failures(project_path, stage, keys):
     which keys succeeded, so the table doesn't carry rows that can never be
     read as failed again.
 
-    keys -- iterable of (occurrence_id, part).
+    - `keys` -- iterable of (occurrence_id, part).
     """
     keys = {(str(occurrence_id), str(part)) for occurrence_id, part in keys}
     if not keys:
@@ -127,7 +134,7 @@ def load_failures(project_path, stage=None, columns=None):
     Read failures.parquet, optionally narrowed to one stage -- for an operator
     to see what's being skipped and why.
 
-    stage -- restrict to one stage, or None for every stage.
+    - `stage` -- restrict to one stage, or None for every stage.
     """
     df = load_table(paths.failures_path(project_path), columns=columns, missing_ok=True)
     if stage is not None and not df.empty and "stage" in df.columns:

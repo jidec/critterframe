@@ -29,8 +29,11 @@ PLATE_CHAIN = [cf.remove_background(), cf.crop_to_mask(pad=0.1)]
 
 
 def render(project_path, name="plates", **kwargs):
+    """Render one part and hand back its own summary out of the {part: summary} map."""
     kwargs.setdefault("transforms", PLATE_CHAIN)
-    return cf.render_segments(project_path, name, **kwargs)
+    results = cf.render_segments(project_path, name, **kwargs)
+    [summary] = results.values()
+    return summary
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +67,7 @@ def test_a_render_writes_one_file_per_occurrence(segmented_project):
     summary = render(segmented_project)
     written = sorted(summary["directory"].glob("*.png"))
 
-    assert summary["rendered"] == 8
+    assert summary["processed"] == 8
     assert len(written) == 8
     assert written[0].stem == "specimen0"
 
@@ -96,12 +99,12 @@ def test_rerunning_the_same_render_writes_nothing_new(segmented_project):
     """
     render(segmented_project)
     again = render(segmented_project)
-    assert (again["rendered"], again["skipped"]) == (0, 8)
+    assert (again["processed"], again["skipped"]) == (0, 8)
 
 
 def test_force_re_renders(segmented_project):
     render(segmented_project)
-    assert render(segmented_project, force=True)["rendered"] == 8
+    assert render(segmented_project, force=True)["processed"] == 8
 
 
 def test_a_render_records_no_run(segmented_project):
@@ -131,8 +134,11 @@ def test_an_occurrence_without_that_part_is_skipped_not_failed(segmented_project
     of "every wing" should write the wings it has and say how many it didn't.
     """
     summary = render(segmented_project, name="wings", part="wing")
-    assert (summary["rendered"], summary["failed"]) == (0, 0)
-    assert summary["skipped"] == 8
+    assert (summary["processed"], summary["failed"]) == (0, 0)
+    # no_input, not skipped: "there was no wing to render" and "that file is
+    # already there" are different answers, and only one of them is work done.
+    assert summary["no_input"] == 8
+    assert summary["skipped"] == 0
 
 
 def test_rendering_several_parts_qualifies_every_filename(segmented_project):
@@ -147,22 +153,43 @@ def test_rendering_several_parts_qualifies_every_filename(segmented_project):
                     steps=[cf.segment(ThresholdModel(cutoff=120))],
                     visualize=False)
 
-    summary = render(segmented_project, name="both",
-                     parts=["organism", "core"])
-    names = {path.name for path in summary["directory"].glob("*.png")}
+    results = cf.render_segments(segmented_project, "both",
+                                 transforms=PLATE_CHAIN,
+                                 parts=["organism", "core"])
+    names = {path.name for path in results["organism"]["directory"].glob("*.png")}
     assert "specimen0__organism.png" in names
     assert "specimen0__core.png" in names
 
 
+def test_each_part_gets_its_own_summary(segmented_project):
+    """
+    One flat dict over several parts can only report a total, which is the one
+    number that answers nothing: "12 rendered, 4 no_input" doesn't say whether
+    a part is missing everywhere or present everywhere. The two siblings that
+    run per part -- run_segments, run_metrics -- already return per part, and a
+    render reads the same masks they wrote.
+    """
+    results = cf.render_segments(segmented_project, "per_part",
+                                 transforms=PLATE_CHAIN,
+                                 parts=["organism", "wing"])
+
+    assert set(results) == {"organism", "wing"}
+    assert results["organism"]["processed"] == 8
+    assert (results["wing"]["processed"], results["wing"]["no_input"]) == (0, 8)
+    # One render, one folder: the hash covers both parts, and the filenames
+    # inside are what keeps them apart.
+    assert results["organism"]["directory"] == results["wing"]["directory"]
+
+
 def test_a_subset_and_a_limit_narrow_the_render(segmented_project):
     cf.define_subset(segmented_project, "boxA", column="device", values=["boxA"])
-    assert render(segmented_project, subset="boxA")["rendered"] == 4
-    assert render(segmented_project, name="few", limit=2)["rendered"] == 2
+    assert render(segmented_project, subset="boxA")["processed"] == 4
+    assert render(segmented_project, name="few", limit=2)["processed"] == 2
 
 
 def test_explicit_ids_override_the_selection(segmented_project):
     summary = render(segmented_project, occurrence_ids=["specimen3"])
-    assert summary["rendered"] == 1
+    assert summary["processed"] == 1
 
 
 def test_the_format_is_a_choice_with_a_lossless_default(segmented_project):

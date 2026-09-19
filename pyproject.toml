@@ -8,6 +8,7 @@ dependencies = [
     "pandas",
     "pyarrow",
     "opencv-python",
+    "matplotlib",
     "lmdb",
     "pycocotools",
     "requests",
@@ -23,8 +24,8 @@ Documentation = "https://jidec.github.io/critterframe/"
 
 [project.optional-dependencies]
 # Torch, and what's built on it: the bundled GroundedSAM2 segmenter
-# (segmentation/groundedsam.py), inat_insects' embedding-based metrics
-# (extensions/inat_insects/metrics/bioencoder.py), and smp_segmenter's
+# (segmentation/groundedsam.py), bioencoder's embedding metric
+# (extensions/bioencoder/embedding.py), and smp_segmenter's
 # trainable UNet++ segmenter (extensions/smp_segmenter). Named for the
 # dependency itself, not "segmentation" -- it isn't only that, and the core
 # pipeline -- ingest, storage, transforms, metrics, export, validation -- runs
@@ -36,7 +37,6 @@ torch = [
     "pillow",
     "segmentation-models-pytorch",
     "tqdm",
-    "matplotlib",
 ]
 
 # Running the test suite. pytest-timeout is not a nicety here: two functions in

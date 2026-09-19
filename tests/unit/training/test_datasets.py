@@ -453,3 +453,27 @@ def test_write_dataset_keeps_its_own_shape(segmented_project, tmp_path):
     assert (out / "images").is_dir() and (out / "masks").is_dir()
     assert {"occurrence_id", "part", "image_path", "mask_path", "height",
             "width", "mask_area", "species"} <= set(manifest.columns)
+
+
+# ---------------------------------------------------------------------------
+# visualize=
+# ---------------------------------------------------------------------------
+
+
+def test_each_split_gets_a_grid_named_for_the_datasets_hash(segmented_project, tmp_path):
+    from critterframe.project import paths
+
+    out = tmp_path / "data"
+    cf.export_training_data(segmented_project, out, splits=splits_of(segmented_project),
+                            transforms=[cf.crop_to_mask()])
+    data_hash = dataset_record(out)["data_hash"]
+
+    grids = sorted(path.name for path in paths.pipeline_dir(segmented_project).glob("dataset__*.jpg"))
+    assert grids == [f"dataset__train_{data_hash}.jpg", f"dataset__val_{data_hash}.jpg"]
+
+
+def test_an_export_with_visualize_false_writes_no_grid(segmented_project, tmp_path):
+    from critterframe.project import paths
+
+    cf.export_training_data(segmented_project, tmp_path / "data", visualize=False)
+    assert not list(paths.pipeline_dir(segmented_project).glob("dataset__*"))

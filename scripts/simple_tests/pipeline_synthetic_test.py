@@ -256,15 +256,18 @@ print("again     :", cf.render_segments(
     transforms=[cf.remove_background(), cf.orient(), cf.crop_to_mask(pad=0.15)]),
     "  <- expect rendered=0, skipped=8: same recipe, same folder, files there")
 
-files = sorted(p.name for p in plates["directory"].glob("*.png"))
-print(f"  {plates['directory'].name}/  ->  {', '.join(files[:4])}, ...")
+directory = plates["organism"]["directory"]
+files = sorted(path.name for path in directory.glob("*.png"))
+print(f"  {directory.name}/  ->  {', '.join(files[:4])}, ...")
 
 both = cf.render_segments(PROJECT_PATH, "parts_plate",
                           transforms=[cf.remove_background(), cf.crop_to_mask()],
                           parts=["organism", "core"])
-print("  two parts ->", ", ".join(sorted(p.name for p in
-                                         both["directory"].glob("*.png"))[:3]),
+print("  two parts ->", ", ".join(sorted(path.name for path in
+                                         both["organism"]["directory"].glob("*.png"))[:3]),
       "...  <- part qualifies the filename when a render covers several")
+print("  per part  ->", {part: summary["processed"]
+                         for part, summary in both.items()})
 
 print("\n== validation: comparing against a reference ==")
 # A second, deliberately different segmenter standing in for the human whose

@@ -7,11 +7,11 @@ arranged around them:
 
   GROUPED LEAKAGE -- several images of one specimen, one observation, or one
   trap night are not independent. Split them at random and near-duplicates land
-  on both sides, and the validation score measures memorization. `group_by`
+  on both sides, and the validation score measures memorization. `group_col`
   keeps a group whole, and that guarantee is EXACT.
 
   IMBALANCE -- species counts in field data are wildly uneven, and a random
-  split can leave a rare one absent from validation entirely. `stratify_by`
+  split can leave a rare one absent from validation entirely. `stratify_col`
   preserves proportions, and that guarantee is APPROXIMATE, because a group
   cannot be divided to balance a stratum. The leakage one is the one worth
   keeping exact.
@@ -29,7 +29,7 @@ import critterframe as cf
 from critterframe.records.occurrences import ID_COL, save_occurrences
 from critterframe.training.splits import split_dataset, split_frames
 
-PROPORTIONS = {"train": 0.6, "val": 0.2, "test": 0.2}
+FRACTIONS = {"train": 0.6, "val": 0.2, "test": 0.2}
 
 
 @pytest.fixture
@@ -68,7 +68,7 @@ def sides_of(project_path, splits, column):
 
 
 def test_every_occurrence_lands_in_exactly_one_split(specimens):
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS)
+    splits = cf.split_ids(specimens, fractions=FRACTIONS)
     allocated = [occurrence_id for ids in splits.values() for occurrence_id in ids]
 
     assert len(allocated) == 30
@@ -76,7 +76,7 @@ def test_every_occurrence_lands_in_exactly_one_split(specimens):
 
 
 def test_the_proportions_are_roughly_honoured(specimens):
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS)
+    splits = cf.split_ids(specimens, fractions=FRACTIONS)
     assert len(splits["train"]) == pytest.approx(18, abs=3)
     assert len(splits["val"]) == pytest.approx(6, abs=3)
 
@@ -88,7 +88,7 @@ def test_every_requested_name_is_a_key_even_when_empty(specimens, caplog):
     steps later.
     """
     with caplog.at_level("WARNING"):
-        splits = cf.split_ids(specimens, proportions={"train": 0.999,
+        splits = cf.split_ids(specimens, fractions={"train": 0.999,
                                                       "tiny": 0.001})
     assert set(splits) == {"train", "tiny"}
     assert splits["tiny"] == []
@@ -97,7 +97,7 @@ def test_every_requested_name_is_a_key_even_when_empty(specimens, caplog):
 
 def test_proportions_need_not_sum_to_one(specimens):
     """They are normalized -- 8:1:1 is a perfectly clear way to say it."""
-    splits = cf.split_ids(specimens, proportions={"train": 8, "val": 1, "test": 1})
+    splits = cf.split_ids(specimens, fractions={"train": 8, "val": 1, "test": 1})
     assert len(splits["train"]) == pytest.approx(24, abs=3)
 
 
@@ -118,8 +118,8 @@ def test_grouping_is_exact(specimens):
     is worth keeping exact, because breaking it doesn't produce a worse score
     -- it produces a BETTER one, for the wrong reason.
     """
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS,
-                          group_by="specimen")
+    splits = cf.split_ids(specimens, fractions=FRACTIONS,
+                          group_col="specimen")
     straddling = [value for value, names in sides_of(specimens, splits,
                                                      "specimen").items()
                   if len(names) > 1]
@@ -131,7 +131,7 @@ def test_without_grouping_near_duplicates_do_straddle(specimens):
     The failure being prevented, demonstrated: with no group column, the two
     shots of a specimen are independent rows and land wherever they fall.
     """
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS)
+    splits = cf.split_ids(specimens, fractions=FRACTIONS)
     straddling = [value for value, names in sides_of(specimens, splits,
                                                      "specimen").items()
                   if len(names) > 1]
@@ -143,8 +143,8 @@ def test_stratifying_keeps_the_rare_species_present(specimens):
     A random split of a long-tailed table can leave a rare class out of
     validation entirely, and then the score says nothing about it.
     """
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS,
-                          stratify_by="species")
+    splits = cf.split_ids(specimens, fractions=FRACTIONS,
+                          stratify_col="species")
     table = pd.read_parquet(specimens / "occurrences.parquet").set_index(ID_COL)
 
     for name, ids in splits.items():
@@ -157,8 +157,8 @@ def test_both_at_once_keeps_the_grouping_exact(specimens):
     The tension stated in the module docstring: a group can't be divided to
     balance a stratum, so grouping wins and stratification is approximate.
     """
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS,
-                          stratify_by="species", group_by="specimen")
+    splits = cf.split_ids(specimens, fractions=FRACTIONS,
+                          stratify_col="species", group_col="specimen")
     straddling = [value for value, names in sides_of(specimens, splits,
                                                      "specimen").items()
                   if len(names) > 1]
@@ -217,7 +217,7 @@ def test_an_id_that_is_not_in_the_project_raises(specimens):
 def test_a_column_the_project_does_not_have_raises_and_lists_the_ones_it_does(
         specimens):
     with pytest.raises(KeyError, match="no column"):
-        cf.split_ids(specimens, stratify_by="genus")
+        cf.split_ids(specimens, stratify_col="genus")
 
 
 def test_splitting_needs_a_project(empty_project):
@@ -233,13 +233,13 @@ def test_nothing_is_written(specimens):
     """
     from critterframe.project import paths
 
-    cf.split_ids(specimens, proportions=PROPORTIONS)
+    cf.split_ids(specimens, fractions=FRACTIONS)
     assert not paths.subsets_path(specimens).exists()
 
 
 def test_a_split_can_be_frozen_as_a_subset(specimens):
     """The documented way to make one outlive the script that computed it."""
-    splits = cf.split_ids(specimens, proportions=PROPORTIONS)
+    splits = cf.split_ids(specimens, fractions=FRACTIONS)
     cf.define_subset(specimens, "train", occurrence_ids=splits["train"])
 
     from critterframe.project.subsets import select_ids
@@ -260,13 +260,13 @@ def manifest(rows=20):
 
 
 def test_split_dataset_adds_a_column_rather_than_splitting_the_frame():
-    assigned = split_dataset(manifest(), fractions=PROPORTIONS)
+    assigned = split_dataset(manifest(), fractions=FRACTIONS)
     assert set(assigned["split"]) <= {"train", "val", "test"}
     assert len(assigned) == 20
 
 
 def test_split_frames_hands_back_the_pieces():
-    pieces = split_frames(manifest(), fractions=PROPORTIONS)
+    pieces = split_frames(manifest(), fractions=FRACTIONS)
     assert set(pieces) <= {"train", "val", "test"}
     assert sum(len(frame) for frame in pieces.values()) == 20
     assert "split" not in next(iter(pieces.values())).columns
@@ -274,7 +274,7 @@ def test_split_frames_hands_back_the_pieces():
 
 def test_an_empty_frame_splits_into_nothing():
     empty = manifest(0)
-    assert split_dataset(empty, fractions=PROPORTIONS).empty
+    assert split_dataset(empty, fractions=FRACTIONS).empty
 
 
 def test_proportions_that_sum_to_nothing_raise():
@@ -286,5 +286,25 @@ def test_an_unlabelled_row_is_pooled_rather_than_dropped():
     """An unlabelled image is still training data."""
     frame = manifest()
     frame.loc[0:3, "label"] = None
-    assigned = split_dataset(frame, fractions=PROPORTIONS, stratify_col="label")
+    assigned = split_dataset(frame, fractions=FRACTIONS, stratify_col="label")
     assert assigned["split"].notna().all()
+
+
+# ---------------------------------------------------------------------------
+# visualize=
+# ---------------------------------------------------------------------------
+
+
+def test_a_split_draws_its_class_counts(specimens):
+    from critterframe.project import paths
+
+    cf.split_ids(specimens, fractions=FRACTIONS, stratify_col="species")
+    assert len(list(paths.pipeline_dir(specimens)
+                    .glob("split_ids_*__counts.png"))) == 1
+
+
+def test_a_split_with_visualize_false_draws_nothing(specimens):
+    from critterframe.project import paths
+
+    cf.split_ids(specimens, fractions=FRACTIONS, visualize=False)
+    assert not paths.pipeline_dir(specimens).exists()

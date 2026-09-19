@@ -2,21 +2,25 @@
 run_metrics() + RunContext + _completed_keys.
 
 Transforms shape what gets measured and are part of the recipe hash, but the
-segment they produce is thrown away -- only the value is kept. Occurrences with
+segment they produce is thrown away -- only the values are kept, with each
+transform's scalar info stored beside them as a `transform_info` row. Occurrences with
 no mask for the part are neither measured nor counted done, and the run says so.
 """
 
 import logging
+from collections import Counter
 
+from .. import segments as segment_iteration
 from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe, Segment, load_json
+from ..recipes import DEFAULT_PART, Recipe, load_json
+from ..records import failures as failure_records
 from ..records import masks as mask_records
 from ..records import metrics as metric_records
 from ..records import runs as run_records
 from ..records.occurrences import ids_record
 from ..storage.imagestore import ImageStore
 from ..visualization import pipeline as pipeline_visualization
-from ..visualization.panels import annotate, overlay_mask
+from ..visualization.panels import segment_panel
 
 logger = logging.getLogger(__name__)
 
@@ -31,23 +35,31 @@ class RunContext:
     they're about to fit against, and this is how they find out (see
     metrics.outliers).
 
-    project_path   -- project being processed.
-    occurrence_ids -- ids this run covers, AFTER subset and limit are applied
-                      but BEFORE skipping already-completed work. A group metric
-                      must fit against the whole population it's scoring within,
-                      not against whichever occurrences happen to be left over
-                      from an interrupted earlier run -- otherwise resuming a
-                      run would silently change what "outlier" means partway
-                      through it.
-    part           -- part being measured.
-    run_name       -- name of the run.
+    - `project_path` -- project being processed.
+    - `occurrence_ids` -- ids this run covers, AFTER subset and limit are
+      applied but BEFORE skipping already-completed work. A group metric must
+      fit against the whole population it's scoring within, not against
+      whichever occurrences happen to be left over from an interrupted earlier
+      run -- otherwise resuming a run would silently change what "outlier"
+      means partway through it.
+    - `part` -- part being measured.
+    - `run_name` -- name of the run.
+    - `report` -- the run's visualization report, so prepare() can write a
+      whole-population figure with `context.report.figure()`. A NullReport when
+      visualization is off; build an expensive figure only `if
+      context.report:`.
+    - `reference` -- whether this run measures reference masks rather than
+      canonical ones.
     """
 
-    def __init__(self, project_path, occurrence_ids, part, run_name):
+    def __init__(self, project_path, occurrence_ids, part, run_name,
+                 report=pipeline_visualization.NULL_REPORT, reference=False):
         self.project_path = project_path
         self.occurrence_ids = list(occurrence_ids)
         self.part = part
         self.run_name = run_name
+        self.report = report
+        self.reference = reference
 
 
 # Distinguishes "this occurrence-part has no mask" from "its mask has no recipe
@@ -79,11 +91,8 @@ def _visualize_measurement(state, rows):
     if state.panel_sink is None:
         return
 
-    panel = overlay_mask(state.image, state.mask) if state.mask is not None \
-        else state.image.copy()
-    for line, row in enumerate(rows[:6]):
-        annotate(panel, f"{row['metric_name']}={_format_value(row['value'])}",
-                 line=line)
+    panel = segment_panel(state.image, state.mask, lines=[
+        f"{row['metric_name']}={_format_value(row['value'])}" for row in rows[:6]])
     state.emit_panel(panel, "measured")
 
 
@@ -97,25 +106,21 @@ def _completed_keys(project_path, recipe_hash, source_mask_hashes=None, run_name
     hash and not the run, so work completed by an earlier interrupted run of the
     same recipe is exactly what a new run skips.
 
-    source_mask_hashes -- {(occurrence_id, part): derivation_hash} of the masks
-                          about to be measured. When given, completion means
-                          "this recipe has run over THIS mask" rather than "this
-                          recipe has run here", so resegmenting forces a
-                          recompute. Rows the caller has no mask for never count.
-                          Omit it to ask the weaker question, which is all a
-                          caller with no masks in hand can ask.
-    run_name           -- restrict to rows written by a run under this exact
-                          name. recipe_hash no longer encodes name (see
-                          Recipe.hash), so without this, "already done" would
-                          mean "done by ANY name" -- which is exactly what
-                          _copyable_rows below wants, but not what "does THIS
-                          name already have its own values" should mean: a
-                          run_name is the key export.column_name and
-                          records.metrics.latest_values read values back by,
-                          so a brand-new name must actually get its own rows,
-                          never silently borrow another name's completion.
-                          None asks the weaker "has this exact recipe run at
-                          all, under any name" question.
+    - `source_mask_hashes` -- {(occurrence_id, part): derivation_hash} of the
+      masks about to be measured. When given, completion means "this recipe has
+      run over THIS mask" rather than "this recipe has run here", so
+      resegmenting forces a recompute. Rows the caller has no mask for never
+      count. Omit it to ask the weaker question, which is all a caller with no
+      masks in hand can ask.
+    - `run_name` -- restrict to rows written by a run under this exact name.
+      recipe_hash no longer encodes name (see Recipe.hash), so without this,
+      "already done" would mean "done by ANY name" -- which is exactly what
+      _copyable_rows below wants, but not what "does THIS name already have its
+      own values" should mean: a run_name is the key export.column_name and
+      records.metrics.latest_values read values back by, so a brand-new name
+      must actually get its own rows, never silently borrow another name's
+      completion. None asks the weaker "has this exact recipe run at all, under
+      any name" question.
     """
     query = "SELECT DISTINCT m.occurrence_id, m.part, m.source_mask_hash FROM metrics m"
     params = [recipe_hash]
@@ -155,12 +160,12 @@ def _current_for_population(project_path, keys, recipe_hash, part, prepared):
     ids_record and Recipe.prepare_all stores it in the run's context_json, so
     this costs one read of the (small) runs table, not a new column.
 
-    keys     -- candidate (occurrence_id, part) pairs, already matched on
-                recipe_hash (and, if the caller checked it, source_mask_hash).
-    prepared -- THIS run's own recipe.prepare_all(context) result, keyed by
-                metric_name. Empty for a recipe with no group metric, in which
-                case every key passes untouched -- an ordinary metric's value
-                never depends on who else was in scope.
+    - `keys` -- candidate (occurrence_id, part) pairs, already matched on
+      recipe_hash (and, if the caller checked it, source_mask_hash).
+    - `prepared` -- THIS run's own recipe.prepare_all(context) result, keyed by
+      metric_name. Empty for a recipe with no group metric, in which case every
+      key passes untouched -- an ordinary metric's value never depends on who
+      else was in scope.
     """
     if not prepared or not keys:
         return keys
@@ -250,7 +255,7 @@ def _copyable_rows(project_path, recipe_hash, keys, part):
 def run_metrics(project_path, metrics, run_name=None, transforms=(),
                 part=DEFAULT_PART, parts=None, subset=None, limit=None,
                 force=False, visualize=True, visualize_every=None,
-                reference=False):
+                reference=False, from_part=None, retry_failed=False):
     """
     Run a metric recipe over a project's occurrence-parts.
 
@@ -307,11 +312,25 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
       ones. How reference metric VALUES are produced for validation: the
       same recipe pointed at the reference table, so disagreement is
       attributable to the masks rather than the method.
+    - `retry_failed` -- attempt occurrence-parts that already failed under
+      this recipe and this mask. Normally skipped, the same way
+      `run_segments` skips them: a metric that raised on an occurrence raises
+      again on a rerun, and a long annotation or embedding pass shouldn't
+      spend the attempt finding that out. A recipe change or a resegmentation
+      retries by itself, since the recorded failure is keyed on both.
+    - `from_part` -- run `transforms` against an upstream part's CANONICAL
+      mask and measure `part`'s own mask inside the resulting frame, the same
+      way `run_segments(from_part=...)` produced it (see
+      `segments.iterate_segments`). Pass the same `from_part` that run used,
+      or a part carved out of the organism crop is measured in a crop of its
+      own instead of the one it was segmented in.
 
-    Returns {part: {"processed", "copied", "skipped", "failed", "run_id"}}.
-    `copied` is occurrence-parts whose value was re-used from an identically
-    configured run under a different name rather than recomputed -- see
-    `run_name` above.
+    Returns {part: summary}, each as `segments.Tally.summary` plus `run_id`,
+    `copied` -- occurrence-parts whose value was re-used from an identically
+    configured run under a different name rather than recomputed (see
+    `run_name` above) -- and `previously_failed`. `no_input` counts
+    occurrence-parts with no mask, image or `from_part` mask yet; they are
+    attempted again once it exists.
     """
     paths.require_project(project_path)
 
@@ -344,11 +363,15 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
             )
         run_name = metrics[0].metric_name
 
-    if visualize_every and not visualize:
-        logger.warning(
-            "visualize_every=%d with visualize=%r: there's no report to "
-            "checkpoint without visualize, so visualize_every has no effect",
-            visualize_every, visualize)
+    # Each transform's info is stored as a metric named by its label, so the
+    # two must never share a name, or one column would hold both.
+    clashes = (set(segment_iteration.operation_labels(transforms))
+               & {operation.metric_name for operation in metrics})
+    if clashes:
+        raise ValueError(
+            f"transform(s) {sorted(clashes)} share a name with a metric -- their "
+            "recorded info would land in the same export column; pass name= to "
+            "the metric")
 
     target_parts = list(parts) if parts else [part]
     occurrence_ids = subset_selection.select_ids(project_path, subset=subset,
@@ -361,17 +384,25 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
         results[target_part] = _run_one_part(
             project_path, run_name, metrics, transforms, target_part,
             occurrence_ids, subset, limit, force, visualize, visualize_every,
-            reference,
+            reference, from_part, retry_failed,
         )
     return results
 
 
 def _run_one_part(project_path, run_name, metrics, transforms, part,
                   occurrence_ids, subset, limit, force, visualize,
-                  visualize_every, reference):
+                  visualize_every, reference, from_part=None,
+                  retry_failed=False):
     """Execute one part's recipe. Split out so the multi-part loop stays readable."""
     recipe = Recipe("metric", run_name, transforms + metrics, part=part,
+                    from_part=from_part,
                     inputs={"masks": "reference" if reference else "canonical"})
+
+    # Reference and canonical passes record failures under their own stage,
+    # for the reason run_segments gives: records.failures keys on
+    # (occurrence_id, part, stage), so sharing one would have each pass
+    # overwrite and clear the other's rows.
+    stage = "metric_reference" if reference else "metric"
 
     # Fails fast, before any mask lookup or prepare() hook runs, if run_name
     # already points at a different recipe for this part and force wasn't
@@ -380,8 +411,15 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
     needs_currency_commit = run_records.resolve_recipe_currency(
         project_path, "metric", run_name, part, recipe.hash, force)
 
+    # Opened before prepare() so a group metric can write its fit figures; the
+    # sample is fixed later, once begin() knows what this run will measure.
+    report = pipeline_visualization.open_report(
+        project_path, run_name, recipe.hash, part=part, visualize=visualize,
+        visualize_every=visualize_every, identity=recipe.spec())
+
     prepared = recipe.prepare_all(
-        RunContext(project_path, occurrence_ids, part, run_name))
+        RunContext(project_path, occurrence_ids, part, run_name, report=report,
+                   reference=reference))
 
     # A recipe needs a mask unless every metric in it says otherwise and
     # there's nothing transforming the segment first (a transform chain is
@@ -441,54 +479,46 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
             copy_rows = _copyable_rows(project_path, recipe.hash,
                                        done_elsewhere, part)
 
+    # What was attempted, for the failure ledger: this recipe over this
+    # occurrence's current mask, so a retuned recipe or a resegmentation
+    # retries by itself and only an unchanged repeat of the same attempt is
+    # skipped. A maskless metric keys on the recipe alone, for the reason
+    # staleness_hashes gives above -- its result doesn't depend on the mask.
+    context_hashes = {
+        (occurrence_id, part): mask_records.derivation_hash(
+            recipe.hash,
+            source_hashes.get((occurrence_id, part)) if needs_mask else None)
+        for occurrence_id in occurrence_ids
+    }
+    failed_before = set()
+    if not force and not retry_failed:
+        failed_before = failure_records.failed_keys(project_path, stage,
+                                                    context_hashes)
+
     todo = [
         occurrence_id for occurrence_id in occurrence_ids
         if (not needs_mask or occurrence_id in mask_rows)
         and (occurrence_id, part) not in done_here
+        and (occurrence_id, part) not in failed_before
         and occurrence_id not in copy_rows
     ]
     unsegmented = (len([i for i in occurrence_ids if i not in mask_rows])
                   if needs_mask else 0)
     skipped = len(done_here)
+    tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+    tally.skipped = skipped
+    tally.no_input = unsegmented
 
     logger.info("  %s: %d to measure, %d already done by recipe %s over the "
                 "same mask, %d copied from another name's identical work, "
-                "%d with no mask", part, len(todo), skipped, recipe.hash,
-                len(copy_rows), unsegmented)
+                "%d with no mask, %d previously failed (retry_failed=True to "
+                "retry)", part, len(todo), skipped, recipe.hash,
+                len(copy_rows), unsegmented, len(failed_before))
     if unsegmented:
         logger.warning("  %s: %d occurrence(s) have no '%s' mask -- run "
                        "segmentation for that part first", part, unsegmented, part)
 
-    report = pipeline_visualization.run_report(project_path, run_name,
-                                               recipe.hash, part, todo,
-                                               visualize)
-
-    # visualize_every's checkpoint series: a second RunReport, resampled
-    # fresh each window from whatever that window actually processes rather
-    # than the fixed whole-run sample above, so a checkpoint always has real
-    # content -- see pipeline_visualization's module docstring.
-    window_report = None
-    combined_sink = report
-
-    def rotate_window(start_index):
-        nonlocal window_report, combined_sink
-        if not (visualize_every and visualize) or start_index >= len(todo):
-            return
-        end = min(start_index + visualize_every, len(todo))
-        sample = pipeline_visualization.resolve_sample(
-            todo[start_index:end], visualize)
-        window_report = (
-            pipeline_visualization.RunReport(
-                project_path, run_name, recipe.hash, part, sample,
-                suffix=f"__at{end:08d}")
-            if sample else None)
-        combined = [existing for existing in (report, window_report)
-                   if existing is not None]
-        combined_sink = (
-            pipeline_visualization.PanelFanout(combined) if len(combined) > 1
-            else (combined[0] if combined else None))
-
-    rotate_window(0)
+    report.begin(todo)
 
     run_id = run_records.start_run(
         project_path, recipe, subset=subset,
@@ -504,28 +534,50 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
             [row for rows in copy_rows.values() for row in rows])
 
     processed = 0
-    failed = 0
+    failure_rows = []
+    resolved = []
+    missing = Counter()
+    transform_labels = segment_iteration.operation_labels(transforms)
+    source_rows = (mask_records.mask_lookup(project_path, part=from_part,
+                                            occurrence_ids=todo)
+                   if from_part is not None else {})
 
     with ImageStore(project_path, readonly=True) as images:
-        for index, occurrence_id in enumerate(todo):
+        for occurrence_id in todo:
             try:
                 image = images.get(occurrence_id)
                 if image is None:
-                    raise ValueError("no image in the image store")
+                    raise segment_iteration.NoInput(segment_iteration.NO_IMAGE)
 
                 # .get(), not [] -- absent for a maskless recipe (mask_rows is
                 # {} entirely) and, defensively, for any occurrence a
                 # mask-requiring recipe's own todo filter already excluded.
                 mask_row = mask_rows.get(occurrence_id)
                 mask = mask_records.decode_mask(mask_row) if mask_row is not None else None
-                state = Segment(image, mask=mask,
-                                occurrence_id=occurrence_id, part=part,
-                                project_path=project_path,
-                                panel_sink=pipeline_visualization.panel_sink(
-                                    combined_sink, occurrence_id))
 
-                for operation in transforms:
-                    state, _info = operation(state)
+                from_mask = None
+                if from_part is not None:
+                    source_row = source_rows.get(occurrence_id)
+                    if source_row is None:
+                        raise segment_iteration.NoInput(
+                            segment_iteration.no_mask(from_part))
+                    from_mask = mask_records.decode_mask(source_row)
+
+                state = segment_iteration.build_segment(
+                    image, mask=mask, occurrence_id=occurrence_id, part=part,
+                    project_path=project_path,
+                    panel_sink=report.sink(occurrence_id),
+                    from_mask=from_mask, from_part=from_part)
+
+                transform_info = []
+                for label, operation in zip(transform_labels, transforms):
+                    state, info = operation(state)
+                    tally.record_flags(info)
+                    transform_info.append((label, segment_iteration.scalar_info(info)))
+
+                if from_mask is not None:
+                    state = state.for_part(part)
+                    state.mask = None if mask is None else state.project_mask(mask)
 
                 rows = [
                     metric_records.make_metric_row(
@@ -538,39 +590,53 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
 
                 _visualize_measurement(state, rows)
 
+                rows += [
+                    metric_records.make_metric_row(
+                        occurrence_id, part, label, info,
+                        unit=metric_records.TRANSFORM_INFO_UNIT,
+                        source_mask_hash=source_hashes.get((occurrence_id, part)),
+                    )
+                    for label, info in transform_info if info
+                ]
+
                 # Written per occurrence rather than buffered to the end: a
                 # human-annotation run can be hours of clicking, and an
                 # interruption should cost the current occurrence, not the day.
                 metric_records.append_metrics(project_path, run_id, recipe.hash, rows)
                 processed += 1
+                tally.processed += 1
+                resolved.append((occurrence_id, part))
 
+            except segment_iteration.NoInput as exc:
+                tally.no_input += 1
+                missing[str(exc)] += 1
             except Exception as exc:
-                failed += 1
+                tally.record_failure(occurrence_id, exc)
+                report.failure(occurrence_id, exc)
                 logger.warning("metrics failed for %s part '%s': %s",
                                occurrence_id, part, exc)
+                failure_rows.append({
+                    "occurrence_id": occurrence_id,
+                    "part": part,
+                    "context_hash": context_hashes[(occurrence_id, part)],
+                    "error": exc,
+                })
 
-            # Cheap even when nothing new was collected -- RunReport.save() is
-            # a no-op then -- so this runs on every occurrence regardless of
-            # whether it was itself in the sample.
-            if visualize_every and (index + 1) % visualize_every == 0:
-                if report is not None:
-                    report.save()
-                if window_report is not None:
-                    window_report.save()
-                rotate_window(index + 1)
+            report.done(occurrence_id)
 
-    if report is not None:
-        report.save()
-    # A run that completes without landing exactly on a checkpoint boundary
-    # still leaves a grid for its trailing partial window.
-    if window_report is not None:
-        window_report.save()
+    report.close()
+    segment_iteration.log_no_input(missing, f"run_metrics part '{part}'")
+
+    # Written once at the end rather than per occurrence: unlike the metric
+    # rows above, a lost failure costs a retry, not a day's annotation.
+    failure_records.record_failures(project_path, stage, failure_rows)
+    failure_records.clear_failures(project_path, stage, resolved)
 
     # Copied rows count toward the stored n_processed: real rows were newly
     # attributed to this run_id, unlike a skip, which wrote nothing at all.
     run_records.finish_run(project_path, run_id,
                            processed=processed + len(copy_rows),
-                           skipped=skipped, failed=failed)
+                           skipped=skipped, failed=tally.failed, flags=tally.flags)
 
     if needs_currency_commit:
         if processed > 0 or copy_rows:
@@ -582,5 +648,5 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 "'%s', but nothing was processed -- it still points at the "
                 "previous recipe", run_name, part)
 
-    return {"processed": processed, "copied": len(copy_rows), "skipped": skipped,
-            "failed": failed, "run_id": run_id}
+    return tally.summary(copied=len(copy_rows), run_id=run_id,
+                         previously_failed=len(failed_before))

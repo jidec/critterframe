@@ -180,8 +180,13 @@ def test_pending_values_are_empty_once_everything_is_measured(scoped_project):
 
 
 def test_pending_values_can_be_capped(scoped_project):
+    """
+    max_new, not limit: the cap is on what's LEFT to measure, so it means
+    "measure two more" every time it runs rather than "look at the first two
+    scope values", which after one pass would be two already-measured ones.
+    """
     assert len(calibration_records.pending_scope_values(
-        scoped_project, "scale", "session", limit=2)) == 2
+        scoped_project, "scale", "session", max_new=2)) == 2
 
 
 # ---------------------------------------------------------------------------

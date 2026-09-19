@@ -4,7 +4,7 @@ Training and fine-tuning a BioEncoder embedding model on a project.
 The path this completes: segment organisms, remove their backgrounds, train an
 embedding model on the results using the project's own taxonomy as labels, then
 plug the trained model back in as an embedding metric
-(extensions.inat_insects.metrics.bioencoder). A project ends up producing the
+(extensions.bioencoder.embedding). A project ends up producing the
 model that measures it.
 
 Why metric learning rather than classification: the useful output isn't "which
@@ -24,9 +24,13 @@ without complaint and embeds badly, which is worse than a NotImplementedError.
 import logging
 import os
 
-from ....recipes import DEFAULT_PART
-from ....training.datasets import write_dataset
-from ....training.splits import split_dataset
+import pandas as pd
+
+from ...project import subsets as subset_selection
+from ...recipes import DEFAULT_PART
+from ...records.occurrences import ID_COL
+from ...training.datasets import export_training_data
+from ...training.splits import split_ids
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +54,7 @@ MIN_IMAGES_PER_LABEL = 5
 def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
                     label_col=DEFAULT_LABEL_COL, group_col=DEFAULT_GROUP_COL,
                     min_per_label=MIN_IMAGES_PER_LABEL, fractions=None,
-                    reference=False, subset=None, limit=None, seed=0):
+                    reference=False, subset=None, limit=None, seed=0, visualize=True):
     """
     Build a training dataset out of a project: image/mask pairs on disk, labels
     attached, split into train/val/test.
@@ -66,44 +70,60 @@ def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
     - `label_col` -- occurrence column holding the label.
     - `group_col` -- occurrence column to group by when splitting, so
       near-duplicates can't straddle train and validation.
-    - `min_per_label` -- labels with fewer images than this are dropped.
+    - `min_per_label` -- labels with fewer occurrences than this are dropped,
+      before the split and the export, so the dataset record describes what
+      was actually written.
     - `fractions` -- split fractions; 70/15/15 by default.
     - `reference` -- train on reference masks rather than canonical ones.
     - `subset`, `limit` -- restrict which occurrences are used.
     - `seed` -- split seed, so the split is reproducible across runs.
+    - `visualize` -- True (default): the exported dataset's grid (see
+      `export_training_data`), plus a pipeline figure of images per label
+      per split for the labels kept. False writes nothing.
 
     Returns the manifest DataFrame, with `split` and `label` columns added.
     """
-    label_columns = [column for column in {label_col, group_col} if column]
+    # Labels are filtered and split BEFORE anything is exported, so the
+    # dataset.json export_training_data writes describes the images that are
+    # actually in the directory. Filtering afterwards (and rewriting only
+    # manifest.csv) left its data_hash covering a population the model never
+    # saw, which is what a registered model's training_data then pointed at.
+    columns = [column for column in {label_col, group_col} if column]
+    occurrences = subset_selection.select_occurrences(project_path, subset=subset,
+                                                       columns=columns)
+    labelled = occurrences[occurrences[label_col].notna()]
 
-    manifest = write_dataset(project_path, output_dir, part=part,
-                             transforms=transforms, reference=reference,
-                             subset=subset, limit=limit,
-                             label_columns=label_columns)
-    if manifest.empty:
-        return manifest
-
-    manifest = manifest.rename(columns={label_col: "label"})
-    manifest = manifest[manifest["label"].notna()]
-
-    counts = manifest["label"].value_counts()
+    counts = labelled[label_col].value_counts()
     keep = counts[counts >= min_per_label].index
-    dropped = int((~manifest["label"].isin(keep)).sum())
+    dropped = int((~labelled[label_col].isin(keep)).sum())
     if dropped:
-        logger.info("dropped %d image(s) whose label had fewer than %d examples",
+        logger.info("dropped %d occurrence(s) whose label had fewer than %d examples",
                     dropped, min_per_label)
-    manifest = manifest[manifest["label"].isin(keep)]
+    labelled = labelled[labelled[label_col].isin(keep)]
 
-    if manifest.empty:
-        logger.warning("no labels have at least %d images -- nothing to train on",
+    if labelled.empty:
+        logger.warning("no labels have at least %d occurrence(s) -- nothing to train on",
                        min_per_label)
+        return pd.DataFrame()
+
+    occurrence_ids = labelled[ID_COL].tolist()
+    if limit is not None:
+        occurrence_ids = occurrence_ids[:limit]
+
+    splits = split_ids(project_path, occurrence_ids=occurrence_ids,
+                       fractions=fractions, stratify_col=label_col,
+                       group_col=group_col, seed=seed, visualize=visualize)
+
+    manifest = export_training_data(project_path, output_dir, splits=splits, part=part,
+                                    transforms=transforms, reference=reference,
+                                    masks=True, metadata=columns, visualize=visualize)
+    if manifest.empty:
         return manifest
 
-    manifest = split_dataset(manifest, fractions=fractions, group_col=group_col,
-                             stratify_col="label", seed=seed)
-
-    manifest_path = os.path.join(output_dir, "manifest.csv")
-    manifest.to_csv(manifest_path, index=False)
+    # `label` is this extension's own name for the training target, and what
+    # train() reads; the export carries the occurrence column's own name.
+    manifest = manifest.rename(columns={label_col: "label"})
+    manifest.to_csv(os.path.join(output_dir, "manifest.csv"), index=False)
 
     logger.info("prepared %d images across %d labels -> %s",
                 len(manifest), manifest["label"].nunique(), output_dir)
@@ -146,13 +166,13 @@ def train(manifest, output_dir, backbone=None, loss=None, augmentations=None,
     - `epochs`, `batch_size`, `embedding_dim`, `seed` -- the usual.
 
     Should return the checkpoint path, ready to hand to
-    metrics.bioencoder.BioEncoderModel.
+    embedding.BioEncoderModel.
     """
     raise NotImplementedError(
         "BioEncoder training isn't implemented -- prepare_dataset() produces a "
         "standard image/label/split manifest, so train with the BioEncoder "
         "package or any metric-learning setup of your choice, then wrap the "
-        "checkpoint in metrics.bioencoder.BioEncoderModel to use it as a "
+        "checkpoint in embedding.BioEncoderModel to use it as a "
         "metric. See this function's docstring for the decisions to make."
     )
 
@@ -160,7 +180,7 @@ def train(manifest, output_dir, backbone=None, loss=None, augmentations=None,
 def load(checkpoint, **kwargs):
     """
     Load a trained checkpoint as a BioEncoderModel, ready to pass to
-    metrics.bioencoder.embedding().
+    embedding.embedding().
 
     NOT IMPLEMENTED, for the same reason as train(): how to load depends on
     what trained it. Construct BioEncoderModel directly with your own loaded
@@ -168,7 +188,7 @@ def load(checkpoint, **kwargs):
     """
     raise NotImplementedError(
         "no loader is implemented -- construct "
-        "metrics.bioencoder.BioEncoderModel(model, checkpoint) directly with "
+        "embedding.BioEncoderModel(model, checkpoint) directly with "
         "your loaded network; it only needs an encode(images) -> embeddings "
         "method"
     )

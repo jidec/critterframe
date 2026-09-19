@@ -30,6 +30,11 @@ AGREE_COLOR = (255, 255, 255)
 REMOVED_COLOR = (0, 0, 255)
 ADDED_COLOR = (0, 255, 0)
 
+# The third colour every mask-vs-mask panel needs: pixels only the first mask
+# covers. Named rather than written inline, so a hand-built comparison can't
+# quietly give "only A" a colour that means something else elsewhere.
+ONLY_MASK_COLOR = (0, 255, 255)
+
 
 def save_panel(project_path, image, name, subdir=""):
     """
@@ -39,15 +44,14 @@ def save_panel(project_path, image, name, subdir=""):
     Outside pipeline/ and products/, which have their own contracts -- this is
     for a caller who wants a picture on disk and is naming the folder itself.
 
-    project_path -- project whose visualizations directory to write into.
-    image        -- BGR, grayscale, or boolean-mask array to write. A boolean
-                    mask is converted here rather than refused: emit_panel's
-                    contract allows one and grids lay one out happily, so a
-                    sink that crashed on it would make an operation's panel
-                    work in a run's grid and fail in a file.
-    name         -- filename stem; ".png" is appended if absent.
-    subdir       -- subfolder, conventionally the operation's name, so one
-                    caller's output never mixes with another's.
+    - `project_path` -- project whose visualizations directory to write into.
+    - `image` -- BGR, grayscale, or boolean-mask array to write. A boolean mask
+      is converted here rather than refused: emit_panel's contract allows one
+      and grids lay one out happily, so a sink that crashed on it would make an
+      operation's panel work in a run's grid and fail in a file.
+    - `name` -- filename stem; ".png" is appended if absent.
+    - `subdir` -- subfolder, conventionally the operation's name, so one
+      caller's output never mixes with another's.
     """
     dest_dir = paths.visualizations_dir(project_path, subdir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -68,7 +72,7 @@ class PanelFiles:
     """
     A panel sink that writes every panel it's given as its own file.
 
-    The counterpart to a pipeline RunReport, and the other thing a Segment's
+    The counterpart to a pipeline Report, and the other thing a Segment's
     panel_sink can be. A report samples and composes because that's what makes a
     10,000-occurrence run inspectable; this writes one file per panel because
     that's what you want when you are looking hard at three specimens -- full
@@ -84,10 +88,10 @@ class PanelFiles:
     Files land in visualizations/<stage>/<occurrence_id>.png, one folder per
     stage, so one operation's output never mixes with another's.
 
-    prefix -- optional, namespaces every stage under
-             visualizations/<prefix>/<stage>/ instead, for a caller who runs
-             several batches of hand-built segments and needs each batch's
-             panels kept apart from the others.
+    - `prefix` -- optional, namespaces every stage under
+      visualizations/<prefix>/<stage>/ instead, for a caller who runs several
+      batches of hand-built segments and needs each batch's panels kept apart
+      from the others.
     """
 
     def __init__(self, project_path, prefix=""):
@@ -106,6 +110,24 @@ class PanelFiles:
                           subdir=subdir)
         self.paths.append(dest)
         return dest
+
+
+def segment_panel(image, mask=None, lines=()):
+    """
+    The panel a driver draws for one item: the mask over the image, captioned.
+
+    What "here is what this occurrence looked like when it was processed" is
+    everywhere it is drawn -- a metric run's measured values, a dataset
+    export's class, a disagreement's two numbers.
+
+    - `image` -- BGR image to draw on; copied, never modified.
+    - `mask` -- boolean mask to tint, or None to caption the image alone.
+    - `lines` -- text lines, drawn top-left in order.
+    """
+    panel = overlay_mask(image, mask) if mask is not None else np.asarray(image).copy()
+    for line, text in enumerate(lines):
+        annotate(panel, str(text), line=line)
+    return panel
 
 
 def mask_to_bgr(mask):
@@ -131,7 +153,7 @@ def overlay_mask(image, mask, color=REMOVED_COLOR, alpha=0.5):
         ).astype(np.uint8)
     return out
 
-def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=(0, 255, 255),
+def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=ONLY_MASK_COLOR,
                only_other=REMOVED_COLOR):
     """
     Two masks compared as one colored image: agreement in white, each mask's
@@ -155,8 +177,8 @@ def annotate(image, text, line=0, color=TEXT_COLOR):
     """
     Draw one line of small diagnostic text at the top-left, in place.
 
-    line -- 0-based line number, so several calls stack without each caller
-            computing y offsets.
+    - `line` -- 0-based line number, so several calls stack without each caller
+      computing y offsets.
     """
     cv2.putText(image, text, (5, 15 + 17 * line), cv2.FONT_HERSHEY_SIMPLEX,
                 0.4, color, 1)

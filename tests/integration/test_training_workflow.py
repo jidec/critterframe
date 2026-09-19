@@ -34,7 +34,7 @@ from helpers.models import ThresholdModel
 pytestmark = pytest.mark.slow
 
 SPECIMENS = 8
-PROPORTIONS = {"train": 0.6, "val": 0.2, "test": 0.2}
+FRACTIONS = {"train": 0.6, "val": 0.2, "test": 0.2}
 
 
 def dataset_record(directory):
@@ -57,8 +57,8 @@ def test_the_whole_path_holds_together(segmented_project, tmp_path):
     One test walking the workflow end to end, because the value is in the seams
     -- each step is covered on its own elsewhere.
     """
-    splits = cf.split_ids(segmented_project, proportions=PROPORTIONS,
-                          stratify_by="species", group_by="device", seed=123)
+    splits = cf.split_ids(segmented_project, fractions=FRACTIONS,
+                          stratify_col="species", group_col="device", seed=123)
 
     dataset = tmp_path / "dataset"
     manifest = cf.export_training_data(segmented_project, dataset,
@@ -89,7 +89,7 @@ def test_the_split_that_was_exported_is_the_split_that_was_registered(
     `dataset.json` is the digest the model's record points at, so "this model
     saw these occurrences" is checkable rather than remembered.
     """
-    splits = cf.split_ids(segmented_project, proportions=PROPORTIONS, seed=1)
+    splits = cf.split_ids(segmented_project, fractions=FRACTIONS, seed=1)
     dataset = tmp_path / "dataset"
     cf.export_training_data(segmented_project, dataset, splits=splits)
 
@@ -110,7 +110,7 @@ def test_a_frozen_split_survives_the_script_that_made_it(segmented_project,
     then gives the same dataset as exporting from the ids -- which is what
     makes the two interchangeable in `splits=`.
     """
-    splits = cf.split_ids(segmented_project, proportions={"train": 0.75,
+    splits = cf.split_ids(segmented_project, fractions={"train": 0.75,
                                                           "test": 0.25}, seed=5)
     for name, ids in splits.items():
         cf.define_subset(segmented_project, name, occurrence_ids=ids)

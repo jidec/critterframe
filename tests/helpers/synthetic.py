@@ -6,7 +6,7 @@ A drawn ellipse 120 px across IS 120 px across, so `body_length` can be asserted
 to the pixel instead of to a range somebody eyeballed once. Nothing here is
 meant to look like an organism; it is meant to have measurable properties.
 
-Two families:
+Three families:
 
   draw_specimen()     -- a tilted ellipse with thin legs. The legs are not
                          decoration: they are what remove_appendages() has to
@@ -17,7 +17,10 @@ Two families:
                          deliberate too -- it is what a weak template match
                          latches onto when the target isn't in the search region.
 
-Both are lifted from the smoke scripts they were first written in
+  flat(), half_and_half() -- a uniform organism, and one whose mask covers only
+                         the top half of a two-tone frame, for colour metrics.
+
+The first two are lifted from the smoke scripts they were first written in
 (`scripts/simple_tests/pipeline_synthetic_test.py`,
 `scripts/simple_tests/calibration_test.py`) so the scripts and the suite draw
 identical specimens.
@@ -25,6 +28,8 @@ identical specimens.
 
 import cv2
 import numpy as np
+
+from critterframe.recipes import Segment
 
 # A drawn specimen's body, in pixels. Exposed so a test can assert against the
 # number it drew with rather than restating a literal.
@@ -141,3 +146,20 @@ def blob_mask(shape=(200, 300), centre=(220, 80), axes=(30, 18), angle=0):
     mask = np.zeros(shape, np.uint8)
     cv2.ellipse(mask, centre, axes, angle, 0, 360, 1, -1)
     return mask.astype(bool)
+
+
+def half_and_half(top=(0, 0, 0), bottom=(255, 255, 255), shape=(100, 100)):
+    """An image split top/bottom, with a mask covering only the top half."""
+    image = np.zeros((*shape, 3), np.uint8)
+    image[:shape[0] // 2] = top
+    image[shape[0] // 2:] = bottom
+
+    mask = np.zeros(shape, bool)
+    mask[:shape[0] // 2] = True
+    return Segment(image, mask=mask, occurrence_id="test")
+
+
+def flat(colour, shape=(60, 60)):
+    """A uniformly coloured organism filling the whole frame."""
+    image = np.full((*shape, 3), colour, np.uint8)
+    return Segment(image, mask=np.ones(shape, bool), occurrence_id="test")

@@ -12,6 +12,7 @@ import logging
 import cv2
 import numpy as np
 
+from ..maskops import largest_component
 from ..recipes import Transform
 from ..visualization.panels import annotate
 
@@ -37,8 +38,8 @@ def remove_appendages(relative_radius=RELATIVE_RADIUS):
     """
     Operation: strip thin appendages (legs, antennae) from the working mask.
 
-    relative_radius -- appendage thickness threshold as a fraction of the
-                       mask's linear size (see RELATIVE_RADIUS).
+    - `relative_radius` -- appendage thickness threshold as a fraction of the
+      mask's linear size (see RELATIVE_RADIUS).
     """
     return Transform("remove_appendages", _remove_appendages,
                      {"relative_radius": relative_radius}, version="1")
@@ -48,19 +49,6 @@ def _disk(radius):
     """Circular structuring element -- isotropic, so no directional bias."""
     size = 2 * radius + 1
     return cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (size, size))
-
-
-def _largest_component(mask_uint8):
-    """
-    Keep only the biggest connected blob. After erosion this is the body core;
-    anything else is a severed appendage or noise.
-    """
-    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask_uint8, connectivity=8)
-    if n <= 1:
-        return mask_uint8
-    areas = stats[1:, cv2.CC_STAT_AREA]
-    biggest = 1 + int(np.argmax(areas))
-    return (labels == biggest).astype(np.uint8)
 
 
 def _radius_for(area, relative_radius):
@@ -105,7 +93,7 @@ def _remove_appendages(segment, relative_radius=RELATIVE_RADIUS):
                 "area_after": area_before, "removed_fraction": 0.0,
                 "n_components": 1, "degenerate": True}
     else:
-        core = _largest_component(eroded)
+        core = largest_component(eroded).astype(np.uint8)
         n_components = int(
             cv2.connectedComponentsWithStats(eroded, connectivity=8)[0]) - 1
 

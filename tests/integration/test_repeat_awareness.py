@@ -48,7 +48,8 @@ def metric_run(project_path, metrics=None, **kwargs):
 
 def test_the_first_run_processes_everything(image_project):
     assert segment_run(image_project) == {
-        "processed": SPECIMENS, "skipped": 0, "failed": 0,
+        "attempted": SPECIMENS, "processed": SPECIMENS, "skipped": 0,
+        "no_input": 0, "failed": 0, "failures": [], "flags": {},
         "previously_failed": 0, "run_id": 1}
 
 
@@ -344,3 +345,86 @@ def test_a_recipe_that_would_not_reproduce_itself_refuses_the_shortcut(
     # completed work without being asked twice.
     segment_run(segmented_project)
     assert segment_run(segmented_project)["skipped"] == SPECIMENS
+
+
+def _explodes(name="explodes"):
+    """A metric that always raises, standing in for one that genuinely can."""
+    from critterframe.recipes import Metric
+
+    def _raise(_segment):
+        raise ValueError("no")
+
+    return Metric("explodes", _raise, version="1", unit="px", metric_name=name)
+
+
+def test_a_metric_failure_is_not_retried_on_the_next_run(segmented_project):
+    """
+    The same guarantee segmentation already had. A metric that raised will
+    raise again, and an embedding or annotation pass shouldn't spend the
+    attempt rediscovering that -- so the failure is on record and the rerun
+    skips it, saying how many it skipped.
+    """
+    from critterframe.records import failures as failure_records
+
+    first = metric_run(segmented_project, metrics=[_explodes()])
+    assert (first["failed"], first["previously_failed"]) == (SPECIMENS, 0)
+    assert set(failure_records.load_failures(segmented_project)["stage"]) == {"metric"}
+
+    second = metric_run(segmented_project, metrics=[_explodes()])
+    assert (second["processed"], second["failed"]) == (0, 0)
+    assert second["previously_failed"] == SPECIMENS
+
+
+def test_retry_failed_attempts_them_again(segmented_project):
+    """The escape hatch, for a failure whose cause was outside the recipe."""
+    metric_run(segmented_project, metrics=[_explodes()])
+    again = metric_run(segmented_project, metrics=[_explodes()], retry_failed=True)
+
+    assert (again["failed"], again["previously_failed"]) == (SPECIMENS, 0)
+
+
+def test_a_resegmentation_retries_a_failed_metric_by_itself(segmented_project):
+    """
+    The failure is keyed on the recipe AND the mask it was measured from, so
+    replacing the mask is a different attempt -- no flag needed, the same way
+    a changed URL retries a download.
+    """
+    metric_run(segmented_project, metrics=[_explodes()])
+    segment_run(segmented_project, model=ThresholdModel(cutoff=90), force=True)
+
+    after = metric_run(segmented_project, metrics=[_explodes()])
+    assert (after["failed"], after["previously_failed"]) == (SPECIMENS, 0)
+
+
+def test_a_succeeding_metric_clears_its_earlier_failure(segmented_project):
+    """
+    Hygiene, not correctness: the row can never match again, but leaving it
+    there makes load_failures() a list of things that aren't failing.
+    """
+    from critterframe.records import failures as failure_records
+
+    metric_run(segmented_project, metrics=[_explodes()])
+    metric_run(segmented_project, metrics=[cf.body_length()], force=True)
+
+    assert failure_records.load_failures(segmented_project, stage="metric").empty
+
+
+@pytest.mark.slow
+def test_a_reference_failure_is_not_erased_by_a_canonical_success(image_project):
+    """
+    records.failures keys on (occurrence_id, part, stage), so one stage for
+    both passes would have a reference failure upsert over the canonical one,
+    and a canonical success's clear_failures delete the reference's record.
+    """
+    from critterframe.records import failures as failure_records
+
+    cf.run_segments(image_project, steps=[cf.segment(FailingModel())],
+                    reference=True, visualize=False)
+    reference_failures = failure_records.load_failures(image_project)
+    assert set(reference_failures["stage"]) == {"segment_reference"}
+
+    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
+                    visualize=False)
+
+    stages = failure_records.load_failures(image_project)["stage"]
+    assert "segment_reference" in set(stages)

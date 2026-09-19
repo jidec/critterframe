@@ -26,7 +26,7 @@ from .ingest import ingest_images, ingest_occurrences, load_imports
 from .recipes import DEFAULT_PART
 
 # --- segmentation ----------------------------------------------------------
-from .records.masks import merge_mask_shards, merge_masks
+from .records.masks import merge_mask_shards, merge_masks, load_masks
 from .segmentation.groundedsam import groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
 from .segmentation.run import run_segments, segment
@@ -38,14 +38,24 @@ from .transforms.orient import orient
 
 # --- metrics ---------------------------------------------------------------
 from .metrics.annotation import click_two_points, usability_annotation
-from .metrics.color import (
-    black_fraction,
-    hue_fraction,
+from .metrics.color_clusters import color_clusters
+from .metrics.color_means import (
+    background_color,
     mean_color,
     mean_lightness,
+    white_balanced_color,
+)
+from .metrics.color_thresholds import (
+    black_fraction,
+    color_threshold,
+    hue_fraction,
+    hue_thresholds,
     red_fraction,
+    threshold_fractions,
     yellow_fraction,
 )
+from .metrics.inductive_color_thresholds import inductive_color_thresholds
+from .metrics.mask_info import mask_info
 from .metrics.dimensions import body_length, bounding_box, length, mask_area, max_width
 from .metrics.outliers import cluster, outlier
 from .metrics.position import centroid, image_bounds, relative_position
@@ -89,6 +99,7 @@ from .validation.metrics import compare_metrics
 
 __all__ = [
     "DEFAULT_PART",
+    "background_color",
     "bilateral_asymmetry",
     "black_fraction",
     "blur_variance",
@@ -97,6 +108,8 @@ __all__ = [
     "centroid",
     "click_two_points",
     "cluster",
+    "color_clusters",
+    "color_threshold",
     "compare_metrics",
     "comparison_grid",
     "correct_mask",
@@ -117,20 +130,24 @@ __all__ = [
     "grow_sample",
     "grow_subset",
     "hue_fraction",
+    "hue_thresholds",
     "image_bounds",
     "image_grid",
+    "inductive_color_thresholds",
     "ingest_images",
     "ingest_occurrences",
     "length",
     "list_models",
     "load_exports",
     "load_imports",
+    "load_masks",
     "load_metrics",
     "load_model",
     "load_runs",
     "load_subsets",
     "mask_area",
     "mask_fraction",
+    "mask_info",
     "max_width",
     "mean_color",
     "mean_lightness",
@@ -164,8 +181,10 @@ __all__ = [
     "suggest_threshold",
     "summarize",
     "sweep_thresholds",
+    "threshold_fractions",
     "unregister_model",
     "usability_annotation",
     "validate_masks",
+    "white_balanced_color",
     "yellow_fraction",
 ]

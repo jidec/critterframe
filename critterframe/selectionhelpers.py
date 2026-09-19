@@ -36,9 +36,9 @@ def rows_matching(df, rules):
     """
     Which rows a {column: values} rule set picks out, as a boolean Series.
 
-    rules -- {column: value} or {column: [values...]}. A row matches when ANY
-             rule matches: these name several kinds of a thing ("debris, or
-             not-Lepidoptera"), not a conjunction one row must satisfy at once.
+    - `rules` -- {column: value} or {column: [values...]}. A row matches when
+      ANY rule matches: these name several kinds of a thing ("debris, or
+      not-Lepidoptera"), not a conjunction one row must satisfy at once.
 
     Membership only, deliberately -- no <=, no >, no predicate. A threshold is a
     judgement about degree that a caller will want to revise, and revisable
@@ -67,6 +67,54 @@ def rows_matching(df, rules):
         matched |= series.isin(list(values)) & series.notna()
 
     return matched
+
+
+def require_present(occurrence_ids, **named_sets):
+    """
+    Narrow occurrence_ids to ones present in EVERY named set -- composing
+    several "does this exist" checks (has an image, has a mask for a part,
+    ...) into one call instead of one isin()/set-intersection per condition
+    at each call site.
+
+    - `named_sets` -- {label: ids}, e.g. `has_image=store.keys()`,
+      `head_mask=occurrence_ids_with_mask(project_path, "head")`.
+
+    Every rule must match (AND) -- these name independent preconditions, not
+    alternative spellings of one fact, unlike rows_matching's ANY-of-these-
+    values OR. Logs how many ids each named set drops, in the order given,
+    so a caller can see which condition is the one actually narrowing things.
+
+    Returns a sorted list of str ids present in occurrence_ids and every
+    named set.
+    """
+    return _narrow(occurrence_ids, named_sets, keep_if_present=True)
+
+
+def exclude_present(occurrence_ids, **named_sets):
+    """
+    The inverse of require_present: keep ids present in NONE of the named
+    sets -- the "not already downloaded", "not already measured" shape the
+    pending-first drivers use. Same composition, same logging.
+    """
+    return _narrow(occurrence_ids, named_sets, keep_if_present=False)
+
+
+def _narrow(occurrence_ids, named_sets, keep_if_present):
+    """Shared body of require_present/exclude_present -- see either's docstring."""
+    remaining = {str(occurrence_id) for occurrence_id in occurrence_ids}
+    verb = "require_present" if keep_if_present else "exclude_present"
+    relation = "missing" if keep_if_present else "present in"
+
+    for label, ids in named_sets.items():
+        present = {str(occurrence_id) for occurrence_id in ids}
+        kept = (remaining & present) if keep_if_present else (remaining - present)
+        dropped = len(remaining) - len(kept)
+        if dropped:
+            logger.info("%s: dropped %d of %d occurrence(s) %s '%s'",
+                       verb, dropped, len(remaining), relation, label)
+        remaining = kept
+
+    return sorted(remaining)
 
 
 def sample_occurrences(occurrence_ids, count, seed=SAMPLE_SEED):
@@ -99,17 +147,17 @@ def grow_sample(candidate_ids, target_size, keep_ids=None, seed=SAMPLE_SEED):
     keep_ids gives a capped group, one level up: a subset growing toward a
     size rather than a group shrinking toward a cap.
 
-    candidate_ids -- the whole eligible pool, keep_ids included. An id in
-                     keep_ids no longer present here is dropped, the same way
-                     cap_per_group only prioritizes a keep_ids row still in df.
-    target_size   -- desired size of the result. Raising it across calls only
-                     adds; lowering it below len(keep_ids) trims keep_ids down
-                     via sample_occurrences rather than an arbitrary set order.
-    keep_ids      -- ids from a previous call to keep if still in
-                     candidate_ids -- typically what a named subset already
+    - `candidate_ids` -- the whole eligible pool, keep_ids included. An id in
+      keep_ids no longer present here is dropped, the same way cap_per_group
+      only prioritizes a keep_ids row still in df.
+    - `target_size` -- desired size of the result. Raising it across calls only
+      adds; lowering it below len(keep_ids) trims keep_ids down via
+      sample_occurrences rather than an arbitrary set order.
+    - `keep_ids` -- ids from a previous call to keep if still in
+                     - `candidate_ids` -- typically what a named subset already
                      holds. None (or empty) is a first call, equivalent to a
                      plain sample_occurrences(candidate_ids, target_size).
-    seed          -- passed through to sample_occurrences.
+    - `seed` -- passed through to sample_occurrences.
 
     Returns ids, sorted like sample_occurrences.
     """
@@ -136,16 +184,16 @@ def sample_per_group(df, group_col, count, id_col="occurrence_id", seed=SAMPLE_S
     group's own picks still go through sample_occurrences, so the sample is
     stable across runs the same way a flat one is.
 
-    group_col -- occurrence column to stratify by, e.g. "taxon". A row with a
-                 missing value is excluded, the same way rows_matching and
-                 cap_per_group treat one -- not knowing a row's group cannot
-                 be the same as knowing it belongs to one being sampled.
-    count     -- total ids wanted, across every group. Returns every qualifying
-                 id when count exceeds how many there are, like
-                 sample_occurrences -- here that can mean every id in every
-                 group, if the whole table is smaller than count.
-    id_col    -- occurrence id column to read and return.
-    seed      -- passed through to sample_occurrences for each group's draw.
+    - `group_col` -- occurrence column to stratify by, e.g. "taxon". A row with
+      a missing value is excluded, the same way rows_matching and cap_per_group
+      treat one -- not knowing a row's group cannot be the same as knowing it
+      belongs to one being sampled.
+    - `count` -- total ids wanted, across every group. Returns every qualifying
+      id when count exceeds how many there are, like sample_occurrences -- here
+      that can mean every id in every group, if the whole table is smaller than
+      count.
+    - `id_col` -- occurrence id column to read and return.
+    - `seed` -- passed through to sample_occurrences for each group's draw.
     """
     if group_col not in df.columns:
         raise KeyError(
@@ -174,8 +222,32 @@ def sample_per_group(df, group_col, count, id_col="occurrence_id", seed=SAMPLE_S
     return sorted(picked)
 
 
+def worst_n(values, count, ascending=True):
+    """
+    The `count` occurrence ids with the lowest (ascending=True, the default)
+    or highest values, sorted worst-first.
+
+    - `values` -- {occurrence_id: value} or a pandas Series indexed by id.
+      NaN values are dropped first -- an undefined value can't be ranked.
+    - `count` -- how many to return. 0 or fewer returns [].
+    - `ascending` -- True when a LOW value is worst (an IoU, a match score);
+      False when a HIGH value is worst (a percent disagreement).
+
+    Returns [(occurrence_id, value), ...], worst first -- both, not just
+    ids, since every existing caller wants the value alongside it for a log
+    line. Take just the ids with `[i for i, _ in worst_n(...)]` when that's
+    all that's needed, e.g. to hand to `project.subsets.grow_subset`.
+    """
+    if count <= 0:
+        return []
+
+    series = values if isinstance(values, pd.Series) else pd.Series(values)
+    ranked = series.dropna().sort_values(ascending=ascending).head(count)
+    return [(str(occurrence_id), value) for occurrence_id, value in ranked.items()]
+
+
 def cap_per_group(df, group_col, max_count, rule="random", seed=SAMPLE_SEED,
-                  id_col=None, keep_ids=None):
+                  id_col=None, keep_ids=None, prefer=None):
     """
     Narrow df to at most max_count rows per distinct group_col value.
 
@@ -184,34 +256,35 @@ def cap_per_group(df, group_col, max_count, rule="random", seed=SAMPLE_SEED,
     is how a project caps that at ingest, one group_col value at a time (see
     ingest.ingest_occurrences' group_col/max_per_group).
 
-    group_col -- occurrence column naming the group, e.g. "species". An unknown
-                 column raises, like rows_matching. A missing value in it is
-                 exempt from capping, kept untouched no matter how many rows
-                 share that gap -- not knowing which group a row belongs to
-                 cannot be the same as knowing it is one of an oversized
-                 group's extras, the same reasoning rows_matching applies to a
-                 missing value never matching a rule.
-    max_count -- cap applied independently within each group; a group at or
-                 under this size is returned untouched.
-    rule      -- which rows survive an oversized group. "random" (default) is a
-                 stable pseudo-random choice, via sample_occurrences' seeded
-                 rule applied to the candidates' own row positions -- so which
-                 specimens survive doesn't depend on the source's row order.
-                 "first"/"last" keep that many rows in the candidates' own
-                 order instead. A callable(group_df) -> group_df picks
-                 explicitly, for the whole group at once -- keep_ids does not
-                 apply to it, since a callable already owns the decision.
-    seed      -- passed through to sample_occurrences for the "random" rule.
-    id_col,
-    keep_ids  -- ids (read from id_col, matched against keep_ids) to prioritize
-                 keeping over the rest of an oversized group -- typically the
-                 occurrences a previous, smaller-or-equal cap already selected
-                 for this project. This is what makes raising max_per_group on
-                 a reimport ADDITIVE instead of a reshuffle: ids already kept
-                 stay kept (retrimmed by rule if the cap has since shrunk), and
-                 only the shortfall is drawn fresh from ids not in keep_ids.
-                 Ignored for a group at or under max_count, and for a callable
-                 rule.
+    - `group_col` -- occurrence column naming the group, e.g. "species". An
+      unknown column raises, like rows_matching. A missing value in it is
+      exempt from capping, kept untouched no matter how many rows share that
+      gap -- not knowing which group a row belongs to cannot be the same as
+      knowing it is one of an oversized group's extras, the same reasoning
+      rows_matching applies to a missing value never matching a rule.
+    - `max_count` -- cap applied independently within each group; a group at or
+      under this size is returned untouched.
+    - `rule` -- which rows survive an oversized group. "random" (default) is a
+      stable pseudo-random choice, via sample_occurrences' seeded rule applied
+      to the candidates' own row positions -- so which specimens survive
+      doesn't depend on the source's row order. "first"/"last" keep that many
+      rows in the candidates' own order instead. A callable(group_df) ->
+      group_df picks explicitly, for the whole group at once -- keep_ids does
+      not apply to it, since a callable already owns the decision.
+    - `seed` -- passed through to sample_occurrences for the "random" rule.
+    - `id_col`, `keep_ids` -- ids (read from id_col, matched against keep_ids)
+      to prioritize keeping over the rest of an oversized group -- typically
+      the occurrences a previous, smaller-or-equal cap already selected for
+      this project. This is what makes raising max_per_group on a reimport ADDITIVE
+      instead of a reshuffle: ids already kept stay kept (retrimmed by rule if
+      the cap has since shrunk), and only the shortfall is drawn fresh from ids
+      not in keep_ids. Ignored for a group at or under max_count, and for a
+      callable rule.
+    - `prefer` -- optional `{column: values}` rule (see rows_matching) naming
+      rows to fill an oversized group from first, e.g. one source over
+      another. Ranks ABOVE keep_ids: the order is preferred & kept, preferred
+      & new, other & kept, other & new, so a preferred newcomer displaces an
+      already-kept row that isn't. Ignored for a callable rule.
 
     Rows a cap removes are logged as one aggregate count, the same as
     ingest.ingest_occurrences' drop= -- the archived import is the recovery
@@ -231,6 +304,7 @@ def cap_per_group(df, group_col, max_count, rule="random", seed=SAMPLE_SEED,
 
     keep = pd.Series(True, index=df.index)
     keep_ids = {str(occurrence_id) for occurrence_id in keep_ids} if keep_ids else set()
+    preferred = rows_matching(df, prefer) if prefer else None
 
     for _, rows in df[df[group_col].notna()].groupby(group_col, sort=False):
         if len(rows) <= max_count:
@@ -240,15 +314,23 @@ def cap_per_group(df, group_col, max_count, rule="random", seed=SAMPLE_SEED,
             survivors = rule(rows).index
         elif rule in ("random", "first", "last"):
             if keep_ids:
-                already_kept = rows[rows[id_col].astype(str).isin(keep_ids)]
+                is_kept = rows[id_col].astype(str).isin(keep_ids)
             else:
-                already_kept = rows.iloc[0:0]
-            candidates = rows.drop(already_kept.index)
+                is_kept = pd.Series(False, index=rows.index)
+            tiers = [is_kept, ~is_kept]
+            if preferred is not None:
+                is_preferred = preferred.loc[rows.index]
+                tiers = [is_preferred & tier for tier in tiers] + \
+                        [~is_preferred & tier for tier in tiers]
 
-            survivors = _take(already_kept, min(max_count, len(already_kept)), rule, seed)
-            remaining = max_count - len(survivors)
-            if remaining > 0:
-                survivors = survivors.union(_take(candidates, remaining, rule, seed))
+            survivors = rows.index[:0]
+            for tier in tiers:
+                remaining = max_count - len(survivors)
+                if remaining <= 0:
+                    break
+                candidates = rows[tier]
+                survivors = survivors.union(
+                    _take(candidates, min(remaining, len(candidates)), rule, seed))
         else:
             raise ValueError(
                 f"unknown cap rule {rule!r} -- use 'random', 'first', 'last', "
@@ -295,7 +377,7 @@ def _fingerprint(df, key_cols, precision):
 
 
 def dedupe_by(df, key_cols, precision=None, rule="random", seed=SAMPLE_SEED,
-             id_col=None, keep_ids=None):
+             id_col=None, keep_ids=None, prefer=None):
     """
     Narrow df to one row per distinct combination of key_cols.
 
@@ -307,25 +389,26 @@ def dedupe_by(df, key_cols, precision=None, rule="random", seed=SAMPLE_SEED,
     cap_per_group (max_count=1 over a computed fingerprint column) rather than
     duplicating its group-and-keep logic.
 
-    key_cols  -- columns that together fingerprint one real occurrence, e.g.
-                 ("decimalLatitude", "decimalLongitude", "eventDate") for a
-                 sighting published through two different aggregators. A row
-                 missing ANY key_col is exempt, kept untouched -- not knowing
-                 where or when a row was recorded cannot be the same as
-                 knowing it duplicates another, the reasoning cap_per_group
-                 already applies to a missing group_col value.
-    precision -- optional {column: ndigits} rounding a numeric key_col before
-                 matching, e.g. {"decimalLatitude": 4, "decimalLongitude": 4}
-                 (~11m at the equator) so two sources recording the same spot
-                 to different decimal precision still fingerprint alike. A
-                 column not named here is matched on its own value exactly.
-    rule, seed,
-    id_col,
-    keep_ids  -- as cap_per_group: which row of a duplicate group survives,
-                 and which ids to prioritize keeping over a fresh pick -- the
-                 same reimport-additivity guarantee, so a duplicate resolved
-                 once (and already carrying masks or metrics) doesn't get
-                 orphaned by a later pull that happens to pick differently.
+    - `key_cols` -- columns that together fingerprint one real occurrence, e.g.
+      ("decimalLatitude", "decimalLongitude", "eventDate") for a sighting
+      published through two different aggregators. A row missing ANY key_col is
+      exempt, kept untouched -- not knowing where or when a row was recorded
+      cannot be the same as knowing it duplicates another, the reasoning
+      cap_per_group already applies to a missing group_col value.
+    - `precision` -- optional {column: ndigits} rounding a numeric key_col
+      before matching, e.g. {"decimalLatitude": 4, "decimalLongitude": 4} (~11m
+      at the equator) so two sources recording the same spot to different
+      decimal precision still fingerprint alike. A column not named here is
+      matched on its own value exactly.
+    - `rule`, `seed`, `id_col`, `keep_ids` -- as cap_per_group: which row of a
+      duplicate group survives, and which ids to prioritize keeping over a
+      fresh pick -- the same reimport-additivity guarantee, so a duplicate
+      resolved once (and already carrying masks or metrics) doesn't get
+      orphaned by a later pull that happens to pick differently.
+    - `prefer` -- optional `{column: values}` rule (see rows_matching) naming
+      rows trusted to be unique among themselves, e.g. a source that never
+      publishes one sighting twice. A preferred row is never removed, and any
+      other row sharing its fingerprint is, keep_ids or not.
 
     This is a probabilistic match, not a source-declared fact like drop=' --
     two independent, genuinely different sightings can share a fingerprint by
@@ -335,14 +418,27 @@ def dedupe_by(df, key_cols, precision=None, rule="random", seed=SAMPLE_SEED,
     key_cols = list(key_cols)
     working = df.copy()
     working["_dedupe_fingerprint"] = _fingerprint(df, key_cols, precision or {})
+    # Carried through cap_per_group's reset_index so the source order survives.
+    working["_dedupe_position"] = range(len(working))
+
+    protected = working.iloc[0:0]
+    if prefer:
+        is_preferred = rows_matching(working, prefer)
+        protected = working[is_preferred]
+        others = working[~is_preferred]
+        claimed = set(protected["_dedupe_fingerprint"].dropna())
+        working = others[~others["_dedupe_fingerprint"].isin(claimed)]
 
     deduped = cap_per_group(working, "_dedupe_fingerprint", 1, rule=rule,
                             seed=seed, id_col=id_col, keep_ids=keep_ids)
+    deduped = (pd.concat([protected, deduped])
+               .sort_values("_dedupe_position")
+               .reset_index(drop=True))
     removed = len(df) - len(deduped)
     if removed:
         logger.info("deduplicated %d of %d row(s) sharing (%s)",
                    removed, len(df), ", ".join(key_cols))
-    return deduped.drop(columns=["_dedupe_fingerprint"])
+    return deduped.drop(columns=["_dedupe_fingerprint", "_dedupe_position"])
 
 
 def _take(rows, count, rule, seed):

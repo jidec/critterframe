@@ -13,6 +13,7 @@ you chose to compare against, which is often a human's correction but equally a
 slower model or an earlier pipeline.
 """
 
+import json
 import logging
 from datetime import datetime, timezone
 
@@ -36,6 +37,7 @@ COLUMNS = [
     "rle_width",
     "area",
     "score",
+    "info",
     "recipe_hash",
     "run_id",
     "from_part",
@@ -73,14 +75,24 @@ def decode_mask(row):
     """
     Decode one mask row back into a boolean array.
 
-    row -- a mapping with rle_counts/rle_height/rle_width, e.g. a row from
-           load_masks() or a record from make_mask_row().
+    - `row` -- a mapping with rle_counts/rle_height/rle_width, e.g. a row from
+      load_masks() or a record from make_mask_row().
     """
     rle = {
         "counts": bytes(row["rle_counts"]),
         "size": [int(row["rle_height"]), int(row["rle_width"])],
     }
     return mask_utils.decode(rle).astype(bool)
+
+
+def mask_info(row):
+    """
+    The `{operation label: scalar info}` a mask row recorded, or {} for none.
+
+    - `row` -- a mask row; one written before the column existed reads as {}.
+    """
+    value = row.get("info") if hasattr(row, "get") else None
+    return json.loads(value) if isinstance(value, str) else {}
 
 
 def derivation_hash(recipe_hash, source_mask_hash=None):
@@ -102,7 +114,7 @@ def derivation_hash(recipe_hash, source_mask_hash=None):
 
 def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
                   run_id=None, score=None, from_part=None,
-                  source_mask_hash=None):
+                  source_mask_hash=None, info=None):
     """
     Build one mask record.
 
@@ -110,17 +122,20 @@ def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
     guaranteed -- both are coerced to str and are strings everywhere after.
     Storage compares keys by value without coercing (see CLAUDE.md).
 
-    mask        -- boolean mask in original analysis image coordinates, e.g.
-                   from Segment.mask_in_original_coordinates().
-    part        -- named part this mask covers; the whole organism by default.
-    recipe_hash -- identity of the recipe that derived it, which is what lets a
-                   rerun recognize its own previous work.
-    run_id      -- the run that produced it.
-    score       -- the model's own confidence, where it reports one.
-    from_part   -- the upstream part this was derived from, if any.
-    source_mask_hash -- derivation_hash() of the upstream MASK, if any, which is
-                   what makes a derived mask stale once its source is
-                   resegmented. None for a mask found straight in the image.
+    - `mask` -- boolean mask in original analysis image coordinates, e.g. from
+      Segment.mask_in_original_coordinates().
+    - `part` -- named part this mask covers; the whole organism by default.
+    - `recipe_hash` -- identity of the recipe that derived it, which is what
+      lets a rerun recognize its own previous work.
+    - `run_id` -- the run that produced it.
+    - `score` -- the model's own confidence, where it reports one.
+    - `from_part` -- the upstream part this was derived from, if any.
+    - `source_mask_hash` -- derivation_hash() of the upstream MASK, if any,
+      which is what makes a derived mask stale once its source is resegmented.
+      None for a mask found straight in the image.
+    - `info` -- `{operation label: scalar info}` from every step that produced
+      the mask (see `segments.scalar_info`), stored as JSON. Never hashed;
+      replaced with the mask.
     """
     if occurrence_id is None or part is None:
         raise ValueError(
@@ -132,6 +147,7 @@ def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
         "occurrence_id": str(occurrence_id),
         "part": str(part),
         "score": None if score is None else float(score),
+        "info": None if info is None else json.dumps(info, sort_keys=True),
         "recipe_hash": recipe_hash,
         "run_id": run_id,
         "from_part": from_part,
@@ -146,9 +162,9 @@ def save_masks(project_path, rows, reference=False):
     """
     Write mask rows, replacing any existing mask for the same occurrence-part.
 
-    rows      -- list of records from make_mask_row().
-    reference -- True writes to the reference table instead of the canonical
-                 one.
+    - `rows` -- list of records from make_mask_row().
+    - `reference` -- True writes to the reference table instead of the
+      canonical one.
     """
     if not rows:
         return 0
@@ -168,9 +184,9 @@ def save_mask_shard(project_path, rows, part, reference=False):
     can't collide with any number of concurrent writers (see CLAUDE.md).
     merge_mask_shards() reads them back.
 
-    rows      -- as save_masks().
-    part      -- which output part these rows belong to; shards stage per part.
-    reference -- as save_masks().
+    - `rows` -- as save_masks().
+    - `part` -- which output part these rows belong to; shards stage per part.
+    - `reference` -- as save_masks().
     """
     if not rows:
         return 0
@@ -238,12 +254,12 @@ def load_masks(project_path, parts=None, occurrence_ids=None, recipe_hash=None,
     Read mask rows as a DataFrame, still RLE-encoded -- decode_mask() a row to
     get pixels.
 
-    parts          -- parts to include; all if None.
-    occurrence_ids -- occurrence ids to include; all if None.
-    recipe_hash    -- exact-recipe filter.
-    reference      -- read the reference table instead of the canonical one.
-    columns        -- columns to read off disk. Skip when filtering, since the
-                      filter columns have to be read too.
+    - `parts` -- parts to include; all if None.
+    - `occurrence_ids` -- occurrence ids to include; all if None.
+    - `recipe_hash` -- exact-recipe filter.
+    - `reference` -- read the reference table instead of the canonical one.
+    - `columns` -- columns to read off disk. Skip when filtering, since the
+      filter columns have to be read too.
     """
     df = load_table(paths.masks_path(project_path, reference=reference),
                     columns=columns, missing_ok=True)
@@ -315,13 +331,12 @@ def completed_keys(project_path, recipe_hash, reference=False,
     The (occurrence_id, part) pairs a segmentation recipe has already produced
     masks for -- the repeat-awareness check a run makes before doing any work.
 
-    source_mask_hashes -- {(occurrence_id, part): derivation_hash} of the
-                          upstream masks a from_part run is about to start
-                          from. When given, a stored mask counts as complete
-                          only if derived from that exact upstream, so a wing
-                          goes stale when its organism is resegmented. None for
-                          a recipe that segments straight from the image. A
-                          mask whose upstream isn't in the map never counts.
+    - `source_mask_hashes` -- {(occurrence_id, part): derivation_hash} of the
+      upstream masks a from_part run is about to start from. When given, a
+      stored mask counts as complete only if derived from that exact upstream,
+      so a wing goes stale when its organism is resegmented. None for a recipe
+      that segments straight from the image. A mask whose upstream isn't in the
+      map never counts.
     """
     df = _load_identities(project_path, reference=reference,
                           recipe_hash=recipe_hash)
@@ -459,3 +474,15 @@ def parts_present(project_path, reference=False):
 def has_masks(project_path, reference=False):
     """True if the project has a mask table at all."""
     return paths.masks_path(project_path, reference=reference).exists()
+
+
+def occurrence_ids_with_mask(project_path, part=DEFAULT_PART, reference=False):
+    """
+    Every occurrence id with a mask for this part -- the identity-only read
+    behind mask_lookup(), for a caller that needs presence, not the row. Feeds
+    `selectionhelpers.require_present`/`exclude_present` for the same job
+    `storage.imagestore.ImageStore.keys()` does on the image side.
+    """
+    df = load_masks(project_path, parts=[part], reference=reference,
+                    columns=["occurrence_id", "part"])
+    return set(df["occurrence_id"]) if not df.empty else set()

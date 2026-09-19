@@ -215,7 +215,7 @@ def test_an_unusual_specimen_scores_as_more_anomalous(measured_project):
                    metrics=[cf.outlier([cf.body_length(), cf.max_width()],
                                        from_run="traits")],
                    visualize=False)
-    exported = cf.export_metrics(measured_project, runs=["scores"])
+    exported = cf.export_metrics(measured_project, run_names=["scores"])
 
     assert "scores__organism__outlier__anomaly_score" in exported.columns
     assert "scores__organism__outlier__is_outlier" in exported.columns
@@ -223,6 +223,23 @@ def test_an_unusual_specimen_scores_as_more_anomalous(measured_project):
     # is what "None where the population-wide fallback was used" looks like in
     # an export, and is exactly the thing a reader needs to know.
     assert exported["scores__organism__outlier__group"].isna().all()
+
+
+def test_naming_the_metric_leaves_the_operation_called_what_it_is():
+    """
+    `name=` means the same thing here as on every other metric factory: what
+    the measurement is CALLED, i.e. `metric_name`. It used to rename the
+    OPERATION too, which is the one thing about an operation that says what
+    ran -- what logs, error messages and `quality.WARN_THRESHOLDS` read.
+    """
+    named = cf.outlier([cf.body_length()], from_run="traits", name="shape_outlier")
+    default = cf.outlier([cf.body_length()], from_run="traits")
+
+    assert (named.name, named.metric_name) == ("outlier", "shape_outlier")
+    assert (default.name, default.metric_name) == ("outlier", "outlier")
+
+    clustered = cf.cluster([cf.body_length()], from_run="traits", name="shape_group")
+    assert (clustered.name, clustered.metric_name) == ("cluster", "shape_group")
 
 
 @pytest.mark.slow
@@ -237,7 +254,7 @@ def test_a_grouped_score_records_which_group_scored_it(measured_project):
                                        group_col="device", min_group_size=2)],
                    visualize=False)
     groups = cf.export_metrics(measured_project,
-                               runs=["scores"])["scores__organism__outlier__group"]
+                               run_names=["scores"])["scores__organism__outlier__group"]
     assert set(groups) == {"boxA", "boxB"}
 
 
@@ -251,7 +268,7 @@ def test_a_cluster_assignment_is_a_metric_like_any_other(measured_project):
                    metrics=[cf.cluster([cf.body_length()], from_run="traits",
                                        n_clusters=2)],
                    visualize=False)
-    exported = cf.export_metrics(measured_project, runs=["groups"])
+    exported = cf.export_metrics(measured_project, run_names=["groups"])
     labels = exported["groups__organism__cluster__cluster_id"]
 
     assert set(labels.unique()) <= {0, 1}
@@ -393,3 +410,26 @@ def test_a_metric_run_stores_the_fit_on_the_run(measured_project):
     assert context["limit"] is None
     assert context["operations"]["outlier"]["group_col"] == "species"
     assert context["operations"]["outlier"]["population"]["count"] == 8
+
+
+def test_a_fit_draws_its_reference_population_when_the_run_visualizes(metadata_project):
+    from critterframe.project import paths
+    from critterframe.visualization.pipeline import open_report
+
+    store_lengths(metadata_project, typical_lengths())
+    report = open_report(metadata_project, "scores", "abc").begin([])
+    context = RunContext(metadata_project, [f"specimen{index}" for index in range(8)],
+                         "organism", "scores", report=report)
+
+    cf.outlier([cf.body_length()], from_run="traits", group_col="device").prepare(context)
+
+    assert paths.pipeline_file_path(metadata_project, "scores", "abc",
+                                    suffix="outlier__reference", extension="png").exists()
+
+
+def test_a_fit_without_a_report_draws_nothing(metadata_project):
+    from critterframe.project import paths
+
+    store_lengths(metadata_project, typical_lengths())
+    cf.outlier([cf.body_length()], from_run="traits").prepare(a_context(metadata_project))
+    assert not paths.pipeline_dir(metadata_project).exists()

@@ -25,11 +25,14 @@ from critterframe.selectionhelpers import (
     SAMPLE_SEED,
     cap_per_group,
     dedupe_by,
+    exclude_present,
     grow_sample,
+    require_present,
     rows_matching,
     sample_occurrences,
     sample_per_group,
     shard_occurrences,
+    worst_n,
 )
 
 
@@ -82,6 +85,57 @@ def test_a_rule_on_a_column_that_is_not_there_raises():
 
 def test_matching_nothing_is_an_answer_not_an_error():
     assert not rows_matching(table(), {"determination": ["Sphingidae"]}).any()
+
+
+# ---------------------------------------------------------------------------
+# require_present / exclude_present
+# ---------------------------------------------------------------------------
+
+
+def test_require_present_is_an_intersection():
+    kept = require_present(["a", "b", "c"], has_x=["a", "b"], has_y=["b", "c"])
+    assert kept == ["b"]
+
+
+def test_require_present_with_no_named_sets_is_a_no_op():
+    assert require_present(["b", "a"]) == ["a", "b"]
+
+
+def test_every_rule_must_match_not_any_one():
+    """
+    AND, unlike rows_matching's ANY-of-these-values OR: these name independent
+    preconditions (has an image AND has a mask), not alternative spellings of
+    one fact.
+    """
+    kept = require_present(["a", "b"], has_x=["a"], has_y=["b"])
+    assert kept == []
+
+
+def test_exclude_present_is_the_inverse():
+    kept = exclude_present(["a", "b", "c"], already_done=["b"])
+    assert kept == ["a", "c"]
+
+
+def test_exclude_present_composes_several_sets():
+    kept = exclude_present(["a", "b", "c"], stage_one=["a"], stage_two=["b"])
+    assert kept == ["c"]
+
+
+def test_narrowed_ids_come_back_as_sorted_strings():
+    assert require_present([2, 1], has_x=[1, 2]) == ["1", "2"]
+
+
+def test_a_narrowing_call_logs_how_many_it_dropped(caplog):
+    with caplog.at_level("INFO"):
+        require_present(["a", "b", "c"], has_mask=["a"])
+    assert "dropped 2 of 3" in caplog.text
+    assert "has_mask" in caplog.text
+
+
+def test_dropping_nothing_logs_nothing(caplog):
+    with caplog.at_level("INFO"):
+        require_present(["a"], has_mask=["a", "b"])
+    assert caplog.text == ""
 
 
 # ---------------------------------------------------------------------------
@@ -368,6 +422,82 @@ def test_keep_ids_with_an_unknown_id_col_raises():
 
 
 # ---------------------------------------------------------------------------
+# cap_per_group: prefer (one source ahead of the rest)
+# ---------------------------------------------------------------------------
+
+
+PREFER_INAT = {"source": ["inat"]}
+
+
+def sourced_table(sources):
+    """species_table()'s seven "common" rows, a..g, tagged with sources."""
+    return pd.DataFrame({
+        "occurrence_id": [chr(ord("a") + index) for index in range(len(sources))],
+        "species": ["common"] * len(sources),
+        "source": sources,
+    })
+
+
+def common_ids(capped):
+    return set(capped[capped["species"] == "common"]["occurrence_id"])
+
+
+def test_enough_preferred_rows_means_only_preferred_rows():
+    table = sourced_table(["other", "inat", "other", "inat", "inat", "other", "other"])
+    for seed in range(5):
+        capped = cap_per_group(table, "species", 2, prefer=PREFER_INAT, seed=seed)
+        assert common_ids(capped) <= {"b", "d", "e"}
+        assert len(capped) == 2
+
+
+def test_too_few_preferred_rows_are_topped_up_from_the_rest():
+    table = sourced_table(["other", "other", "inat", "other", "other", "other", "other"])
+    capped = cap_per_group(table, "species", 3, prefer=PREFER_INAT)
+    assert "c" in common_ids(capped)
+    assert len(capped) == 3
+
+
+def test_a_preferred_newcomer_displaces_a_kept_row_that_is_not():
+    """Strictly preferred first: a source preference outranks additivity."""
+    table = sourced_table(["other", "other", "inat", "inat", "other", "other", "other"])
+    capped = cap_per_group(table, "species", 2, prefer=PREFER_INAT,
+                           id_col="occurrence_id", keep_ids={"a", "b"})
+    assert common_ids(capped) == {"c", "d"}
+
+
+def test_kept_preferred_rows_win_over_new_preferred_rows():
+    table = sourced_table(["inat"] * 7)
+    capped = cap_per_group(table, "species", 2, rule="first", prefer=PREFER_INAT,
+                           id_col="occurrence_id", keep_ids={"f", "g"})
+    assert common_ids(capped) == {"f", "g"}
+
+
+def test_kept_rows_still_come_first_among_the_rest():
+    table = sourced_table(["inat", "other", "other", "other", "other", "other", "other"])
+    capped = cap_per_group(table, "species", 2, rule="first", prefer=PREFER_INAT,
+                           id_col="occurrence_id", keep_ids={"g"})
+    assert common_ids(capped) == {"a", "g"}
+
+
+def test_a_missing_prefer_value_is_not_preferred():
+    table = sourced_table([None, None, "inat", None, None, None, None])
+    capped = cap_per_group(table, "species", 1, prefer=PREFER_INAT)
+    assert common_ids(capped) == {"c"}
+
+
+def test_no_prefer_selects_exactly_as_before():
+    table = sourced_table(["inat"] * 3 + ["other"] * 4)
+    for rule in ("random", "first", "last"):
+        assert (cap_per_group(table, "species", 3, rule=rule, prefer=None)
+                .equals(cap_per_group(table, "species", 3, rule=rule)))
+
+
+def test_an_unknown_prefer_column_raises():
+    with pytest.raises(KeyError, match="rule column 'source'"):
+        cap_per_group(species_table(), "species", 2, prefer=PREFER_INAT)
+
+
+# ---------------------------------------------------------------------------
 # dedupe_by
 # ---------------------------------------------------------------------------
 
@@ -481,6 +611,53 @@ def test_deduping_logs_an_aggregate_count(caplog):
 def test_the_fingerprint_column_does_not_leak_into_the_result():
     deduped = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION)
     assert "_dedupe_fingerprint" not in deduped.columns
+    deduped = dedupe_by(sightings_table().assign(source="inat"), DEDUPE_COLS,
+                        precision=DEDUPE_PRECISION, prefer=PREFER_INAT)
+    assert not {"_dedupe_fingerprint", "_dedupe_position"} & set(deduped.columns)
+
+
+def test_a_preferred_row_wins_its_duplicate_group():
+    table = sightings_table().assign(
+        source=["other", "inat", "inat", "other", "other", "other"])
+    for seed in range(5):
+        deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
+                            prefer=PREFER_INAT, seed=seed)
+        assert set(deduped["occurrence_id"]) == {"b", "c", "e", "f"}
+
+
+def test_a_preferred_row_wins_even_over_a_kept_one():
+    table = sightings_table().assign(
+        source=["other", "inat", "other", "other", "other", "other"])
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
+                        prefer=PREFER_INAT, id_col="occurrence_id", keep_ids={"a"})
+    ids = set(deduped["occurrence_id"])
+    assert "b" in ids and "a" not in ids
+
+
+def test_preferred_rows_are_never_deduplicated_among_themselves():
+    table = sightings_table().assign(source="inat")
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
+                        prefer=PREFER_INAT)
+    assert len(deduped) == 6
+
+
+def test_a_group_with_no_preferred_row_still_keeps_one():
+    table = sightings_table().assign(
+        source=["inat", "other", "other", "other", "other", "other"])
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
+                        prefer=PREFER_INAT)
+    ids = set(deduped["occurrence_id"])
+    assert "a" in ids and "b" not in ids
+    assert len(ids & {"c", "d"}) == 1
+
+
+def test_preferring_keeps_the_source_order():
+    table = sightings_table().assign(
+        source=["other", "inat", "other", "other", "inat", "other"])
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
+                        prefer=PREFER_INAT)
+    ids = deduped["occurrence_id"].tolist()
+    assert ids == sorted(ids)
 
 
 # ---------------------------------------------------------------------------
@@ -568,6 +745,46 @@ def test_an_unknown_id_col_raises():
 def test_id_col_defaults_to_occurrence_id():
     sampled = sample_per_group(species_table(), "species", 4)
     assert sampled  # didn't need id_col passed explicitly
+
+
+# ---------------------------------------------------------------------------
+# worst_n
+# ---------------------------------------------------------------------------
+
+
+def test_ascending_ranks_the_lowest_values_first():
+    """The default: a low IoU or match score is the worst one."""
+    worst = worst_n({"a": 0.9, "b": 0.2, "c": 0.5}, 2)
+    assert worst == [("b", 0.2), ("c", 0.5)]
+
+
+def test_descending_ranks_the_highest_values_first():
+    """A percent disagreement: the worst one is the LARGEST."""
+    worst = worst_n({"a": 5.0, "b": 40.0, "c": 12.0}, 2, ascending=False)
+    assert worst == [("b", 40.0), ("c", 12.0)]
+
+
+def test_nan_values_cannot_be_ranked():
+    worst = worst_n({"a": float("nan"), "b": 0.5}, 5)
+    assert worst == [("b", 0.5)]
+
+
+def test_a_pandas_series_works_the_same_as_a_dict():
+    series = pd.Series({"a": 0.9, "b": 0.2})
+    assert worst_n(series, 1) == [("b", 0.2)]
+
+
+def test_asking_for_more_than_there_are_gives_everything_ranked():
+    assert worst_n({"a": 0.9, "b": 0.2}, 5) == [("b", 0.2), ("a", 0.9)]
+
+
+def test_asking_for_zero_or_fewer_is_empty():
+    assert worst_n({"a": 0.2}, 0) == []
+    assert worst_n({"a": 0.2}, -1) == []
+
+
+def test_worst_ids_come_back_as_strings():
+    assert worst_n({1: 0.2, 2: 0.9}, 1) == [("1", 0.2)]
 
 
 # ---------------------------------------------------------------------------

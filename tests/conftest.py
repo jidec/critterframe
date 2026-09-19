@@ -33,6 +33,11 @@ from helpers.compare import strip_volatile as _strip_volatile
 from helpers.models import ThresholdModel
 from helpers.stubs import FakeSession
 
+# joblib (behind KMeans) warns when it can't count physical cores, which some
+# Windows machines can't, and filterwarnings=error turns that into a failure.
+# Loky only honours a value BELOW the real count, so the full count would not.
+os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(max(1, (os.cpu_count() or 2) - 1)))
+
 # Metrics measured on the template project. Deliberately several kinds -- two
 # lengths, an area, a colour, three quality scores -- so tests of the wide
 # export, of unit conversion, and of staleness all have something of the right
@@ -168,7 +173,7 @@ def _metadata_template(tmp_path_factory, _specimen_images, _small_image_store):
     root = tmp_path_factory.mktemp("metadata_template")
     project, source = root / "project", root / "source.csv"
     metadata.to_csv(source, index=False)
-    cf.ingest_occurrences(project, source)
+    cf.ingest_occurrences(project, source, visualize=False)
     return project
 
 
@@ -177,7 +182,7 @@ def _image_template(tmp_path_factory, _specimen_images, _small_image_store):
     """A project with eight images in the store and metadata joined on."""
     directory, metadata = _specimen_images
     project = tmp_path_factory.mktemp("image_template") / "project"
-    cf.ingest_images(project, directory, metadata=metadata)
+    cf.ingest_images(project, directory, metadata=metadata, visualize=False)
     return project
 
 

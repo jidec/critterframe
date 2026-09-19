@@ -7,7 +7,7 @@ training.datasets.export_training_data() -- real and runnable, like every
 other dataset-prep step in this package. train() is a real, opinionated
 training loop (ImageNet-pretrained encoder, BCEWithLogitsLoss, Adam) adapted
 from a working script, not a stub: unlike
-extensions.inat_insects.training.bioencoder's train(), which is deliberately
+extensions.bioencoder.training's train(), which is deliberately
 left unimplemented because a metric-learning backbone/loss/batching strategy
 is a dataset-dependent judgment call, binary mask segmentation has a far more
 standard shape, so guessing at reasonable defaults here doesn't carry the same
@@ -19,10 +19,8 @@ own reasoning for staying a stub).
     manifest = training.prepare_dataset(project_path, "training/aux_v1",
                                         transforms=[cf.remove_background()])
     checkpoint = training.train(manifest, "training/aux_v1")
-    cf.register_model(project_path, "aux_segmenter_v1", path=checkpoint,
-                      task="segment", framework="torch",
-                      base_model=segmentation.DEFAULT_ENCODER,
-                      training_data="training/aux_v1")
+    training.register_trained(project_path, "aux_segmenter_v1", checkpoint,
+                              "training/aux_v1")
 
 Torch, segmentation_models_pytorch, and tqdm are imported lazily inside
 train(), so this module -- and prepare_dataset() -- import and run without the
@@ -30,25 +28,34 @@ train(), so this module -- and prepare_dataset() -- import and run without the
 """
 
 import copy
+import json
 import logging
 from datetime import date
 from pathlib import Path
 
+import cv2
 import numpy as np
 import pandas as pd
 from sklearn.metrics import f1_score, jaccard_score, roc_auc_score
 
-from ...recipes import DEFAULT_PART
-from ...training.datasets import export_training_data
-from ...training.splits import DEFAULT_FRACTIONS, split_ids
+from ...devices import resolve_device
+from ...maskops import mask_iou
+from ...records.models import register_model
+from ...recipes import DEFAULT_PART, hash_spec
+from ...training.datasets import DATASET_FILE, export_training_data
+from ...training.splits import split_ids
+from ...visualization import figures
+from ...visualization import pipeline as pipeline_visualization
+from ...visualization.panels import annotate, overlay_mask
 from .segmentation import DEFAULT_ENCODER, DEFAULT_SIZE
 
 logger = logging.getLogger(__name__)
 
 
 def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
-                    reference=True, fractions=None, group_by=None,
-                    stratify_by=None, subset=None, seed=0, from_part=None):
+                    reference=True, fractions=None, group_col=None,
+                    stratify_col=None, subset=None, seed=0, from_part=None,
+                    visualize=True):
     """
     Export a train/val/test image+mask dataset from a project's own masks.
 
@@ -77,9 +84,9 @@ def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
       `train(val_split=None)` to match -- not a `"val": 0.0` entry, which
       would still come back as its own (empty) split and log a warning
       about it.
-    - `group_by`, `stratify_by` -- passed to `training.splits.split_ids()`.
-      `group_by` is the leakage guard -- several photos of one specimen
-      must land on the same side.
+    - `group_col`, `stratify_col` -- passed to
+      `training.splits.split_ids()`. `group_col` is the leakage guard --
+      several photos of one specimen must land on the same side.
     - `subset` -- restrict to a named subset instead of the whole project.
     - `seed` -- split seed.
     - `from_part` -- build each image from an upstream part's CANONICAL
@@ -89,21 +96,22 @@ def prepare_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
       carved out of the organism mask, so the exported image matches the
       shared crop this model will see at inference rather than one cropped
       to `part`'s own, usually much smaller, mask.
+    - `visualize` -- passed to `split_ids()` and `export_training_data()`.
 
     Returns the manifest DataFrame export_training_data() wrote.
     """
-    splits = split_ids(project_path, subset=subset,
-                       proportions=fractions or DEFAULT_FRACTIONS,
-                       group_by=group_by, stratify_by=stratify_by, seed=seed)
+    splits = split_ids(project_path, subset=subset, fractions=fractions,
+                       group_col=group_col, stratify_col=stratify_col,
+                       seed=seed, visualize=visualize)
     return export_training_data(project_path, output_dir, splits=splits, part=part,
                                 transforms=transforms, reference=reference,
-                                masks=True, from_part=from_part)
+                                masks=True, from_part=from_part, visualize=visualize)
 
 
 def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE,
          num_epochs=30, batch_size=6, num_workers=0, lr=1e-4, pos_weight=8.0,
          train_split="train", val_split="val", device=None, seed=0,
-         show=False, checkpoint_name=None):
+         checkpoint_name=None, project_path=None, visualize=True, visualize_every=1):
     """
     Train a UNet++/`encoder_name` segmenter on a dataset prepare_dataset()
     wrote, and save the best epoch's weights.
@@ -131,21 +139,26 @@ def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE
     - `val_split` -- which split to validate on, or None to train with no
       validation at all -- for a reference set too small to spare a third
       split. None trains for every epoch with no early stopping, saves the
-      FINAL epoch's weights instead of the best-val-loss one, and skips
-      the `show=True` sample-prediction plot (nothing held out to draw
-      from). Naming a split that isn't actually in the manifest still
-      raises, same as `train_split` -- only passing None explicitly opts
-      out of validation.
+      FINAL epoch's weights instead of the best-val-loss one, and draws
+      its prediction grids from the train split instead. Naming a split
+      that isn't actually in the manifest still raises, same as
+      `train_split` -- only passing None explicitly opts out of validation.
     - `device` -- torch device string; autodetects CUDA if omitted.
     - `seed` -- torch/numpy seed.
-    - `show` -- plot loss/F1/AUROC/IoU curves and a few validation
-      predictions with matplotlib as training goes. Needs matplotlib
-      installed; off by default so training never requires a display.
     - `checkpoint_name` -- filename the weights are saved under, inside
       `dataset_dir`. None (default) names it
       `smp_segmenter_<encoder>_<today>[_n].pt` -- distinct per run, so
       retraining doesn't silently overwrite a checkpoint
       `records.models.register_model()` already fingerprinted.
+    - `project_path` -- project whose `visualizations/pipeline/` the
+      training diagnostics are written into. None writes them under
+      `dataset_dir` instead.
+    - `visualize` -- True (default), an int, or ids: a fixed, seeded sample
+      of validation specimens drawn as image | reference | prediction at
+      each checkpoint epoch (`__epoch<N>`), plus loss and F1/AUROC/IoU
+      curves at the end. False writes nothing.
+    - `visualize_every` -- draw the prediction grid every N epochs, and on
+      every new best validation loss.
 
     Returns the checkpoint path, absolute, ready to hand to
     records.models.register_model() and then
@@ -167,7 +180,7 @@ def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE
 
     torch.manual_seed(seed)
     np.random.seed(seed)
-    device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    device = resolve_device(device)
 
     # val_split=None is the only way to skip validation -- an absent "val"
     # split with the default val_split="val" still raises below, the same
@@ -235,10 +248,23 @@ def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE
 
     best_state = copy.deepcopy(model.state_dict())
     best_val_loss = float("inf")
+    best_epoch = None
     history = {f"{phase}_{metric}": [] for phase in phases
               for metric in ("loss", "f1", "auroc", "iou")}
 
+    identity = {"kind": "train_smp_segmenter", "data_hash": _dataset_hash(dataset_dir),
+                "encoder_name": encoder_name, "size": size, "num_epochs": num_epochs,
+                "batch_size": batch_size, "lr": lr, "pos_weight": pos_weight,
+                "train_split": train_split, "val_split": val_split, "seed": seed}
+    report = pipeline_visualization.open_report(
+        project_path or dataset_dir, f"train__smp_{encoder_name}", hash_spec(identity),
+        visualize=visualize, identity=identity)
+    shown = rows["val" if "val" in phases else "train"]
+    report.begin(shown["occurrence_id"].astype(str))
+    shown = shown[shown["occurrence_id"].astype(str).map(report.wants)]
+
     for epoch in range(num_epochs):
+        improved = False
         for phase in phases:
             model.train(phase == "train")
             running_loss = 0.0
@@ -283,13 +309,19 @@ def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE
             if "val" in phases:
                 if phase == "val" and epoch_loss < best_val_loss:
                     best_val_loss = epoch_loss
+                    best_epoch = epoch + 1
                     best_state = copy.deepcopy(model.state_dict())
-                    if show:
-                        _plot_sample_predictions(model, loaders["val"], device, epoch + 1)
+                    improved = True
             elif phase == "train":
                 # No held-out split to pick a best epoch from -- keep the
                 # latest, i.e. the final epoch's weights once the loop ends.
                 best_state = copy.deepcopy(model.state_dict())
+
+        due = improved or epoch + 1 == num_epochs or (
+            visualize_every and (epoch + 1) % visualize_every == 0)
+        if report and due and len(shown):
+            _prediction_panels(report, model, shown, dataset_dir, size, device)
+            report.checkpoint(f"epoch{epoch + 1:04d}")
 
     model.load_state_dict(best_state)
 
@@ -309,10 +341,44 @@ def train(manifest, dataset_dir, encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE
         logger.info("saved checkpoint -> %s (final epoch, no held-out val split)",
                    checkpoint_path)
 
-    if show:
-        _plot_training_metrics(history)
+    if report:
+        _training_figures(report, history, phases, best_epoch)
+    report.close()
 
     return checkpoint_path
+
+
+def register_trained(project_path, name, checkpoint, dataset_dir,
+                     encoder_name=DEFAULT_ENCODER, size=DEFAULT_SIZE, **kwargs):
+    """
+    Register a checkpoint `train()` just wrote, with what
+    `segmentation.load_registered()` needs to load it again.
+
+    `records.models.register_model` with this model type's own fields filled
+    in: `parameters` carries `encoder_name`/`size`, without which loading
+    later falls back to whatever this module's defaults happen to be by then
+    -- a checkpoint loaded under a different architecture than it was trained
+    with, silently, which is the failure `load_registered` exists to prevent.
+
+    - `project_path` -- project to register in.
+    - `name` -- registered model name, e.g. `"wing_segmenter_v1"`.
+    - `checkpoint` -- the path `train()` returned.
+    - `dataset_dir` -- the dataset `prepare_dataset()` wrote and `train()`
+      trained on; its `dataset.json` becomes the model's `training_data`.
+    - `encoder_name`, `size` -- what `train()` was given. Pass the same
+      values, or the registry records a model that loads wrong.
+    - `kwargs` -- anything else `records.models.register_model` takes, e.g.
+      `notes=`. `parameters=` is merged with this function's own rather than
+      replaced.
+
+    Returns the RegisteredModel.
+    """
+    parameters = {"encoder_name": encoder_name, "size": size}
+    parameters.update(kwargs.pop("parameters", None) or {})
+    return register_model(
+        project_path, name, path=checkpoint, task="segment", framework="torch",
+        base_model=kwargs.pop("base_model", encoder_name),
+        training_data=str(dataset_dir), parameters=parameters, **kwargs)
 
 
 def _default_checkpoint_path(dataset_dir, encoder_name):
@@ -333,67 +399,49 @@ def _default_checkpoint_path(dataset_dir, encoder_name):
     return dest
 
 
-def _plot_sample_predictions(model, loader, device, epoch, threshold=0.5, num_samples=3):
-    """A few validation images with their ground-truth and predicted masks -- what show=True is for."""
-    import matplotlib.pyplot as plt
+def _dataset_hash(dataset_dir):
+    """The data_hash from a dataset directory's dataset.json, or None if it has none."""
+    record = Path(dataset_dir) / DATASET_FILE
+    if not record.exists():
+        return None
+    with record.open(encoding="utf-8") as handle:
+        return json.load(handle).get("data_hash")
+
+
+def _prediction_panels(report, model, shown, dataset_dir, size, device, threshold=0.5):
+    """Image, reference, and prediction panels for the report's sampled specimens."""
     import torch
 
     model.eval()
     with torch.no_grad():
-        images, true_masks = next(iter(loader))
-        images, true_masks = images.to(device), true_masks.to(device)
-        probs = torch.sigmoid(model(images))
+        for row in shown.itertuples(index=False):
+            item = str(row.occurrence_id)
+            image = cv2.imread(str(Path(dataset_dir) / row.image_path))
+            image = cv2.resize(image, (size, size), interpolation=cv2.INTER_AREA)
+            reference = cv2.imread(str(Path(dataset_dir) / row.mask_path), cv2.IMREAD_GRAYSCALE)
+            reference = cv2.resize(reference, (size, size), interpolation=cv2.INTER_NEAREST) > 0
 
-        indices = np.random.choice(range(images.size(0)),
-                                   min(num_samples, images.size(0)), replace=False)
-        plt.figure(figsize=(12, 4 * len(indices)))
-        plt.suptitle(f"epoch {epoch}", fontsize=16)
-        for row, index in enumerate(indices):
-            image = images[index].cpu().permute(1, 2, 0).numpy()
-            true_mask = true_masks[index].cpu().squeeze().numpy()
-            pred_mask = (probs[index].cpu().squeeze().numpy() > threshold).astype("uint8")
+            tensor = torch.from_numpy(cv2.cvtColor(image, cv2.COLOR_BGR2RGB)).float()
+            tensor = tensor.permute(2, 0, 1).unsqueeze(0).to(device) / 255.0
+            predicted = torch.sigmoid(model(tensor))[0, 0].cpu().numpy() > threshold
 
-            for column, (panel, title) in enumerate(
-                    ((image, "image"), (true_mask, "reference mask"),
-                    (pred_mask, f"predicted (t={threshold})"))):
-                plt.subplot(len(indices), 3, row * 3 + column + 1)
-                plt.imshow(panel, cmap=None if column == 0 else "gray")
-                plt.title(title)
-                plt.axis("off")
-        plt.tight_layout(rect=[0, 0, 1, 0.96])
-        plt.show()
+            iou = mask_iou(predicted, reference)
+
+            report.panel(item, "image", image)
+            report.panel(item, "reference", overlay_mask(image, reference))
+            panel = overlay_mask(image, predicted)
+            annotate(panel, f"iou {iou:.2f}")
+            report.panel(item, "prediction", panel)
 
 
-def _plot_training_metrics(history):
-    """
-    Loss/F1/AUROC/IoU over epochs, train vs. val -- what show=True is for.
-
-    Plots train alone when history has no val_* keys, i.e. train(val_split=None).
-    """
-    import matplotlib.pyplot as plt
-
-    has_val = "val_loss" in history
-    epochs = range(1, len(history["train_loss"]) + 1)
-    plt.figure(figsize=(12, 5))
-
-    plt.subplot(1, 2, 1)
-    plt.plot(epochs, history["train_loss"], label="train")
-    if has_val:
-        plt.plot(epochs, history["val_loss"], label="val")
-    plt.xlabel("epoch")
-    plt.ylabel("loss")
-    plt.legend()
-    plt.title("loss")
-
-    plt.subplot(1, 2, 2)
-    for metric in ("f1", "auroc", "iou"):
-        plt.plot(epochs, history[f"train_{metric}"], "--", label=f"train {metric}")
-        if has_val:
-            plt.plot(epochs, history[f"val_{metric}"], label=f"val {metric}")
-    plt.xlabel("epoch")
-    plt.ylabel("score")
-    plt.legend()
-    plt.title("F1 / AUROC / IoU")
-
-    plt.tight_layout()
-    plt.show()
+def _training_figures(report, history, phases, best_epoch):
+    """Loss and F1/AUROC/IoU curves over epochs, train against val."""
+    epochs = list(range(1, len(history["train_loss"]) + 1))
+    marks = {"best": best_epoch} if best_epoch is not None else None
+    report.figure("loss", figures.line_chart(
+        {phase: (epochs, history[f"{phase}_loss"]) for phase in phases},
+        xlabel="epoch", ylabel="loss", title="loss", marks=marks))
+    report.figure("scores", figures.line_chart(
+        {f"{phase} {metric}": (epochs, history[f"{phase}_{metric}"])
+         for phase in phases for metric in ("f1", "auroc", "iou")},
+        xlabel="epoch", ylabel="score", title="F1 / AUROC / IoU", marks=marks))

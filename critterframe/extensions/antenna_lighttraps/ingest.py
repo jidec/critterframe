@@ -81,7 +81,7 @@ def parse_sheet_image_id(url):
     Example output:
         bronzeBobcat/2026-06-11/bronzeBobcat_2026_06_11__01_15_20_HDR0.jpg
 
-    url -- a best_detection_url value (or NaN).
+    - `url` -- a best_detection_url value (or NaN).
     """
     if pd.isna(url):
         return pd.NA
@@ -154,7 +154,7 @@ def add_derived_columns(df):
 def ingest_occurrences(project_path, import_csv_path=None, session=None,
                        project=None, filters=None, transform=None,
                        drop=NON_ORGANISM_DETERMINATIONS, group_col=None,
-                       max_per_group=None, cap_rule="random"):
+                       max_per_group=None, cap_rule="random", visualize=True):
     """
     Ingest an Antenna occurrences export into a project, as a full snapshot.
 
@@ -188,6 +188,9 @@ def ingest_occurrences(project_path, import_csv_path=None, session=None,
       export dominated by a few common species. See
       `critterframe.ingest.ingest_occurrences`. Applied after `drop=`, so a
       non-organism detection never counts toward its group's cap.
+    - `visualize` -- True (default): pipeline figures of the rows kept at
+      each ingest stage. False writes nothing. See
+      `critterframe.ingest.ingest_occurrences`.
 
     Returns the resulting occurrence table.
     """
@@ -198,9 +201,13 @@ def ingest_occurrences(project_path, import_csv_path=None, session=None,
         import_csv_path = api.fetch_export(session, downloaded, project=project,
                                            filters=filters)
 
-    def antenna_transform(df):
-        df = add_derived_columns(df)
-        return transform(df) if transform is not None else df
+    # A sequence, not a closure around both: core records each transform by
+    # name, so wrapping them would record only the wrapper's -- two different
+    # callers' transforms would then share an import hash and the second
+    # ingest would be skipped as already done.
+    transforms = [add_derived_columns]
+    if transform is not None:
+        transforms.append(transform)
 
     try:
         return core_ingest_occurrences(
@@ -210,12 +217,13 @@ def ingest_occurrences(project_path, import_csv_path=None, session=None,
             image_url_col=URL_COL,
             datetime_cols=DATETIME_COLS,
             numeric_cols=NUMERIC_COLS,
-            transform=antenna_transform,
+            transform=transforms,
             drop=drop,
             group_col=group_col,
             max_per_group=max_per_group,
             cap_rule=cap_rule,
             name_prefix=f"occurrences_antenna_{api.project_id(project)}",
+            visualize=visualize,
         )
     finally:
         # The dated copy the core ingest archived is the durable record, so the

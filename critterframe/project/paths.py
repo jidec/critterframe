@@ -33,6 +33,7 @@ SUBSETS_FILE = "subsets.toml"
 RECIPES_FILE = "recipes.py"
 VISUALIZATIONS_DIR = "visualizations"
 PIPELINE_DIR = "pipeline"
+REPORT_SIDECAR_SUFFIX = ".report.json"
 PRODUCTS_DIR = "products"
 MODELS_DIR = "models"
 MODELS_REGISTRY_FILE = "registry.json"
@@ -65,9 +66,8 @@ def masks_path(project_path, reference=False):
     """
     The mask table.
 
-    reference -- True returns the reference table instead of the canonical one.
-                 Identical schema; the two coexist, since validation compares
-                 them.
+    - `reference` -- True returns the reference table instead of the canonical
+      one. Identical schema; the two coexist, since validation compares them.
     """
     return project_dir(project_path) / (
         REFERENCE_MASKS_FILE if reference else MASKS_FILE
@@ -79,8 +79,8 @@ def mask_shards_dir(project_path, part="", reference=False):
     Staging area for a sharded run's mask writes, read back by
     records.masks.merge_mask_shards.
 
-    part -- narrows to one part's shards. "" is the root they share, for
-            listing which parts have anything staged.
+    - `part` -- narrows to one part's shards. "" is the root they share, for
+      listing which parts have anything staged.
     """
     return project_dir(project_path) / MASK_SHARDS_DIR / \
         ("reference" if reference else "canonical") / part
@@ -149,8 +149,8 @@ def raw_import_path(project_path, name_prefix, extension=".csv"):
     here at all -- see ingest._archive_raw_import, which reuses the existing
     file instead.
 
-    name_prefix -- import kind, usually carrying the source, e.g.
-                   "occurrences_antenna_199".
+    - `name_prefix` -- import kind, usually carrying the source, e.g.
+      "occurrences_antenna_199".
     """
     directory = raw_imports_dir(project_path)
     base = f"{name_prefix}_{date.today().isoformat()}"
@@ -181,13 +181,13 @@ def import_sidecar_path(raw_path, import_hash):
     The manifest for one import derived from a raw import: `<raw file
     stem>.<import hash>.import.json`, beside the raw file it describes.
 
-    The hash is in the name, the same reasoning pipeline_grid_path gives for
+    The hash is in the name, the same reasoning pipeline_stem gives for
     putting a recipe hash in a grid's filename: one raw import can become
     several imports under different decisions (a different drop=, a different
     cap), so two imports of one raw file leave two manifests to compare rather
     than one overwriting the other.
 
-    raw_path -- the archived raw import the manifest describes.
+    - `raw_path` -- the archived raw import the manifest describes.
     """
     raw_path = Path(raw_path)
     return raw_path.with_name(f"{raw_path.stem}.{import_hash}.import.json")
@@ -223,30 +223,57 @@ def visualizations_dir(project_path, subdir=""):
 
 def pipeline_dir(project_path):
     """
-    Sample-level summaries of how processing behaved: one sheet per run.
+    Every activity's diagnostics: a sampled grid, checkpoints, figures, and a
+    sidecar per report, all sharing one flat stem (see pipeline_stem).
 
-    Bounded by design -- 10,000 occurrences still produce one image per run,
+    Bounded by design -- 10,000 occurrences still produce one grid per report,
     since "is this step working" is answered from a representative sample.
     """
     return visualizations_dir(project_path, PIPELINE_DIR)
 
 
-def pipeline_grid_path(project_path, run_name, recipe_hash, part=None, suffix=None):
+def pipeline_stem(name, identity_hash, part=None):
     """
-    One run's QC grid: `<run>[__<part>]_<hash>[<suffix>].jpg`.
+    The filename stem every file of one report shares: `<name>[__<part>]_<hash>`.
 
-    The hash is in the name so two versions of a recipe leave two grids to
-    compare rather than one overwriting the other.
+    The hash is in the name so two versions of a recipe (or of any other
+    activity's configuration) leave two sets of files rather than one
+    overwriting the other.
 
-    part   -- None omits it, giving a whole-organism run the plain
-              `<run>_<hash>.jpg`. Pass it so each part of a multi-part run gets
-              its own file.
-    suffix -- None omits it. Pass e.g. `__at00012500` for one of
-              `visualize_every`'s checkpoint grids, so each checkpoint gets its
-              own file rather than overwriting the last.
+    - `name` -- the report's name, e.g. a run name or `validate_masks__head`.
+    - `identity_hash` -- the recipe hash or other identity digest.
+    - `part` -- None omits it. Pass it so each part of a multi-part run gets
+      its own files.
     """
-    stem = run_name if part is None else f"{run_name}__{part}"
-    return pipeline_dir(project_path) / f"{stem}_{recipe_hash}{suffix or ''}.jpg"
+    stem = name if part is None else f"{name}__{part}"
+    return f"{stem}_{identity_hash}"
+
+
+def pipeline_file_path(project_path, name, identity_hash, part=None, suffix=None,
+                       extension="jpg"):
+    """
+    One file of a report: `<name>[__<part>]_<hash>[__<suffix>].<ext>`.
+
+    - `project_path` -- project whose pipeline directory to write into.
+    - `name`, `identity_hash`, `part` -- as in `pipeline_stem`.
+    - `suffix` -- None for the report's main grid; a checkpoint label
+      (`at00012500`, `epoch0005`) or a figure name (`curves`) otherwise.
+    - `extension` -- `jpg` for grids, `png` for figures.
+    """
+    stem = pipeline_stem(name, identity_hash, part=part)
+    if suffix:
+        stem = f"{stem}__{suffix}"
+    return pipeline_dir(project_path) / f"{stem}.{extension}"
+
+
+def pipeline_report_path(project_path, name, identity_hash, part=None):
+    """
+    A report's sidecar: `<name>[__<part>]_<hash>.report.json`, beside its files.
+
+    - `project_path`, `name`, `identity_hash`, `part` -- as in `pipeline_file_path`.
+    """
+    stem = pipeline_stem(name, identity_hash, part=part)
+    return pipeline_dir(project_path) / f"{stem}{REPORT_SIDECAR_SUFFIX}"
 
 
 def products_dir(project_path, name=""):
@@ -269,7 +296,7 @@ def product_filename(occurrence_id, part=None, extension="png"):
     Id first, part after a double underscore, so splitting a filename back into
     ids is one operation in any language.
 
-    part -- None writes `<occurrence_id>.<ext>`, for a single-part render.
+    - `part` -- None writes `<occurrence_id>.<ext>`, for a single-part render.
     """
     stem = str(occurrence_id) if part is None else f"{occurrence_id}__{part}"
     return f"{stem}.{str(extension).lstrip('.')}"
@@ -315,7 +342,7 @@ def export_sidecar_path(path):
     Takes any path, not a project one, since an export is usually written
     outside the project it came from.
 
-    path -- the exported file the manifest describes.
+    - `path` -- the exported file the manifest describes.
     """
     return Path(path).with_suffix(EXPORT_SIDECAR_SUFFIX)
 

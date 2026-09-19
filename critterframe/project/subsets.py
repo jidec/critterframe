@@ -21,7 +21,9 @@ import logging
 from datetime import datetime, timezone
 
 from .. import selectionhelpers
+from ..records import occurrences as occurrence_records
 from ..records.occurrences import ID_COL, ids_record, load_occurrences
+from ..storage.jsonfiles import atomic_write
 from . import paths
 
 logger = logging.getLogger(__name__)
@@ -81,10 +83,16 @@ def load_subsets(project_path):
 
 
 def _save_subsets(project_path, subsets):
-    """Write the whole subset table, replacing whatever was there."""
+    """
+    Write the whole subset table, replacing whatever was there.
+
+    Atomically and as UTF-8: every subset a project has lives in this one
+    file, and tomllib reads UTF-8, so a note or a value with an accent in it
+    written in the platform's own encoding comes back unreadable.
+    """
     subsets_path = paths.subsets_path(project_path)
-    subsets_path.parent.mkdir(parents=True, exist_ok=True)
-    subsets_path.write_text(_dump_toml(subsets))
+    with atomic_write(subsets_path) as handle:
+        handle.write(_dump_toml(subsets))
 
     logger.info("wrote %d subset definition(s) -> %s", len(subsets), subsets_path)
     return subsets
@@ -195,11 +203,11 @@ def select_occurrences(project_path, subset=None, limit=None, columns=None):
     """
     The occurrence rows a run should process.
 
-    subset  -- name of a subset to narrow to, or None for the whole project.
-               Every run funnels through here, so both are one code path.
-    limit   -- optional cap applied after selection, for trying a recipe out.
-    columns -- occurrence columns to read; occurrence_id and any column the
-               subset rule needs are added automatically.
+    - `subset` -- name of a subset to narrow to, or None for the whole project.
+      Every run funnels through here, so both are one code path.
+    - `limit` -- optional cap applied after selection, for trying a recipe out.
+    - `columns` -- occurrence columns to read; occurrence_id and any column the
+      subset rule needs are added automatically.
     """
     definition = None
     if subset is not None:
@@ -222,6 +230,12 @@ def select_occurrences(project_path, subset=None, limit=None, columns=None):
         if "query" in definition:
             columns = None
         elif "column" in definition:
+            # Checked before the read: adding a column the table doesn't have
+            # to a narrowed read fails inside pyarrow, naming the field but not
+            # the subset that wanted it -- so the message below never fired.
+            occurrence_records.require_columns(
+                project_path, definition["column"],
+                f"nothing for subset '{subset}' to select on")
             columns = list(columns) + [definition["column"]]
 
     df = load_occurrences(project_path, columns=columns)
@@ -270,25 +284,22 @@ def grow_subset(project_path, name, target_size, candidate_ids=None,
     gives a capped group on a later reimport. See selectionhelpers.grow_sample
     for the sampling rule this applies.
 
-    name          -- subset to grow; created on the first call.
-    target_size   -- desired size. Lowering it trims deterministically rather
-                     than raising or reshuffling who is in.
-    candidate_ids -- pool to draw new ids from; the whole project
-                     (select_ids(project_path)) if neither this nor
-                     from_subset is given. For a pool computed some other
-                     way, e.g. occurrences_matching(); for a named subset,
-                     from_subset reads more plainly and, unlike this, names
-                     the source in the note (below) instead of a bare count.
-    from_subset   -- name of a subset to draw candidates from -- re-resolved
-                     to its CURRENT membership on every call, so growing
-                     from a live column/query subset picks up whatever it
-                     now matches. For capping an expensive pass (hand-drawn
-                     reference masks, say) to a deliberately smaller,
-                     independently-sized subset of a cheaper one (a screened
-                     "usable" set), so raising the cheap pass's size doesn't
-                     silently raise the expensive one's too. Mutually
-                     exclusive with candidate_ids.
-    seed          -- passed through to grow_sample.
+    - `name` -- subset to grow; created on the first call.
+    - `target_size` -- desired size. Lowering it trims deterministically rather
+      than raising or reshuffling who is in.
+    - `candidate_ids` -- pool to draw new ids from; the whole project
+      (select_ids(project_path)) if neither this nor from_subset is given. For
+      a pool computed some other way, e.g. occurrences_matching(); for a named
+      subset, from_subset reads more plainly and, unlike this, names the source
+      in the note (below) instead of a bare count.
+    - `from_subset` -- name of a subset to draw candidates from -- re-resolved
+      to its CURRENT membership on every call, so growing from a live
+      column/query subset picks up whatever it now matches. For capping an
+      expensive pass (hand-drawn reference masks, say) to a deliberately
+      smaller, independently-sized subset of a cheaper one (a screened "usable"
+      set), so raising the cheap pass's size doesn't silently raise the
+      expensive one's too. Mutually exclusive with candidate_ids.
+    - `seed` -- passed through to grow_sample.
 
     Records target_size, seed, and the candidate pool as the subset's `note`
     (see define_subset), since this is the one place that opaque occurrence_ids

@@ -225,7 +225,7 @@ def test_measuring_is_repeat_aware(image_project, sheet, monkeypatch):
     _image, template, _expected = sheet
     summary = cf.measure_scales(image_project, template, TARGET_MM,
                                 match_score_min=0.9, limit=2)
-    assert summary["measured"] == 0
+    assert summary["processed"] == 0
     assert summary["missed"] == 2
 
 
@@ -467,3 +467,40 @@ def test_force_remeasures_everything(gui, metadata_project):
     assert redone["covered"] == 8
     resolved = cf.scale_for_occurrences(metadata_project)
     assert resolved["specimen0"] == pytest.approx(4.0)
+
+
+# ---------------------------------------------------------------------------
+# visualize= -- pipeline reports rather than loose files
+# ---------------------------------------------------------------------------
+
+
+def _scale_sidecar(project_path, prefix):
+    import json
+
+    from critterframe.project import paths
+
+    [sidecar] = paths.pipeline_dir(project_path).glob(f"{prefix}_*.report.json")
+    return json.loads(sidecar.read_text(encoding="utf-8"))
+
+
+def test_a_missed_target_is_recorded_in_the_sidecar(image_project, sheet):
+    """No match means no panel to draw, but the miss itself still belongs in the record."""
+    _image, template, _expected = sheet
+    cf.measure_scales(image_project, template, TARGET_MM, match_score_min=0.9, limit=2)
+
+    record = _scale_sidecar(image_project, "measure_scales")
+    assert record["counts"]["failed"] == 2
+    assert all("no target matched" in failure["error"] for failure in record["failures"])
+
+
+def test_a_clicked_scale_leaves_a_one_panel_grid(gui, metadata_project):
+    from critterframe.project import paths
+
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0),
+                                      (cv2.EVENT_LBUTTONDOWN, 10, 0)])
+    scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0,
+                                            name="sheet_a")
+
+    record = _scale_sidecar(metadata_project, "measure_scale_by_hand")
+    assert record["shown"] == ["sheet_a"]
+    assert (paths.pipeline_dir(metadata_project) / record["files"][0]).exists()

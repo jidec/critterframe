@@ -37,7 +37,7 @@ and more — see [scripts/](scripts/) for full examples.
 
 1. **One focal organism per image**
 
-   > **Why:** A single organism is the natural unit for organismal image analysis and maps cleanly onto an occurrence. We see this as a worthy simplification that removes a complex layer of bookkeeping. Tools are provided to convert multi-organism images into one-organism images for import.
+   > **Why:** A single organism is the natural unit for organismal image analysis and maps cleanly onto an occurrence. We see this as a worthy simplification that removes a complex layer of bookkeeping. Tools will eventually be provided to help convert multi-organism images into one-organism images for import.
 
 2. **One canonical mask per organism or organism-part**
 
@@ -67,11 +67,11 @@ and more — see [scripts/](scripts/) for full examples.
 
 ## Convenience features
 
-1. Project folders are portable records with data & provenance ready for archiving alongside a publication
-2. Nearly every pipeline step can be visualized with `visualize=True
+1. Virtually every pipeline step leaves a visual report by default (`visualize=True`), making things easy to scrutinize
+2. Project folders are portable records with data & provenance ready for archiving alongside a publication
 3. Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
 4. Metrics exports designed for easy analysis post-critterframe
-5. Multithreading for image downloading, segmentation, and metric runs
+5. Multithreading/sharding for image downloading, segmentation, and metric runs
 
 ## Documentation
 [jidec.github.io/critterframe](https://jidec.github.io/critterframe/)
@@ -134,7 +134,7 @@ my_project/
     exports/                    exports.jsonl, what this project has handed out
     definitions/                subsets.toml, recipes.py
     visualizations/
-        pipeline/               one sampled QC grid per run
+        pipeline/               every activity's diagnostics: sampled grids, checkpoints, figures, .report.json
         products/               rendered assets, one file per occurrence-part
     models/                     registry.json + checkpoints trained for this project
 ```
@@ -164,6 +164,7 @@ my_project/
 | **Render**           | A materialized image product.                                                                                                                                                                                                |
 | **Raw import**       | Raw source data before any structural or judgement decision touches it (e.g. a GBIF DarwinCore archive as downloaded). Archived in raw_imports folder.                                                                       |
 | **Import**           | A raw import reshaped into occurrences and narrowed by judgement calls (drop=, group_col/max_per_group) about what's a valid, wanted candidate. Raw import to import conversions write a manifest recording those decisions. |
+| **Color threshold**  | A named combination of cutoffs on color-channel values used to identify qualifying pixels                                                                                                                                    |
 
 ## Package layout
 
@@ -174,6 +175,11 @@ critterframe/
     download.py             download images from URLs in ingested table
     export.py               export one-row-per-occurrence trait table, optionally filtered, with a manifest saying what it is; select occurrences by stored values
     selectionhelpers.py     helpers for transient "out of these occurrences, which ones" tasks: sampling, sharding, rule matching
+    segments.py             iterate_segments(): the per-occurrence loop most drivers walk, plus build_segment and Tally
+    maskops.py              mask arithmetic with no project attached: iou, coverage, bounds, largest component
+    colorspaces.py          convert(): BGR to rgb/linrgb/hsv/hls/lab/lch in canonical units, to_bgr(), in_arc() for hue arcs
+    devices.py              resolve_device(): which device a loaded network runs on, asked lazily
+    timing.py               timed(): one "<label> in Ns" log line around a slow step
     project/                
         paths.py            define every path and filename in critterframe project folders
         subsets.py          create named, persisted selections of occurrences
@@ -181,6 +187,7 @@ critterframe/
     storage/                
         imagestore.py       the LMDB image store, better than directories for millions of images
         tables.py           parquet tables (occurrences & masks) read, snapshot write, upsert 
+        jsonfiles.py        every manifest, registry and append-only log: atomic writes, JSON and JSONL
         sqlite.py           sqlite databases (runs & metrics) connection
     records/
         occurrences.py      normalize + save/load the occurrence table
@@ -189,6 +196,7 @@ critterframe/
         metrics.py         long-table storage, current_rows, latest_values
         calibrations.py  the scope/provenance machinery every calibration type shares
         models.py          the registry of trained models: checkpoint fingerprints, RegisteredModel
+        failures.py         what not to retry, keyed by occurrence-part, stage, and what was attempted
     segmentation/
         groundedsam.py  SAM2, with or without Grounding DINO detection
         manual.py          draw/correct a mask by hand -- an alternative segmentation, not a separate system
@@ -201,7 +209,11 @@ critterframe/
         dimensions.py    body_length, max_width, mask_area, bounding_box
         position.py        centroid, relative_position, image_bounds -- reported in original coordinates
         quality.py          blur, asymmetry, edge fraction -- automated QC
-        color.py             mean color, hue/lightness fractions
+        pixels.py            masked_pixels: the organism's pixels, the one rule every colour metric shares
+        color_means.py    mean_color, mean_lightness, white_balanced_color, background_color
+        color_thresholds.py  ColorThreshold cutoffs across colour spaces; threshold_fractions and presets
+        inductive_color_thresholds.py  the same thresholds fitted per group: a chroma gate and hue arcs
+        color_clusters.py  per-group colour palette proportions
         outliers.py        group metrics: outlier(), cluster()
         annotation.py    human labels: usability_annotation, click_two_points
         run.py                run_metrics() + RunContext + _completed_keys
@@ -214,7 +226,8 @@ critterframe/
     visualization/
         panels.py           one picture of one operation's decision; shared drawing helpers and colour conventions
         grids.py             many panels as one image: image_grid, comparison_grid
-        pipeline.py        the per-run QC grid: resolve_sample, RunReport
+        figures.py          whole-population charts: line_chart, bar_chart, histogram, scatter, funnel
+        pipeline.py        every activity's diagnostics: open_report, Report, resolve_sample
         products.py       assets for downstream use: render_segments, one file per occurrence-part
     training/
         splits.py            split_ids(): grouped and stratified, to avoid leakage
@@ -226,18 +239,15 @@ critterframe/
             download.py         thin wrapper over download_images() for Antenna's URL column
             calibrations/
                 scale.py            scale scoped per trap night (event_id), not per occurrence
-        inat_insects/
-            api.py                 iNaturalist's API
-            ingest.py             iNaturalist observations -> ingest_occurrences()
-            download.py         thin wrapper over download_images()
-            metrics/
-                color.py             colour clustering metrics
-                bioencoder.py    embedding-based metrics
-            training/
-                bioencoder.py    train()/load() -- deliberately unfinished, raises NotImplementedError
+        bioencoder/
+            embedding.py      BioEncoderModel + embedding() metric
+            training.py         prepare_dataset(); train()/load() deliberately unfinished, raise NotImplementedError
+        gbif_darwincore_inat/
+            archive.py          read a GBIF Darwin Core Archive, zipped or extracted
+            ingest.py             one photo per occurrence -> ingest_occurrences(); iNat photo sizes, prioritize_inat
         smp_segmenter/
             segmentation.py   SMPSegmenter (UNet++, swappable encoder) + smp_segmenter() factory
-            training.py         prepare_dataset() + train() -- a real, runnable training loop
+            training.py         prepare_dataset() + train() + register_trained() -- a real, runnable training loop
 ```
 
 ## Extensions
@@ -246,10 +256,12 @@ Extensions are typically for handling specific data sources, very specialized me
 not general enough to bundle in core. By convention they mirror the package layout.
 
 - **`antenna_lighttraps`** — light-trap camera monitoring. Scale calibration is scoped per trap night (`event_id`) rather than per occurrence.
-- **`inat_insects`** — iNaturalist observations. Adds colour clustering and embedding-based metrics suited to
-  citizen-science images shot under uncontrolled conditions.
+- **`bioencoder`** — metric-learning embeddings as a metric, plus dataset preparation for training one. The
+  training loop itself is deliberately left unimplemented.
+- **`gbif_darwincore_inat`** — a GBIF Darwin Core Archive, one photo per occurrence. The way to pull
+  iNaturalist observations: iNat photo sizes, cross-source deduplication, and `prioritize_inat` for mixed pulls.
 - **`smp_segmenter`** — a trainable UNet++ segmenter (segmentation_models_pytorch) for refining or replacing
-  the bundled zero-shot segmenter on one project's own masks. Unlike `inat_insects`' bioencoder scaffold, its
+  the bundled zero-shot segmenter on one project's own masks. Unlike `bioencoder`'s scaffold, its
   `train()` is a real, working training loop, not a stub -- binary mask segmentation doesn't carry the same
   dataset-dependent backbone/loss judgment calls that make guessing at a metric-learning setup risky.
 

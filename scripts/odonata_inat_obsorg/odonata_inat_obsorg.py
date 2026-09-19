@@ -33,13 +33,13 @@ gbif_ingest.ingest_occurrences(
 cf.download_images(PROJECT_PATH)
 
 #2. Whole organism. Persisted, and everything below starts from it.
-# cf.run_segments(
-#    PROJECT_PATH,
-#    run_name="organism_sam2",
-#    steps=[
-#        cf.segment(cf.groundedsam2(text_prompt="dragonfly.")),
-#    ],
-# )
+cf.run_segments(
+   PROJECT_PATH,
+   run_name="organism_sam2",
+   steps=[
+       cf.segment(cf.groundedsam2(text_prompt="dragonfly.")),
+   ],
+)
 
 # 3. Body parts, refined from the organism mask, using the UNet++ segmenters
 #    trained -- and IoU-checked against a held-out test split -- in
@@ -67,24 +67,64 @@ cf.run_segments(
         "thorax":  [cf.segment(segmentation.load_registered(PROJECT_PATH, "thorax_segmenter_v1"))],
         "abdomen": [cf.segment(segmentation.load_registered(PROJECT_PATH, "abdomen_segmenter_v1"))],
     },
-    visualize_every=500,
+)
+
+from critterframe.metrics.inductive_color_thresholds import inductive_color_thresholds
+from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selectionhelpers import sample_occurrences
+
+ids =sample_occurrences(occurrence_ids_with_mask(PROJECT_PATH,"head"),2500)
+cf.define_subset(PROJECT_PATH,name="thresholds_test",
+                 occurrence_ids=ids)
+
+# Fixed colour bins, as a baseline for the fitted thresholds below. Hue arcs and lightness are CIE LCh (hue in
+# degrees, L 0-100); every bin also needs high chroma, so browns, greys and pruinose whites land in "unmatched".
+# Light blue gets a lower chroma floor because pale blues are inherently low-chroma (sky blue ~26, brown ~24), and is
+# told apart from blue by lightness rather than hue.
+MIN_CHROMA = 30
+LIGHT_BLUE_MIN_CHROMA = 20
+cf.run_metrics(
+    PROJECT_PATH,
+    run_name="fixed_thresholds",
+    subset="thresholds_test",
+    metrics=[
+        cf.threshold_fractions([
+            cf.color_threshold("red",        lch_h=(345, 55),  lch_c=(MIN_CHROMA, None)),
+            cf.color_threshold("yellow",     lch_h=(55, 105),  lch_c=(MIN_CHROMA, None)),
+            cf.color_threshold("green",      lch_h=(105, 195), lch_c=(MIN_CHROMA, None)),
+            cf.color_threshold("blue",       lch_h=(195, 320), lch_c=(MIN_CHROMA, None), lch_l=(None, 55)),
+            cf.color_threshold("light_blue", lch_h=(195, 320), lch_c=(LIGHT_BLUE_MIN_CHROMA, None), lch_l=(55, None)),
+        ], unmatched=True, name="color_bins"),
+    ],
+    visualize=True,
+)
+
+cf.run_metrics(
+    PROJECT_PATH,
+    run_name="automated_thresholds",
+    subset="thresholds_test",
+    metrics=[
+        inductive_color_thresholds(hue_bandwidth=5),
+    ],
+    visualize=True,
 )
 
 # 4. Whole-organism traits and QC. The traits run is named separately from the
 #    QC run so revising a QC threshold doesn't invalidate the traits.
-# cf.run_metrics(
-#     PROJECT_PATH,
-#     run_name="body_dimensions",
-#     transforms=[
-#         cf.remove_appendages(),
-#         cf.orient(),
-#     ],
-#     metrics=[
-#         cf.body_length(),
-#         cf.max_width(),
-#         cf.mask_area(name="area_px", unit="px2"),
-#     ],
-# )
+cf.run_metrics(
+    PROJECT_PATH,
+    run_name="body_dimensions",
+    transforms=[
+        cf.remove_appendages(),
+        cf.orient(),
+    ],
+    part="abdomen",
+    metrics=[
+        cf.body_length(),
+        cf.max_width(),
+        cf.mask_area(name="area_px", unit="px2"),
+    ],
+)
 #
 # cf.run_metrics(
 #     PROJECT_PATH,
@@ -153,7 +193,7 @@ cf.run_segments(
 #    change the checkpoint and everything is, because the checkpoint is in the
 #    hash.
 #
-# from critterframe.extensions.inat_insects.metrics.bioencoder import (
+# from critterframe.extensions.bioencoder.embedding import (
 #     BioEncoderModel, embedding,
 # )
 #

@@ -151,7 +151,7 @@ def test_positions_export_as_one_column_per_key(measured_project):
     cf.run_metrics(measured_project, run_name="where",
                    metrics=[cf.centroid(), cf.relative_position()],
                    visualize=False)
-    exported = cf.export_metrics(measured_project, runs=["where"])
+    exported = cf.export_metrics(measured_project, run_names=["where"])
 
     assert "where__organism__centroid__x" in exported.columns
     assert "where__organism__relative_position__y" in exported.columns

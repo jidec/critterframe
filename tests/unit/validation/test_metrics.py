@@ -184,6 +184,39 @@ def test_correlation_separates_a_scale_error_from_a_bad_measurement(
     assert row["bias"] > 100
 
 
+def _compare_sidecar(project_path):
+    import json
+
+    from critterframe.project import paths
+
+    [sidecar] = paths.pipeline_dir(project_path).glob("compare_metrics__*.report.json")
+    return json.loads(sidecar.read_text(encoding="utf-8"))
+
+
+def test_visualize_writes_a_scatter_per_pair_and_ranks_the_worst(metadata_project):
+    reference = dict(zip(ids(4), [100.0, 100.0, 100.0, 100.0]))
+    predicted = dict(zip(ids(4), [101.0, 150.0, 90.0, 100.0]))
+    store(metadata_project, "auto", predicted)
+    store(metadata_project, "manual", reference)
+
+    cf.compare_metrics(metadata_project, "auto", "manual", visualize=2)
+
+    record = _compare_sidecar(metadata_project)
+    assert record["shown"] == ["specimen1__body_length", "specimen2__body_length"]
+    assert any(name.endswith("__body_length.png") for name in record["files"])
+
+
+def test_visualize_false_writes_nothing(metadata_project):
+    from critterframe.project import paths
+
+    values = {occurrence_id: 100.0 for occurrence_id in ids()}
+    store(metadata_project, "auto", values)
+    store(metadata_project, "manual", values)
+
+    cf.compare_metrics(metadata_project, "auto", "manual", visualize=False)
+    assert not paths.pipeline_dir(metadata_project).exists()
+
+
 def test_two_runs_with_nothing_in_common_compare_to_nothing(metadata_project,
                                                             caplog):
     with caplog.at_level("WARNING"):

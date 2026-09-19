@@ -1,26 +1,22 @@
 """
-IoU and coverage against reference masks. Compares, persists nothing.
+validate_masks(): IoU and coverage against reference masks. Compares, persists nothing.
 
-Masks are padded to a common shape before comparison, so two masks of one
-occurrence at different resolutions show up as a bad score rather than as a
-crash or a wrong number from a truncated comparison.
+The arithmetic itself is `maskops`, shared with everything else that compares two masks.
 """
 
 import logging
 
-import numpy as np
 import pandas as pd
 
-from ..recipes import DEFAULT_PART, Segment
+from .. import segments as segment_iteration
+from .. import selectionhelpers
+from ..maskops import mask_coverage, mask_iou, pad_to_common_shape
+from ..recipes import DEFAULT_PART, hash_spec
 from ..records import masks as mask_records
 from ..storage.imagestore import ImageStore
-from ..visualization.panels import (
-    PanelFiles,
-    annotate,
-    diff_panel,
-    save_panel,
-    side_by_side,
-)
+from ..visualization import figures
+from ..visualization import pipeline as pipeline_visualization
+from ..visualization.panels import annotate, diff_panel, side_by_side
 
 logger = logging.getLogger(__name__)
 
@@ -30,62 +26,9 @@ LOW_IOU_WARN = 0.7
 LOW_COVERAGE_WARN = 0.7
 
 
-def _pad_to_common_shape(mask, reference):
-    """
-    Pad two boolean masks to their union shape.
-
-    Two masks of the same occurrence should be the same size, since both are
-    in original image coordinates, but a project whose images were
-    re-ingested at a different resolution could break that silently. Padding
-    makes such a mismatch show up as a bad score rather than a crash or,
-    worse, a wrong number from a truncated comparison.
-    """
-    mask = np.asarray(mask) > 0
-    reference = np.asarray(reference) > 0
-
-    if mask.shape == reference.shape:
-        return mask, reference
-
-    height = max(mask.shape[0], reference.shape[0])
-    width = max(mask.shape[1], reference.shape[1])
-
-    def pad(array):
-        padded = np.zeros((height, width), dtype=bool)
-        padded[:array.shape[0], :array.shape[1]] = array
-        return padded
-
-    return pad(mask), pad(reference)
-
-
-def mask_iou(mask, reference):
-    """
-    Intersection over union of two boolean masks, padded to a common shape
-    first.
-    """
-    mask, reference = _pad_to_common_shape(mask, reference)
-    union = int((mask | reference).sum())
-    return (int((mask & reference).sum()) / union) if union else 1.0, mask, reference
-
-
-def mask_coverage(mask, reference):
-    """
-    Fraction of `reference`'s area that `mask` also covers, padded to a
-    common shape first.
-
-    Unlike `mask_iou`, area in `mask` outside `reference` costs nothing. The
-    metric for a predicted mask that only needs to CONTAIN a reference region
-    rather than match its extent -- an organism mask that also picks up the
-    wings is still a perfect answer for a part segmenter that only needs the
-    body present.
-    """
-    mask, reference = _pad_to_common_shape(mask, reference)
-    area = int(reference.sum())
-    return (int((mask & reference).sum()) / area) if area else 1.0
-
-
-def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
-                   transforms=(), steps=None, limit=None, show_worst=5,
-                   visualize=False, metric="iou", label=None):
+def validate_masks(project_path, part=DEFAULT_PART, parts=None,
+                   reference_part=None, transforms=(), steps=None, limit=None,
+                   show_worst=5, visualize=True, metric="iou", label=None):
     """
     Compare masks against the reference masks, per occurrence.
 
@@ -101,6 +44,10 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
 
     - `project_path` -- project to validate.
     - `part` -- part to compare.
+    - `parts` -- several parts, each compared the same way, returning
+      `{part: DataFrame}` instead of one frame. Each gets its own pipeline
+      files. Not combinable with `reference_part`, which names one specific
+      pairing.
     - `reference_part` -- reference part to compare `part` against, if
       different, e.g. a merged part from `merge_masks()`. Defaults to `part`.
     - `transforms` -- optional transforms applied to BOTH masks before
@@ -114,41 +61,61 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
       of the stored canonical masks. Skips the canonical table entirely, so
       the population becomes every occurrence with a reference mask rather
       than the intersection with it. Nothing computed here is persisted.
-    - `limit` -- optional cap on how many occurrences to compare.
+    - `limit` -- cap on the comparison population. There is no already-done
+      concept here -- nothing is persisted, so nothing can be resumed -- which
+      is why this is the one driver with no `max_new=` beside it.
     - `show_worst` -- how many of the lowest-scoring occurrences to log by
       id. 0 disables.
-    - `visualize` -- save a diff panel per compared occurrence: white where
-      the two agree, yellow where only the prediction covers, red where
-      only the reference does. One image each, so pair with `limit`. With
-      `steps`, also surfaces any diagnostic panel a step emits (e.g. a
-      segmentation model's own `visualize()`), written alongside the diff
-      panel under the same `label`.
+    - `visualize` -- True (default) or an int: a pipeline grid of the
+      lowest-scoring occurrences, worst first, each a diff panel (white
+      where the two agree, yellow where only the prediction covers, red
+      where only the reference does), plus a score histogram. A list names
+      occurrences instead. With `steps`, each step's own panels (e.g. a
+      segmentation model's `visualize()`) are columns beside the diff.
+      False writes nothing.
     - `metric` -- `"iou"` (default) or `"coverage"`: the fraction of the
       reference the prediction covers, ignoring any predicted area outside
       it. Use `"coverage"` when extra predicted area shouldn't count against
       a candidate, e.g. an organism mask feeding a part segmenter that only
       needs the body present, not a tight match to the organism's extent.
-    - `label` -- namespaces this call's visualization output under
-      `visualizations/validate_masks/<label>/` instead of the flat
-      `visualizations/validate_masks/`. Pass a distinct label per call when
-      comparing several candidates -- e.g. a parameter sweep -- so one call's
-      output doesn't overwrite another's.
+    - `label` -- names this call's pipeline files `validate_masks__<label>`
+      rather than `validate_masks`, for telling candidates in a sweep apart
+      at a glance. Files are already kept apart by a hash of the comparison's
+      configuration.
 
     Returns a DataFrame indexed by occurrence_id with an `iou` or `coverage`
-    column, matching `metric`.
+    column, matching `metric` -- or `{part: DataFrame}` when `parts` is given.
     """
     if metric not in ("iou", "coverage"):
         raise ValueError(f"metric must be 'iou' or 'coverage', got {metric!r}")
-    reference_part = part if reference_part is None else reference_part
+    if parts and reference_part is not None:
+        raise ValueError(
+            "reference_part names one specific pairing, so it can't be given "
+            "alongside parts= -- validate those parts one call each"
+        )
     transforms = list(transforms)
-    subdir = "validate_masks" if label is None else f"validate_masks/{label}"
 
+    if parts:
+        return {
+            target_part: _validate_one_part(
+                project_path, target_part, target_part, transforms, steps,
+                limit, show_worst, visualize, metric, label)
+            for target_part in parts
+        }
+    return _validate_one_part(
+        project_path, part, part if reference_part is None else reference_part,
+        transforms, steps, limit, show_worst, visualize, metric, label)
+
+
+def _validate_one_part(project_path, part, reference_part, transforms, steps,
+                       limit, show_worst, visualize, metric, label):
+    """Compare one part against its reference. Split out so the loop stays readable."""
     reference = mask_records.mask_lookup(project_path, part=reference_part,
                                          reference=True)
 
     if steps is None:
         predicted = mask_records.mask_lookup(project_path, part=part)
-        occurrence_ids = sorted(set(predicted) & set(reference))
+        occurrence_ids = selectionhelpers.require_present(predicted, reference=reference)
         missing = len(reference) - len(occurrence_ids)
         if missing:
             logger.warning("%d reference mask(s) have no canonical '%s' mask to "
@@ -161,13 +128,26 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
     if limit is not None:
         occurrence_ids = occurrence_ids[:limit]
 
-    needs_images = bool(transforms) or visualize or steps is not None
+    identity = {
+        "kind": "validate_masks",
+        "part": part,
+        "reference_part": reference_part,
+        "metric": metric,
+        "transforms": [operation.spec() for operation in transforms],
+        "steps": None if steps is None else [operation.spec() for operation in steps],
+    }
+    report = pipeline_visualization.open_report(
+        project_path, "validate_masks" if label is None else f"validate_masks__{label}",
+        hash_spec(identity), part=part, visualize=visualize, rank="lowest",
+        identity=identity).begin(occurrence_ids)
+    low_warn = LOW_IOU_WARN if metric == "iou" else LOW_COVERAGE_WARN
+
+    needs_images = bool(transforms) or bool(report) or steps is not None
     rows = []
-    panel_sink = (PanelFiles(project_path, prefix=subdir)
-                  if visualize and steps is not None else None)
 
     with ImageStore(project_path, readonly=True) as images:
         for occurrence_id in occurrence_ids:
+            score = None
             try:
                 image = images.get(occurrence_id) if needs_images else None
                 gt = mask_records.decode_mask(reference[occurrence_id])
@@ -176,7 +156,7 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
                     if image is None:
                         raise ValueError("no image in the image store")
                     mask = _compute(project_path, image, occurrence_id, part, steps,
-                                    panel_sink=panel_sink)
+                                    panel_sink=report.sink(occurrence_id))
                 else:
                     mask = mask_records.decode_mask(predicted[occurrence_id])
 
@@ -188,25 +168,34 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
                     gt = _apply(project_path, image, gt, occurrence_id, part,
                                 transforms)
 
-                if metric == "iou":
-                    score, mask, gt = mask_iou(mask, gt)
-                else:
-                    mask, gt = _pad_to_common_shape(mask, gt)
-                    score = mask_coverage(mask, gt)
+                # Padded here as well as inside the measure, so the diff
+                # panel draws the same two arrays the score was computed from.
+                mask, gt = pad_to_common_shape(mask, gt)
+                score = mask_iou(mask, gt) if metric == "iou" \
+                    else mask_coverage(mask, gt)
 
-                if visualize:
-                    low_warn = LOW_IOU_WARN if metric == "iou" else LOW_COVERAGE_WARN
-                    _visualize(project_path, image, mask, gt, score, occurrence_id,
-                              part, column=metric, low_warn=low_warn, subdir=subdir)
+                if report.wants(occurrence_id):
+                    report.panel(occurrence_id, "compare",
+                                 _diff_panel(image, mask, gt, score, column=metric,
+                                             low_warn=low_warn))
 
                 rows.append({"occurrence_id": occurrence_id, metric: score})
 
             except Exception as exc:
+                report.failure(occurrence_id, exc)
                 logger.warning("mask comparison failed for %s: %s",
                                occurrence_id, exc)
 
+            report.done(occurrence_id, rank_value=score)
+
     df = (pd.DataFrame(rows).set_index("occurrence_id") if rows
           else pd.DataFrame(columns=[metric]).rename_axis("occurrence_id"))
+
+    if report and not df.empty:
+        report.figure(metric, figures.histogram(
+            df[metric].tolist(), bins=20, xlabel=metric, marks={"low": low_warn},
+            title=f"{part} vs reference {reference_part}: {metric} (n={len(df)})"))
+    report.close()
 
     _log_summary(df, part, show_worst, column=metric)
     return df
@@ -214,15 +203,20 @@ def validate_masks(project_path, part=DEFAULT_PART, reference_part=None,
 
 def _apply(project_path, image, mask, occurrence_id, part, transforms):
     """
-    Run a transform chain over one mask and return the result. Both the
-    prediction and the reference go through this, so whatever the chain does,
-    it does to both.
+    Run a transform chain over one mask and return the result, in ORIGINAL image coordinates.
+
+    Both the prediction and the reference go through this, so whatever the
+    chain does, it does to both -- but each side's own geometry drives it, so
+    a transform that moves pixels (crop_to_mask, orient) leaves the two in
+    different frames. Inverting each back to the frame they were stored in is
+    what keeps the comparison between the same pixels.
     """
-    state = Segment(image, mask=mask, occurrence_id=occurrence_id, part=part,
-                    project_path=project_path)
+    state = segment_iteration.build_segment(
+        image, mask=mask, occurrence_id=occurrence_id, part=part,
+        project_path=project_path)
     for operation in transforms:
         state, _info = operation(state)
-    return state.mask
+    return state.mask_in_original_coordinates()
 
 
 def _compute(project_path, image, occurrence_id, part, steps, panel_sink=None):
@@ -230,16 +224,21 @@ def _compute(project_path, image, occurrence_id, part, steps, panel_sink=None):
     Run a segmentation chain over one image and return the resulting mask,
     warped back to original coordinates -- the frame reference masks are
     stored in, in case `steps` moved pixels before segmenting.
+
+    Built here rather than through `segments.iterate_segments`: this report
+    ranks by score, so it commits an item's panels when `done()` is called
+    with that score, and the shared loop's own `done()` would commit each one
+    before the comparison has produced it.
     """
-    state = Segment(image, occurrence_id=occurrence_id, part=part,
-                    project_path=project_path, panel_sink=panel_sink)
+    state = segment_iteration.build_segment(
+        image, occurrence_id=occurrence_id, part=part,
+        project_path=project_path, panel_sink=panel_sink)
     for operation in steps:
         state, _info = operation(state)
     return state.mask_in_original_coordinates()
 
 
-def _visualize(project_path, image, mask, gt, score, occurrence_id, part,
-               column="iou", low_warn=LOW_IOU_WARN, subdir="validate_masks"):
+def _diff_panel(image, mask, gt, score, column="iou", low_warn=LOW_IOU_WARN):
     """The image beside a colour-coded agreement panel."""
     panel = diff_panel(mask, gt)
     annotate(panel, f"{column} {score:.2f}{'  LOW' if score < low_warn else ''}")
@@ -247,9 +246,7 @@ def _visualize(project_path, image, mask, gt, score, occurrence_id, part,
 
     if image is not None and image.shape[:2] == panel.shape[:2]:
         panel = side_by_side(image, panel)
-
-    save_panel(project_path, panel, f"{occurrence_id}_{part}_{column}{score:.2f}",
-                       subdir=subdir)
+    return panel
 
 
 def _log_summary(df, part, show_worst, column="iou"):
@@ -270,6 +267,6 @@ def _log_summary(df, part, show_worst, column="iou"):
                     len(df), 100 * below / len(df))
 
     if show_worst:
-        worst = values.sort_values().head(show_worst)
+        worst = selectionhelpers.worst_n(values, show_worst)
         logger.info("  worst %d: %s", len(worst),
-                    ", ".join(f"{occ}={value:.3f}" for occ, value in worst.items()))
+                    ", ".join(f"{occ}={value:.3f}" for occ, value in worst))

@@ -52,11 +52,13 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import requests
 
+from .... import download as core_download
 from ....calibrations import scale as scale_calibration
+from ....recipes import hash_spec
 from ....records import calibrations as calibration_records
-from ....visualization.panels import save_panel
+from ....visualization import figures
+from ....visualization import pipeline as pipeline_visualization
 from .. import api
 
 logger = logging.getLogger(__name__)
@@ -73,6 +75,10 @@ CARD_REGION = (0.0, 0.0, 0.5, 0.5)
 # off the capture record and the occurrence table.
 SCOPE_COL = "event_id"
 SOURCE = "antenna_card"
+
+# (connect, read) timeout for one sheet. Long, because a sheet is around 20 MB
+# and a slow one here is normal rather than a fault.
+SHEET_TIMEOUT = (10, 300)
 
 
 def template_path(project_path):
@@ -97,10 +103,10 @@ def load_template(project_path):
     return template
 
 
-def _pending_events(project_path, limit=None):
+def _pending_events(project_path, max_new=None):
     """Events in the occurrence table with no scale measured yet."""
     return scale_calibration.pending_scope_values(project_path, SCOPE_COL,
-                                                  limit=limit)
+                                                  max_new=max_new)
 
 
 def _first_sheet_for_event(session, event, project=None):
@@ -135,43 +141,39 @@ def _first_sheet_for_event(session, event, project=None):
     return None
 
 
-def _download_sheet(url, session=None, timeout=300):
+def _download_sheet(url, session=None, timeout=SHEET_TIMEOUT):
     """
     Fetch one sheet image's bytes from its presigned url and decode to BGR.
 
-    A plain unauthenticated GET -- the url carries its own auth in the query
-    string, which is the whole point of routing through the captures endpoint.
+    The fetch and the decodable check are core's (`download._download_image`),
+    so a sheet that comes back as an HTML error page fails the same way a
+    crop's would. Only the decode to an array is this module's, since core
+    stores bytes and this measures pixels.
 
-    session -- optional requests session to fetch through. The url needs no
-               authentication, so this is not about credentials: it is so one
-               session covers a whole scale pass (connection reuse over twenty
-               20 MB downloads is not nothing), and so a caller can hand in
-               something else entirely. Every other network call in the package
-               takes one; this is the last that did not.
-
-    These are full-resolution sheets, around 20 MB each, and that download is
-    the slow part of a scale pass now that the metadata isn't. Logged with its
-    size and duration, because a minute of silence per event is what sent
-    someone looking for a hang last time. The timeout is generous for the same
-    reason: a slow 20 MB is normal here, not a fault.
+    - `url` -- presigned url from the captures endpoint.
+    - `session` -- requests session to fetch through, for connection reuse
+      across a pass. It should be an UNAUTHENTICATED one: the url carries its
+      own credentials in the query string, and object storage can reject a
+      request that also presents an Authorization header.
+    - `timeout` -- (connect, read) timeout. Generous: these are
+      full-resolution sheets, around 20 MB each, and a slow one is normal here
+      rather than a fault.
     """
     started = time.perf_counter()
-    response = (session or requests).get(url, timeout=timeout)
-    response.raise_for_status()
+    content = core_download._download_image(url, session or core_download.make_session(),
+                                            timeout=timeout)
 
-    image = cv2.imdecode(np.frombuffer(response.content, dtype=np.uint8),
-                         cv2.IMREAD_COLOR)
+    image = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_COLOR)
     if image is None:
         raise ValueError("could not decode the sheet image")
 
     height, width = image.shape[:2]
-    logger.info("  fetched %.1f MB in %.1fs -> %dx%d",
-                len(response.content) / 1e6, time.perf_counter() - started,
-                width, height)
+    logger.info("  fetched %.1f MB in %.1fs -> %dx%d", len(content) / 1e6,
+                time.perf_counter() - started, width, height)
     return image
 
 
-def measure_scales(project_path, project=None, limit=None, visualize=False,
+def measure_scales(project_path, project=None, max_new=None, visualize=True,
                    session=None):
     """
     Measure scale for every event that doesn't have one yet, and record it.
@@ -199,35 +201,60 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
     - `project` -- Antenna project id to read captures from; taken from the
       environment (`ANTENNA_PROJECT_ID`) if omitted, the same way every
       other Antenna call resolves it.
+    - `max_new` -- cap on events MEASURED, applied after the ones that
+      already have a scale are excluded -- so it measures that many more
+      each time it runs. There is no `limit=` here: an event is the unit,
+      and the pending set is already the whole population.
     - `session` -- authenticated session to use; one is created if omitted.
       Passing one lets a script share it with a download pass, and is what
       makes this function reachable without credentials.
+    - `visualize` -- True (default) or an int: a pipeline grid of the
+      weakest card matches by event, each cropped to the card's quadrant,
+      plus a px/mm histogram. A list names events instead. False writes
+      nothing.
 
     Returns a summary dict (saved, failed, unaddressable).
     """
     template = load_template(project_path)
 
-    pending = _pending_events(project_path, limit=limit)
+    pending = _pending_events(project_path, max_new=max_new)
     if not pending:
         logger.info("every event already has a scale -- nothing to measure")
         return {"saved": 0, "failed": 0, "unaddressable": 0}
 
     session = session or api.get_session()
+    # Two sessions on purpose: the API one is authenticated, while a presigned
+    # storage url carries its own credentials in the query string and can be
+    # rejected for presenting a second set.
+    storage_session = core_download.make_session()
     logger.info("%d event(s) pending scale measurement; one sheet image each, "
                 "around 20 MB apiece", len(pending))
 
+    identity = {"kind": "antenna_measure_scales",
+                "template": scale_calibration.image_digest(template),
+                "target_mm": CIRCLE_DIAMETER_MM, "region": list(CARD_REGION),
+                "scope": SCOPE_COL, "source": SOURCE}
+    report = pipeline_visualization.open_report(
+        project_path, "measure_scales__antenna", hash_spec(identity),
+        visualize=visualize,
+        rank="lowest", identity=identity).begin([str(event) for event in pending])
+
     rows = []
+    measured_px = []
     failed = 0
     unaddressable = 0
     started = time.perf_counter()
 
     for index, event in enumerate(pending, start=1):
         logger.info("event %s (%d of %d)", event, index, len(pending))
+        item = str(event)
 
         try:
             sheet = _first_sheet_for_event(session, event, project=project)
         except Exception as exc:
             failed += 1
+            report.failure(item, exc)
+            report.done(item)
             logger.warning("  could not look up sheets for event %s: %s", event, exc)
             continue
 
@@ -236,13 +263,15 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
         # because there is nothing here to fix.
         if sheet is None:
             unaddressable += 1
+            report.done(item)
             logger.info("  no sheet image for this event; skipping")
             continue
 
         capture_id, url = sheet
+        score = None
 
         try:
-            image = _download_sheet(url, session=session)
+            image = _download_sheet(url, session=storage_session)
 
             result = scale_calibration.scale_from_target(
                 image, template, CIRCLE_DIAMETER_MM, region=CARD_REGION,
@@ -250,18 +279,27 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
             if result is None:
                 raise ValueError("no scale target detected")
 
-            if visualize:
-                save_panel(project_path,
-                           scale_calibration.scale_panel(image, result),
-                           str(capture_id), subdir="scale")
+            if report.wants(item):
+                report.panel(item, "card", _card_panel(image, result))
 
             rows.append(scale_calibration.make_scale_row(
                 SCOPE_COL, event, result["px_per_mm"], source=SOURCE,
                 score=result["score"], measured_from=str(capture_id)))
+            measured_px.append(result["px_per_mm"])
+            score = result["score"]
 
         except Exception as exc:
             failed += 1
+            report.failure(item, exc)
             logger.warning("  scale measurement failed for event %s: %s", event, exc)
+
+        report.done(item, rank_value=score)
+
+    if report and measured_px:
+        report.figure("px_per_mm", figures.histogram(
+            measured_px, bins=20, xlabel="px/mm",
+            title=f"card scale per event (n={len(measured_px)})"))
+    report.close()
 
     calibration_records.save_calibrations(project_path, rows)
     logger.info("event scale pass complete in %.0fs: saved=%d failed=%d "
@@ -269,3 +307,11 @@ def measure_scales(project_path, project=None, limit=None, visualize=False,
                 failed, unaddressable)
     return {"saved": len(rows), "failed": failed,
             "unaddressable": unaddressable}
+
+
+def _card_panel(image, result):
+    """The matched card drawn on its sheet, cropped to the quadrant it's searched in."""
+    panel = scale_calibration.scale_panel(image, result)
+    height, width = panel.shape[:2]
+    left, top, right, bottom = CARD_REGION
+    return panel[int(top * height):int(bottom * height), int(left * width):int(right * width)]

@@ -11,10 +11,13 @@ extensions.smp_segmenter.training for training one from a project's own masks.
 """
 
 import logging
+from pathlib import Path
 
 import cv2
 import numpy as np
 
+from ...devices import resolve_device
+from ...records.models import fingerprint_file, load_and_attach
 from ...visualization.panels import annotate, overlay_mask
 
 logger = logging.getLogger(__name__)
@@ -54,33 +57,62 @@ class SMPSegmenter:
         self.encoder_name = encoder_name
         self.size = size
         self._device = device
+        self._fingerprint = None
         self.model = None
 
     def identity(self):
         """
         What this model contributes to a recipe hash: architecture, encoder,
-        working size, and the checkpoint path.
+        working size, and the checkpoint's CONTENT.
 
-        A bare path, not a fingerprint -- used standalone (not wrapped in a
-        RegisteredModel) two different checkpoints saved to the same path
-        over time would collide in the hash, the same tradeoff
-        inat_insects.metrics.bioencoder.BioEncoderModel makes. Wrap in
-        records.models.register_model()/load_model() for a hash that moves
-        when the weights do.
+        The threshold isn't here: it belongs to `segment()`, which already
+        hashes it, and it means a logit to this model exactly as it does to
+        GroundedSAM2 (see `predict`).
+
+        The fingerprint, not the path, for the reason a `RegisteredModel`
+        keeps the path out of its own identity: two copies of one checkpoint
+        are the same model, and two different checkpoints written to one path
+        over a project's life are not. Read once and cached -- `Recipe.hash`
+        is asked many times per run and a checkpoint is hundreds of megabytes
+        -- so REPLACING the file under a live object keeps the old identity;
+        build a new segmenter after retraining.
         """
         return {
             "class": "SMPSegmenter",
             "architecture": "unetplusplus",
             "encoder": self.encoder_name,
             "size": self.size,
-            "checkpoint": str(self.checkpoint) if self.checkpoint else None,
+            "version": "2",
+            "checkpoint": self.fingerprint,
         }
+
+    @property
+    def fingerprint(self):
+        """
+        The checkpoint's content digest, read once (see `identity`).
+
+        A path that isn't there yet is recorded as the string it is: a
+        freshly-built training network has no weights to hash, and hashing a
+        missing directory would quietly answer "empty" for every one of them.
+        """
+        if self._fingerprint is None and self.checkpoint is not None:
+            path = Path(self.checkpoint)
+            self._fingerprint = (fingerprint_file(path) if path.exists()
+                                 else str(self.checkpoint))
+        return self._fingerprint
+
+    @classmethod
+    def from_checkpoint(cls, checkpoint, **kwargs):
+        """
+        This segmenter over a checkpoint on disk -- the plain constructor,
+        named so it pairs with `load_registered` below.
+        """
+        return cls(checkpoint=checkpoint, **kwargs)
 
     @property
     def device(self):
         if self._device is None:
-            import torch
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._device = resolve_device()
         return self._device
 
     def _load(self):
@@ -106,15 +138,15 @@ class SMPSegmenter:
             self.model.load_state_dict(state)
         self.model.eval()
 
-    def predict(self, image, mask_threshold=0.5):
+    def predict(self, image, mask_threshold=0.0):
         """
         Segment one organism (or part) out of an image.
 
         - `image` -- RGB array, the convention every segmenter in this
           package uses.
-        - `mask_threshold` -- a PROBABILITY cutoff, unlike GroundedSAM2's
-          logit threshold: a pixel is kept where the model's sigmoid output
-          exceeds this. 0.5 is neutral.
+        - `mask_threshold` -- a LOGIT cutoff, the same space GroundedSAM2
+          uses and the space `segment()` documents: 0.0 is neutral (logit 0
+          is probability 0.5), negative grows the mask, positive shrinks it.
 
         Returns (mask, score, info): score is the mean predicted probability
         over the kept mask, or None if the mask came out empty.
@@ -130,14 +162,19 @@ class SMPSegmenter:
         tensor = tensor.to(self.device)
 
         with torch.no_grad():
-            logits = self.model(tensor)
-            probs = torch.sigmoid(logits)[0, 0].cpu().numpy()
+            logits = self.model(tensor)[0, 0].cpu().numpy()
 
-        probs_full = cv2.resize(probs, (width, height), interpolation=cv2.INTER_LINEAR)
-        mask = probs_full > mask_threshold
+        # Thresholded in logit space, so segment(mask_threshold=...) means one
+        # thing across segmenters. Read as a probability, segment()'s neutral
+        # 0.0 would keep every pixel whose sigmoid exceeds zero -- the whole
+        # frame -- rather than every pixel the model calls organism.
+        logits_full = cv2.resize(logits, (width, height), interpolation=cv2.INTER_LINEAR)
+        mask = logits_full > mask_threshold
 
-        info = {"encoder": self.encoder_name, "mask_threshold": mask_threshold}
-        score = float(probs_full[mask].mean()) if mask.any() else None
+        info = {"encoder": self.encoder_name, "mask_threshold": mask_threshold,
+                "threshold_space": "logit"}
+        score = (float(np.mean(1.0 / (1.0 + np.exp(-logits_full[mask]))))
+                 if mask.any() else None)
         return mask, score, info
 
     def visualize(self, segment, image, mask, score, info):
@@ -182,6 +219,4 @@ def load_registered(project_path, name):
 
     Returns a RegisteredModel with an SMPSegmenter attached.
     """
-    from ...records.models import load_and_attach
-
-    return load_and_attach(project_path, name, SMPSegmenter)
+    return load_and_attach(project_path, name, SMPSegmenter.from_checkpoint)

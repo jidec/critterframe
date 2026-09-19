@@ -276,3 +276,76 @@ def test_the_model_runs_through_a_real_run(image_project):
     result = cf.run_segments(image_project, steps=[cf.segment(cf.sam2())],
                              limit=2, visualize=False)["organism"]
     assert result["processed"] + result["failed"] == 2
+
+
+# ---------------------------------------------------------------------------
+# The detection prompt's form
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("prompt", ["Dragonfly.", "dragonfly"])
+def test_a_prompt_grounding_dino_reads_badly_is_warned_about(prompt, caplog):
+    with caplog.at_level("WARNING"):
+        model = cf.groundedsam2(text_prompt=prompt)
+    assert "lowercase phrase ending in a period" in caplog.text
+    assert model.identity()["text_prompt"] == prompt   # warned about, never rewritten
+
+
+def test_a_well_formed_prompt_is_not_warned_about(caplog):
+    with caplog.at_level("WARNING"):
+        cf.groundedsam2(text_prompt="dragonfly.")
+    assert "lowercase phrase" not in caplog.text
+
+
+def test_no_detector_means_no_prompt_to_warn_about(caplog):
+    with caplog.at_level("WARNING"):
+        cf.sam2(text_prompt="Dragonfly")
+    assert "lowercase phrase" not in caplog.text
+
+
+# ---------------------------------------------------------------------------
+# What a detection reports about the other boxes it found
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("a, b, expected", [
+    ([0, 0, 10, 10], [20, 20, 30, 30], 0.0),    # disjoint
+    ([0, 0, 10, 10], [0, 0, 10, 10], 1.0),      # identical
+    ([0, 0, 10, 10], [0, 0, 5, 10], 0.5),       # one inside the other
+])
+def test_box_iou(a, b, expected):
+    from critterframe.segmentation.groundedsam import _box_iou
+    assert _box_iou(a, b) == pytest.approx(expected)
+
+
+def _detecting_model(monkeypatch, boxes):
+    model = cf.groundedsam2(text_prompt="dragonfly.")
+    monkeypatch.setattr(model, "detect_boxes", lambda image: boxes)
+    monkeypatch.setattr(model, "_predict", lambda image, **kwargs:
+                        (np.ones((20, 30), bool), 0.9))
+    return model
+
+
+def test_a_second_separate_box_is_reported(monkeypatch):
+    model = _detecting_model(monkeypatch, [([0, 0, 10, 10], 0.8),
+                                           ([20, 0, 30, 10], 0.4)])
+    _mask, _score, info = model.predict(np.zeros((20, 30, 3), np.uint8))
+    assert info["n_boxes"] == 2
+    assert info["second_box_score"] == pytest.approx(0.4)
+    assert info["second_box_iou"] == 0.0
+    assert info["box_score"] == pytest.approx(0.8)
+
+
+def test_a_single_box_reports_no_runner_up_without_a_missing_score(monkeypatch):
+    """0.0 rather than missing: a missing value never passes an export filter."""
+    model = _detecting_model(monkeypatch, [([0, 0, 10, 10], 0.8)])
+    _mask, _score, info = model.predict(np.zeros((20, 30, 3), np.uint8))
+    assert (info["n_boxes"], info["second_box_score"], info["second_box_iou"]) == (1, 0.0, None)
+
+
+def test_detect_still_returns_the_best_box_alone(monkeypatch):
+    model = cf.groundedsam2(text_prompt="dragonfly.")
+    monkeypatch.setattr(model, "detect_boxes", lambda image: [([0, 0, 1, 1], 0.7)])
+    assert model.detect(None) == ([0, 0, 1, 1], 0.7)
+    monkeypatch.setattr(model, "detect_boxes", lambda image: [])
+    assert model.detect(None) == (None, 0.0)

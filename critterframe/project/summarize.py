@@ -6,7 +6,7 @@ import logging
 
 from ..recipes import DEFAULT_PART, describe_spec
 from ..records import masks as mask_records
-from ..records.metrics import load_metrics
+from ..records.metrics import TRANSFORM_INFO_UNIT, load_metrics
 from ..records.occurrences import load_occurrences
 from ..records.runs import current_recipe_pointers, load_runs
 from ..storage.imagestore import ImageStore
@@ -28,7 +28,7 @@ def summarize(project_path, head=6):
     pre-rendered glance doesn't already serve, and pre-rendering keeps this
     dict JSON-friendly (a DataFrame isn't).
 
-    head -- rows to preview, R's head() default of 6.
+    - `head` -- rows to preview, R's head() default of 6.
     """
     paths.require_project(project_path)
 
@@ -69,10 +69,15 @@ def summarize(project_path, head=6):
 
     metrics = load_metrics(project_path)
     if not metrics.empty:
+        # A metric run's recorded transform info is kept apart: it describes
+        # how a value was measured, not a value anyone asked for.
+        is_info = metrics["unit"] == TRANSFORM_INFO_UNIT
+        values = metrics[~is_info]
         summary["metrics"] = {
-            "values": len(metrics),
-            "names": sorted(metrics["metric_name"].unique()),
-            "occurrences_measured": int(metrics["occurrence_id"].nunique()),
+            "values": len(values),
+            "names": sorted(values["metric_name"].unique()),
+            "occurrences_measured": int(values["occurrence_id"].nunique()),
+            "transform_info": sorted(metrics.loc[is_info, "metric_name"].unique()),
         }
 
     return summary
@@ -117,7 +122,7 @@ def print_summary(project_path, head=6):
     """
     Print summarize()'s result in a readable block. Returns the summary too.
 
-    head -- rows of the occurrence table to preview; see summarize().
+    - `head` -- rows of the occurrence table to preview; see summarize().
     """
     summary = summarize(project_path, head=head)
 
@@ -154,6 +159,8 @@ def print_summary(project_path, head=6):
         print(f"  metric values : {metrics['values']} over "
               f"{metrics['occurrences_measured']} occurrences")
         print(f"  metric names  : {', '.join(metrics['names'])}")
+        if metrics["transform_info"]:
+            print(f"  transform info: {', '.join(metrics['transform_info'])}")
 
     return summary
 

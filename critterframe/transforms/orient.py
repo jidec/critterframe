@@ -185,8 +185,8 @@ def apply_affine(array, matrix, size, flags=cv2.INTER_NEAREST):
     Warp an array by a 2x3 affine into a (width, height) canvas, padding with
     zeros -- harmless for both a mask (False) and an image (black).
 
-    flags -- interpolation. INTER_NEAREST for masks (no new values, stays
-             binary); INTER_LINEAR for images where smoothing is acceptable.
+    - `flags` -- interpolation. INTER_NEAREST for masks (no new values, stays
+      binary); INTER_LINEAR for images where smoothing is acceptable.
     """
     return cv2.warpAffine(array, matrix, size, flags=flags)
 

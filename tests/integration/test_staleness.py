@@ -124,7 +124,8 @@ def test_the_full_history_is_still_reachable(measured_project):
     everything = cf.export_metrics(measured_project, current_only=False)
     assert len(current) == SPECIMENS
     assert len(everything) == SPECIMENS
-    assert len(load_metrics(measured_project)) == SPECIMENS * 7 * 2
+    # 7 metrics plus remove_appendages' and orient's recorded info, per occurrence.
+    assert len(load_metrics(measured_project)) == SPECIMENS * (7 + 2) * 2
 
 
 def test_resegmenting_one_occurrence_leaves_its_neighbours_current(measured_project):

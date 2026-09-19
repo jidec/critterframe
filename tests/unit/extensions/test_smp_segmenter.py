@@ -46,12 +46,53 @@ def test_a_recipe_naming_it_can_be_hashed_without_torch():
 def test_the_checkpoint_is_part_of_the_identity():
     """
     Two checkpoints are not equivalent work, same reasoning as
-    inat_insects.metrics.bioencoder.BioEncoderModel.
+    bioencoder.embedding.BioEncoderModel.
     """
     first = segmentation.smp_segmenter(checkpoint="a.pt").identity()
     second = segmentation.smp_segmenter(checkpoint="b.pt").identity()
     assert first != second
     assert first["checkpoint"] == "a.pt"
+
+
+def test_the_identity_is_the_checkpoints_content_not_its_path(tmp_path):
+    """
+    CLAUDE.md's registered-model rule, applied to a standalone segmenter too:
+    two copies of one checkpoint are the same model, and two different
+    checkpoints written to one path over a project's life are not. A bare path
+    got both backwards.
+    """
+    first = tmp_path / "a.pt"
+    first.write_bytes(b"weights-one")
+    copied = tmp_path / "copy_of_a.pt"
+    copied.write_bytes(b"weights-one")
+    retrained = tmp_path / "retrained.pt"
+    retrained.write_bytes(b"weights-two")
+
+    identity = segmentation.smp_segmenter(checkpoint=first).identity()
+    assert identity == segmentation.smp_segmenter(checkpoint=copied).identity()
+    assert identity != segmentation.smp_segmenter(checkpoint=retrained).identity()
+    assert str(first) not in str(identity)
+
+
+def test_the_checkpoint_is_read_once(tmp_path, monkeypatch):
+    """
+    Recipe.hash asks for identity() many times over a run, and a checkpoint is
+    hundreds of megabytes -- re-hashing it per call would cost more than the
+    segmentation.
+    """
+    from critterframe.records import models as model_records
+
+    checkpoint = tmp_path / "weights.pt"
+    checkpoint.write_bytes(b"weights")
+
+    reads = []
+    real = model_records.fingerprint_file
+    monkeypatch.setattr(segmentation, "fingerprint_file",
+                        lambda path: reads.append(path) or real(path))
+
+    model = segmentation.smp_segmenter(checkpoint=checkpoint)
+    assert model.identity() == model.identity()
+    assert len(reads) == 1
 
 
 def test_the_encoder_and_size_are_part_of_the_identity():
@@ -115,6 +156,76 @@ def test_prepare_dataset_defaults_to_reference_masks(segmented_project, tmp_path
 
 
 # ---------------------------------------------------------------------------
+# register_trained(): what load_registered() needs, recorded
+# ---------------------------------------------------------------------------
+
+
+def test_register_trained_records_what_loading_it_back_needs(segmented_project,
+                                                             tmp_path):
+    """
+    load_registered() reads encoder_name/size out of the registry's own
+    parameters. Registered by hand without them -- which is what this module's
+    own example used to show -- a model loads under whatever the module
+    defaults happen to be at load time, silently, which is the exact failure
+    load_registered() exists to prevent.
+    """
+    from critterframe.extensions.smp_segmenter import training
+
+    dataset_dir = tmp_path / "dataset"
+    training.prepare_dataset(segmented_project, dataset_dir, reference=False,
+                             fractions={"train": 1.0})
+    checkpoint = tmp_path / "weights.pt"
+    checkpoint.write_bytes(b"not really weights, but bytes to fingerprint")
+
+    registered = training.register_trained(
+        segmented_project, "aux_v1", checkpoint, dataset_dir,
+        encoder_name="resnet18", size=256)
+
+    assert registered.record["parameters"] == {"encoder_name": "resnet18",
+                                               "size": 256}
+    assert registered.record["task"] == "segment"
+    assert registered.record["fingerprint"]
+    # The dataset is recorded by what it holds, not just where it sat.
+    assert registered.record["training_data"]["dataset"]["data_hash"]
+
+
+def test_a_registered_model_loads_back_with_the_architecture_it_was_trained_with(
+        segmented_project, tmp_path):
+    """The round trip: what register_trained wrote is what load_registered builds."""
+    from critterframe.extensions.smp_segmenter import training
+
+    dataset_dir = tmp_path / "dataset"
+    training.prepare_dataset(segmented_project, dataset_dir, reference=False,
+                             fractions={"train": 1.0})
+    checkpoint = tmp_path / "weights.pt"
+    checkpoint.write_bytes(b"bytes")
+    training.register_trained(segmented_project, "aux_v1", checkpoint,
+                              dataset_dir, encoder_name="resnet18", size=256)
+
+    loaded = segmentation.load_registered(segmented_project, "aux_v1")
+    assert (loaded.runtime.encoder_name, loaded.runtime.size) == ("resnet18", 256)
+    # identity() still answers from the registry, not from the attached
+    # segmenter's own fingerprint -- a registered model's provenance wins.
+    assert loaded.identity()["class"] == "RegisteredModel"
+
+
+def test_training_curves_are_drawn_without_torch(tmp_path):
+    """The figures train() ends with need matplotlib only, so they're checked unconditionally."""
+    from critterframe.extensions.smp_segmenter import training
+    from critterframe.visualization.pipeline import open_report
+
+    history = {f"{phase}_{metric}": [0.9, 0.5, 0.4] for phase in ("train", "val")
+               for metric in ("loss", "f1", "auroc", "iou")}
+    report = open_report(tmp_path, "train__smp_resnet18", "abc").begin([])
+    training._training_figures(report, history, ("train", "val"), best_epoch=3)
+
+    from critterframe.project import paths
+    written = sorted(path.name for path in paths.pipeline_dir(tmp_path).glob("*.png"))
+    assert written == ["train__smp_resnet18_abc__loss.png", "train__smp_resnet18_abc__scores.png"]
+    assert "torch" not in sys.modules
+
+
+# ---------------------------------------------------------------------------
 # Actually training and running the network
 # ---------------------------------------------------------------------------
 
@@ -138,8 +249,15 @@ def test_a_trained_checkpoint_loads_and_predicts(segmented_project, tmp_path,
         fractions={"train": 0.75, "val": 0.25})
 
     checkpoint = training.train(manifest, dataset_dir, encoder_name="resnet18",
-                                size=64, num_epochs=1, batch_size=2, num_workers=0)
+                                size=64, num_epochs=1, batch_size=2, num_workers=0,
+                                project_path=segmented_project)
     assert checkpoint.exists()
+
+    from critterframe.project import paths
+    written = sorted(path.name for path in
+                     paths.pipeline_dir(segmented_project).glob("train__smp_resnet18_*"))
+    assert any(name.endswith("__epoch0001.jpg") for name in written)
+    assert any(name.endswith("__loss.png") for name in written)
 
     model = segmentation.smp_segmenter(checkpoint=checkpoint,
                                        encoder_name="resnet18", size=64)

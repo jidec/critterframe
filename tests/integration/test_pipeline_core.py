@@ -42,7 +42,7 @@ def test_a_project_can_be_built_from_nothing_but_a_folder_of_images(tmp_path):
 
     ingested = cf.ingest_images(project, images,
                                 metadata=specimen_metadata(ids))
-    assert ingested["saved"] == SPECIMENS
+    assert ingested["processed"] == SPECIMENS
     assert paths.occurrences_path(project).exists()
     assert not paths.masks_path(project).exists()
 

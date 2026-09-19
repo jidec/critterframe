@@ -18,8 +18,15 @@ import logging
 import cv2
 import numpy as np
 
+from ..maskops import mask_iou
 from ..recipes import Segmentation
-from ..visualization.panels import annotate, overlay_mask
+from ..visualization.panels import (
+    ADDED_COLOR,
+    REMOVED_COLOR,
+    annotate,
+    diff_panel,
+    overlay_mask,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +53,8 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     validate_masks reports as if the segmenter had erred. Screen with
     usability_annotation first, then run this over the crops flagged usable.
 
-    brush_radius -- starting brush size in pixels; adjustable in-session with
-                    '+'/'-' and not itself re-hashed by that adjustment.
+    - `brush_radius` -- starting brush size in pixels; adjustable in-session
+      with '+'/'-' and not itself re-hashed by that adjustment.
     """
     return Segmentation("correct_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": False},
@@ -62,8 +69,8 @@ def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     first training set where there's nothing to correct yet. Same window and
     controls as correct_mask(), just starting from an empty mask.
 
-    brush_radius -- starting brush size in pixels; adjustable in-session with
-                    '+'/'-' and not itself re-hashed by that adjustment.
+    - `brush_radius` -- starting brush size in pixels; adjustable in-session
+      with '+'/'-' and not itself re-hashed by that adjustment.
     """
     return Segmentation("draw_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": True},
@@ -161,8 +168,6 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
     area_after = int(corrected.sum())
     removed = int((original & ~corrected).sum())
     added = int((corrected & ~original).sum())
-    intersection = int((original & corrected).sum())
-    union = int((original | corrected).sum())
 
     info = {
         "cancelled": key == 27,
@@ -170,7 +175,7 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
         "area_after": area_after,
         "removed_fraction": (removed / area_before) if area_before else 0.0,
         "added_fraction": (added / area_before) if area_before else 0.0,
-        "iou": (intersection / union) if union else 1.0,
+        "iou": mask_iou(original, corrected),
     }
 
     _visualize(segment, original, corrected, info)
@@ -178,14 +183,12 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
 
 
 def _visualize(segment, original, corrected, info):
-    """Kept pixels white, erased red, added green."""
+    """Kept pixels white, erased red, added green -- the shared comparison colours."""
     if segment.panel_sink is None:
         return
 
-    panel = np.zeros((*original.shape, 3), dtype=np.uint8)
-    panel[original & corrected] = (255, 255, 255)
-    panel[original & ~corrected] = (0, 0, 255)
-    panel[~original & corrected] = (0, 255, 0)
+    panel = diff_panel(original, corrected, only_mask=REMOVED_COLOR,
+                       only_other=ADDED_COLOR)
     annotate(panel, f"iou {info['iou']:.2f} "
                     f"-{info['removed_fraction']:.1%} +{info['added_fraction']:.1%}")
 

@@ -8,6 +8,7 @@ occurrences are comparable.
 import cv2
 import numpy as np
 
+from ..maskops import mask_bounds
 from ..recipes import Metric
 from ..visualization.panels import annotate, overlay_mask
 
@@ -72,11 +73,7 @@ def _relative_position(segment):
 
 
 def _image_bounds(segment):
-    mask = _original_mask(segment)
-    ys, xs = np.nonzero(mask)
-    x0, x1 = int(xs.min()), int(xs.max())
-    y0, y1 = int(ys.min()), int(ys.max())
-    return {"x": x0, "y": y0, "width": x1 - x0 + 1, "height": y1 - y0 + 1}
+    return mask_bounds(_original_mask(segment))
 
 
 def _visualize(segment, mask, position, subdir):

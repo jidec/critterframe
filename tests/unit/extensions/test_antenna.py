@@ -272,8 +272,13 @@ def test_a_sheet_is_fetched_through_the_session_it_is_given(draw_target_sheet):
 
 
 def test_an_undecodable_sheet_raises(draw_target_sheet):
+    """
+    A presigned url that 200s with an error page fails core's own decodable
+    check, exactly as a crop download would -- the fetch is shared, so the
+    failure is too.
+    """
     session = FakeSession({"sheet.jpg": FakeResponse(content=b"<html>nope</html>")})
-    with pytest.raises(ValueError, match="could not decode"):
+    with pytest.raises(ValueError, match="isn't a decodable image"):
         antenna_scale._download_sheet("https://antenna/sheet.jpg", session=session)
 
 

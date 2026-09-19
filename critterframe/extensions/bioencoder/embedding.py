@@ -21,16 +21,19 @@ CritterFrame's recipe hashing makes the result behave like cached derived data
 everything is, because the checkpoint is in the hash.
 
 SCAFFOLD. This defines the model contract and the metric around it; it is NOT
-backed by a trained checkpoint. Train one with training.bioencoder, or load a
+backed by a trained checkpoint. Train one with bioencoder.training, or load a
 BioEncoder checkpoint of your own, and pass it in. What's fixed here is the
 interface, so the rest of the pipeline can be written against it now.
 """
 
 import logging
+from pathlib import Path
 
 import numpy as np
 
-from ....recipes import Metric
+from ...devices import resolve_device
+from ...recipes import Metric
+from ...records.models import fingerprint_file, load_and_attach
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +80,7 @@ class BioEncoderModel:
         self.input_size = tuple(input_size)
         self.normalize = normalize
         self._device = device
+        self._fingerprint = None
         self._prepared = False
 
     def identity(self):
@@ -85,19 +89,45 @@ class BioEncoderModel:
         important part: two embedding sets from different checkpoints aren't
         comparable at all -- not even approximately, since the embedding spaces
         are unrelated -- so they must never be mistaken for equivalent work.
+
+        Which is why it's the checkpoint's CONTENT, not its path: retraining
+        into the same filename has to move the hash. Read once and cached, the
+        same way `SMPSegmenter` does it and for the same reason. A checkpoint
+        that isn't a local file -- a hub identifier, say -- is recorded as the
+        string it is, which is all there is to record.
         """
         return {
             "class": "BioEncoderModel",
-            "checkpoint": str(self.checkpoint),
+            "version": "2",
+            "checkpoint": self.fingerprint,
             "input_size": list(self.input_size),
             "normalize": self.normalize,
         }
 
+    @classmethod
+    def from_checkpoint(cls, checkpoint, model, **kwargs):
+        """
+        This wrapper around an already-loaded network, checkpoint first.
+
+        The argument order `records.models.load_and_attach` calls a factory
+        with -- checkpoint, then whatever the registry stored -- which is what
+        lets `load_registered` below reuse it.
+        """
+        return cls(model, checkpoint, **kwargs)
+
+    @property
+    def fingerprint(self):
+        """The checkpoint's content digest, read once (see `identity`)."""
+        if self._fingerprint is None and self.checkpoint is not None:
+            path = Path(self.checkpoint)
+            self._fingerprint = (fingerprint_file(path) if path.exists()
+                                 else str(self.checkpoint))
+        return self._fingerprint
+
     @property
     def device(self):
         if self._device is None:
-            import torch
-            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            self._device = resolve_device()
         return self._device
 
     def _prepare(self):
@@ -114,8 +144,8 @@ class BioEncoderModel:
         """
         Embed one RGB image array. Returns a 1D numpy array.
 
-        image -- RGB array; resized to input_size here, so callers don't each
-                 have to know what the model expects.
+        - `image` -- RGB array; resized to input_size here, so callers don't
+          each have to know what the model expects.
         """
         import cv2
         import torch
@@ -140,6 +170,30 @@ class BioEncoderModel:
         return embedding
 
 
+def load_registered(project_path, name, model):
+    """
+    A model registered via `records.models.register_model()`, bound to a
+    network you loaded, ready to pass to `embedding()`.
+
+    The network is the caller's to build, unlike
+    `extensions.smp_segmenter.segmentation.load_registered`: what loads a
+    BioEncoder checkpoint depends on what trained it (see
+    `training.load`). What this does supply is the other half --
+    `input_size`/`normalize` read back from the registry's own `parameters`
+    rather than from this module's current defaults, so a later change to
+    those can't silently re-scale the input under an already-trained
+    checkpoint.
+
+    - `project_path` -- project the model is registered in.
+    - `name` -- registered model name.
+    - `model` -- the loaded network, with an `encode(images)` method.
+
+    Returns a RegisteredModel with a BioEncoderModel attached.
+    """
+    return load_and_attach(project_path, name, BioEncoderModel.from_checkpoint,
+                           model=model)
+
+
 def embedding(model, name=None, unit="embedding"):
     """
     Metric: a learned embedding of the segment, stored as a list of floats.
@@ -151,7 +205,8 @@ def embedding(model, name=None, unit="embedding"):
     species being far apart in embedding space because they were photographed
     against different substrates.
 
-    model -- a BioEncoderModel (or anything with the same embed()/identity()).
+    - `model` -- a BioEncoderModel (or anything with the same
+      embed()/identity()).
     """
     return Metric("embedding", _embedding, version="1", unit=unit,
                   metric_name=name, model=model)

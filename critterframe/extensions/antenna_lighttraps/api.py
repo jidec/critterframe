@@ -87,8 +87,8 @@ def project_id(default=None):
     """
     The Antenna project id to work with, from ANTENNA_PROJECT_ID.
 
-    default -- returned when the variable isn't set; raises if it's None, since
-              silently exporting the wrong project is worse than failing.
+    - `default` -- returned when the variable isn't set; raises if it's None,
+      since silently exporting the wrong project is worse than failing.
     """
     _load_environment()
     value = os.environ.get("ANTENNA_PROJECT_ID")

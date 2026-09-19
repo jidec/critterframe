@@ -13,8 +13,11 @@ import numpy as np
 import pandas as pd
 
 from ..project import paths, subsets as subset_selection
+from ..recipes import hash_spec
 from ..records import occurrences as occurrence_records
-from ..records.occurrences import ID_COL, load_occurrences
+from ..records.occurrences import ID_COL, ids_record, load_occurrences
+from ..visualization import figures
+from ..visualization import pipeline as pipeline_visualization
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +26,14 @@ DEFAULT_FRACTIONS = {"train": 0.7, "val": 0.15, "test": 0.15}
 SPLIT_COL = "split"
 
 
-def split_ids(project_path, occurrence_ids=None, proportions=None,
-              stratify_by=None, group_by=None, subset=None, seed=0):
+# How many of a stratify column's classes a split figure draws by name; the rest
+# are pooled, so a long-tailed label still gives a readable chart.
+FIGURE_CLASSES = 20
+
+
+def split_ids(project_path, occurrence_ids=None, fractions=None,
+              stratify_col=None, group_col=None, subset=None, seed=0,
+              visualize=True):
     """
     Partition occurrence ids into named splits: {"train": [...], "val": [...]}.
 
@@ -36,23 +45,27 @@ def split_ids(project_path, occurrence_ids=None, proportions=None,
     - `project_path` -- project the ids belong to.
     - `occurrence_ids` -- the ids to split. None takes every occurrence in
       the project, or in `subset`.
-    - `proportions` -- `{split name: proportion}`, defaulting to 70/15/15
+    - `fractions` -- `{split name: fraction}`, defaulting to 70/15/15
       train/val/test. Normalized, so they needn't sum to 1. Every requested
       name is a key of the result even when empty.
-    - `stratify_by` -- occurrence column whose distribution to preserve
+    - `stratify_col` -- occurrence column whose distribution to preserve
       across splits, typically the label being trained on. A rare species
       is the case that needs it: a random split of a long-tailed table can
       leave it out of validation entirely.
-    - `group_by` -- occurrence column whose members must all land on the
+    - `group_col` -- occurrence column whose members must all land on the
       same side. The leakage guard: several images of one specimen or one
       trap night are not independent, and splitting them apart makes a
       validation score measure memorization.
     - `subset` -- restrict to a named subset instead of passing ids.
     - `seed` -- split seed. The same inputs give the same split whatever
       ORDER the ids arrive in, since the frame is sorted first.
+    - `visualize` -- True (default): a pipeline figure of how many
+      occurrences each split got, broken down by `stratify_col` when given.
+      False writes nothing.
 
-    stratify_by/group_by are occurrence columns. A label living in the metric log
-    isn't reachable here -- export it onto a manifest and use split_dataset().
+    stratify_col/group_col are occurrence columns, named the way every other
+    grouping in the package names one. A label living in the metric log isn't
+    reachable here -- export it onto a manifest and use split_dataset().
     """
     paths.require_project(project_path)
 
@@ -62,24 +75,50 @@ def split_ids(project_path, occurrence_ids=None, proportions=None,
             "two ways of saying which occurrences to split"
         )
 
-    columns = [column for column in (stratify_by, group_by) if column]
+    columns = [column for column in (stratify_col, group_col) if column]
     df = _frame_to_split(project_path, occurrence_ids, subset, columns)
 
-    proportions = dict(proportions or DEFAULT_FRACTIONS)
-    assigned = split_dataset(df, fractions=proportions, group_col=group_by,
-                             stratify_col=stratify_by, seed=seed)
+    fractions = dict(fractions or DEFAULT_FRACTIONS)
+    assigned = split_dataset(df, fractions=fractions, group_col=group_col,
+                             stratify_col=stratify_col, seed=seed)
 
     splits = {
         name: assigned.loc[assigned[SPLIT_COL] == name, ID_COL].tolist()
-        for name in proportions
+        for name in fractions
     }
     for name, ids in splits.items():
         if not ids:
             logger.warning(
                 "split '%s' came out empty -- %d occurrence(s) can't be divided "
-                "%d ways in the proportions asked for",
-                name, len(df), len(proportions))
+                "%d ways in the fractions asked for",
+                name, len(df), len(fractions))
+
+    identity = {"kind": "split_ids", "fractions": fractions,
+                "stratify_col": stratify_col, "group_col": group_col,
+                "seed": seed, "occurrences": ids_record(df[ID_COL])}
+    with pipeline_visualization.open_report(
+            project_path, "split_ids", hash_spec(identity), visualize=visualize,
+            identity=identity).begin([]) as report:
+        if report and len(assigned):
+            report.figure("counts", _split_figure(assigned, fractions, stratify_col))
     return splits
+
+
+def _split_figure(assigned, fractions, stratify_col):
+    """Occurrences per split, stacked by the stratify column's commonest classes."""
+    if not stratify_col:
+        counts = assigned[SPLIT_COL].value_counts()
+        return figures.bar_chart({name: int(counts.get(name, 0)) for name in fractions},
+                                 ylabel="occurrences", title="occurrences per split")
+
+    labels = assigned[stratify_col].fillna("(none)").astype(str)
+    named = set(labels.value_counts().head(FIGURE_CLASSES).index)
+    labels = labels.where(labels.isin(named), "(other)")
+    table = pd.crosstab(assigned[SPLIT_COL], labels)
+    counts = {name: {label: int(table.at[name, label]) for label in table.columns}
+              if name in table.index else {} for name in fractions}
+    return figures.bar_chart(counts, ylabel="occurrences",
+                             title=f"occurrences per split, by '{stratify_col}'")
 
 
 def _frame_to_split(project_path, occurrence_ids, subset, columns):
@@ -128,22 +167,21 @@ def split_dataset(df, fractions=None, group_col=None, stratify_col=None,
     """
     Assign each row to a split, returning df with a `split` column added.
 
-    df           -- manifest or occurrence table to split (e.g. from
-                    training.datasets.write_dataset).
-    fractions    -- {split name: fraction}, defaulting to 70/15/15
-                    train/val/test. Any names and any number of splits;
-                    fractions are normalized, so they don't have to sum to 1.
-    group_col    -- column whose values must not be split across sides. None
-                    treats every row as its own group.
-    stratify_col -- column whose distribution should be preserved across
-                    splits. Rows with a missing value here are pooled into one
-                    stratum rather than dropped -- an unlabelled image is still
-                    training data.
-    seed         -- random seed, so a split is reproducible. It has to be:
-                    re-splitting differently between two training runs makes
-                    their validation scores incomparable, and worse, moves
-                    previously-validation examples into training.
-    id_col       -- column identifying a row; used only for logging.
+    - `df` -- manifest or occurrence table to split (e.g. from
+      training.datasets.write_dataset).
+    - `fractions` -- {split name: fraction}, defaulting to 70/15/15
+      train/val/test. Any names and any number of splits; fractions are
+      normalized, so they don't have to sum to 1.
+    - `group_col` -- column whose values must not be split across sides. None
+      treats every row as its own group.
+    - `stratify_col` -- column whose distribution should be preserved across
+      splits. Rows with a missing value here are pooled into one stratum
+      rather than dropped -- an unlabelled image is still training data.
+    - `seed` -- random seed, so a split is reproducible. It has to be:
+      re-splitting differently between two training runs makes their
+      validation scores incomparable, and worse, moves previously-validation
+      examples into training.
+    - `id_col` -- column identifying a row; used only for logging.
 
     Returns a copy of df with the split column added.
     """

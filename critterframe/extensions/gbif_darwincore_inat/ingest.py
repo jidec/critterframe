@@ -16,7 +16,7 @@ through another aggregator), and iNaturalist serves several renditions of the
 same photo from the same URL shape. Every other identifier -- a museum's own
 image server, Flickr, observation.org -- passes through untouched.
 
-Scale is unrecoverable here for the same reason it is for inat_insects: there
+Scale is unrecoverable here: there
 is no reference object in a citizen-science photo, so every trait measured
 from a GBIF-ingested project is in pixels.
 
@@ -27,16 +27,12 @@ here. Which photo of several represents an occurrence is a real choice
 (media_rule), not a structural given, so it belongs in the import manifest as
 a decision rather than being silently baked into what's archived as "raw".
 
-already_ingested is checked against archive_path's raw bytes BEFORE
-read_darwincore_archive parses it, not after: for a multi-gigabyte export
-that parse is itself the expensive step, so skipping it is what makes a
-repeat ingest of an unchanged pull actually cheap, rather than only skipping
-core_ingest.ingest_occurrences' own write once the parse has already run.
+The parse is handed to core as read=, which core runs only once the import
+is known to be new, so an unchanged archive is never parsed twice.
 """
 
 import io
 import logging
-import time
 import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlparse
@@ -44,8 +40,8 @@ from urllib.parse import urlparse
 import pandas as pd
 
 from ... import ingest as core_ingest
-from ...records import occurrences as occurrence_records
-from ... import selectionhelpers
+from ...recipes import recorded_callable
+from ...timing import timed
 from . import archive
 
 logger = logging.getLogger(__name__)
@@ -61,6 +57,10 @@ DEFAULT_MEDIA_TYPE = "StillImage"
 # not a quality judgement -- see ingest_occurrences' drop= and the core
 # contract it implements (critterframe.ingest.ingest_occurrences).
 ABSENT_OCCURRENCES = {"occurrenceStatus": ["ABSENT"]}
+
+# The rows iNaturalist itself published to GBIF, which prioritize_inat= hands
+# to core as prefer= -- ranked first by the group cap, never removed by dedupe.
+INAT_OCCURRENCES = {"institutionCode": ["iNaturalist"]}
 
 DATETIME_COLS = [
     "eventDate", "modified", "dateIdentified",
@@ -96,15 +96,16 @@ DEFAULT_INAT_OCCURRENCE_COLUMNS = (
     "recordedBy", "recordedByID", "waterBody", "habitat", "license","institutionCode"
 )
 
-# Hosts iNaturalist actually serves photo renditions from -- the S3 bucket
-# holding everything migrated to the Open Data program, and the older CDN
-# domain some still-current URLs use. Anything else is somebody else's server
-# and rewriting its path would just break the URL.
+# The renditions iNaturalist serves, and the two hosts it serves them from: the
+# S3 bucket holding everything migrated to the Open Data program, and the older
+# CDN domain some still-current URLs use. Anything else is somebody else's
+# server -- Flickr, a museum's own image server, observation.org -- and
+# rewriting its path would just break the URL.
+INAT_PHOTO_SIZES = ("original", "large", "medium", "small", "square")
 INAT_MEDIA_HOSTS = {
     "inaturalist-open-data.s3.amazonaws.com",
     "static.inaturalist.org",
 }
-INAT_PHOTO_SIZES = ("original", "medium", "small")
 
 # A ready-made cross-source duplicate fingerprint, for a project pulling from
 # more than one GBIF-mediated source: the same real sighting, independently
@@ -124,29 +125,27 @@ def rewrite_inat_photo_size(url, size):
     Rewrite an iNaturalist photo URL to request a different rendition, e.g.
     ".../photos/404810759/original.jpg" -> ".../photos/404810759/medium.jpg".
 
-    Any URL not served from an iNaturalist photo host is returned unchanged --
-    this dataset mixes providers freely, and rewriting a path GBIF got from
-    Flickr or a museum server would just break it.
+    Any URL not served from an iNaturalist photo host comes back unchanged, and
+    so does a missing one (None or NaN).
 
     - `url` -- a multimedia identifier value (or NaN).
-    - `size` -- `"original"`, `"medium"`, or `"small"`.
+    - `size` -- one of `INAT_PHOTO_SIZES`.
     """
     if size not in INAT_PHOTO_SIZES:
         raise ValueError(f"unknown iNaturalist photo size {size!r} -- use one "
                          f"of {INAT_PHOTO_SIZES}")
-    if pd.isna(url) or not isinstance(url, str):
+    if not isinstance(url, str) or not url:
         return url
 
     parsed = urlparse(url)
     if parsed.netloc not in INAT_MEDIA_HOSTS:
         return url
 
-    old_path = PurePosixPath(parsed.path)
-    if len(old_path.parts) < 2:
+    path = PurePosixPath(parsed.path)
+    if len(path.parts) < 2:
         return url
 
-    new_path = str(old_path.with_name(f"{size}{old_path.suffix}"))
-    return parsed._replace(path=new_path).geturl()
+    return parsed._replace(path=str(path.with_name(f"{size}{path.suffix}"))).geturl()
 
 
 def select_media(multimedia_df, rule="first", media_type=DEFAULT_MEDIA_TYPE):
@@ -259,8 +258,8 @@ def ingest_occurrences(project_path, archive_path=None, occurrence_df=None,
                        max_per_group=None, cap_rule="random",
                        dedupe_key_cols=None,
                        dedupe_precision=DEFAULT_DEDUPE_PRECISION,
-                       dedupe_rule="random",
-                       trust_source_file_unchanged=False):
+                       dedupe_rule="random", prioritize_inat=False,
+                       trust_source_file_unchanged=False, visualize=True):
     """
     Ingest a GBIF Darwin Core Archive into a project, as a full snapshot.
 
@@ -316,17 +315,25 @@ def ingest_occurrences(project_path, archive_path=None, occurrence_df=None,
       can catch it. Only worth turning on for a project actually combining
       more than one source; skip it and filter to one source with
       `transform=` instead when that's all a project needs. See
-      `selectionhelpers.dedupe_by` for what these mean, and
+      `critterframe.ingest.ingest_occurrences`, which applies it after
+      `drop=`, and `selectionhelpers.dedupe_by` for what these mean, and
       `DEFAULT_DEDUPE_KEY_COLS`/`DEFAULT_DEDUPE_PRECISION` for a ready-made
       (`decimalLatitude`, `decimalLongitude`, `eventDate`) fingerprint
       (~11m on the coordinates, exact on the date) to pass for
-      `dedupe_key_cols`. Applied to the image-bearing rows AFTER
-      `merge_occurrence_media` -- narrower and cheaper than deduping the
-      full occurrence table, and ahead of `group_col`/`max_per_group` so a
-      per-species cap counts real specimens rather than inflated
-      duplicates. This is a probabilistic match, not a source-declared
-      fact like `drop=` -- loosen `dedupe_precision` only as far as the
-      real risk of a false match warrants.
+      `dedupe_key_cols`. Only image-bearing rows ever reach it, since
+      `merge_occurrence_media` has already run. This is a probabilistic
+      match, not a source-declared fact like `drop=` -- loosen
+      `dedupe_precision` only as far as the real risk of a false match
+      warrants.
+    - `prioritize_inat` -- True: fill each `max_per_group` cap from
+      iNaturalist rows (`INAT_OCCURRENCES`, i.e.
+      `institutionCode="iNaturalist"`) first, drawing from other sources only
+      when a group has too few, and let deduplication remove only non-iNat
+      rows. Ranks above occurrences the project already holds, so a later
+      pull with more iNat rows displaces non-iNat specimens kept earlier.
+      `institutionCode` must survive `occurrence_columns`. Does nothing
+      without `group_col` or `dedupe_key_cols`. False (default) treats every
+      source alike.
     - `trust_source_file_unchanged` -- skip copying and hashing
       `archive_path`'s content when its path, size, and modification time
       exactly match a previous import already on record for this project,
@@ -346,158 +353,81 @@ def ingest_occurrences(project_path, archive_path=None, occurrence_df=None,
       is still checked exactly as always, so changing one of those against
       an unchanged archive still triggers a real re-ingest rather than
       being skipped.
+    - `visualize` -- True (default): pipeline figures of the rows kept at
+      each stage, from the archive's own tables through media selection,
+      deduplication, and core's drop=/cap. False writes nothing.
 
     Returns the resulting occurrence table.
     """
     logger.info("starting GBIF ingest into %s (archive_path=%s)",
                project_path, archive_path)
 
+    if prioritize_inat and not (group_col or dedupe_key_cols):
+        logger.warning("prioritize_inat has nothing to act on without "
+                       "group_col/max_per_group or dedupe_key_cols")
+
     if archive_path is not None:
         if occurrence_df is not None or multimedia_df is not None:
             raise ValueError("pass either archive_path or occurrence_df/"
                              "multimedia_df, not both")
+        source = archive_path
         name_prefix = f"occurrences_gbif_{Path(archive_path).stem}"
-        manifest_extra = _manifest_extra(archive_path, occurrence_columns,
-                                         multimedia_columns, media_rule,
-                                         media_type, inat_photo_size,
-                                         dedupe_key_cols, dedupe_precision,
-                                         dedupe_rule)
 
-        # A .zip is copied/hashed as bytes, an extracted directory is
-        # re-zipped from disk (see archive.raw_archive_bytes) -- proportional
-        # to archive size either way, minutes for a multi-gigabyte export.
-        # Deliberately done BEFORE the expensive read_darwincore_archive parse
-        # below, so the already_ingested check that follows can skip that
-        # parse entirely on a repeat run, rather than only skipping the write
-        # that would otherwise happen after paying for it anyway.
-        # trust_source_file_unchanged=True skips this read+hash itself, not
-        # just the parse, when a cheap path/size/mtime fingerprint already
-        # answers the question.
-        if trust_source_file_unchanged and zipfile.is_zipfile(archive_path):
-            if core_ingest.fingerprint_unchanged(
-                    project_path, archive_path, id_col=GBIF_ID_COL,
-                    image_url_col=f"{MEDIA_PREFIX}{IDENTIFIER_COL}",
-                    datetime_cols=DATETIME_COLS, numeric_cols=NUMERIC_COLS,
-                    transform=transform, drop=drop, group_col=group_col,
-                    max_per_group=max_per_group, cap_rule=cap_rule,
-                    manifest_extra=manifest_extra):
-                logger.info("trusting %s is unchanged (same path, size, and "
-                            "mtime as a previous import) -- skipping the "
-                            "copy+hash of the archive entirely", archive_path)
-                return occurrence_records.load_occurrences(project_path)
+        def read_archive(path):
+            return _build(*archive.read_darwincore_archive(
+                path, occurrence_usecols=occurrence_columns,
+                multimedia_usecols=multimedia_columns))
 
-        logger.info("copying %s as the raw import, unparsed", archive_path)
-        start = time.monotonic()
-        raw_bytes, raw_extension = archive.raw_archive_bytes(archive_path)
-        logger.info("copied raw import in %.1fs (%.1f MB)",
-                   time.monotonic() - start, len(raw_bytes) / 1e6)
-
-        if core_ingest.already_ingested(
-                project_path, raw_bytes, id_col=GBIF_ID_COL,
-                image_url_col=f"{MEDIA_PREFIX}{IDENTIFIER_COL}",
-                datetime_cols=DATETIME_COLS, numeric_cols=NUMERIC_COLS,
-                transform=transform, drop=drop, group_col=group_col,
-                max_per_group=max_per_group, cap_rule=cap_rule,
-                manifest_extra=manifest_extra):
-            logger.info("this raw import has already been ingested with these "
-                        "same decisions -- skipping the parse of %s entirely",
-                        archive_path)
-            return occurrence_records.load_occurrences(project_path)
-
-        occurrence_df, multimedia_df = archive.read_darwincore_archive(
-            archive_path, occurrence_usecols=occurrence_columns,
-            multimedia_usecols=multimedia_columns)
+        read, raw = read_archive, archive.raw_archive_bytes
     elif occurrence_df is not None and multimedia_df is not None:
+        # A synthetic name: nothing backs it on disk, so it is never trusted
+        # on a fingerprint, and the raw import is the two tables zipped.
+        source = "occurrences_gbif.csv"
         name_prefix = "occurrences_gbif"
 
-        logger.info("zipping the raw occurrence/multimedia tables (%d + %d "
-                   "rows) for archiving -- no backing file to copy",
-                   len(occurrence_df), len(multimedia_df))
-        start = time.monotonic()
-        raw_bytes = _raw_darwincore_bytes(occurrence_df, multimedia_df)
-        raw_extension = ".zip"
-        logger.info("zipped raw import in %.1fs (%.1f MB)",
-                   time.monotonic() - start, len(raw_bytes) / 1e6)
+        def read_tables(_):
+            return _build(occurrence_df, multimedia_df)
 
-        # No already_ingested check here: occurrence_df/multimedia_df are
-        # already-parsed tables the caller built, so there is no expensive
-        # parse left to skip -- ingest_occurrences' own idempotency check
-        # covers this case exactly as well.
-        manifest_extra = _manifest_extra(None, occurrence_columns,
-                                         multimedia_columns, media_rule,
-                                         media_type, inat_photo_size,
-                                         dedupe_key_cols, dedupe_precision,
-                                         dedupe_rule)
+        def zip_tables(_):
+            return _raw_darwincore_bytes(occurrence_df, multimedia_df), ".zip"
+
+        read, raw = read_tables, zip_tables
     else:
         raise ValueError("pass archive_path, or both occurrence_df and multimedia_df")
 
-    logger.info("picking one multimedia row per occurrence from %d row(s) "
-               "(media_rule=%r, media_type=%r)", len(multimedia_df),
-               media_rule, media_type)
-    start = time.monotonic()
-    media = select_media(multimedia_df, rule=media_rule, media_type=media_type)
-    logger.info("picked %d row(s) in %.1fs", len(media), time.monotonic() - start)
+    def _build(occurrences, multimedia):
+        """One media row per occurrence, merged on, with the stage counts."""
+        logger.info("picking one multimedia row per occurrence from %d row(s) "
+                   "(media_rule=%r, media_type=%r)", len(multimedia),
+                   media_rule, media_type)
+        with timed("picked media rows", logger.info) as done:
+            media = select_media(multimedia, rule=media_rule, media_type=media_type)
+            done["rows"] = len(media)
 
-    if inat_photo_size is not None:
-        logger.info("rewriting %d photo URL(s) to inat_photo_size=%r",
-                   len(media), inat_photo_size)
-        start = time.monotonic()
-        media = media.copy()
-        media[IDENTIFIER_COL] = media[IDENTIFIER_COL].map(
-            lambda url: rewrite_inat_photo_size(url, inat_photo_size))
-        logger.info("rewrote photo URLs in %.1fs", time.monotonic() - start)
+        if inat_photo_size is not None:
+            logger.info("rewriting %d photo URL(s) to inat_photo_size=%r",
+                       len(media), inat_photo_size)
+            with timed("rewrote photo URLs", logger.info):
+                media = media.copy()
+                media[IDENTIFIER_COL] = media[IDENTIFIER_COL].map(
+                    lambda url: rewrite_inat_photo_size(url, inat_photo_size))
 
-    logger.info("merging %d occurrence(s) with their picked media", len(occurrence_df))
-    start = time.monotonic()
-    merged = merge_occurrence_media(occurrence_df, media)
-    logger.info("merged in %.1fs", time.monotonic() - start)
+        logger.info("merging %d occurrence(s) with their picked media", len(occurrences))
+        with timed("merged", logger.info) as done:
+            merged = merge_occurrence_media(occurrences, media)
+            done["rows"] = len(merged)
 
-    # After merge_occurrence_media, not before: only image-bearing rows can
-    # ever become occurrences, so there's no reason to fingerprint the ones
-    # that are about to be excluded anyway. Before group_col/max_per_group
-    # (in core, below), so a per-species cap counts real specimens rather
-    # than a sighting inflated by however many aggregators published it.
-    #
-    # A column entirely ABSENT from merged (as opposed to merely blank on some
-    # rows, which dedupe_by already exempts row-by-row) means this export, or
-    # an occurrence_columns= that narrowed it out, never carried it -- not a
-    # caller mistake worth failing a multi-gigabyte ingest over, unlike an
-    # unknown column passed to dedupe_by directly.
-    missing_dedupe_cols = [c for c in dedupe_key_cols if c not in merged.columns] \
-        if dedupe_key_cols else []
-    if missing_dedupe_cols:
-        logger.warning("skipping deduplication -- %s not in this export "
-                       "(narrowed out by occurrence_columns=, or absent from "
-                       "the source)", missing_dedupe_cols)
-    elif dedupe_key_cols:
-        logger.info("deduplicating %d occurrence(s) on %s", len(merged),
-                   ", ".join(dedupe_key_cols))
-        start = time.monotonic()
-        existing_ids = occurrence_records.load_occurrences(
-            project_path, columns=[], missing_ok=True)[occurrence_records.ID_COL]
-        merged = selectionhelpers.dedupe_by(
-            merged, dedupe_key_cols, precision=dedupe_precision,
-            rule=dedupe_rule, id_col=GBIF_ID_COL, keep_ids=set(existing_ids))
-        logger.info("deduplicated in %.1fs (%d remain)", time.monotonic() - start,
-                   len(merged))
+        return merged, {"occurrence rows": len(occurrences),
+                        "media rows picked": len(media),
+                        "with an image": len(merged)}
 
-    # merged is handed to core directly (df=), rather than written to a CSV
-    # for core to re-read: for a multi-gigabyte, dtype=str source, that
-    # round trip would cost a full extra write and parse, AND re-run pandas'
-    # type inference over every column not explicitly coerced below --
-    # silently undoing the very "left as strings" guarantee
-    # read_darwincore_table exists for. import_csv_path is passed only as a
-    # name to log and to derive the archived raw import's extension from.
-    #
-    # transform is passed straight through, not wrapped -- core already
-    # treats None as "no transform", and a wrapper closure would be a fresh
-    # function object every call, recording the SAME fixed name in the
-    # manifest regardless of what transform actually was and making
-    # already_ingested (and core's own idempotency check) unable to tell two
-    # different transforms apart.
+    # Core runs read only once the import is known to be new, so an unchanged
+    # archive is never parsed twice. transform is passed straight through, not
+    # wrapped: a closure would record one fixed name whatever it wrapped, and
+    # two different transforms would then share an import hash.
     return core_ingest.ingest_occurrences(
         project_path,
-        f"{name_prefix}.csv",
+        source,
         id_col=GBIF_ID_COL,
         image_url_col=f"{MEDIA_PREFIX}{IDENTIFIER_COL}",
         datetime_cols=DATETIME_COLS,
@@ -507,13 +437,20 @@ def ingest_occurrences(project_path, archive_path=None, occurrence_df=None,
         group_col=group_col,
         max_per_group=max_per_group,
         cap_rule=cap_rule,
+        dedupe_key_cols=dedupe_key_cols,
+        dedupe_precision=dedupe_precision,
+        dedupe_rule=dedupe_rule,
+        prefer=INAT_OCCURRENCES if prioritize_inat else None,
         name_prefix=name_prefix,
-        raw_bytes=raw_bytes,
-        raw_extension=raw_extension,
-        manifest_extra=manifest_extra,
-        df=merged,
+        manifest_extra=_manifest_extra(archive_path, occurrence_columns,
+                                       multimedia_columns, media_rule,
+                                       media_type, inat_photo_size,
+                                       dedupe_key_cols, dedupe_precision,
+                                       dedupe_rule),
+        read=read,
+        raw=raw,
         trust_source_file_unchanged=trust_source_file_unchanged,
-        fingerprint_source_path=archive_path,
+        visualize=visualize,
     )
 
 
@@ -531,8 +468,12 @@ def _manifest_extra(archive_path, occurrence_columns, multimedia_columns,
                      else getattr(media_rule, "__qualname__", "<callable>"),
         "media_type": media_type,
         "inat_photo_size": inat_photo_size,
+        # Kept here as well as in core's own recipe (which records them only
+        # when deduplication is on): dropping them would move the import hash
+        # of every archive ingested before deduplication became core's, and
+        # re-reading a multi-gigabyte export to reach the same table is a poor
+        # trade for tidiness.
         "dedupe_key_cols": list(dedupe_key_cols) if dedupe_key_cols else None,
         "dedupe_precision": dedupe_precision,
-        "dedupe_rule": dedupe_rule if isinstance(dedupe_rule, str)
-                      else getattr(dedupe_rule, "__qualname__", "<callable>"),
+        "dedupe_rule": recorded_callable(dedupe_rule),
     }

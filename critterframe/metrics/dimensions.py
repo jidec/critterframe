@@ -8,6 +8,7 @@ only orientation makes an image axis correspond to the organism's own.
 import cv2
 import numpy as np
 
+from ..maskops import mask_bounds
 from ..recipes import Metric
 from ..visualization.panels import annotate, mask_to_bgr
 
@@ -148,14 +149,7 @@ def _mask_area(segment):
 
 
 def _bounding_box(segment):
-    mask = segment.require_mask()
-    ys, xs = np.nonzero(mask)
-    if len(xs) == 0:
-        raise ValueError("empty mask")
-
-    x0, x1 = int(xs.min()), int(xs.max())
-    y0, y1 = int(ys.min()), int(ys.max())
-    return {"x": x0, "y": y0, "width": x1 - x0 + 1, "height": y1 - y0 + 1}
+    return mask_bounds(segment.require_mask())
 
 
 # sketch-friendly alias: the doc's Antenna pipeline writes body_length(), other

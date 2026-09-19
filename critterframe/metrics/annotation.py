@@ -119,7 +119,7 @@ def click_two_points(labels=DEFAULT_POINT_LABELS, name=None, unit="px_xy"):
     two points, but neither recovers the points. length_px and angle_deg ride
     along as a convenience, since validation.metrics compares numbers.
 
-    labels -- the two point names, in click order.
+    - `labels` -- the two point names, in click order.
 
     Returns {<first>, <second>, "length_px", "angle_deg"}, all None if skipped.
     Points are [x, y] in the current frame, normally original image coordinates.
@@ -230,8 +230,8 @@ def _point_pair(labels, points):
     y increases DOWNWARD, so a second point below the first is +90 degrees, not
     -90.
 
-    labels -- the two names the positions are stored under.
-    points -- [(x0, y0), (x1, y1)] in the segment's current coordinates.
+    - `labels` -- the two names the positions are stored under.
+    - `points` -- [(x0, y0), (x1, y1)] in the segment's current coordinates.
     """
     (x0, y0), (x1, y1) = points
     dx, dy = x1 - x0, y1 - y0

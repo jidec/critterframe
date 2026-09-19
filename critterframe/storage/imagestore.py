@@ -50,14 +50,14 @@ class ImageStore:
     Keyed image blob store using LMDB. Key = occurrence id; value = the image's
     exact encoded bytes.
 
-    project_path -- project whose images.lmdb to open.
-    map_size     -- starting size of the environment, in bytes. None reads
-                    DEFAULT_MAP_SIZE at call time, so the module constant
-                    stays overridable. Grows automatically past this if a
-                    write overflows it.
-    map_size_increment -- how far map_size grows, in bytes, each time a write
-                    overflows it. None reads MAP_SIZE_INCREMENT at call time.
-    readonly     -- open without a write lock; lets several readers run at once.
+    - `project_path` -- project whose images.lmdb to open.
+    - `map_size` -- starting size of the environment, in bytes. None reads
+      DEFAULT_MAP_SIZE at call time, so the module constant stays overridable.
+      Grows automatically past this if a write overflows it.
+    - `map_size_increment` -- how far map_size grows, in bytes, each time a
+      write overflows it. None reads MAP_SIZE_INCREMENT at call time.
+    - `readonly` -- open without a write lock; lets several readers run at
+      once.
     """
 
     def __init__(self, project_path, map_size=None, map_size_increment=None,
@@ -132,9 +132,9 @@ class ImageStore:
         """
         Store one image's encoded bytes under occurrence_id, exactly as given.
 
-        data -- the image file's bytes, e.g. an HTTP response body or a file
-                read in binary mode. Not a decoded array; there is no way to
-                write one, because encoding it here would be lossy.
+        - `data` -- the image file's bytes, e.g. an HTTP response body or a
+          file read in binary mode. Not a decoded array; there is no way to
+          write one, because encoding it here would be lossy.
         """
         if not isinstance(data, (bytes, bytearray, memoryview)):
             raise TypeError(
@@ -183,9 +183,9 @@ class ImageStore:
         """
         Fetch and decode one image as 8-bit 3-channel BGR, or None if absent.
 
-        flags -- override the decode, e.g. cv2.IMREAD_UNCHANGED to preserve bit
-                 depth and alpha. Transforms and metrics expect 8-bit BGR, so
-                 pass it only when the caller handles what comes back.
+        - `flags` -- override the decode, e.g. cv2.IMREAD_UNCHANGED to preserve
+          bit depth and alpha. Transforms and metrics expect 8-bit BGR, so pass
+          it only when the caller handles what comes back.
         """
         raw = self.get_bytes(occurrence_id)
         if raw is None:

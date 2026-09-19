@@ -44,8 +44,8 @@ def write_table(new_df, table_path):
     """
     Write a working parquet, overwriting whatever was there.
 
-    new_df     -- the full table to write.
-    table_path -- destination parquet path; overwritten wholesale.
+    - `new_df` -- the full table to write.
+    - `table_path` -- destination parquet path; overwritten wholesale.
     """
     table_path = Path(table_path)
     table_path.parent.mkdir(parents=True, exist_ok=True)
@@ -90,10 +90,10 @@ def upsert_table(new_df, table_path, key_cols):
     disturb another subset's rows. Keys are compared by value with no coercion
     (see CLAUDE.md; the records layer guarantees their types).
 
-    new_df     -- rows to merge in; wins on conflict.
-    table_path -- destination parquet path.
-    key_cols   -- columns identifying a row, e.g. ["occurrence_id", "part"].
-                  Must be present and non-null in both frames.
+    - `new_df` -- rows to merge in; wins on conflict.
+    - `table_path` -- destination parquet path.
+    - `key_cols` -- columns identifying a row, e.g. ["occurrence_id", "part"].
+      Must be present and non-null in both frames.
     """
     table_path = Path(table_path)
     _check_keys(new_df, key_cols, "rows being written")
@@ -139,12 +139,12 @@ def load_table(table_path, columns=None, missing_ok=False):
     Read a working parquet table. Pass columns=[...] to read only some columns
     off disk.
 
-    table_path -- parquet path written by write_table()/upsert_table().
-    columns    -- optional list of column names to read; reads all if None.
-    missing_ok -- True returns an empty DataFrame for a table that is
-                  legitimately absent until something writes it, e.g. masks
-                  before any segmentation run. False (the default) raises, so a
-                  missing occurrence table isn't read as an empty project.
+    - `table_path` -- parquet path written by write_table()/upsert_table().
+    - `columns` -- optional list of column names to read; reads all if None.
+    - `missing_ok` -- True returns an empty DataFrame for a table that is
+      legitimately absent until something writes it, e.g. masks before any
+      segmentation run. False (the default) raises, so a missing occurrence
+      table isn't read as an empty project.
     """
     if not Path(table_path).exists():
         if missing_ok:

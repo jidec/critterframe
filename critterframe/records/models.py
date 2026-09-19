@@ -12,7 +12,7 @@ records is the join between a checkpoint and the data behind it.
     model = cf.load_model(project_path, "dragonfly_segmenter_v1").attach(my_net)
     cf.run_segments(project_path, steps=[cf.segment(model)])
 
-`attach` binds a loaded network to the record and forwards predict/encode/
+`attach` binds a loaded network to the record and forwards predict/embed/
 visualize to it while answering identity() from the registry. Identity is the
 checkpoint's FINGERPRINT, not its name or path, so retraining into the same
 filename moves the recipe hash and everything below it is correctly redone.
@@ -25,6 +25,7 @@ import re
 from datetime import datetime, timezone
 from pathlib import Path
 
+from ..storage.jsonfiles import read_json, write_json
 from ..project import paths
 from ..recipes import hash_spec
 from .occurrences import ids_record
@@ -187,19 +188,19 @@ def _load_registry(project_path):
     The raw registry as {name: record}. Empty when nothing has been registered
     -- a project with no models of its own is the normal case, not an error.
     """
-    registry_path = paths.models_registry_path(project_path)
-    if not registry_path.exists():
-        return {}
-    with registry_path.open("r", encoding="utf-8") as handle:
-        return json.load(handle).get("models", {})
+    return (read_json(paths.models_registry_path(project_path), default={})
+            or {}).get("models", {})
 
 
 def _save_registry(project_path, registry):
-    """Write the whole registry, replacing whatever was there."""
-    registry_path = paths.models_registry_path(project_path)
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    with registry_path.open("w", encoding="utf-8") as handle:
-        json.dump({"models": registry}, handle, indent=2, sort_keys=True)
+    """
+    Write the whole registry, replacing whatever was there.
+
+    Atomically: this is a full rewrite of every model a project has
+    registered, and a crash partway through it would otherwise leave the
+    provenance of all of them truncated.
+    """
+    write_json(paths.models_registry_path(project_path), {"models": registry})
     return registry
 
 
@@ -211,9 +212,9 @@ class RegisteredModel:
     fingerprint; everything else forwards to the attached network, so this is
     accepted anywhere a model is.
 
-    record       -- the registry entry.
-    project_path -- project it was read from, so `path` resolves.
-    runtime      -- the loaded network, or None until attach() supplies one.
+    - `record` -- the registry entry.
+    - `project_path` -- project it was read from, so `path` resolves.
+    - `runtime` -- the loaded network, or None until attach() supplies one.
     """
 
     def __init__(self, record, project_path, runtime=None):
@@ -260,8 +261,10 @@ class RegisteredModel:
         New rather than mutated, so one record can back several loaded networks
         -- a CPU copy and a GPU copy, say -- without either changing the other.
 
-        runtime -- whatever meets the contract of the operation it is used in:
-                   predict() for segment(), encode() for an embedding metric.
+        - `runtime` -- whatever meets the contract of the operation it is
+          used in: `predict()` for `segment()`, `embed()` for an embedding
+          metric (`encode()` is the inner network's own method, which
+          `BioEncoderModel` wraps).
         """
         return RegisteredModel(self.record, self.project_path, runtime)
 
@@ -324,7 +327,7 @@ def _checkpoint_record(project_path, path, fingerprint):
     logger.info("fingerprinting %s (%.1f MB)", resolved.name, size / 1e6)
     return {
         "path": stored,
-        "fingerprint": _fingerprint(resolved),
+        "fingerprint": fingerprint_file(resolved),
         "fingerprint_method": "sha256",
         "size_bytes": size,
     }
@@ -343,7 +346,7 @@ def _relative_to_project(project_path, target):
         return absolute.as_posix()
 
 
-def _fingerprint(path):
+def fingerprint_file(path):
     """
     A short digest of the weights themselves.
 
@@ -351,6 +354,13 @@ def _fingerprint(path):
     a checkpoint saved as a folder of shards is identified as precisely as a
     single file, and a file appearing or moving inside it changes the answer.
     Truncated to recipe-hash length, which is what it feeds.
+
+    Public because a model class used STANDALONE needs it too: what belongs in
+    a recipe hash is the checkpoint's content, not its path (see CLAUDE.md's
+    registered-model item). Hundreds of megabytes per call, so a caller
+    hashing its own checkpoint caches the answer.
+
+    - `path` -- checkpoint file or directory.
     """
     path = Path(path)
     if path.is_file():

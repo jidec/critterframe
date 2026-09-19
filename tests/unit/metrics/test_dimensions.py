@@ -118,7 +118,7 @@ def test_a_dict_valued_metric_becomes_one_column_per_key(measured_project):
     """
     cf.run_metrics(measured_project, run_name="boxes",
                    metrics=[cf.bounding_box()], visualize=False)
-    exported = cf.export_metrics(measured_project, runs=["boxes"])
+    exported = cf.export_metrics(measured_project, run_names=["boxes"])
     assert "boxes__organism__bounding_box__width" in exported.columns
 
 

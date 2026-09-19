@@ -51,21 +51,22 @@ def make_calibration_row(calibration_type, scope, scope_value, parameters,
     The three key fields are coerced to str here, because storage compares keys
     by value without coercing (see CLAUDE.md).
 
-    calibration_type -- what kind this is: "scale", "color". Part of the key, so
-                        two kinds can describe one session without colliding.
-    scope            -- occurrence column identifying what this covers, e.g.
-                        "event_id", "device", or ID_COL for one occurrence.
-    scope_value      -- the value in that column this applies to.
-    parameters       -- dict of whatever the type needs, stored as JSON and never
-                        interpreted here, so a type can grow a field without a
-                        schema change. Must be JSON-serializable.
-    source           -- how it was obtained: "target" (measured against a
-                        reference of known size), "declared" (stated by someone
-                        who knows the rig), or an extension's own name. A measured
-                        calibration and an asserted one deserve different trust.
-    score            -- quality of the measurement where one exists, e.g. a
-                        template match's correlation peak.
-    measured_from    -- what it was measured on: an image key, a filename, a note.
+    - `calibration_type` -- what kind this is: "scale", "color". Part of the
+      key, so two kinds can describe one session without colliding.
+    - `scope` -- occurrence column identifying what this covers, e.g.
+      "event_id", "device", or ID_COL for one occurrence.
+    - `scope_value` -- the value in that column this applies to.
+    - `parameters` -- dict of whatever the type needs, stored as JSON and never
+      interpreted here, so a type can grow a field without a schema change.
+      Must be JSON-serializable.
+    - `source` -- how it was obtained: "target" (measured against a reference
+      of known size), "declared" (stated by someone who knows the rig), or an
+      extension's own name. A measured calibration and an asserted one deserve
+      different trust.
+    - `score` -- quality of the measurement where one exists, e.g. a template
+      match's correlation peak.
+    - `measured_from` -- what it was measured on: an image key, a filename, a
+      note.
     """
     if not isinstance(parameters, dict):
         raise TypeError(
@@ -143,11 +144,18 @@ def require_scope_column(project_path, scope):
     return scope
 
 
-def pending_scope_values(project_path, calibration_type, scope, limit=None):
+def pending_scope_values(project_path, calibration_type, scope, max_new=None):
     """
     Values of one occurrence column with no calibration of this type yet -- the
     repeat-aware check a measurement pass makes before doing any work, so
     measuring is resumable and re-running it is a no-op.
+
+    - `project_path` -- project to read.
+    - `calibration_type` -- e.g. `"scale"`.
+    - `scope` -- occurrence column the calibration is keyed on.
+    - `max_new` -- cap on values returned, applied AFTER the
+      already-measured ones are excluded: "measure ten more", which measures
+      ten more every time it runs.
     """
     require_scope_column(project_path, scope)
     occurrences = load_occurrences(project_path, columns=[scope])
@@ -158,7 +166,7 @@ def pending_scope_values(project_path, calibration_type, scope, limit=None):
                                      scope=scope)["scope_value"].astype(str))
     pending = [value for value in values if value not in measured]
 
-    return pending[:limit] if limit is not None else pending
+    return pending[:max_new] if max_new is not None else pending
 
 
 def _occurrences_per_value(occurrences, scope):

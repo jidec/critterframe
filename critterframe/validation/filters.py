@@ -13,9 +13,11 @@ import logging
 import numpy as np
 import pandas as pd
 
-from ..recipes import DEFAULT_PART
+from ..recipes import DEFAULT_PART, hash_spec
 from ..export import column_name, metrics_wide
 from ..metrics.quality import WARN_THRESHOLDS
+from ..visualization import figures
+from ..visualization import pipeline as pipeline_visualization
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +155,7 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
                           annotation_run, flag_metric="usability_annotation",
                           part=DEFAULT_PART, bad_flags=BAD_FLAGS,
                           max_fpr=DEFAULT_MAX_FPR, min_precision=None,
-                          defaults=None):
+                          defaults=None, visualize=True):
     """
     Calibrate several QC metrics against human labels and return the filters an
     export should run with.
@@ -183,6 +185,9 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
       constraint can't be met. A metric with no fallback and no satisfying
       cutoff is left OUT and warned about, since inventing a number would
       be worse than saying so.
+    - `visualize` -- True (default): one pipeline figure per metric, showing
+      recall, false-positive rate, and precision across every candidate
+      threshold, with the chosen cutoff marked. False writes nothing.
 
     Returns {export column: (comparator, threshold)}. Empty if nothing could be
     calibrated, which export_metrics reads as "no filtering" -- check the log
@@ -197,6 +202,22 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
         return {}
 
     flag_col = column_name(annotation_run, part, flag_metric)
+
+    identity = {
+        "kind": "validated_filters",
+        "metric_specs": specs,
+        "predicted_run": predicted_run,
+        "annotation_run": annotation_run,
+        "flag_metric": flag_metric,
+        "part": part,
+        "bad_flags": list(bad_flags),
+        "max_fpr": max_fpr,
+        "min_precision": min_precision,
+        "defaults": defaults,
+    }
+    report = pipeline_visualization.open_report(
+        project_path, f"filters__{predicted_run}__vs__{annotation_run}", hash_spec(identity),
+        part=part, visualize=visualize, identity=identity).begin([])
 
     filters = {}
     for metric_name, flag_when in specs.items():
@@ -241,6 +262,17 @@ def get_validated_filters(project_path, metric_specs, predicted_run,
 
         filters[metric_col] = (KEEP_COMPARATOR[flag_when], threshold)
 
+        if report and not sweep.empty:
+            chosen = "chosen" if choice is not None else "fallback"
+            report.figure(metric_name, figures.line_chart(
+                {rate: (sweep["threshold"].tolist(), sweep[rate].tolist())
+                 for rate in ("recall", "fpr", "precision")},
+                xlabel=f"{metric_name} threshold (flag when {flag_when})", ylabel="rate",
+                title=f"{metric_name}: n={int(sweep['n_bad'].iloc[0])} bad, "
+                      f"{int(sweep['n_clean'].iloc[0])} clean",
+                marks={f"{chosen} {threshold:g}": threshold}))
+
+    report.close()
     return filters
 
 

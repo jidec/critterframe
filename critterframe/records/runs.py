@@ -9,12 +9,14 @@ which recipe a run_name presently means (see resolve_recipe_currency).
 """
 
 import logging
+from contextlib import contextmanager
 from datetime import datetime, timezone
 
 import pandas as pd
 
 from ..project import paths
 from ..recipes import canonical_json, load_json
+from ..storage.jsonfiles import append_jsonl
 from ..storage.sqlite import connect
 
 logger = logging.getLogger(__name__)
@@ -169,9 +171,42 @@ def ensure_schema(connection):
     return connection
 
 
+def has_database(project_path):
+    """
+    Whether this project has a runs_and_metrics.sqlite yet.
+
+    What a READ checks before opening one: `connect` creates the file, and a
+    project that has never run anything should stay as it is when something
+    merely asks what it holds (see project.paths' "creates nothing").
+
+    - `project_path` -- project to check.
+    """
+    return paths.runs_and_metrics_path(project_path).exists()
+
+
+@contextmanager
 def open_database(project_path):
-    """Open a project's runs_and_metrics.sqlite with both tables guaranteed to exist."""
-    return ensure_schema(connect(paths.runs_and_metrics_path(project_path)))
+    """
+    A project's runs_and_metrics.sqlite, with both tables guaranteed to exist, CLOSED on exit.
+
+    A context manager rather than a bare connection: left open, every read a
+    summary or an export makes holds a file handle for the rest of the process,
+    which on Windows is enough to stop the project directory being moved or
+    deleted.
+
+    The schema is ensured on every open rather than once per path. The DDL is
+    idempotent and cheap, and remembering which paths are ready is wrong as
+    soon as one is deleted and recreated under the same name.
+
+    - `project_path` -- project whose database to open.
+    """
+    connection = connect(paths.runs_and_metrics_path(project_path))
+    try:
+        ensure_schema(connection)
+        yield connection
+        connection.commit()
+    finally:
+        connection.close()
 
 
 def start_run(project_path, recipe, subset=None, context=None):
@@ -181,18 +216,17 @@ def start_run(project_path, recipe, subset=None, context=None):
     The full recipe spec is written now rather than at the end, so an
     interrupted run still records what it was trying to do.
 
-    project_path -- project to record the run in.
-    recipe       -- the Recipe being executed (see critterframe.recipes).
-    subset       -- name of the subset being processed, if the run was scoped
-                    to one. Recorded but deliberately NOT part of the recipe
-                    hash: which occurrences a recipe ran over is a property of
-                    the run, not of the recipe, so processing the rest of a
-                    project later continues the same work instead of counting
-                    as different work.
-    context      -- JSON-serializable record of what this run covered and what
-                    its operations fit: the occurrence set as a count and an
-                    ids_digest, the limit, and any prepare() records. Not
-                    hashed either, for the same reason as subset.
+    - `project_path` -- project to record the run in.
+    - `recipe` -- the Recipe being executed (see critterframe.recipes).
+    - `subset` -- name of the subset being processed, if the run was scoped to
+      one. Recorded but deliberately NOT part of the recipe hash: which
+      occurrences a recipe ran over is a property of the run, not of the
+      recipe, so processing the rest of a project later continues the same work
+      instead of counting as different work.
+    - `context` -- JSON-serializable record of what this run covered and what
+      its operations fit: the occurrence set as a count and an ids_digest, the
+      limit, and any prepare() records. Not hashed either, for the same reason
+      as subset.
     """
     if recipe.kind not in RUN_KINDS:
         raise ValueError(
@@ -228,19 +262,31 @@ def start_run(project_path, recipe, subset=None, context=None):
 
 
 def finish_run(project_path, run_id, processed=0, skipped=0, failed=0,
-               status=STATUS_COMPLETE):
+               status=STATUS_COMPLETE, flags=None):
     """
     Close a run record with its counts.
 
-    processed -- occurrence-parts this run actually derived something for.
-    skipped   -- occurrence-parts already covered by an equivalent recipe, so
-                 no work was repeated.
-    failed    -- occurrence-parts that raised. Individual failures never stop a
-                 run; they're counted here and logged as they happen.
-    status    -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an
-                 individual occurrence) blew up.
+    - `processed` -- occurrence-parts this run actually derived something for.
+    - `skipped` -- occurrence-parts already covered by an equivalent recipe, so
+      no work was repeated.
+    - `failed` -- occurrence-parts that raised. Individual failures never stop a
+      run; they're counted here and logged as they happen.
+    - `status` -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an
+      individual occurrence) blew up.
+    - `flags` -- `{flag: count}` of the operations that called their own result
+      doubtful (see `segments.FLAG_KEYS`), folded into the run's context. An
+      operation reports these in its `info`, and until they are recorded here
+      they exist only as text on a sampled panel.
     """
     with open_database(project_path) as connection:
+        if flags:
+            stored = connection.execute(
+                "SELECT context_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+            context = load_json(stored["context_json"]) or {}
+            context["flags"] = flags
+            connection.execute("UPDATE runs SET context_json = ? WHERE run_id = ?",
+                               (canonical_json(context), run_id))
+
         connection.execute(
             """
             UPDATE runs
@@ -277,10 +323,7 @@ def _append_run_log(project_path, row):
     record["recipe"] = load_json(record.pop("recipe_json"))
     record["context"] = load_json(record.pop("context_json", None))
 
-    log = paths.runs_log_path(project_path)
-    log.parent.mkdir(parents=True, exist_ok=True)
-    with open(log, "a", encoding="utf-8") as handle:
-        handle.write(canonical_json(record) + "\n")
+    append_jsonl(paths.runs_log_path(project_path), record)
 
 
 def _seeded_current_hash(connection, kind, name, part):
@@ -391,6 +434,8 @@ def commit_recipe_currency(project_path, kind, name, part, recipe_hash):
 
 def current_recipe_pointers(project_path, kind="metric"):
     """{(name, part): recipe_hash} for every name with a recorded pointer."""
+    if not has_database(project_path):
+        return {}
     with open_database(project_path) as connection:
         rows = connection.execute(
             "SELECT name, part, recipe_hash FROM current_recipes WHERE kind = ?",
@@ -399,16 +444,28 @@ def current_recipe_pointers(project_path, kind="metric"):
     return {(row["name"], row["part"]): row["recipe_hash"] for row in rows}
 
 
+def _empty_runs_frame():
+    """
+    A run table with no rows but every column, so a caller can filter or read a
+    column off a project that has never run anything without special-casing it.
+    """
+    return pd.DataFrame(columns=[
+        "run_id", "kind", "name", "part", "subset", "recipe_hash", "status",
+        "created_at", "finished_at", "n_processed", "n_skipped", "n_failed",
+        "recipe", "context",
+    ])
+
+
 def load_runs(project_path, kind=None, name=None, recipe_hash=None, run_id=None):
     """
     Read run records as a DataFrame, newest first, with the stored recipe spec
     and run context parsed back into `recipe` and `context` columns of dicts.
 
-    kind        -- optional "segment"/"metric" filter.
-    name        -- optional run-name filter.
-    recipe_hash -- optional exact-recipe filter, for "when has this exact
-                   recipe been run before".
-    run_id      -- optional exact-run filter, for looking up one run by id.
+    - `kind` -- optional "segment"/"metric" filter.
+    - `name` -- optional run-name filter.
+    - `recipe_hash` -- optional exact-recipe filter, for "when has this exact
+      recipe been run before".
+    - `run_id` -- optional exact-run filter, for looking up one run by id.
     """
     query = "SELECT * FROM runs"
     conditions = []
@@ -421,6 +478,9 @@ def load_runs(project_path, kind=None, name=None, recipe_hash=None, run_id=None)
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY created_at DESC, run_id DESC"
+
+    if not has_database(project_path):
+        return _empty_runs_frame()
 
     with open_database(project_path) as connection:
         rows = [dict(row) for row in connection.execute(query, parameters)]

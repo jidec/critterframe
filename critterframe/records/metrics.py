@@ -24,23 +24,28 @@ from .runs import open_database
 
 logger = logging.getLogger(__name__)
 
+# The unit of a metric run's recorded transform info: one row per transform,
+# named by its label, its scalar info as the value. Export leaves these columns
+# out unless asked, and they are always filterable.
+TRANSFORM_INFO_UNIT = "transform_info"
+
 
 def make_metric_row(occurrence_id, part, metric_name, value, unit=None,
                     source_mask_hash=None):
     """
     Build one metric value record.
 
-    occurrence_id    -- occurrence the value belongs to.
-    part             -- part the value was measured on.
-    metric_name      -- what it is stored under.
-    value            -- the value. Usually a scalar; a dict reports several
-                        related numbers and export splits it into one column per
-                        key. Must be JSON-serializable.
-    unit             -- what the value is expressed in, e.g. "px", "category".
-    source_mask_hash -- identity of the MASK this was measured from, from
-                        records.masks.derivation_hash(). Recorded per row rather
-                        than on the run, because one run legitimately spans
-                        occurrences whose masks came from different recipes.
+    - `occurrence_id` -- occurrence the value belongs to.
+    - `part` -- part the value was measured on.
+    - `metric_name` -- what it is stored under.
+    - `value` -- the value. Usually a scalar; a dict reports several related
+      numbers and export splits it into one column per key. Must be
+      JSON-serializable.
+    - `unit` -- what the value is expressed in, e.g. "px", "category".
+    - `source_mask_hash` -- identity of the MASK this was measured from, from
+      records.masks.derivation_hash(). Recorded per row rather than on the run,
+      because one run legitimately spans occurrences whose masks came from
+      different recipes.
     """
     return {
         "occurrence_id": str(occurrence_id),
@@ -60,11 +65,11 @@ def append_metrics(project_path, run_id, recipe_hash, rows):
     end, so an interrupted run keeps everything it had already computed -- and
     so its next attempt correctly skips that work instead of redoing it.
 
-    project_path -- project to write into.
-    run_id       -- the run these values came from (see records.runs).
-    recipe_hash  -- the recipe's hash, denormalized onto every row so the
-                    repeat-check query never has to join back to runs.
-    rows         -- list of records from make_metric_row().
+    - `project_path` -- project to write into.
+    - `run_id` -- the run these values came from (see records.runs).
+    - `recipe_hash` -- the recipe's hash, denormalized onto every row so the
+      repeat-check query never has to join back to runs.
+    - `rows` -- list of records from make_metric_row().
     """
     if not rows:
         return 0
@@ -96,7 +101,8 @@ def append_metrics(project_path, run_id, recipe_hash, rows):
     return len(rows)
 
 
-def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
+def load_metrics(project_path, run_names=None, parts=None, metric_names=None,
+                 occurrence_ids=None, current_only=False):
     """
     Read metric values in LONG form -- one row per occurrence-part-metric --
     joined to the run that produced each.
@@ -108,9 +114,17 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
     The run's name, kind, and start time come along as run_name/run_kind/
     run_created_at, which is why no row stores its own copy of any of them.
 
-    run_names    -- optional list of run names to include; all runs if None.
-    parts        -- optional list of parts to include; all parts if None.
-    metric_names -- optional list of metric names to include; all if None.
+    - `run_names` -- run names to include; all runs if None.
+    - `parts` -- parts to include; all parts if None.
+    - `metric_names` -- metric names to include; all if None.
+    - `occurrence_ids` -- occurrences to include; all if None, the same filter
+      `records.masks.load_masks` takes.
+    - `current_only` -- keep only the rows that are still current: measured
+      from a mask the project still holds, under the recipe the run name
+      currently points at (see `current_rows`). False (the default) is the
+      provenance view, which is what this long form is for; every reader
+      presenting values -- the wide table, a unit map, a group metric's
+      reference population -- asks for True.
     """
     query = """
         SELECT m.*, r.name AS run_name, r.kind AS run_kind,
@@ -121,7 +135,8 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
     conditions = []
     parameters = []
     for column, values in (("r.name", run_names), ("m.part", parts),
-                           ("m.metric_name", metric_names)):
+                           ("m.metric_name", metric_names),
+                           ("m.occurrence_id", occurrence_ids)):
         if values is not None:
             placeholders = ",".join("?" for _ in values)
             conditions.append(f"{column} IN ({placeholders})")
@@ -129,8 +144,10 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
     if conditions:
         query += " WHERE " + " AND ".join(conditions)
 
-    with open_database(project_path) as connection:
-        rows = [dict(row) for row in connection.execute(query, parameters)]
+    rows = []
+    if run_records.has_database(project_path):
+        with open_database(project_path) as connection:
+            rows = [dict(row) for row in connection.execute(query, parameters)]
 
     for row in rows:
         row["value"] = load_json(row.pop("value_json"))
@@ -142,7 +159,8 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None):
             "run_kind", "run_created_at",
         ])
 
-    return pd.DataFrame(rows)
+    long_df = pd.DataFrame(rows)
+    return current_rows(project_path, long_df) if current_only else long_df
 
 
 def current_rows(project_path, long_df):
@@ -218,14 +236,14 @@ def latest_values(project_path, run_name, part=DEFAULT_PART, metric_name=None,
     so it ranks two values computed within one run as well as two computed years
     apart, which a timestamp written once per batch could not.
 
-    run_name     -- run that produced the values.
-    part         -- part they were measured on.
-    metric_name  -- metric to pull; required.
-    current_only -- as in export.metrics_wide, and on by default for the same
-                    reason with more at stake: a group metric fits a reference
-                    population from these values, so a stale one doesn't just
-                    misreport its own occurrence, it shifts the distribution
-                    every other occurrence is scored against.
+    - `run_name` -- run that produced the values.
+    - `part` -- part they were measured on.
+    - `metric_name` -- metric to pull; required.
+    - `current_only` -- as in export.metrics_wide, and on by default for the
+      same reason with more at stake: a group metric fits a reference
+      population from these values, so a stale one doesn't just misreport its
+      own occurrence, it shifts the distribution every other occurrence is
+      scored against.
     """
     if metric_name is None:
         raise ValueError("latest_values needs a metric_name")

@@ -42,16 +42,16 @@ def normalize(df, id_col=None, image_col=None, datetime_cols=(), numeric_cols=()
 
     Everything else the source provided is kept untouched.
 
-    df            -- source DataFrame.
-    id_col        -- column holding the occurrence identifier. Omit if already
-                     called occurrence_id.
-    image_col     -- column holding the image URL. Omit if already called
-                     image_url, or if the images are local.
-    datetime_cols -- source columns to parse as datetimes.
-    numeric_cols  -- source columns to parse as numeric. Naming an absent column
-                     is harmless, so a caller can list a superset. Unparseable
-                     values become NaT/NaN rather than raising -- one malformed
-                     timestamp shouldn't cost the whole ingest.
+    - `df` -- source DataFrame.
+    - `id_col` -- column holding the occurrence identifier. Omit if already
+      called occurrence_id.
+    - `image_col` -- column holding the image URL. Omit if already called
+      image_url, or if the images are local.
+    - `datetime_cols` -- source columns to parse as datetimes.
+    - `numeric_cols` -- source columns to parse as numeric. Naming an absent
+      column is harmless, so a caller can list a superset. Unparseable values
+      become NaT/NaN rather than raising -- one malformed timestamp shouldn't
+      cost the whole ingest.
     """
     df = df.copy()
     renames = {}
@@ -93,8 +93,8 @@ def validate_ids(df, source=None):
     a judgement about the data -- one specimen photographed twice, or two
     specimens given one number? -- so this reports and stops.
 
-    df     -- table with an occurrence_id column of strings.
-    source -- the source column name, so the message points at what to fix.
+    - `df` -- table with an occurrence_id column of strings.
+    - `source` -- the source column name, so the message points at what to fix.
     """
     if ID_COL not in df.columns:
         raise KeyError(f"no '{ID_COL}' column to validate")
@@ -147,10 +147,10 @@ def load_occurrences(project_path, columns=None, missing_ok=False):
     """
     Read the occurrence table.
 
-    columns    -- optional list of column names to read off disk; all if None.
-                 occurrence_id is always included, since every caller keys on it.
-    missing_ok -- True returns an empty frame when nothing has been ingested
-                 yet, instead of raising.
+    - `columns` -- optional list of column names to read off disk; all if None.
+      occurrence_id is always included, since every caller keys on it.
+    - `missing_ok` -- True returns an empty frame when nothing has been
+      ingested yet, instead of raising.
     """
     if columns is not None:
         columns = list(dict.fromkeys([ID_COL] + list(columns)))
@@ -177,10 +177,10 @@ def require_columns(project_path, columns, purpose):
     wanted it. A mistyped column is nearly always a near-miss on one that is
     there, so listing them is usually the whole fix.
 
-    columns -- one column name or an iterable of them. Empty is a no-op.
-    purpose -- what the column would have been for, completing "...so there is
-               <purpose>", e.g. "nothing to key a calibration on". Shared check,
-               per-caller sentence.
+    - `columns` -- one column name or an iterable of them. Empty is a no-op.
+    - `purpose` -- what the column would have been for, completing "...so there
+      is <purpose>", e.g. "nothing to key a calibration on". Shared check,
+      per-caller sentence.
     """
     if isinstance(columns, str):
         columns = [columns]
@@ -218,7 +218,8 @@ def ids_record(occurrence_ids):
     A set of occurrence ids as {"count", "ids_hash"} -- how every record in the
     package names the occurrences something covered.
 
-    occurrence_ids -- iterable of ids; consumed once, so a generator is fine.
+    - `occurrence_ids` -- iterable of ids; consumed once, so a generator is
+      fine.
     """
     occurrence_ids = list(occurrence_ids)
     return {"count": len(occurrence_ids), "ids_hash": ids_digest(occurrence_ids)}
