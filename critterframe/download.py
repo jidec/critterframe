@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 import requests
 
-from . import segments as segment_iteration
+from . import drivers
 from . import selectionhelpers
 from .project import paths, subsets as subset_selection
 from .records import failures as failure_records
@@ -44,8 +44,6 @@ USER_AGENT = "critterframe-image-download/1.0"
 # max_workers=1 reproduces the old fully-sequential behaviour, for a source
 # with a strict rate limit.
 DEFAULT_MAX_WORKERS = 8
-
-
 def make_session(user_agent=USER_AGENT, min_interval=None):
     """
     A reusable HTTP session with a user agent and, optionally, a rate limit.
@@ -225,15 +223,15 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     - `visualize_every` -- also write a thumbnail grid every N downloads,
       sampled from that stretch only.
 
-    Returns a summary dict (see `segments.Tally.summary`) plus
-    `previously_failed`: URLs left alone because they failed before.
+    Returns a summary dict (see `drivers.Tally.summary`) plus
+    `previously_failed` (URLs left alone because they failed before) and `elapsed_s`.
     """
     paths.require_project(project_path)
 
     owns_session = session is None
     session = session or make_session()
 
-    tally = segment_iteration.Tally()
+    tally = drivers.Tally()
     batch = []
 
     try:
@@ -271,6 +269,9 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                     report.done(occurrence_id)
                     next_position += 1
 
+            progress = drivers.Progress(
+                len(ordered_ids), "download_images", tallies=[tally], log=logger.info)
+
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_row = {
                     executor.submit(_download_image, getattr(row, url_col), session,
@@ -294,7 +295,6 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                                 keys=[(oid, failure_records.NO_PART) for oid, _ in batch])
                             tally.processed += len(batch)
                             batch.clear()
-                            logger.info("saved %d/%d", tally.processed, tally.attempted)
 
                     except Exception as exc:
                         logger.warning("download failed for %s: %s", occurrence_id, exc)
@@ -302,6 +302,7 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                         report.failure(occurrence_id, f"{url}: {exc}")
                         finished[str(occurrence_id)] = None
 
+                    progress.step()
                     advance()
 
             if batch:
@@ -319,10 +320,11 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                     for failure in tally.failures
                 ])
             report.close()
+            elapsed = progress.finish()
     finally:
         if owns_session:
             session.close()
 
     logger.info("image download complete: attempted=%d saved=%d failed=%d",
                 tally.attempted, tally.processed, tally.failed)
-    return tally.summary(previously_failed=previously_failed)
+    return tally.summary(previously_failed=previously_failed, elapsed_s=elapsed)

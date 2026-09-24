@@ -47,7 +47,9 @@ def metric_run(project_path, metrics=None, **kwargs):
 
 
 def test_the_first_run_processes_everything(image_project):
-    assert segment_run(image_project) == {
+    result = segment_run(image_project)
+    assert result.pop("elapsed_s") >= 0
+    assert result == {
         "attempted": SPECIMENS, "processed": SPECIMENS, "skipped": 0,
         "no_input": 0, "failed": 0, "failures": [], "flags": {},
         "previously_failed": 0, "run_id": 1}

@@ -671,3 +671,13 @@ def test_no_manifest_is_written_when_it_is_not_wanted(measured_project, tmp_path
 def test_a_project_that_has_exported_nothing_reads_as_empty(measured_project):
     """No log file is 'nothing yet', not an error."""
     assert cf.load_exports(measured_project).empty
+
+
+def test_an_export_inside_the_project_is_logged_relative_to_it(measured_project, tmp_path):
+    """So a copied project's log still names its own files; one written elsewhere stays absolute."""
+    cf.export_metrics(measured_project)                        # the default: exports/
+    cf.export_metrics(measured_project, tmp_path / "elsewhere.csv")
+
+    inside, outside = cf.load_exports(measured_project)["path"]
+    assert inside.startswith("exports/") and inside.endswith(".csv")
+    assert cf_paths.is_absolute_anywhere(outside)

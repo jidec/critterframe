@@ -472,7 +472,9 @@ def _export_record(project_path, df, long_df, provenance, selection, path=None):
 
     record["export_hash"] = hash_spec(record)
     record["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    record["path"] = None if path is None else str(path)
+    # Relative when written inside the project, so a copied project's log still
+    # names its own files; a CSV handed out elsewhere stays absolute.
+    record["path"] = None if path is None else paths.relative_to_project(project_path, path)
     record["project"] = str(paths.project_dir(project_path))
     return record
 

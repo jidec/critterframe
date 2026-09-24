@@ -30,8 +30,22 @@ cf.run_metrics("C:/my_project", run_name="traits",
 cf.export_metrics("C:/my_project", "traits.csv")
 ```
 
-Plus filtering, validation, human annotation, training dataset export & custom model import, support for organismal parts (i.e. head, thorax, abdomen), scale & color calibration, group-derived metrics (i.e. cluster assignments, outlier detection), 
-and more — see [scripts/](scripts/) for full examples.
+#### Plus core support for:
+- Validation of segments & traits
+- Advanced filtering
+- Human annotation
+- Training dataset export
+- Importing segmentation models
+- Managing organismal parts (i.e. head, thorax)
+- Traits derived from stored traits: per occurrence (i.e. ratios) or per group (i.e. cluster assignments)
+- Scale & color calibration
+
+#### And support in extensions for: 
+- Training a segmentation model using Segmentation Models Pytorch
+- Training a bioencoder model
+- Advanced customizable ingests from a GBIF DarwinCore archive
+
+See [scripts/](scripts/) for full example pipelines
 
 ## The framework
 
@@ -65,13 +79,13 @@ and more — see [scripts/](scripts/) for full examples.
 
    > **Why:** Every mask and metric is linked to how it was produced and what inputs it depended on. Analyses are traceable & reproducible by default.
 
-## Convenience features
+## Other key features
 
-1. Virtually every pipeline step leaves a visual report by default (`visualize=True`), making things easy to scrutinize
-2. Project folders are portable records with data & provenance ready for archiving alongside a publication
-3. Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
-4. Metrics exports designed for easy analysis post-critterframe
-5. Multithreading/sharding for image downloading, segmentation, and metric runs
+- Virtually every pipeline step leaves a visual report by default (`visualize=True`), making things easy to scrutinize
+- Project folders are portable records with data & provenance ready for archiving alongside a publication
+- Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
+- Metrics exports designed for easy analysis post-critterframe
+- Multithreading/sharding for image downloading, segmentation, and metric runs
 
 ## Documentation
 [jidec.github.io/critterframe](https://jidec.github.io/critterframe/)
@@ -139,32 +153,46 @@ my_project/
     models/                     registry.json + checkpoints trained for this project
 ```
 
-## Vocabulary
+## `critterframe` vocabulary
 
-| Term                 | Meaning                                                                                                                                                                                                                      |
-|----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **Project**          | A self-contained collection of organismal occurrence images, metadata, & derivations intended to be analyzed as a coherent biological dataset, sharing at least some processing steps                                        |
-| **Occurrence image** | Image evidence of a focal organism existing at a specific place at a specific time                                                                                                                                           |
-| **Part**             | A consistent named biological component of an organism, such as `head`. Defaults to `organism` for the part representing the whole organism                                                                                  |
-| **Mask**             | At most one canonical mask per occurrence-part, in original image coordinates                                                                                                                                                |
-| **Segment**          | An image plus its current mask. Not persisted because images and masks already are                                                                                                                                           |
-| **Metric**           | Any derived value associated with an occurrence-part                                                                                                                                                                         |
-| **Transform**        | An operation changing the working segment without producing a value, such as orientation normalization                                                                                                                       |
-| **Operation**        | One configured processing action, named `transform`, `segment`, or `metric` by what it DOES to a segment                                                                                                                     |
-| **Recipe**           | A configured chain of operations, named `segment`, `metric`, or `render` by what its output is persisted as                                                                                                                  |
-| **Run**              | One execution of a recipe over a set of occurrences                                                                                                                                                                          |
-| **Subset**           | A named selection of occurrences                                                                                                                                                                                             |
-| **Filter**           | A rule for selecting occurrences, at export or post-critterframe                                                                                                                                                             |
-| **Calibration**      | Knowledge about the imaging system that leads to a conversion of metrics at exports (e.g. px/mm scale, ColorChecker normalized color)                                                                                        |
-| **Record**           | A persisted datatype, including occurrences, masks, runs, metrics, calibrations, and models                                                                                                                                  |
-| **Reference mask**   | A mask kept for comparison, not treated as canonical                                                                                                                                                                         |
-| **Recipe hash**      | The reproducible hash over a recipe's operations; what makes a rerun skip already-done work.                                                                                                                                 |
-| **Registered model** | A model attached to provenance info.                                                                                                                                                                                         |
-| **Panel**            | One picture of one operation's decision about one occurrence-part. The unit visualizations are built from.                                                                                                                   |
-| **Render**           | A materialized image product.                                                                                                                                                                                                |
-| **Raw import**       | Raw source data before any structural or judgement decision touches it (e.g. a GBIF DarwinCore archive as downloaded). Archived in raw_imports folder.                                                                       |
-| **Import**           | A raw import reshaped into occurrences and narrowed by judgement calls (drop=, group_col/max_per_group) about what's a valid, wanted candidate. Raw import to import conversions write a manifest recording those decisions. |
-| **Color threshold**  | A named combination of cutoffs on color-channel values used to identify qualifying pixels                                                                                                                                    |
+### Core concepts
+
+| Term                    | Meaning                                                                                                                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Project**             | A self-contained collection of organismal occurrence images, metadata, and derivations intended to be analyzed as a coherent biological dataset and sharing at least some processing steps. |
+| **Raw import**          | Source data preserved before any structural or judgment-based decisions are applied, such as a GBIF Darwin Core archive as downloaded. Archived in the `raw_imports/` folder.               |
+| **Import**              | A raw import reshaped into occurrences and narrowed through explicit inclusion decisions such as `drop`, `group_col`, and `max_per_group`. A manifest records those decisions.              |
+| **Occurrence image**    | Image evidence of a focal organism existing at a particular place and time.                                                                                                                 |
+| **Subset**              | A named selection of occurrences.                                                                                                                                                           |
+| **Part**                | A consistently named biological component of an organism, such as `head`. The part representing the whole organism defaults to `organism`.                                                  |
+| **Mask**                | The canonical spatial representation of an occurrence-part in the original image coordinates. Each occurrence-part has at most one canonical mask.                                          |
+| **Metric**              | Any derived value associated with an occurrence-part.                                                                                                                                       |
+| **Trait**               | A metric representing a biologically meaningful property intended for later analysis.                                                                                                       |
+| **QC metric**           | A metric describing the usability or reliability of an image, segment, transformation, or derived measurement.                                                                              |
+| **Group metric**        | A metric derived jointly from multiple occurrences, such as a cluster assignment or outlier score.                                                                                          |
+| **Color threshold**     | A named combination of cutoffs on color-channel values used to identify qualifying pixels.                                                                                                  |
+| **Calibration**         | Knowledge about the imaging system used to convert metrics during export, such as a pixels-per-millimetre scale or ColorChecker-based color normalization.                                  |
+| **Filter**              | A rule for selecting occurrences during export or downstream analysis.                                                                                                                      |
+| **Annotation**          | A value supplied or reviewed by a person, such as a usability label, manual trait measurement, or reference mask.                                                                           |
+| **Reference mask**      | A mask retained for comparison rather than treated as canonical.                                                                                                                            |
+| **Reference set**       | A collection of human-reviewed or otherwise trusted data used to evaluate a pipeline component.                                                                                             |
+| **Stratified sampling** | Sampling separately within predefined groups, such as taxa or collections, to ensure that each is adequately represented.                                                                   |
+| **Validation**          | Comparison against a reference set to quantify how well a pipeline step performs.                                                                                                           |
+
+### Processing terms
+
+| Term                 | Meaning                                                                                                                             |
+| -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| **Registered model** | A model stored or referenced together with its provenance information.                                                              |
+| **Segment**          | An image paired with its current mask. Segments are working state and are not persisted because their images and masks already are. |
+| **Transform**        | An operation that changes the working segment without producing a value, such as orientation normalization.                         |
+| **Operation**        | One configured processing action, classified as `transform`, `segment`, or `metric` according to what it does to a segment.         |
+| **Recipe**           | A configured chain of operations, classified as `segment`, `metric`, or `render` according to the type of output it persists.       |
+| **Recipe hash**      | A reproducible hash of a recipe’s operations that allows equivalent completed work to be recognized and skipped during reruns.      |
+| **Run**              | One execution of a recipe over a set of occurrences.                                                                                |
+| **Record**           | A persisted package datatype, including occurrences, masks, runs, metrics, calibrations, and models.                                |
+| **Panel**            | An image showing one operation’s decision for one occurrence-part. Panels are the units from which visualizations are assembled.    |
+| **Render**           | A materialized image product.                                                                                                       |
 
 ## Package layout
 
@@ -184,6 +212,7 @@ critterframe/
         paths.py            define every path and filename in critterframe project folders
         subsets.py          create named, persisted selections of occurrences
         summarize.py        summarize what a project directory currently holds
+        archive.py           archive_project(): a deposit-ready copy, without images, raw data or local paths
     storage/                
         imagestore.py       the LMDB image store, better than directories for millions of images
         tables.py           parquet tables (occurrences & masks) read, snapshot write, upsert 
@@ -200,6 +229,7 @@ critterframe/
     segmentation/
         groundedsam.py  SAM2, with or without Grounding DINO detection
         manual.py          draw/correct a mask by hand -- an alternative segmentation, not a separate system
+        mask_import_export.py  import_masks()/export_masks(): masks in and out as <occurrence_id>__<part>.png
         run.py                segment() operation + run_segments(), including sharded/parallel runs
     transforms/
         orient.py            PCA orientation, axis chosen by asymmetry rather than length
@@ -214,7 +244,10 @@ critterframe/
         color_thresholds.py  ColorThreshold cutoffs across colour spaces; threshold_fractions and presets
         inductive_color_thresholds.py  the same thresholds fitted per group: a chroma gate and hue arcs
         color_clusters.py  per-group colour palette proportions
-        outliers.py        group metrics: outlier(), cluster()
+        embedding.py      EmbeddingModel over any torch network, pretrained() timm backbones, embedding()
+        stored.py          StoredValues + the base for metrics computed from stored values, not pixels
+        derived.py        derived(): a value from one occurrence-part's own stored values, e.g. a ratio
+        outliers.py        group metrics over a population of stored values: outlier(), cluster()
         annotation.py    human labels: usability_annotation, click_two_points
         run.py                run_metrics() + RunContext + _completed_keys
     calibrations/
@@ -240,8 +273,8 @@ critterframe/
             calibrations/
                 scale.py            scale scoped per trap night (event_id), not per occurrence
         bioencoder/
-            embedding.py      BioEncoderModel + embedding() metric
-            training.py         prepare_dataset(); train()/load() deliberately unfinished, raise NotImplementedError
+            embedding.py      BioEncoderModel (an EmbeddingModel) + load_registered()
+            training.py         prepare_dataset(), load(), load_from_config(); train() deliberately unfinished
         gbif_darwincore_inat/
             archive.py          read a GBIF Darwin Core Archive, zipped or extracted
             ingest.py             one photo per occurrence -> ingest_occurrences(); iNat photo sizes, prioritize_inat
@@ -250,14 +283,38 @@ critterframe/
             training.py         prepare_dataset() + train() + register_trained() -- a real, runnable training loop
 ```
 
+## Cross-Cutting Validation
+
+Validation should be a part of every pipeline: critterframe supports validation at multiple levels with worked examples in `/scripts`
+
+For reference set creation/annotation
+- `correct_masks` or `manual_masks` to create a reference/ground truth mask set
+- `usability_flags`
+- Stratified sampling of reference sets across grouping columns (e.g. taxa, collections)
+
+For segmentation:
+- `validate_masks` to directly compare a segmentation model to a reference set
+
+For traits:
+- `compare_metrics` to assess agreement between an automatically computed trait and a human-measured one
+
+For the validity/quality of final outputs (AKA noise filtering):
+- `get_validated_filters` that given candidate columns (e.g. seg model confidence, transform reliability flags) and project-scoped negative image cases (e.g. blurry, cutoff) computes filtering columns & values that screen out invalid or low quality examples under different coverage-quality tradeoffs
+- Certain group-level metrics (e.g. outlier labels/scores, cluster assignments) are especially useful filtering candidates
+
+For the whole pipeline:
+- Coming soon - "sensitivity analysis" exports across defensible alternative metric parameters and filtering tradeoffs
+- Coming soon - bootstrap uncertainty intervals for validation results
+
 ## Extensions
 
 Extensions are typically for handling specific data sources, very specialized metrics, or trainable models
 not general enough to bundle in core. By convention they mirror the package layout.
 
 - **`antenna_lighttraps`** — light-trap camera monitoring. Scale calibration is scoped per trap night (`event_id`) rather than per occurrence.
-- **`bioencoder`** — metric-learning embeddings as a metric, plus dataset preparation for training one. The
-  training loop itself is deliberately left unimplemented.
+- **`bioencoder`** — dataset preparation for training a metric-learning model, and a loader for
+  checkpoints the BioEncoder package trained (by path or by its own YAML config), feeding core's
+  `embedding()`. The training loop itself is deliberately left to the BioEncoder package.
 - **`gbif_darwincore_inat`** — a GBIF Darwin Core Archive, one photo per occurrence. The way to pull
   iNaturalist observations: iNat photo sizes, cross-source deduplication, and `prioritize_inat` for mixed pulls.
 - **`smp_segmenter`** — a trainable UNet++ segmenter (segmentation_models_pytorch) for refining or replacing
@@ -265,7 +322,7 @@ not general enough to bundle in core. By convention they mirror the package layo
   `train()` is a real, working training loop, not a stub -- binary mask segmentation doesn't carry the same
   dataset-dependent backbone/loss judgment calls that make guessing at a metric-learning setup risky.
 
-Claude Code was used to contribute code and documentation to this project (with every line examined by a human).
+Claude Code was used to contribute code, documentation, & tests to this project (with every line examined by a human).
 
 ## License
 

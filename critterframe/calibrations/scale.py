@@ -26,7 +26,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from .. import segments as segment_iteration
+from .. import drivers
 from ..project import paths, subsets as subset_selection
 from ..recipes import hash_spec
 from ..records import calibrations as calibration_records
@@ -479,7 +479,7 @@ def measure_scales(project_path, template, target_mm, scope=ID_COL, region=None,
       weakest template matches, weakest first, plus a px/mm histogram. A
       list names scope values instead. False writes nothing.
 
-    Returns a summary dict (see `segments.Tally.summary`) plus `missed`:
+    Returns a summary dict (see `drivers.Tally.summary`) plus `missed`:
     images searched where no target matched at all.
     """
     paths.require_project(project_path)
@@ -524,7 +524,7 @@ def measure_scales(project_path, template, target_mm, scope=ID_COL, region=None,
     rows = []
     measured_px = []
     missed = 0
-    tally = segment_iteration.Tally(attempted=len(todo))
+    tally = drivers.Tally(attempted=len(todo))
     tally.skipped = skipped
 
     with ImageStore(project_path, readonly=True) as images:

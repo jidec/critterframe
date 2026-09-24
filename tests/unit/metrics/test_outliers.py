@@ -28,6 +28,7 @@ import pytest
 import critterframe as cf
 from critterframe.metrics.outliers import POPULATION, group_lookup
 from critterframe.metrics.run import RunContext
+from critterframe.metrics.stored import StoredValues
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.runs import start_run
 from critterframe.recipes import Recipe
@@ -129,11 +130,19 @@ def test_scoring_without_fitting_first_says_so():
     calling the operation directly skips it, and the error has to say that
     rather than failing inside sklearn.
     """
+    metric = cf.outlier([cf.body_length()], from_run="traits")
+    with pytest.raises(RuntimeError, match="never fit"):
+        metric(StoredValues("specimen0", "organism"))
+
+
+def test_a_group_metric_is_never_handed_stored():
+    """Its input is stored values; a Segment would let it measure pixels instead."""
     from critterframe.recipes import Segment
 
     metric = cf.outlier([cf.body_length()], from_run="traits")
     segment = Segment(np.zeros((10, 10, 3), np.uint8), mask=np.ones((10, 10), bool))
-    with pytest.raises(RuntimeError, match="never fit"):
+    assert metric.input == "stored"
+    with pytest.raises(TypeError, match="StoredValues"):
         metric(segment)
 
 
@@ -433,3 +442,183 @@ def test_a_fit_without_a_report_draws_nothing(metadata_project):
     store_lengths(metadata_project, typical_lengths())
     cf.outlier([cf.body_length()], from_run="traits").prepare(a_context(metadata_project))
     assert not paths.pipeline_dir(metadata_project).exists()
+
+
+# ---------------------------------------------------------------------------
+# Vector features
+# ---------------------------------------------------------------------------
+
+
+class StubEmbedder:
+    """Stands in for a network: an identity for the hash, nothing to run."""
+
+    def __init__(self, weights="a"):
+        self.weights = weights
+
+    def identity(self):
+        return {"class": "StubEmbedder", "weights": self.weights}
+
+    def embed(self, image):
+        raise AssertionError("stored scoring must not rerun the network")
+
+
+def two_clusters():
+    """Four specimens near one point, four near another, as 3-d vectors."""
+    return {f"specimen{index}": ([0.0, 0.0, 1.0] if index < 4 else [1.0, 1.0, 0.0])
+            for index in range(8)}
+
+
+def store_vectors(project_path, values, model=None, run_name="embed"):
+    recipe = Recipe("metric", run_name, [cf.embedding(model or StubEmbedder())],
+                    part="organism")
+    run_id = start_run(project_path, recipe)
+    append_metrics(project_path, run_id, recipe.hash,
+                   [make_metric_row(occurrence_id, "organism", "embedding",
+                                    value, unit="embedding")
+                    for occurrence_id, value in values.items()])
+    return recipe.hash
+
+
+def stored(occurrence_id):
+    return StoredValues(occurrence_id, "organism")
+
+
+def stored_cluster(**kwargs):
+    kwargs.setdefault("n_clusters", 2)
+    return cf.cluster([cf.embedding(StubEmbedder())], from_run="embed",
+                      **kwargs)
+
+
+def test_a_vector_feature_becomes_one_column_per_element(metadata_project):
+    store_vectors(metadata_project, two_clusters())
+    metric = stored_cluster()
+    fit = metric.prepare(a_context(metadata_project))
+
+    assert metric.columns == ["embedding_0", "embedding_1", "embedding_2"]
+    assert fit["population"]["count"] == 8
+    assert fit["features"] == ["embedding"]
+
+
+def test_stored_scores_separate_what_the_vectors_separate(metadata_project):
+    store_vectors(metadata_project, two_clusters())
+    metric = stored_cluster()
+    metric.prepare(a_context(metadata_project))
+
+    labels = [metric(stored(f"specimen{index}"))["cluster_id"] for index in range(8)]
+    assert len(set(labels[:4])) == 1 and len(set(labels[4:])) == 1
+    assert labels[0] != labels[4]
+
+
+def test_a_vector_of_the_wrong_length_is_left_out(metadata_project, caplog):
+    values = two_clusters()
+    values["specimen7"] = [1.0, 1.0]
+    store_vectors(metadata_project, values)
+
+    with caplog.at_level("WARNING"):
+        fit = stored_cluster().prepare(a_context(metadata_project))
+
+    assert fit["population"]["count"] == 7
+    assert "not 3-long" in caplog.text
+
+
+def test_an_occurrence_with_no_stored_value_is_no_input_yet(metadata_project):
+    """Not a failure: it is scored once the upstream run reaches it."""
+    from critterframe.drivers import NoInput
+
+    values = two_clusters()
+    del values["specimen7"]
+    store_vectors(metadata_project, values)
+    metric = stored_cluster()
+    metric.prepare(a_context(metadata_project))
+
+    with pytest.raises(NoInput):
+        metric(stored("specimen7"))
+
+
+def test_a_clusterer_that_cannot_predict_reports_its_own_labels(metadata_project):
+    """DBSCAN labels only what it was fit on, which stored scoring is; -1 is noise."""
+    from sklearn.cluster import DBSCAN
+
+    values = two_clusters()
+    values["specimen7"] = [9.0, 9.0, 9.0]
+    store_vectors(metadata_project, values)
+    metric = stored_cluster(model_factory=lambda: DBSCAN(eps=0.5, min_samples=3))
+    metric.prepare(a_context(metadata_project))
+
+    labels = [metric(stored(f"specimen{index}"))["cluster_id"] for index in range(8)]
+    assert labels[7] == -1
+    assert labels[0] != labels[4] and -1 not in labels[:7]
+
+
+def test_a_probability_below_the_threshold_is_unassigned(metadata_project):
+    from sklearn.mixture import GaussianMixture
+
+    store_vectors(metadata_project, two_clusters())
+    metric = stored_cluster(
+        model_factory=lambda: GaussianMixture(2, random_state=0, reg_covar=1e-3),
+        probability_threshold=1.01)
+    metric.prepare(a_context(metadata_project))
+
+    result = metric(stored("specimen0"))
+    assert result["cluster_id"] == -1
+    assert 0 <= result["probability"] <= 1
+
+
+def test_a_threshold_needs_a_probabilistic_model():
+    with pytest.raises(ValueError, match="predict_proba"):
+        cf.cluster([cf.body_length()], from_run="traits", probability_threshold=0.5)
+
+
+def test_reducing_dimensions_first_is_a_pipeline_in_the_hash(metadata_project):
+    store_vectors(metadata_project, two_clusters())
+    reduced = stored_cluster(n_components=2)
+    reduced.prepare(a_context(metadata_project))
+
+    assert "centroid_distance" in reduced(stored("specimen0"))
+    assert reduced.spec() != stored_cluster().spec()
+
+
+# ---------------------------------------------------------------------------
+# The model's configuration reaches the hash, without moving existing ones
+# ---------------------------------------------------------------------------
+
+
+def test_the_default_model_adds_nothing_to_the_hash():
+    """Every cluster/outlier hash recorded before model settings were hashed holds."""
+    for metric in (cf.cluster([cf.body_length()], from_run="traits"),
+                   cf.outlier([cf.body_length()], from_run="traits")):
+        assert set(metric.spec()["parameters"]) == {
+            "features", "from_run", "group_col", "min_group_size", "model"}
+
+
+def test_a_different_cluster_count_is_different_work():
+    """It used to hash alike, so asking for 5 clusters skipped as done at 3."""
+    three = cf.cluster([cf.body_length()], from_run="traits", n_clusters=3)
+    five = cf.cluster([cf.body_length()], from_run="traits", n_clusters=5)
+    assert three.spec() != five.spec()
+
+
+def test_a_different_contamination_is_different_work():
+    auto = cf.outlier([cf.body_length()], from_run="traits")
+    strict = cf.outlier([cf.body_length()], from_run="traits", contamination=0.05)
+    assert auto.spec() != strict.spec()
+
+
+# ---------------------------------------------------------------------------
+# The upstream recipe: checked, and recorded beside the hash
+# ---------------------------------------------------------------------------
+
+
+def test_a_feature_configured_unlike_the_stored_one_is_refused(metadata_project):
+    """Otherwise one model's hash would be fit on another model's vectors."""
+    store_vectors(metadata_project, two_clusters(), model=StubEmbedder("a"))
+    metric = cf.cluster([cf.embedding(StubEmbedder("b"))], from_run="embed",
+                        n_clusters=2)
+    with pytest.raises(ValueError, match="configured"):
+        metric.prepare(a_context(metadata_project))
+
+
+def test_the_fit_records_the_upstream_recipe(metadata_project):
+    upstream = store_vectors(metadata_project, two_clusters())
+    fit = stored_cluster().prepare(a_context(metadata_project))
+    assert fit["from_recipe_hash"] == upstream

@@ -7,10 +7,11 @@ transform's scalar info stored beside them as a `transform_info` row. Occurrence
 no mask for the part are neither measured nor counted done, and the run says so.
 """
 
+import contextlib
 import logging
 from collections import Counter
 
-from .. import segments as segment_iteration
+from .. import drivers, segments as segment_iteration
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe, load_json
 from ..records import failures as failure_records
@@ -21,6 +22,7 @@ from ..records.occurrences import ids_record
 from ..storage.imagestore import ImageStore
 from ..visualization import pipeline as pipeline_visualization
 from ..visualization.panels import segment_panel
+from .stored import StoredValues
 
 logger = logging.getLogger(__name__)
 
@@ -50,16 +52,20 @@ class RunContext:
       context.report:`.
     - `reference` -- whether this run measures reference masks rather than
       canonical ones.
+    - `transforms` -- the run's transform chain, so prepare() can draw
+      segments the way the run sees them.
     """
 
     def __init__(self, project_path, occurrence_ids, part, run_name,
-                 report=pipeline_visualization.NULL_REPORT, reference=False):
+                 report=pipeline_visualization.NULL_REPORT, reference=False,
+                 transforms=()):
         self.project_path = project_path
         self.occurrence_ids = list(occurrence_ids)
         self.part = part
         self.run_name = run_name
         self.report = report
         self.reference = reference
+        self.transforms = list(transforms)
 
 
 # Distinguishes "this occurrence-part has no mask" from "its mask has no recipe
@@ -77,6 +83,11 @@ def _format_value(value):
         return "{" + ", ".join(sorted(value)[:3]) + "}"
     text = str(value)
     return text if len(text) <= 14 else text[:13] + "…"
+
+
+def _reads_stored(operation):
+    """Whether a metric is computed from stored values (a StoredValues) rather than a Segment."""
+    return getattr(operation, "input", "segment") == "stored"
 
 
 def _visualize_measurement(state, rows):
@@ -187,15 +198,21 @@ def _current_for_population(project_path, keys, recipe_hash, part, prepared):
         found = run_records.load_runs(project_path, run_id=run_id)
         contexts[run_id] = found.iloc[0]["context"] if not found.empty else None
 
+    def same_fit(stored, record):
+        # The upstream recipe sits beside the population: a group metric fit
+        # on values another recipe has since replaced is stale even when the
+        # occurrences are the same ones.
+        stored, record = stored or {}, record or {}
+        return (stored.get("population", {}).get("ids_hash")
+                == record.get("population", {}).get("ids_hash")
+                and stored.get("from_recipe_hash") == record.get("from_recipe_hash"))
+
     def population_matches(occurrence_id):
         run_id = run_id_by_occurrence.get(occurrence_id)
         context = contexts.get(run_id) or {}
         operations = context.get("operations") or {}
-        return all(
-            (operations.get(metric_name) or {}).get("population", {}).get("ids_hash")
-            == (record or {}).get("population", {}).get("ids_hash")
-            for metric_name, record in prepared.items()
-        )
+        return all(same_fit(operations.get(metric_name), record)
+                   for metric_name, record in prepared.items())
 
     return {key for key in keys if population_matches(key[0])}
 
@@ -325,10 +342,10 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
       or a part carved out of the organism crop is measured in a crop of its
       own instead of the one it was segmented in.
 
-    Returns {part: summary}, each as `segments.Tally.summary` plus `run_id`,
+    Returns {part: summary}, each as `drivers.Tally.summary` plus `run_id`,
     `copied` -- occurrence-parts whose value was re-used from an identically
     configured run under a different name rather than recomputed (see
-    `run_name` above) -- and `previously_failed`. `no_input` counts
+    `run_name` above) -- `previously_failed`, and `elapsed_s`. `no_input` counts
     occurrence-parts with no mask, image or `from_part` mask yet; they are
     attempted again once it exists.
     """
@@ -372,6 +389,11 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
             f"transform(s) {sorted(clashes)} share a name with a metric -- their "
             "recorded info would land in the same export column; pass name= to "
             "the metric")
+
+    if transforms and all(_reads_stored(operation) for operation in metrics):
+        raise ValueError(
+            "transforms= has nothing to act on: every metric here reads stored "
+            "values (input='stored'), so no segment is built")
 
     target_parts = list(parts) if parts else [part]
     occurrence_ids = subset_selection.select_ids(project_path, subset=subset,
@@ -419,7 +441,7 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
 
     prepared = recipe.prepare_all(
         RunContext(project_path, occurrence_ids, part, run_name, report=report,
-                   reference=reference))
+                   reference=reference, transforms=transforms))
 
     # A recipe needs a mask unless every metric in it says otherwise and
     # there's nothing transforming the segment first (a transform chain is
@@ -430,6 +452,7 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
     # and records accurate provenance wherever one happens to exist.
     needs_mask = bool(transforms) or any(
         getattr(operation, "requires_mask", True) for operation in metrics)
+    needs_segment = any(not _reads_stored(operation) for operation in metrics)
 
     mask_rows = mask_records.mask_lookup(project_path, part=part,
                                          occurrence_ids=occurrence_ids,
@@ -505,7 +528,7 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
     unsegmented = (len([i for i in occurrence_ids if i not in mask_rows])
                   if needs_mask else 0)
     skipped = len(done_here)
-    tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+    tally = drivers.Tally(attempted=len(occurrence_ids))
     tally.skipped = skipped
     tally.no_input = unsegmented
 
@@ -542,53 +565,70 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                                             occurrence_ids=todo)
                    if from_part is not None else {})
 
-    with ImageStore(project_path, readonly=True) as images:
+    progress = drivers.Progress(
+        len(todo), f"run_metrics '{run_name}' part '{part}'", tallies=[tally],
+        log=logger.info)
+
+    # A recipe of stored-input metrics alone reads no image and builds no
+    # Segment: what it is computed from is already in the metrics table.
+    store = (ImageStore(project_path, readonly=True) if needs_segment
+             else contextlib.nullcontext())
+    with store as images:
+
+        def build_state(occurrence_id):
+            image = images.get(occurrence_id)
+            if image is None:
+                raise drivers.NoInput(drivers.NO_IMAGE)
+
+            # .get(), not [] -- absent for a maskless recipe (mask_rows is
+            # {} entirely) and, defensively, for any occurrence a
+            # mask-requiring recipe's own todo filter already excluded.
+            mask_row = mask_rows.get(occurrence_id)
+            mask = mask_records.decode_mask(mask_row) if mask_row is not None else None
+
+            from_mask = None
+            if from_part is not None:
+                source_row = source_rows.get(occurrence_id)
+                if source_row is None:
+                    raise drivers.NoInput(
+                        drivers.no_mask(from_part))
+                from_mask = mask_records.decode_mask(source_row)
+
+            state = segment_iteration.build_segment(
+                image, mask=mask, occurrence_id=occurrence_id, part=part,
+                project_path=project_path,
+                panel_sink=report.sink(occurrence_id),
+                from_mask=from_mask, from_part=from_part)
+
+            transform_info = []
+            for label, operation in zip(transform_labels, transforms):
+                state, info = operation(state)
+                tally.record_flags(info)
+                transform_info.append((label, segment_iteration.scalar_info(info)))
+
+            if from_mask is not None:
+                state = state.for_part(part)
+                state.mask = None if mask is None else state.project_mask(mask)
+            return state, transform_info
+
         for occurrence_id in todo:
             try:
-                image = images.get(occurrence_id)
-                if image is None:
-                    raise segment_iteration.NoInput(segment_iteration.NO_IMAGE)
-
-                # .get(), not [] -- absent for a maskless recipe (mask_rows is
-                # {} entirely) and, defensively, for any occurrence a
-                # mask-requiring recipe's own todo filter already excluded.
-                mask_row = mask_rows.get(occurrence_id)
-                mask = mask_records.decode_mask(mask_row) if mask_row is not None else None
-
-                from_mask = None
-                if from_part is not None:
-                    source_row = source_rows.get(occurrence_id)
-                    if source_row is None:
-                        raise segment_iteration.NoInput(
-                            segment_iteration.no_mask(from_part))
-                    from_mask = mask_records.decode_mask(source_row)
-
-                state = segment_iteration.build_segment(
-                    image, mask=mask, occurrence_id=occurrence_id, part=part,
-                    project_path=project_path,
-                    panel_sink=report.sink(occurrence_id),
-                    from_mask=from_mask, from_part=from_part)
-
-                transform_info = []
-                for label, operation in zip(transform_labels, transforms):
-                    state, info = operation(state)
-                    tally.record_flags(info)
-                    transform_info.append((label, segment_iteration.scalar_info(info)))
-
-                if from_mask is not None:
-                    state = state.for_part(part)
-                    state.mask = None if mask is None else state.project_mask(mask)
+                state, transform_info = (build_state(occurrence_id) if needs_segment
+                                         else (None, []))
+                stored = StoredValues(occurrence_id, part)
 
                 rows = [
                     metric_records.make_metric_row(
                         occurrence_id, part, operation.metric_name,
-                        operation(state), unit=operation.unit,
+                        operation(stored if _reads_stored(operation) else state),
+                        unit=operation.unit,
                         source_mask_hash=source_hashes.get((occurrence_id, part)),
                     )
                     for operation in metrics
                 ]
 
-                _visualize_measurement(state, rows)
+                if state is not None:
+                    _visualize_measurement(state, rows)
 
                 rows += [
                     metric_records.make_metric_row(
@@ -607,7 +647,7 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 tally.processed += 1
                 resolved.append((occurrence_id, part))
 
-            except segment_iteration.NoInput as exc:
+            except drivers.NoInput as exc:
                 tally.no_input += 1
                 missing[str(exc)] += 1
             except Exception as exc:
@@ -623,9 +663,11 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 })
 
             report.done(occurrence_id)
+            progress.step()
 
     report.close()
-    segment_iteration.log_no_input(missing, f"run_metrics part '{part}'")
+    elapsed = progress.finish()
+    drivers.log_no_input(missing, f"run_metrics part '{part}'")
 
     # Written once at the end rather than per occurrence: unlike the metric
     # rows above, a lost failure costs a retry, not a day's annotation.
@@ -649,4 +691,4 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 "previous recipe", run_name, part)
 
     return tally.summary(copied=len(copy_rows), run_id=run_id,
-                         previously_failed=len(failed_before))
+                         previously_failed=len(failed_before), elapsed_s=elapsed)

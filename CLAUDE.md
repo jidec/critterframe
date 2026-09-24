@@ -344,6 +344,12 @@ sets what a change costs:
 | Content identity | `fingerprint_file`, `ids_digest`, `data_hash`, `import_hash`, `export_hash` | recipe hashes, idempotent ingest, recognizing a repeated export | work or imports re-identified |
 | Scope or name only | failure `context_hash`, report `identity_hash`, products folder | retry decisions, filenames, render skip | retries or renamed files; no data affected |
 
+An imported mask (`segmentation.mask_import_export`) is the one mask whose recipe hash covers its own pixels:
+each row's `recipe_hash` is `hash_spec({"recipe": <the import recipe's hash>, "mask": records.masks.mask_digest(...)})`,
+because the pixels ARE the work. One shared import hash would let a corrected mask keep the old one's identity, so
+metrics measured from the old mask would still count as current; this way an identical re-import is skipped and a
+changed one makes exactly its own metrics stale. It is a new root — no `from_part`, no `source_mask_hash`.
+
 Only the first two rows are pinned by `tests/unit/test_hash_stability.py`. A pipeline report usually reuses the
 run's own recipe hash, but there it only locates files, so a report may be deleted freely. The one identity that
 sits beside a hash rather than inside it is a group metric's reference population (`context_json`, checked by
@@ -406,7 +412,40 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   when the reference population it was fit against matches this run's own. This closes the gap for real —
   growing the reference population and rerunning the same `run_name` now correctly rescopes previously-scored
   occurrences instead of leaving them silently stale — and it costs nothing extra, because `prepare()` already
-  runs, unconditionally, before the completion check even looks at it.
+  runs, unconditionally, before the completion check even looks at it. The UPSTREAM recipe sits beside the
+  hash the same way: `GroupMetric.prepare()` records `from_recipe_hash` (the `current_recipes` pointer for
+  `from_run`), and `_current_for_population` compares it too, so force-moving `from_run` onto a new recipe
+  (say, re-embedding with new transforms) makes every value fit on the replaced numbers stale on the next
+  pass, while the group metric's own hash, which only names its features, stays put. `prepare()` also refuses
+  a feature whose `spec()` isn't among that recipe's operations, since the stored values under a
+  `metric_name` would otherwise come from a different model than the one the hash names.
+- **A metric's input is either a segment or stored values, and its scope is one occurrence-part or a
+  population.** Each metric sits in exactly one cell:
+
+  | input \ scope | one occurrence-part | population (fit in `prepare()`) |
+  |---|---|---|
+  | segment pixels | ordinary metric (`body_length`, `embedding`) | `outliers.PooledPixelGroupMetric` (`color_clusters`, `inductive_color_thresholds`) |
+  | stored values | `derived.DerivedMetric` (`derived()`) | `outliers.GroupMetric` (`cluster`, `outlier`) |
+
+  The input axis is `Metric.input` (`"segment"` or `"stored"`, not in `spec()`), and `run_metrics`
+  enforces it. A stored-input metric is called with a `stored.StoredValues` (an occurrence id and a part),
+  never a Segment, so it cannot measure pixels. A recipe made only of stored-input metrics opens no image
+  store, and it rejects `transforms=` because they would have nothing to act on. The scope axis is enforced
+  by signatures. `derived(fn, ...)` hands `fn` one occurrence's `{metric_name: value}` and nothing else, and
+  its `prepare()` records no `population`, since who else is in scope can't change its value. A group
+  metric's population is visible only to the fit in `prepare()`, and each occurrence is then scored on its own
+  stored row.
+
+  Both stored-input kinds read through `stored.StoredValueMetric`: `latest_values` (current rows only), the
+  feature-spec check, and `from_recipe_hash`. That puts "what counts as a current stored value" in one place.
+  A group metric no longer re-measures features from the segment. It was a hybrid that fit on stored values
+  and scored on pixels, so the fit and the score could see different numbers, and over an embedding it ran
+  the network twice. A vector feature is expanded into `<metric_name>_<i>` columns. A clusterer without
+  `predict()` (DBSCAN) reports its own fit labels. An occurrence with no current stored value raises
+  `NoInput`. A group model's configuration (`n_clusters`, `contamination`, a PCA step) reaches the hash as
+  `model_config` only where it differs from that metric's default model, so no hash recorded before that
+  change moved. A derived function is identified by its import path plus `version=`, so lambdas and
+  nested functions are refused (the same reason export records a predicate filter by name).
 - **`subset` and `name` are recorded on the run but not hashed.** Processing the rest of the project later
   continues the same work rather than counting as a different recipe (`subset`); renaming a run doesn't change
   what running it produces, so it must not force every occurrence to be treated as unfinished work, or cascade
@@ -486,9 +525,9 @@ each was added for a failure that had no error message.
   brand-new project.
 - **`download_images` threads the fetch only.** Batching and every `store.put_many()` stay on the calling
   thread, so concurrency never reaches the image store. `max_workers=1` reproduces the sequential behaviour.
-- **`project/paths.py` and `selectionhelpers.py` import nothing from the package.** That is what lets ingest,
-  run drivers, and visualization use them without acquiring a dependency on the metrics or export layers;
-  `selectionhelpers` reaching into `export` previously created a real import cycle.
+- **`project/paths.py`, `selectionhelpers.py` and `drivers.py` import nothing from the package.** That is what
+  lets ingest, run drivers, and visualization use them without acquiring a dependency on the metrics or export
+  layers; `selectionhelpers` reaching into `export` previously created a real import cycle.
 
 ### Visualization: two kinds, two contracts
 
@@ -519,8 +558,8 @@ either kind; they keep their duplicated `_wait_for_key` for the cv2-stub reason 
     sweeps, histograms, split counts, ingest funnels, a group metric's fitted population (through
     `RunContext.report` in `prepare()`). Built by `visualization/figures` on a bare Agg canvas: pyplot is never
     imported, so nothing needs a display or touches a global backend, and matplotlib loads only on first use.
-  - **the sidecar**, `<stem>.report.json` — identity spec, the items shown, counts, a capped failure list,
-    and the files written. The only place a failure with no image to draw (a dead URL) shows up.
+  - **the sidecar**, `<stem>.report.json` — identity spec, the items shown, counts, elapsed seconds, a capped
+    failure list, and the files written. The only place a failure with no image to draw (a dead URL) shows up.
 
   A report's `<name>` is the public function that opened it, `<function name>[__<qualifier>]` — `measure_scales`,
   `split_ids`, `validate_masks__candidate_a`, `measure_scales__antenna` — so a file in `pipeline/` says what
@@ -549,18 +588,31 @@ each part, so a `parts=` list is all they need.
 ### Package layout
 
 - **`project/`** — `paths` (every project path, returning `pathlib.Path`; creates nothing), `subsets` (named
-  selections, `subsets.toml`, and `select_occurrences`, which every run funnels through), `summarize`.
+  selections, `subsets.toml`, and `select_occurrences`, which every run funnels through), `summarize`, and
+  `archive` (`archive_project`: a deposit-ready copy leaving out the image store, raw source data and working
+  files, with local paths reduced to file names; Dryad publishes under CC0, which photos and GBIF-mediated raw
+  data can't be, so they're cited rather than copied). A path a record stores is relative to the project and
+  `/`-separated (`paths.relative_to_project`) and read back through `paths.resolve_in_project`, never a bare
+  `Path(stored)`: that is what makes a copied project find its own files on Windows, Linux and macOS alike. A
+  path from another OS is recognized with both path flavours (`paths.is_absolute_anywhere`), since the native
+  one doesn't treat `C:\...` as absolute on POSIX. Paths outside the project (an ingest's source file) stay
+  absolute locally and are redacted only in an archive.
 - **`calibration/`** — one module per kind of calibration, holding what it MEANS. `scale` (px/mm from a
   target of known size: `scale_from_target`, `measure_scales`, `declare_scale`, `scale_for_occurrences`);
   `color` not written yet and, when it is, beside `scale.py` rather than inside it. The detector is generic on
   purpose — target, size, and search region are all arguments — and a weak match is accepted but warned about,
   since clutter can out-correlate an absent target and a plausible wrong scale is worse than none.
 - **`segments.py`** — `iterate_segments`, the per-occurrence loop most drivers walk (renders, validation,
-  dataset export, the pooled-pixel colour metrics), plus `build_segment` for the `from_part` framing, `Tally`
-  for what a driver counts, and `NoInput` for an occurrence with nothing to work from yet. `run_segments` and
-  `run_metrics` keep their own loops — a multi-part fork in one, per-occurrence writes and cross-name copies in
-  the other — but build and count with the same pieces. Torch-free and records-only, so it sits in core
-  rather than under `training/`, where it used to live and where two colour metrics had to reach for it.
+  dataset export, the pooled-pixel colour metrics), plus `build_segment` for the `from_part` framing, and
+  `scalar_info`/`operation_labels` for how an operation's info is stored. `run_segments` and `run_metrics` keep
+  their own loops — a multi-part fork in one, per-occurrence writes and cross-name copies in the other — but
+  build with the same pieces. Torch-free and records-only, so it sits in core rather than under `training/`,
+  where it used to live and where two colour metrics had to reach for it.
+- **`drivers.py`** — what every per-item driver shares, whether or not it builds a segment: `Tally` (what it
+  counts, and the summary it returns), `Progress` (its progress line), and `NoInput` with `log_no_input` (an
+  occurrence with nothing to work from yet). Separate from `segments.py` because ingest, download, scale
+  calibration and mask import count with `Tally` too, and shouldn't pull in the image store and visualization
+  to do it. Imports nothing from the package.
 - **`maskops.py`** — mask arithmetic with no project attached: `mask_iou`, `mask_coverage`,
   `pad_to_common_shape`, `mask_bounds`, `largest_component`. One answer to "how much do these two masks agree"
   for validation, manual correction, mirror symmetry and the trainable segmenter alike.
@@ -636,13 +688,21 @@ each part, so a `parts=` list is all they need.
   crop_to_mask, rotate, resize, remove_background).
 - **`segmentation/`** — `groundedsam` (SAM2 with optional Grounding DINO; `detect_bounds=False` uses the
   point-prompt path for pre-cropped images), `manual` (draw/correct by hand — an alternative segmentation, not
-  a separate system), `run` (`segment()` operation + `run_segments`).
+  a separate system), `mask_import_export` (`import_masks`/`export_masks`: masks in and out as
+  `<occurrence_id>__<part>.png` in original image coordinates, with a `masks.export.json` the importing run
+  records as its source), `run` (`segment()` operation + `run_segments`).
 - **`metrics/`** — `dimensions`, `position` (reports in ORIGINAL coordinates), `quality`, `pixels`
   (`masked_pixels`, the one rule every colour metric reads pixels by), `color_means` (plus grey-world
   `white_balanced_color` and `background_color`, for photography whose lighting nothing controls), `color_thresholds`
   (`ColorThreshold`, `threshold_fractions`, and the black/hue presets built on them), `inductive_color_thresholds`
   (the same `ColorThreshold`s, fitted per group in `prepare()`), `color_clusters` (a KMeans palette fitted per group
-  from pooled pixels, scored as each organism's share of it), `outliers` (group metrics), `annotation` (human
+  from pooled pixels, scored as each organism's share of it), `embedding` (`EmbeddingModel` wrapping any
+  torch network that maps an image batch to vectors, `pretrained()` for a timm backbone with its classifier
+  removed and its weights identified by `state_dict_digest`, and the `embedding()` metric; torch and timm are
+  imported inside functions only, the `devices.py` rule), `stored` (`StoredValues` and
+  `StoredValueMetric`, what every stored-input metric reads through), `derived` (per-occurrence values
+  from stored ones), `outliers` (group metrics, on scalar or vector features, with a per-cluster gallery and a
+  PCA projection drawn in `prepare()`), `annotation` (human
   labels), `mask_info` (the diagnostics a segmentation run stored on each mask, as a metric), `run`
   (`run_metrics` + `RunContext` + `_completed_keys`).
 - **`validation/`** — `masks`, `metrics`, `filters`. All comparison, nothing persisted.
@@ -671,8 +731,11 @@ each part, so a `parts=` list is all they need.
   rather than frozen — except the one place where the date is the behaviour (an import archived twice in a day).
 - **`extensions/`** — `antenna_lighttraps` (api/ingest/download + `calibrations/scale`, scoped to Antenna's
   `event_id` — the worked example of a project choosing its own calibration scope), `bioencoder`
-  (`embedding.py` — `BioEncoderModel` and the `embedding()` metric, torch imported only inside functions;
-  `training.py` — `prepare_dataset()` and a deliberately unimplemented `train()`/`load()`),
+  (`embedding.py` — `BioEncoderModel`, a `metrics.embedding.EmbeddingModel` that keeps its own
+  `identity_class` so every hash recorded before the machinery moved into core holds; `training.py` —
+  `prepare_dataset()`, a `load()` for BioEncoder-package stage-one checkpoints that loads `strict=True` since
+  BioEncoder's own loader silently tolerates a wrong backbone, `load_from_config()` reading the same YAML keys
+  `bioencoder_inference` does, and a deliberately unimplemented `train()` — train with the BioEncoder package),
   `gbif_darwincore_inat` (`archive`/`ingest` — the way iNaturalist observations enter a project, since the
   archive is what GBIF actually published and is archived byte-exact), and `smp_segmenter`
   (`segmentation.py` — a UNet++ segmenter over a swappable encoder, meeting the same predict()/identity()/
@@ -707,16 +770,23 @@ each part, so a `parts=` list is all they need.
   first; the three pending-first drivers — `download_images` and both `measure_scales` — take `max_new` for
   the second. `validate_masks` has only `limit`: it persists nothing, so it has no already-done concept for a
   `max_new` to sit after.
-- **Every driver builds with `segments.build_segment` and returns `segments.Tally.summary`.** Most walk
+- **Every driver builds with `segments.build_segment` and returns `drivers.Tally.summary`.** Most walk
   `segments.iterate_segments` (open the image store, build the Segment, optionally frame it by an upstream part,
   run the chain, count); `run_segments` and `run_metrics` keep their own loops for the reasons under
   `segments.py` above. One summary shape: `attempted, processed, skipped, no_input, failed, failures, flags`, plus whatever that driver
-  alone has (`run_id`, `copied`, `previously_failed`, `missed`, `directory`). `no_input` is "nothing to work
+  alone has (`run_id`, `copied`, `previously_failed`, `missed`, `directory`, `elapsed_s`). `no_input` is "nothing to work
   from" — no image, no mask, no `from_part` mask — which is neither a failure nor work done. A driver raises
-  `segments.NoInput` for it, never writes it to the failures ledger, and logs one line per reason rather than
+  `drivers.NoInput` for it, never writes it to the failures ledger, and logs one line per reason rather than
   one per occurrence, so it is attempted again once the input exists: a failure's retry key (recipe plus
   upstream mask) doesn't move when an image is finally downloaded, so recording it as one would skip that
   occurrence forever. `records.failures.NOT_FAILURES` ignores ledger rows written before this.
+- **A per-item loop reports progress through `drivers.Progress`, throttled on wall-clock time**
+  (`PROGRESS_INTERVAL`, 30s), never on `batch_size` or an item count. `batch_size` is a durability knob (what an
+  interruption can lose), and one item costs a millisecond in one driver and a minute in another, so a count
+  would be spam for one and silence for another. `total` is the PENDING work, after the already-done filter,
+  so skipped and copied items don't inflate the rate; the rate is over the most recent items, so a model's
+  first-call load doesn't dominate the ETA. Elapsed time goes in the summary (`elapsed_s`) and the report
+  sidecar, never in a hash or `context_json` — it is "how long", which sits beside the work.
 - **A segmenter's `mask_threshold` is a LOGIT.** `segment(mask_threshold=)` passes one number to whatever model
   runs, so the two bundled segmenters read it the same way: 0.0 is neutral (logit 0 is probability 0.5),
   negative grows the mask, positive shrinks it. A model thresholding its own sigmoid instead would read
@@ -746,11 +816,14 @@ each part, so a `parts=` list is all they need.
 
 ### Things that are deliberately unfinished
 
-- `extensions/bioencoder/training.py::train()` and `load()` raise `NotImplementedError`. The
-  dataset preparation above them is real; the training loop is left out rather than guessed at, and the
+- `extensions/bioencoder/training.py::train()` raises `NotImplementedError`. The dataset preparation
+  and `load()` beside it are real; the training loop is left out rather than guessed at, and the
   docstring says which decisions a caller has to make.
-- `extensions/bioencoder/embedding.py`'s embeddings have no visualization. The picture worth
-  having is a projection of every vector, which needs a run-end hook on `Operation` that doesn't exist yet.
+  `scripts/odonata_inat_obsorg/odonata_inat_obsorg_bioencoder_training.py` is the worked example of
+  training with the BioEncoder package instead.
+- An embedding run itself draws nothing beyond its panels. A projection of every vector needs a run-end
+  hook on `Operation` that doesn't exist yet; for now it comes from clustering the stored vectors, whose
+  `prepare()` draws the PCA projection and the per-cluster galleries.
 - Landmarks aren't implemented, but have a settled shape. A landmark set is one dict-valued metric per
   occurrence-part, flattened to `{<name>_x, <name>_y}` so each coordinate exports, filters and compares like
   any number, and always in ORIGINAL image coordinates — mapped back through the segment's affine, the

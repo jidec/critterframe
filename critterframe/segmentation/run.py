@@ -23,7 +23,7 @@ from collections import Counter
 
 import numpy as np
 
-from .. import segments as segment_iteration
+from .. import drivers, segments as segment_iteration
 from .. import selectionhelpers
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe, Segmentation
@@ -277,8 +277,8 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
       mask). False (the default) leaves them recorded as failed; a changed
       recipe or upstream retries them automatically with no flag needed.
 
-    Returns {part: summary}, each as `segments.Tally.summary` plus `run_id`
-    and `previously_failed`. `skipped` counts occurrence-parts excluded for
+    Returns {part: summary}, each as `drivers.Tally.summary` plus `run_id`,
+    `previously_failed` and `elapsed_s` (the whole call's, shared by every part). `skipped` counts occurrence-parts excluded for
     either reason -- already done, or already failed and not retried --
     `no_input` those with no image or no `from_part` mask yet (attempted again
     once it exists), and `flags` the operations that called their own result
@@ -382,7 +382,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
     shared_labels = next(iter(labels.values()))[:len(shared)]
     tallies = {}
     for output_part, ids in pending.items():
-        tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+        tally = drivers.Tally(attempted=len(occurrence_ids))
         tally.skipped = len(occurrence_ids) - len(ids)
         tallies[output_part] = tally
     batches = {output_part: [] for output_part in recipes}
@@ -440,23 +440,30 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
 
     missing = {output_part: Counter() for output_part in recipes}
 
+    # One step per occurrence rather than per part: the shared steps and the
+    # image load are paid once whatever the number of parts.
+    progress = drivers.Progress(
+        len(todo), f"run_segments part(s) {', '.join(sorted(recipes))}",
+        tallies=tallies.values(), log=logger.info)
+
     def item_done(occurrence_id):
         for report in reports.values():
             report.done(occurrence_id)
+        progress.step()
 
     with ImageStore(project_path, readonly=True) as images:
         for occurrence_id in todo:
             try:
                 image = images.get(occurrence_id)
                 if image is None:
-                    raise segment_iteration.NoInput(segment_iteration.NO_IMAGE)
+                    raise drivers.NoInput(drivers.NO_IMAGE)
 
                 start_mask = None
                 if from_part is not None:
                     source = source_masks.get(occurrence_id)
                     if source is None:
-                        raise segment_iteration.NoInput(
-                            segment_iteration.no_mask(from_part))
+                        raise drivers.NoInput(
+                            drivers.no_mask(from_part))
                     start_mask = mask_records.decode_mask(source)
 
                 base = segment_iteration.build_segment(
@@ -472,7 +479,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                     for tally in tallies.values():
                         tally.record_flags(info)
 
-            except segment_iteration.NoInput as exc:
+            except drivers.NoInput as exc:
                 for output_part in recipes:
                     if occurrence_id in pending_sets[output_part]:
                         tallies[output_part].no_input += 1
@@ -544,10 +551,11 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
 
     for report in reports.values():
         report.close()
+    elapsed = progress.finish()
 
     counts = {}
     for output_part in recipes:
-        segment_iteration.log_no_input(missing[output_part],
+        drivers.log_no_input(missing[output_part],
                                        f"run_segments part '{output_part}'")
         flush(output_part)
         tally = tallies[output_part]
@@ -556,6 +564,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                                failed=tally.failed, flags=tally.flags)
         counts[output_part] = tally.summary(
             run_id=run_ids[output_part],
-            previously_failed=len(failed_by_part[output_part]))
+            previously_failed=len(failed_by_part[output_part]),
+            elapsed_s=elapsed)
 
     return counts

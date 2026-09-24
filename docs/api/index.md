@@ -35,6 +35,10 @@
 
 # project & subsets
 
+::: critterframe.archive_project
+    options:
+      show_root_full_path: false
+
 ::: critterframe.define_subset
     options:
       show_root_full_path: false
@@ -58,6 +62,14 @@
 # segmentation
 
 ::: critterframe.run_segments
+    options:
+      show_root_full_path: false
+
+::: critterframe.import_masks
+    options:
+      show_root_full_path: false
+
+::: critterframe.export_masks
     options:
       show_root_full_path: false
 

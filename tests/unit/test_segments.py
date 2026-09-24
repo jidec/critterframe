@@ -31,3 +31,4 @@ def test_no_info_is_empty():
 def test_a_repeated_operation_gets_a_numbered_label():
     labels = operation_labels([cf.orient(), cf.crop_to_mask(), cf.orient()])
     assert labels == ["orient", "crop_to_mask", "orient_2"]
+

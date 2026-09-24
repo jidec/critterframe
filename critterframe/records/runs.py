@@ -274,7 +274,7 @@ def finish_run(project_path, run_id, processed=0, skipped=0, failed=0,
     - `status` -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an
       individual occurrence) blew up.
     - `flags` -- `{flag: count}` of the operations that called their own result
-      doubtful (see `segments.FLAG_KEYS`), folded into the run's context. An
+      doubtful (see `drivers.FLAG_KEYS`), folded into the run's context. An
       operation reports these in its `info`, and until they are recorded here
       they exist only as text on a sampled panel.
     """
@@ -442,6 +442,31 @@ def current_recipe_pointers(project_path, kind="metric"):
             (kind,),
         ).fetchall()
     return {(row["name"], row["part"]): row["recipe_hash"] for row in rows}
+
+
+def current_recipe(project_path, name, part, kind="metric"):
+    """
+    `(recipe_hash, recipe spec)` currently designated for (kind, name, part), or `(None, None)`.
+
+    Read-only: the pointer where one is written, else the newest run's recipe,
+    the same fallback `resolve_recipe_currency` seeds from.
+
+    - `name` -- run name.
+    - `part` -- part it measured.
+    - `kind` -- run kind.
+    """
+    if not has_database(project_path):
+        return None, None
+    with open_database(project_path) as connection:
+        recipe_hash = _seeded_current_hash(connection, kind, name, part)
+        if recipe_hash is None:
+            return None, None
+        row = connection.execute(
+            "SELECT recipe_json FROM runs WHERE kind = ? AND recipe_hash = ? "
+            "ORDER BY run_id DESC LIMIT 1",
+            (kind, recipe_hash),
+        ).fetchone()
+    return recipe_hash, None if row is None else load_json(row["recipe_json"])
 
 
 def _empty_runs_frame():

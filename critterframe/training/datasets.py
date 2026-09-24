@@ -143,7 +143,8 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
         for occurrence_id, segment in iterate_segments(
                 project_path, part=part, transforms=transforms,
                 reference=reference, occurrence_ids=occurrence_ids,
-                require_mask=require_mask, from_part=from_part, report=report):
+                require_mask=require_mask, from_part=from_part, report=report,
+                progress=f"export_training_data split '{split_name or UNSPLIT}'"):
 
             class_value = None
             if class_by is not None:

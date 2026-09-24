@@ -5,7 +5,7 @@ Reads the `info` a mask row recorded (see `records.masks.make_mask_row`), so the
 like any other value, and go stale when the mask is replaced.
 """
 
-from .. import segments as segment_iteration
+from .. import drivers
 from ..recipes import Metric
 from ..records import masks as mask_records
 
@@ -40,7 +40,7 @@ class MaskInfoMetric(Metric):
             info = {label: values for label, values in info.items()
                     if label in operations}
         if not info:
-            raise segment_iteration.NoInput(segment_iteration.NO_MASK_INFO)
+            raise drivers.NoInput(drivers.NO_MASK_INFO)
         return {f"{label}__{key}": value
                 for label, values in sorted(info.items())
                 for key, value in sorted(values.items())}

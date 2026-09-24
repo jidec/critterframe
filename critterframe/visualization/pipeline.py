@@ -11,6 +11,7 @@ import heapq
 import logging
 import math
 import re
+import time
 
 import cv2
 import numpy as np
@@ -153,6 +154,7 @@ class Report:
         self._failures = []
         self._failed = 0
         self._wrote = False
+        self._started = None
 
     def __bool__(self):
         """True -- a Report exists only when visualization is on (see NullReport)."""
@@ -194,6 +196,7 @@ class Report:
         self._items = [str(item) for item in items]
         self._eligible = None if eligible is None else {str(item) for item in eligible}
         self._position = 0
+        self._started = time.monotonic()
 
         if self.rank is None:
             candidates = [item for item in self._items if self._is_eligible(item)]
@@ -501,6 +504,8 @@ class Report:
             "shown": shown,
             "counts": {"items": len(self._items), "done": self._position,
                        "failed": self._failed},
+            "elapsed_s": (None if self._started is None
+                          else round(time.monotonic() - self._started, 1)),
             "failures": self._failures,
             "failures_truncated": self._failed > len(self._failures),
             "files": files,

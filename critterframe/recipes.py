@@ -462,9 +462,15 @@ class Metric(Operation):
       changes which occurrences a run reaches, not what a given occurrence's
       value is, so hashing it would move every recipe hash already stored for
       unrelated reasons.
+
+    `input` says what the metric is computed from: `"segment"` (pixels, the
+    default) or `"stored"` (another run's stored values, see
+    `metrics.stored`). run_metrics hands a stored-input metric a
+    `StoredValues` instead of a Segment. Not in spec(), like `requires_mask`.
     """
 
     kind = "metric"
+    input = "segment"
 
     def __init__(self, name, function, parameters=None, version="1", model=None,
                  unit=None, metric_name=None, requires_mask=True):

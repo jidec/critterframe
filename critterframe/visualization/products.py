@@ -12,7 +12,7 @@ import logging
 
 import cv2
 
-from .. import segments as segment_iteration
+from .. import drivers, segments as segment_iteration
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe
 from . import pipeline as pipeline_visualization
@@ -67,7 +67,7 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
       nothing.
     - `visualize_every` -- also write a grid every N occurrence-parts.
 
-    Returns {part: summary}, each as `segments.Tally.summary` plus
+    Returns {part: summary}, each as `drivers.Tally.summary` plus
     `directory` -- the same shape `run_segments` and `run_metrics` return, one
     entry even when only `part` was given.
     """
@@ -99,7 +99,7 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
 
     results = {}
     for target_part in target_parts:
-        tally = segment_iteration.Tally(attempted=len(occurrence_ids))
+        tally = drivers.Tally(attempted=len(occurrence_ids))
         destinations = {
             occurrence_id: directory / product_filename(
                 occurrence_id, target_part if qualify else None, extension)
@@ -112,7 +112,8 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
         for occurrence_id, segment in segment_iteration.iterate_segments(
                 project_path, part=target_part, transforms=recipe.operations,
                 reference=reference, occurrence_ids=pending, from_part=from_part,
-                report=report, tally=tally):
+                report=report, tally=tally,
+                progress=f"render_segments '{name}' part '{target_part}'"):
             try:
                 if not cv2.imwrite(str(destinations[occurrence_id]), segment.image):
                     raise ValueError(f"could not write {destinations[occurrence_id]}")

@@ -13,6 +13,7 @@ you chose to compare against, which is often a human's correction but equally a
 slower model or an earlier pipeline.
 """
 
+import hashlib
 import json
 import logging
 from datetime import datetime, timezone
@@ -83,6 +84,21 @@ def decode_mask(row):
         "size": [int(row["rle_height"]), int(row["rle_width"])],
     }
     return mask_utils.decode(rle).astype(bool)
+
+
+def mask_digest(mask):
+    """
+    A short, stable digest of a mask's pixels and shape.
+
+    What an imported mask's identity is built from (see
+    `segmentation.mask_import_export`), and what an export lists per file so a
+    receiver can check it got the same pixels.
+
+    - `mask` -- a boolean (or 0/nonzero) array.
+    """
+    mask = np.asarray(mask) > 0
+    content = np.packbits(mask).tobytes() + repr(mask.shape).encode("ascii")
+    return hashlib.sha256(content).hexdigest()[:16]
 
 
 def mask_info(row):

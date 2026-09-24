@@ -674,3 +674,12 @@ def test_reference_merge_carries_no_identity(tmp_path):
     merged = mask_records.load_masks(tmp_path, parts=["body"], reference=True).iloc[0]
     assert pd.isna(merged["recipe_hash"])
     assert pd.isna(merged["source_mask_hash"])
+
+
+def test_a_mask_digest_is_stable_and_sees_one_pixel():
+    mask = blob_mask()
+    assert mask_records.mask_digest(mask) == mask_records.mask_digest(mask.copy())
+    changed = mask.copy()
+    changed[0, 0] = not changed[0, 0]
+    assert mask_records.mask_digest(changed) != mask_records.mask_digest(mask)
+    assert mask_records.mask_digest(mask) != mask_records.mask_digest(mask.T)

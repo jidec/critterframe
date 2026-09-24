@@ -31,7 +31,7 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from . import segments as segment_iteration
+from . import drivers
 from . import selectionhelpers
 from .project import paths
 from .records import occurrences as occurrence_records
@@ -221,10 +221,10 @@ def _archive_raw_import(project_path, data, name_prefix, extension, known_raw_ha
     Returns (path, is_new).
     """
     raw_hash = _content_hash(data)
-    existing = known_raw_hashes.get(raw_hash)
-    if existing is not None and Path(existing).exists():
+    existing = _archived_raw_file(project_path, known_raw_hashes.get(raw_hash))
+    if existing is not None:
         logger.info("raw import is byte-identical to %s -- reusing it", existing)
-        return Path(existing), False
+        return existing, False
 
     directory = paths.raw_imports_dir(project_path)
     directory.mkdir(parents=True, exist_ok=True)
@@ -232,6 +232,24 @@ def _archive_raw_import(project_path, data, name_prefix, extension, known_raw_ha
     dest.write_bytes(data)
     logger.info("archived raw import -> %s", dest)
     return dest, True
+
+
+def _archived_raw_file(project_path, stored):
+    """
+    The archived raw file a log's `raw_path` names, if it is still there.
+
+    `raw_path` is stored relative to the project; an older log holds an
+    absolute path, possibly from another machine or OS, which a moved project
+    no longer has -- so that falls back to the same file name in this
+    project's own raw_imports/.
+    """
+    if not isinstance(stored, str):
+        return None
+    candidates = [paths.resolve_in_project(project_path, stored)]
+    if paths.is_absolute_anywhere(stored):
+        candidates.append(paths.raw_imports_dir(project_path)
+                          / paths.file_name_anywhere(stored))
+    return next((path for path in candidates if path.exists()), None)
 
 
 def _archive_source_file(source_path, project_path, name_prefix):
@@ -564,7 +582,8 @@ def ingest_occurrences(project_path, import_csv_path, id_col=None,
     except OSError:
         _source_bytes = _source_mtime = None
 
-    record = dict(recipe, import_hash=import_hash, raw_path=str(raw_path),
+    record = dict(recipe, import_hash=import_hash,
+                 raw_path=paths.relative_to_project(project_path, raw_path),
                  raw_import_reused=not is_new,
                  import_source_path=str(fingerprint_path),
                  import_source_bytes=_source_bytes,
@@ -645,7 +664,7 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
     - `visualize_every` -- also write a thumbnail grid every N files,
       sampled from that stretch only.
 
-    Returns a summary dict (see `segments.Tally.summary`) plus
+    Returns a summary dict (see `drivers.Tally.summary`) plus
     `occurrences`: rows in the resulting table.
     """
     if not id_from_stem:
@@ -666,7 +685,7 @@ def ingest_images(project_path, image_dir, patterns=DEFAULT_IMAGE_PATTERNS,
         visualize=visualize, visualize_every=visualize_every,
         identity=identity).begin(stems)
 
-    tally = segment_iteration.Tally(attempted=len(image_paths))
+    tally = drivers.Tally(attempted=len(image_paths))
     rows = []
     batch = []
 

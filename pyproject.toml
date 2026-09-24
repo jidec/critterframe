@@ -24,8 +24,8 @@ Documentation = "https://jidec.github.io/critterframe/"
 
 [project.optional-dependencies]
 # Torch, and what's built on it: the bundled GroundedSAM2 segmenter
-# (segmentation/groundedsam.py), bioencoder's embedding metric
-# (extensions/bioencoder/embedding.py), and smp_segmenter's
+# (segmentation/groundedsam.py), the embedding metric and its timm backbones
+# (metrics/embedding.py), bioencoder's checkpoint loader, and smp_segmenter's
 # trainable UNet++ segmenter (extensions/smp_segmenter). Named for the
 # dependency itself, not "segmentation" -- it isn't only that, and the core
 # pipeline -- ingest, storage, transforms, metrics, export, validation -- runs
@@ -36,6 +36,7 @@ torch = [
     "transformers",
     "pillow",
     "segmentation-models-pytorch",
+    "timm",
     "tqdm",
 ]
 

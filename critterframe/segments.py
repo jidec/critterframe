@@ -1,15 +1,16 @@
 """
-iterate_segments(): the per-occurrence loop most drivers walk, plus build_segment, Tally and NoInput.
+iterate_segments(): the per-occurrence loop most drivers walk, plus build_segment and how an operation's info is stored.
 
 Open the image store once, build a Segment per occurrence (optionally framed by an upstream part's
 mask), run a transform chain over it, hand it to the caller, and count what failed. Render,
 validation and dataset-export drivers walk it directly; run_segments and run_metrics keep their own
-loops (a multi-part fork; per-occurrence writes) but build and count with the same pieces.
+loops (a multi-part fork; per-occurrence writes) but build with the same pieces.
 """
 
 import logging
 from collections import Counter
 
+from .drivers import NO_IMAGE, NoInput, Progress, Tally, log_no_input, no_mask
 from .project import paths, subsets as subset_selection
 from .recipes import DEFAULT_PART, Segment
 from .records import masks as mask_records
@@ -17,18 +18,6 @@ from .storage.imagestore import ImageStore
 from .visualization import pipeline as pipeline_visualization
 
 logger = logging.getLogger(__name__)
-
-# `info` keys an operation sets to say its own result is doubtful. `degenerate`
-# means it returned the segment unchanged, `unreliable` that what it returned
-# is suspect -- see CLAUDE.md's operation conventions.
-FLAG_KEYS = ("unreliable", "degenerate")
-
-NO_IMAGE = "no image"
-NO_MASK_INFO = "no recorded mask info"
-
-# What to do about each kind of missing input, for log_no_input's one line per reason.
-_NO_INPUT_HINTS = {NO_IMAGE: "run download_images first",
-                   NO_MASK_INFO: "re-segment to record it"}
 
 _SCALARS = (bool, int, float, str, type(None))
 
@@ -69,82 +58,6 @@ def operation_labels(operations):
     return labels
 
 
-class NoInput(Exception):
-    """
-    Nothing to work from yet: no image, or no upstream mask.
-
-    Drivers count it as `no_input`, never as a failure, so it is never written to the failures
-    ledger and is attempted again once the input exists.
-    """
-
-
-def no_mask(part):
-    """The NoInput reason for an occurrence missing `part`'s mask."""
-    return f"no '{part}' mask"
-
-
-def log_no_input(counts, where):
-    """
-    One warning per kind of missing input, rather than one per occurrence.
-
-    - `counts` -- `{reason: occurrences}`, reasons as `NoInput` carries them.
-    - `where` -- what was running, for the message, e.g. "run_segments part 'organism'".
-    """
-    for reason, count in sorted(Counter(counts).items()):
-        hint = _NO_INPUT_HINTS.get(reason, "segment that part first")
-        logger.warning("%s: %d occurrence(s) with %s yet -- %s", where, count, reason, hint)
-
-
-class Tally:
-    """
-    What a driver counts while walking occurrences, and the reliability flags it saw.
-
-    One shape across drivers, so a summary dict means the same thing whichever
-    one produced it: `no_input` is "nothing to work from" (no image, no mask),
-    which is neither a failure nor work done.
-    """
-
-    def __init__(self, attempted=0):
-        self.attempted = attempted
-        self.processed = 0
-        self.skipped = 0
-        self.no_input = 0
-        self.failed = 0
-        self.failures = []
-        self.flags = {}
-
-    def record_failure(self, occurrence_id, error, **extra):
-        """
-        Count one failed occurrence and keep it, keyed the way every driver keys it.
-
-        - `occurrence_id` -- the item that failed.
-        - `error` -- the exception or message.
-        - `extra` -- anything else worth chasing it down with, e.g. the `url` a
-          download was given or the `path` a file came from.
-        """
-        self.failed += 1
-        self.failures.append({"occurrence_id": str(occurrence_id),
-                              "error": str(error), **extra})
-
-    def record_flags(self, info):
-        """Count an operation's reliability flags (see FLAG_KEYS) off its info dict."""
-        for key in FLAG_KEYS:
-            if (info or {}).get(key):
-                self.flags[key] = self.flags.get(key, 0) + 1
-
-    def summary(self, **extra):
-        """
-        The dict a driver returns.
-
-        - `extra` -- driver-specific counts, e.g. a segmentation run's
-          `previously_failed` or a metric run's `copied`.
-        """
-        return {"attempted": self.attempted, "processed": self.processed,
-                "skipped": self.skipped, "no_input": self.no_input,
-                "failed": self.failed, "failures": self.failures,
-                "flags": self.flags, **extra}
-
-
 def build_segment(image, mask=None, occurrence_id=None, part=DEFAULT_PART,
                   project_path=None, panel_sink=None, from_mask=None, from_part=None):
     """
@@ -179,7 +92,7 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
                      reference=False, subset=None, limit=None,
                      occurrence_ids=None, require_mask=True, from_part=None,
                      report=pipeline_visualization.NULL_REPORT, mask_rows=None,
-                     tally=None):
+                     tally=None, progress=None):
     """
     Yield (occurrence_id, Segment) for every occurrence with a mask for `part`.
 
@@ -212,6 +125,8 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
       from as `no_input`, raised exceptions as failures, and every
       operation's reliability flags. Counting `processed` is the consumer's,
       since only it knows whether it kept the segment.
+    - `progress` -- the label for periodic progress lines (see `Progress`), e.g.
+      `"render_segments part 'organism'"`. Defaults to naming the part.
     """
     paths.require_project(project_path)
     tally = tally if tally is not None else Tally()
@@ -232,12 +147,15 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
 
     missing = Counter()
     report.begin(occurrence_ids)
+    progress = Progress(len(occurrence_ids), progress or f"segments part '{part}'",
+                        tallies=[tally])
     with ImageStore(project_path, readonly=True) as images:
         for occurrence_id in occurrence_ids:
             row = mask_rows.get(occurrence_id)
             if row is None and require_mask:
                 tally.no_input += 1
                 report.done(occurrence_id)
+                progress.step()
                 continue
             try:
                 image = images.get(occurrence_id)
@@ -270,15 +188,19 @@ def iterate_segments(project_path, part=DEFAULT_PART, transforms=(),
                 tally.no_input += 1
                 missing[str(exc)] += 1
                 report.done(occurrence_id)
+                progress.step()
                 continue
             except Exception as exc:
                 logger.warning("skipping %s: %s", occurrence_id, exc)
                 tally.record_failure(occurrence_id, exc)
                 report.failure(occurrence_id, exc)
                 report.done(occurrence_id)
+                progress.step()
                 continue
 
             yield occurrence_id, segment
             report.done(occurrence_id)
+            progress.step()
 
+    progress.finish()
     log_no_input(missing, f"part '{part}'")

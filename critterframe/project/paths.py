@@ -8,13 +8,14 @@ varies by part, `part=None` omits it and the caller decides what counts as
 default.
 
 Every function returns a pathlib.Path, except product_filename, which returns
-just the name.
+just the name, and the helpers that read and write a stored path string
+(relative_to_project and the *_anywhere checks).
 """
 
 import time
 import uuid
 from datetime import date
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 OCCURRENCES_FILE = "occurrences.parquet"
 IMAGES_DIR = "images.lmdb"
@@ -50,6 +51,61 @@ def project_dir(project_path):
     or a Path anywhere.
     """
     return Path(project_path)
+
+
+def is_absolute_anywhere(stored):
+    """
+    Whether a stored path string is absolute on ANY platform.
+
+    A path written on Windows read on Linux or macOS is not recognized as
+    absolute by the native Path, and the reverse, so both flavours are asked.
+    """
+    return (PurePosixPath(stored).is_absolute()
+            or PureWindowsPath(stored).is_absolute())
+
+
+def file_name_anywhere(stored):
+    """The last component of a stored path string, split on forward slashes and backslashes alike."""
+    return PureWindowsPath(stored).name
+
+
+def relative_to_project(project_path, target):
+    """
+    A path as a record should store it: relative to the project when it sits
+    inside, absolute otherwise, posix-separated either way.
+
+    A relative, `/`-separated path resolves the same on Windows, Linux and
+    macOS once joined onto the project folder, so a copied project still finds
+    what it recorded.
+
+    - `target` -- the path to store.
+
+    Returns a string.
+    """
+    absolute = Path(target).resolve()
+    try:
+        return absolute.relative_to(project_dir(project_path).resolve()).as_posix()
+    except ValueError:
+        return absolute.as_posix()
+
+
+def resolve_in_project(project_path, stored):
+    """
+    A stored path back as a Path: relative ones against the project, absolute
+    ones as they are.
+
+    Always this, never a bare Path(stored), which would resolve a relative one
+    against the current working directory.
+
+    - `stored` -- a path string from a record, or None.
+
+    Returns a Path, or None.
+    """
+    if stored is None:
+        return None
+    if is_absolute_anywhere(stored):
+        return Path(stored)
+    return project_dir(project_path) / stored
 
 
 def occurrences_path(project_path):

@@ -233,11 +233,7 @@ class RegisteredModel:
         weights. Relative records resolve against the project, which is what
         makes a copied project still find its own models.
         """
-        stored = self.record.get("path")
-        if stored is None:
-            return None
-        stored = Path(stored)
-        return stored if stored.is_absolute() else paths.project_dir(self.project_path) / stored
+        return paths.resolve_in_project(self.project_path, self.record.get("path"))
 
     def identity(self):
         """
@@ -313,7 +309,7 @@ def _checkpoint_record(project_path, path, fingerprint):
     if not resolved.exists():
         raise FileNotFoundError(f"no checkpoint at {resolved}")
 
-    stored = _relative_to_project(project_path, resolved)
+    stored = paths.relative_to_project(project_path, resolved)
 
     size = _size_of(resolved)
     if not fingerprint:
@@ -331,19 +327,6 @@ def _checkpoint_record(project_path, path, fingerprint):
         "fingerprint_method": "sha256",
         "size_bytes": size,
     }
-
-
-def _relative_to_project(project_path, target):
-    """
-    A path as the registry should store it: relative to the project when it
-    sits inside, absolute otherwise, posix-separated either way so a registry
-    written on Windows reads on Linux.
-    """
-    absolute = Path(target).resolve()
-    try:
-        return absolute.relative_to(paths.project_dir(project_path).resolve()).as_posix()
-    except ValueError:
-        return absolute.as_posix()
 
 
 def fingerprint_file(path):
@@ -440,5 +423,5 @@ def _read_dataset_record(project_path, training_data):
     with dataset_path.open("r", encoding="utf-8") as handle:
         record = json.load(handle)
 
-    record["source"] = _relative_to_project(project_path, dataset_path.parent)
+    record["source"] = paths.relative_to_project(project_path, dataset_path.parent)
     return record

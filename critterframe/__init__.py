@@ -7,6 +7,7 @@ These are all the functions you'll need unless you are writing something custom 
 __version__ = "0.1.0"
 
 # --- project ---------------------------------------------------------------
+from .project.archive import archive_project
 from .project.subsets import define_subset, define_subsets, grow_subset, load_subsets
 from .project.summarize import describe_run, print_summary, summarize
 
@@ -29,6 +30,7 @@ from .recipes import DEFAULT_PART
 from .records.masks import merge_mask_shards, merge_masks, load_masks
 from .segmentation.groundedsam import groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
+from .segmentation.mask_import_export import export_masks, import_masks
 from .segmentation.run import run_segments, segment
 
 # --- transforms ------------------------------------------------------------
@@ -54,6 +56,8 @@ from .metrics.color_thresholds import (
     threshold_fractions,
     yellow_fraction,
 )
+from .metrics.derived import derived
+from .metrics.embedding import embedding
 from .metrics.inductive_color_thresholds import inductive_color_thresholds
 from .metrics.mask_info import mask_info
 from .metrics.dimensions import body_length, bounding_box, length, mask_area, max_width
@@ -99,6 +103,7 @@ from .validation.metrics import compare_metrics
 
 __all__ = [
     "DEFAULT_PART",
+    "archive_project",
     "background_color",
     "bilateral_asymmetry",
     "black_fraction",
@@ -118,10 +123,13 @@ __all__ = [
     "declare_scale",
     "define_subset",
     "define_subsets",
+    "derived",
     "describe_run",
     "download_images",
     "draw_mask",
     "edge_fraction",
+    "embedding",
+    "export_masks",
     "export_metrics",
     "export_training_data",
     "export_units",
@@ -133,6 +141,7 @@ __all__ = [
     "hue_thresholds",
     "image_bounds",
     "image_grid",
+    "import_masks",
     "inductive_color_thresholds",
     "ingest_images",
     "ingest_occurrences",
