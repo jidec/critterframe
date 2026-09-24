@@ -1,0 +1,2595 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/api/records/runs/">
+      
+      
+        <link rel="prev" href="../failures/">
+      
+      
+        <link rel="next" href="../metrics/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>runs - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#critterframe.records.runs" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              runs
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Home
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    public package-level API (for composing pipelines)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../recipes/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    recipes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../download/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    download
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../selectionhelpers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selectionhelpers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2_9" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_2_9" id="__nav_2_9_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_2_9_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_2_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../failures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    failures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.records.runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        runs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="runs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.commit_recipe_currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        commit_recipe_currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.current_recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        current_recipe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.current_recipe_pointers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        current_recipe_pointers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.ensure_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ensure_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.finish_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        finish_run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.has_database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        has_database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.load_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.open_database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.resolve_recipe_currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_recipe_currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.start_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#critterframe.records.runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        runs
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="runs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.commit_recipe_currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        commit_recipe_currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.current_recipe" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        current_recipe
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.current_recipe_pointers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        current_recipe_pointers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.ensure_schema" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ensure_schema
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.finish_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        finish_run
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.has_database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        has_database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.load_runs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        load_runs
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.open_database" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        open_database
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.resolve_recipe_currency" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resolve_recipe_currency
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#critterframe.records.runs.start_run" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        start_run
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/jidec/critterframe/edit/main/docs/api/records/runs.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+  <h1>runs</h1>
+
+<div class="admonition note">
+<p class="admonition-title">For extending the package</p>
+<p>Documents every public member of <code>critterframe.records.runs</code>, not just what <code>cf.*</code> re-exports. See the
+<a href="../../">pipeline reference</a> for what a pipeline calls directly.</p>
+</div>
+
+
+<div class="doc doc-object doc-module">
+
+
+
+<h2 id="critterframe.records.runs" class="doc doc-heading">
+            <span class="doc doc-object-name doc-module-name">critterframe.records.runs</span>
+
+
+<a href="#critterframe.records.runs" class="headerlink" title="Permanent link">&para;</a></h2>
+
+    <div class="doc doc-contents first">
+
+        <p>The sqlite schema for run + metric records, and the migrations that keep older
+databases readable.</p>
+<p>A run is one execution of a recipe over a set of occurrences. Owns all three
+tables, since a metric row references its run: <code>runs</code> and <code>metrics</code> are the
+immutable history; <code>current_recipes</code> is the metric-side pointer that says
+which recipe a run_name presently means (see resolve_recipe_currency).</p>
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.commit_recipe_currency" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">commit_recipe_currency</span>
+
+
+<a href="#critterframe.records.runs.commit_recipe_currency" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">commit_recipe_currency</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Move (kind, name, part)'s pointer to recipe_hash.</p>
+<p>Called once a forced recipe change has actually produced at least one
+value, not from resolve_recipe_currency itself: writing the pointer before
+confirming that would mean a run that starts under a forced change and
+then fails for every occurrence empties out every occurrence's current
+value for this name, rather than leaving the previous recipe's values
+(the safer outcome) in place.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">416</span>
+<span class="normal">417</span>
+<span class="normal">418</span>
+<span class="normal">419</span>
+<span class="normal">420</span>
+<span class="normal">421</span>
+<span class="normal">422</span>
+<span class="normal">423</span>
+<span class="normal">424</span>
+<span class="normal">425</span>
+<span class="normal">426</span>
+<span class="normal">427</span>
+<span class="normal">428</span>
+<span class="normal">429</span>
+<span class="normal">430</span>
+<span class="normal">431</span>
+<span class="normal">432</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">commit_recipe_currency</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Move (kind, name, part)'s pointer to recipe_hash.</span>
+
+<span class="sd">    Called once a forced recipe change has actually produced at least one</span>
+<span class="sd">    value, not from resolve_recipe_currency itself: writing the pointer before</span>
+<span class="sd">    confirming that would mean a run that starts under a forced change and</span>
+<span class="sd">    then fails for every occurrence empties out every occurrence's current</span>
+<span class="sd">    value for this name, rather than leaving the previous recipe's values</span>
+<span class="sd">    (the safer outcome) in place.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">!=</span> <span class="s2">"metric"</span><span class="p">:</span>
+        <span class="k">return</span>
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">_write_current_recipe</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">)</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"run_name </span><span class="si">%r</span><span class="s2"> for part </span><span class="si">%r</span><span class="s2"> now points at recipe </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+               <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.current_recipe" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">current_recipe</span>
+
+
+<a href="#critterframe.records.runs.current_recipe" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">current_recipe</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'metric'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p><code>(recipe_hash, recipe spec)</code> currently designated for (kind, name, part), or <code>(None, None)</code>.</p>
+<p>Read-only: the pointer where one is written, else the newest run's recipe,
+the same fallback <code>resolve_recipe_currency</code> seeds from.</p>
+<ul>
+<li><code>name</code> -- run name.</li>
+<li><code>part</code> -- part it measured.</li>
+<li><code>kind</code> -- run kind.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">447</span>
+<span class="normal">448</span>
+<span class="normal">449</span>
+<span class="normal">450</span>
+<span class="normal">451</span>
+<span class="normal">452</span>
+<span class="normal">453</span>
+<span class="normal">454</span>
+<span class="normal">455</span>
+<span class="normal">456</span>
+<span class="normal">457</span>
+<span class="normal">458</span>
+<span class="normal">459</span>
+<span class="normal">460</span>
+<span class="normal">461</span>
+<span class="normal">462</span>
+<span class="normal">463</span>
+<span class="normal">464</span>
+<span class="normal">465</span>
+<span class="normal">466</span>
+<span class="normal">467</span>
+<span class="normal">468</span>
+<span class="normal">469</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">current_recipe</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"metric"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    `(recipe_hash, recipe spec)` currently designated for (kind, name, part), or `(None, None)`.</span>
+
+<span class="sd">    Read-only: the pointer where one is written, else the newest run's recipe,</span>
+<span class="sd">    the same fallback `resolve_recipe_currency` seeds from.</span>
+
+<span class="sd">    - `name` -- run name.</span>
+<span class="sd">    - `part` -- part it measured.</span>
+<span class="sd">    - `kind` -- run kind.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">recipe_hash</span> <span class="o">=</span> <span class="n">_seeded_current_hash</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">recipe_hash</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">"SELECT recipe_json FROM runs WHERE kind = ? AND recipe_hash = ? "</span>
+            <span class="s2">"ORDER BY run_id DESC LIMIT 1"</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">kind</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="kc">None</span> <span class="k">if</span> <span class="n">row</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">load_json</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="s2">"recipe_json"</span><span class="p">])</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.current_recipe_pointers" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">current_recipe_pointers</span>
+
+
+<a href="#critterframe.records.runs.current_recipe_pointers" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">current_recipe_pointers</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s1">'metric'</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>{(name, part): recipe_hash} for every name with a recorded pointer.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">435</span>
+<span class="normal">436</span>
+<span class="normal">437</span>
+<span class="normal">438</span>
+<span class="normal">439</span>
+<span class="normal">440</span>
+<span class="normal">441</span>
+<span class="normal">442</span>
+<span class="normal">443</span>
+<span class="normal">444</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">current_recipe_pointers</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s2">"metric"</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""{(name, part): recipe_hash} for every name with a recorded pointer."""</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">{}</span>
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">"SELECT name, part, recipe_hash FROM current_recipes WHERE kind = ?"</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">kind</span><span class="p">,),</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+    <span class="k">return</span> <span class="p">{(</span><span class="n">row</span><span class="p">[</span><span class="s2">"name"</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="s2">"part"</span><span class="p">]):</span> <span class="n">row</span><span class="p">[</span><span class="s2">"recipe_hash"</span><span class="p">]</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">}</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.ensure_schema" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">ensure_schema</span>
+
+
+<a href="#critterframe.records.runs.ensure_schema" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">ensure_schema</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Create the runs and metrics tables if they don't exist yet.</p>
+<p>Both tables are created together, by whichever of the two modules opens the
+database first, so neither has to care about ordering. Flexible sections
+(the recipe, a metric's value) are stored as JSON so new operations and new
+metric shapes don't require a schema change -- which is exactly the freedom
+a package whose whole point is composable, user-defined recipes needs.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 76</span>
+<span class="normal"> 77</span>
+<span class="normal"> 78</span>
+<span class="normal"> 79</span>
+<span class="normal"> 80</span>
+<span class="normal"> 81</span>
+<span class="normal"> 82</span>
+<span class="normal"> 83</span>
+<span class="normal"> 84</span>
+<span class="normal"> 85</span>
+<span class="normal"> 86</span>
+<span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span>
+<span class="normal">101</span>
+<span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">ensure_schema</span><span class="p">(</span><span class="n">connection</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Create the runs and metrics tables if they don't exist yet.</span>
+
+<span class="sd">    Both tables are created together, by whichever of the two modules opens the</span>
+<span class="sd">    database first, so neither has to care about ordering. Flexible sections</span>
+<span class="sd">    (the recipe, a metric's value) are stored as JSON so new operations and new</span>
+<span class="sd">    metric shapes don't require a schema change -- which is exactly the freedom</span>
+<span class="sd">    a package whose whole point is composable, user-defined recipes needs.</span>
+<span class="sd">    """</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE TABLE IF NOT EXISTS runs (</span>
+<span class="sd">            run_id INTEGER PRIMARY KEY,</span>
+<span class="sd">            kind TEXT NOT NULL,</span>
+<span class="sd">            name TEXT NOT NULL,</span>
+<span class="sd">            part TEXT NOT NULL,</span>
+<span class="sd">            subset TEXT,</span>
+<span class="sd">            recipe_hash TEXT NOT NULL,</span>
+<span class="sd">            recipe_json TEXT NOT NULL,</span>
+<span class="sd">            status TEXT NOT NULL,</span>
+<span class="sd">            context_json TEXT,</span>
+<span class="sd">            created_at TEXT NOT NULL,</span>
+<span class="sd">            finished_at TEXT,</span>
+<span class="sd">            n_processed INTEGER NOT NULL DEFAULT 0,</span>
+<span class="sd">            n_skipped INTEGER NOT NULL DEFAULT 0,</span>
+<span class="sd">            n_failed INTEGER NOT NULL DEFAULT 0</span>
+<span class="sd">        )</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="n">_add_missing_run_columns</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE INDEX IF NOT EXISTS runs_recipe_idx</span>
+<span class="sd">        ON runs (recipe_hash, created_at)</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="c1"># No per-row version or timestamp: both were duplicates of what the run</span>
+    <span class="c1"># already carries. A metric operation's version is in the recipe spec, and</span>
+    <span class="c1"># therefore in the recipe hash on every row; a value's time is its run's</span>
+    <span class="c1"># created_at. metric_id is the table's own insertion order, which orders</span>
+    <span class="c1"># values more truthfully than a timestamp shared by every row of one write.</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE TABLE IF NOT EXISTS metrics (</span>
+<span class="sd">            metric_id INTEGER PRIMARY KEY,</span>
+<span class="sd">            run_id INTEGER NOT NULL,</span>
+<span class="sd">            occurrence_id TEXT NOT NULL,</span>
+<span class="sd">            part TEXT NOT NULL,</span>
+<span class="sd">            metric_name TEXT NOT NULL,</span>
+<span class="sd">            value_json TEXT NOT NULL,</span>
+<span class="sd">            unit TEXT,</span>
+<span class="sd">            recipe_hash TEXT NOT NULL,</span>
+<span class="sd">            source_mask_hash TEXT,</span>
+<span class="sd">            FOREIGN KEY (run_id) REFERENCES runs (run_id)</span>
+<span class="sd">        )</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="n">_drop_legacy_metric_columns</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+    <span class="c1"># The repeat-awareness index: "has this recipe already covered this</span>
+    <span class="c1"># occurrence-part" is the query every metric run issues before doing any</span>
+    <span class="c1"># work, so it has to stay cheap as the table grows.</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE INDEX IF NOT EXISTS metrics_recipe_idx</span>
+<span class="sd">        ON metrics (recipe_hash, occurrence_id, part)</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE INDEX IF NOT EXISTS metrics_occurrence_idx</span>
+<span class="sd">        ON metrics (occurrence_id, part, metric_name)</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="c1"># The metric-side counterpart of what masks.parquet already gives</span>
+    <span class="c1"># segmentation for free: one designated "current" recipe per (kind, name,</span>
+    <span class="c1"># part), separate from the immutable run history above. Masks don't need</span>
+    <span class="c1"># this table -- upserting to a single row per occurrence-part already</span>
+    <span class="c1"># makes "current" unambiguous -- but the metrics table is append-only, so</span>
+    <span class="c1"># without a pointer, "current" would only ever mean "whichever recipe ran</span>
+    <span class="c1"># most recently," silently, with no record that a name's meaning moved at</span>
+    <span class="c1"># all. See resolve_recipe_currency/commit_recipe_currency.</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        CREATE TABLE IF NOT EXISTS current_recipes (</span>
+<span class="sd">            kind TEXT NOT NULL,</span>
+<span class="sd">            name TEXT NOT NULL,</span>
+<span class="sd">            part TEXT NOT NULL,</span>
+<span class="sd">            recipe_hash TEXT NOT NULL,</span>
+<span class="sd">            updated_at TEXT NOT NULL,</span>
+<span class="sd">            PRIMARY KEY (kind, name, part)</span>
+<span class="sd">        )</span>
+<span class="sd">        """</span>
+    <span class="p">)</span>
+    <span class="n">connection</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">connection</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.finish_run" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">finish_run</span>
+
+
+<a href="#critterframe.records.runs.finish_run" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">finish_run</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">processed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">skipped</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">failed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">status</span><span class="o">=</span><span class="n">STATUS_COMPLETE</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Close a run record with its counts.</p>
+<ul>
+<li><code>processed</code> -- occurrence-parts this run actually derived something for.</li>
+<li><code>skipped</code> -- occurrence-parts already covered by an equivalent recipe, so
+  no work was repeated.</li>
+<li><code>failed</code> -- occurrence-parts that raised. Individual failures never stop a
+  run; they're counted here and logged as they happen.</li>
+<li><code>status</code> -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an
+  individual occurrence) blew up.</li>
+<li><code>flags</code> -- <code>{flag: count}</code> of the operations that called their own result
+  doubtful (see <code>drivers.FLAG_KEYS</code>), folded into the run's context. An
+  operation reports these in its <code>info</code>, and until they are recorded here
+  they exist only as text on a sampled panel.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">finish_run</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">processed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">skipped</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">failed</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+               <span class="n">status</span><span class="o">=</span><span class="n">STATUS_COMPLETE</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Close a run record with its counts.</span>
+
+<span class="sd">    - `processed` -- occurrence-parts this run actually derived something for.</span>
+<span class="sd">    - `skipped` -- occurrence-parts already covered by an equivalent recipe, so</span>
+<span class="sd">      no work was repeated.</span>
+<span class="sd">    - `failed` -- occurrence-parts that raised. Individual failures never stop a</span>
+<span class="sd">      run; they're counted here and logged as they happen.</span>
+<span class="sd">    - `status` -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an</span>
+<span class="sd">      individual occurrence) blew up.</span>
+<span class="sd">    - `flags` -- `{flag: count}` of the operations that called their own result</span>
+<span class="sd">      doubtful (see `drivers.FLAG_KEYS`), folded into the run's context. An</span>
+<span class="sd">      operation reports these in its `info`, and until they are recorded here</span>
+<span class="sd">      they exist only as text on a sampled panel.</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">flags</span><span class="p">:</span>
+            <span class="n">stored</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+                <span class="s2">"SELECT context_json FROM runs WHERE run_id = ?"</span><span class="p">,</span> <span class="p">(</span><span class="n">run_id</span><span class="p">,))</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+            <span class="n">context</span> <span class="o">=</span> <span class="n">load_json</span><span class="p">(</span><span class="n">stored</span><span class="p">[</span><span class="s2">"context_json"</span><span class="p">])</span> <span class="ow">or</span> <span class="p">{}</span>
+            <span class="n">context</span><span class="p">[</span><span class="s2">"flags"</span><span class="p">]</span> <span class="o">=</span> <span class="n">flags</span>
+            <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"UPDATE runs SET context_json = ? WHERE run_id = ?"</span><span class="p">,</span>
+                               <span class="p">(</span><span class="n">canonical_json</span><span class="p">(</span><span class="n">context</span><span class="p">),</span> <span class="n">run_id</span><span class="p">))</span>
+
+        <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            UPDATE runs</span>
+<span class="sd">            SET status = ?, finished_at = ?, n_processed = ?, n_skipped = ?,</span>
+<span class="sd">                n_failed = ?</span>
+<span class="sd">            WHERE run_id = ?</span>
+<span class="sd">            """</span><span class="p">,</span>
+            <span class="p">(</span><span class="n">status</span><span class="p">,</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+             <span class="n">processed</span><span class="p">,</span> <span class="n">skipped</span><span class="p">,</span> <span class="n">failed</span><span class="p">,</span> <span class="n">run_id</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">row</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+            <span class="s2">"SELECT * FROM runs WHERE run_id = ?"</span><span class="p">,</span> <span class="p">(</span><span class="n">run_id</span><span class="p">,))</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"finished run </span><span class="si">%d</span><span class="s2">: processed=</span><span class="si">%d</span><span class="s2"> skipped=</span><span class="si">%d</span><span class="s2"> failed=</span><span class="si">%d</span><span class="s2"> (</span><span class="si">%s</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">run_id</span><span class="p">,</span> <span class="n">processed</span><span class="p">,</span> <span class="n">skipped</span><span class="p">,</span> <span class="n">failed</span><span class="p">,</span> <span class="n">status</span><span class="p">)</span>
+    <span class="n">_append_run_log</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">run_id</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.has_database" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">has_database</span>
+
+
+<a href="#critterframe.records.runs.has_database" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">has_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Whether this project has a runs_and_metrics.sqlite yet.</p>
+<p>What a READ checks before opening one: <code>connect</code> creates the file, and a
+project that has never run anything should stay as it is when something
+merely asks what it holds (see project.paths' "creates nothing").</p>
+<ul>
+<li><code>project_path</code> -- project to check.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">has_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Whether this project has a runs_and_metrics.sqlite yet.</span>
+
+<span class="sd">    What a READ checks before opening one: `connect` creates the file, and a</span>
+<span class="sd">    project that has never run anything should stay as it is when something</span>
+<span class="sd">    merely asks what it holds (see project.paths' "creates nothing").</span>
+
+<span class="sd">    - `project_path` -- project to check.</span>
+<span class="sd">    """</span>
+    <span class="k">return</span> <span class="n">paths</span><span class="o">.</span><span class="n">runs_and_metrics_path</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.load_runs" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">load_runs</span>
+
+
+<a href="#critterframe.records.runs.load_runs" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">load_runs</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Read run records as a DataFrame, newest first, with the stored recipe spec
+and run context parsed back into <code>recipe</code> and <code>context</code> columns of dicts.</p>
+<ul>
+<li><code>kind</code> -- optional "segment"/"metric" filter.</li>
+<li><code>name</code> -- optional run-name filter.</li>
+<li><code>recipe_hash</code> -- optional exact-recipe filter, for "when has this exact
+  recipe been run before".</li>
+<li><code>run_id</code> -- optional exact-run filter, for looking up one run by id.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span>
+<span class="normal">505</span>
+<span class="normal">506</span>
+<span class="normal">507</span>
+<span class="normal">508</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span>
+<span class="normal">512</span>
+<span class="normal">513</span>
+<span class="normal">514</span>
+<span class="normal">515</span>
+<span class="normal">516</span>
+<span class="normal">517</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load_runs</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">run_id</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Read run records as a DataFrame, newest first, with the stored recipe spec</span>
+<span class="sd">    and run context parsed back into `recipe` and `context` columns of dicts.</span>
+
+<span class="sd">    - `kind` -- optional "segment"/"metric" filter.</span>
+<span class="sd">    - `name` -- optional run-name filter.</span>
+<span class="sd">    - `recipe_hash` -- optional exact-recipe filter, for "when has this exact</span>
+<span class="sd">      recipe been run before".</span>
+<span class="sd">    - `run_id` -- optional exact-run filter, for looking up one run by id.</span>
+<span class="sd">    """</span>
+    <span class="n">query</span> <span class="o">=</span> <span class="s2">"SELECT * FROM runs"</span>
+    <span class="n">conditions</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="n">parameters</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">column</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">((</span><span class="s2">"kind"</span><span class="p">,</span> <span class="n">kind</span><span class="p">),</span> <span class="p">(</span><span class="s2">"name"</span><span class="p">,</span> <span class="n">name</span><span class="p">),</span>
+                          <span class="p">(</span><span class="s2">"recipe_hash"</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">),</span> <span class="p">(</span><span class="s2">"run_id"</span><span class="p">,</span> <span class="n">run_id</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="n">value</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">conditions</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">column</span><span class="si">}</span><span class="s2"> = ?"</span><span class="p">)</span>
+            <span class="n">parameters</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">value</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">conditions</span><span class="p">:</span>
+        <span class="n">query</span> <span class="o">+=</span> <span class="s2">" WHERE "</span> <span class="o">+</span> <span class="s2">" AND "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">conditions</span><span class="p">)</span>
+    <span class="n">query</span> <span class="o">+=</span> <span class="s2">" ORDER BY created_at DESC, run_id DESC"</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">has_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">_empty_runs_frame</span><span class="p">()</span>
+
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">rows</span> <span class="o">=</span> <span class="p">[</span><span class="nb">dict</span><span class="p">(</span><span class="n">row</span><span class="p">)</span> <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="n">parameters</span><span class="p">)]</span>
+
+    <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">rows</span><span class="p">:</span>
+        <span class="n">row</span><span class="p">[</span><span class="s2">"recipe"</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_json</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"recipe_json"</span><span class="p">))</span>
+        <span class="n">row</span><span class="p">[</span><span class="s2">"context"</span><span class="p">]</span> <span class="o">=</span> <span class="n">load_json</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s2">"context_json"</span><span class="p">,</span> <span class="kc">None</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.open_database" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">open_database</span>
+
+
+<a href="#critterframe.records.runs.open_database" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>A project's runs_and_metrics.sqlite, with both tables guaranteed to exist, CLOSED on exit.</p>
+<p>A context manager rather than a bare connection: left open, every read a
+summary or an export makes holds a file handle for the rest of the process,
+which on Windows is enough to stop the project directory being moved or
+deleted.</p>
+<p>The schema is ensured on every open rather than once per path. The DDL is
+idempotent and cheap, and remembering which paths are ready is wrong as
+soon as one is deleted and recreated under the same name.</p>
+<ul>
+<li><code>project_path</code> -- project whose database to open.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@contextmanager</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A project's runs_and_metrics.sqlite, with both tables guaranteed to exist, CLOSED on exit.</span>
+
+<span class="sd">    A context manager rather than a bare connection: left open, every read a</span>
+<span class="sd">    summary or an export makes holds a file handle for the rest of the process,</span>
+<span class="sd">    which on Windows is enough to stop the project directory being moved or</span>
+<span class="sd">    deleted.</span>
+
+<span class="sd">    The schema is ensured on every open rather than once per path. The DDL is</span>
+<span class="sd">    idempotent and cheap, and remembering which paths are ready is wrong as</span>
+<span class="sd">    soon as one is deleted and recreated under the same name.</span>
+
+<span class="sd">    - `project_path` -- project whose database to open.</span>
+<span class="sd">    """</span>
+    <span class="n">connection</span> <span class="o">=</span> <span class="n">connect</span><span class="p">(</span><span class="n">paths</span><span class="o">.</span><span class="n">runs_and_metrics_path</span><span class="p">(</span><span class="n">project_path</span><span class="p">))</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">ensure_schema</span><span class="p">(</span><span class="n">connection</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">connection</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">finally</span><span class="p">:</span>
+        <span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.resolve_recipe_currency" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">resolve_recipe_currency</span>
+
+
+<a href="#critterframe.records.runs.resolve_recipe_currency" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">resolve_recipe_currency</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">force</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Settle whether (kind, name, part) may proceed under recipe_hash, and
+whether the caller still owes commit_recipe_currency() once real work
+confirms the change.</p>
+<p>A no-op for anything but "metric": masks.parquet upserts to a single
+current row per occurrence-part, so a segment run_name pointing at several
+recipe hashes over a project's life is neither ambiguous nor new -- it's
+exactly what resegmenting is. Metrics have no such row to make "current"
+unambiguous on their own; the metrics table is append-only, so without
+this, "current" only ever meant "whichever recipe ran most recently,"
+silently, and export.metrics_wide / records.metrics.latest_values key on
+run_name alone -- two recipes sharing a name would interleave under one
+export column or one group-metric fit with no record they ever differed.</p>
+<p>Raises when (kind, name, part) already points at a different recipe and
+force is falsy, naming both hashes. force=True acknowledges the change
+explicitly instead of it happening as a side effect of write order.</p>
+<p>Returns True when the caller must call commit_recipe_currency() itself
+once it knows real work was done; False when there is nothing left to do
+(first use, or already pointing here) because that case is safe to write
+immediately, before any occurrence is processed.</p>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span>
+<span class="normal">405</span>
+<span class="normal">406</span>
+<span class="normal">407</span>
+<span class="normal">408</span>
+<span class="normal">409</span>
+<span class="normal">410</span>
+<span class="normal">411</span>
+<span class="normal">412</span>
+<span class="normal">413</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve_recipe_currency</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">,</span> <span class="n">force</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Settle whether (kind, name, part) may proceed under recipe_hash, and</span>
+<span class="sd">    whether the caller still owes commit_recipe_currency() once real work</span>
+<span class="sd">    confirms the change.</span>
+
+<span class="sd">    A no-op for anything but "metric": masks.parquet upserts to a single</span>
+<span class="sd">    current row per occurrence-part, so a segment run_name pointing at several</span>
+<span class="sd">    recipe hashes over a project's life is neither ambiguous nor new -- it's</span>
+<span class="sd">    exactly what resegmenting is. Metrics have no such row to make "current"</span>
+<span class="sd">    unambiguous on their own; the metrics table is append-only, so without</span>
+<span class="sd">    this, "current" only ever meant "whichever recipe ran most recently,"</span>
+<span class="sd">    silently, and export.metrics_wide / records.metrics.latest_values key on</span>
+<span class="sd">    run_name alone -- two recipes sharing a name would interleave under one</span>
+<span class="sd">    export column or one group-metric fit with no record they ever differed.</span>
+
+<span class="sd">    Raises when (kind, name, part) already points at a different recipe and</span>
+<span class="sd">    force is falsy, naming both hashes. force=True acknowledges the change</span>
+<span class="sd">    explicitly instead of it happening as a side effect of write order.</span>
+
+<span class="sd">    Returns True when the caller must call commit_recipe_currency() itself</span>
+<span class="sd">    once it knows real work was done; False when there is nothing left to do</span>
+<span class="sd">    (first use, or already pointing here) because that case is safe to write</span>
+<span class="sd">    immediately, before any occurrence is processed.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">kind</span> <span class="o">!=</span> <span class="s2">"metric"</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">False</span>
+
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">current</span> <span class="o">=</span> <span class="n">_seeded_current_hash</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">current</span> <span class="o">==</span> <span class="n">recipe_hash</span><span class="p">:</span>
+            <span class="n">_write_current_recipe</span><span class="p">(</span><span class="n">connection</span><span class="p">,</span> <span class="n">kind</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">part</span><span class="p">,</span> <span class="n">recipe_hash</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">False</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"run_name </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> currently points at a different metric "</span>
+                <span class="sa">f</span><span class="s2">"recipe for part </span><span class="si">{</span><span class="n">part</span><span class="si">!r}</span><span class="s2"> (current hash </span><span class="si">{</span><span class="n">current</span><span class="si">!r}</span><span class="s2">, this "</span>
+                <span class="sa">f</span><span class="s2">"run's hash is </span><span class="si">{</span><span class="n">recipe_hash</span><span class="si">!r}</span><span class="s2">). export.metrics_wide and "</span>
+                <span class="sa">f</span><span class="s2">"records.metrics.latest_values key on run_name alone, so "</span>
+                <span class="sa">f</span><span class="s2">"proceeding would silently interleave two recipes under one "</span>
+                <span class="sa">f</span><span class="s2">"name. Pass force=True to move </span><span class="si">{</span><span class="n">name</span><span class="si">!r}</span><span class="s2"> onto this recipe -- "</span>
+                <span class="sa">f</span><span class="s2">"values already on record stay there but stop being current "</span>
+                <span class="sa">f</span><span class="s2">"-- or give this recipe its own name instead."</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="kc">True</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+<div class="doc doc-object doc-function">
+
+
+<h3 id="critterframe.records.runs.start_run" class="doc doc-heading">
+            <span class="doc doc-object-name doc-function-name">start_run</span>
+
+
+<a href="#critterframe.records.runs.start_run" class="headerlink" title="Permanent link">&para;</a></h3>
+<div class="doc-signature highlight"><pre><span></span><code><span class="nf">start_run</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">recipe</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span>
+</code></pre></div>
+
+    <div class="doc doc-contents ">
+
+        <p>Open a run record for a recipe about to execute, and return its run_id.</p>
+<p>The full recipe spec is written now rather than at the end, so an
+interrupted run still records what it was trying to do.</p>
+<ul>
+<li><code>project_path</code> -- project to record the run in.</li>
+<li><code>recipe</code> -- the Recipe being executed (see critterframe.recipes).</li>
+<li><code>subset</code> -- name of the subset being processed, if the run was scoped to
+  one. Recorded but deliberately NOT part of the recipe hash: which
+  occurrences a recipe ran over is a property of the run, not of the
+  recipe, so processing the rest of a project later continues the same work
+  instead of counting as different work.</li>
+<li><code>context</code> -- JSON-serializable record of what this run covered and what
+  its operations fit: the occurrence set as a count and an ids_digest, the
+  limit, and any prepare() records. Not hashed either, for the same reason
+  as subset.</li>
+</ul>
+
+
+            <details class="mkdocstrings-source">
+              <summary>Source code in <code>critterframe/records/runs.py</code></summary>
+              <div class="highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">start_run</span><span class="p">(</span><span class="n">project_path</span><span class="p">,</span> <span class="n">recipe</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">context</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Open a run record for a recipe about to execute, and return its run_id.</span>
+
+<span class="sd">    The full recipe spec is written now rather than at the end, so an</span>
+<span class="sd">    interrupted run still records what it was trying to do.</span>
+
+<span class="sd">    - `project_path` -- project to record the run in.</span>
+<span class="sd">    - `recipe` -- the Recipe being executed (see critterframe.recipes).</span>
+<span class="sd">    - `subset` -- name of the subset being processed, if the run was scoped to</span>
+<span class="sd">      one. Recorded but deliberately NOT part of the recipe hash: which</span>
+<span class="sd">      occurrences a recipe ran over is a property of the run, not of the</span>
+<span class="sd">      recipe, so processing the rest of a project later continues the same work</span>
+<span class="sd">      instead of counting as different work.</span>
+<span class="sd">    - `context` -- JSON-serializable record of what this run covered and what</span>
+<span class="sd">      its operations fit: the occurrence set as a count and an ids_digest, the</span>
+<span class="sd">      limit, and any prepare() records. Not hashed either, for the same reason</span>
+<span class="sd">      as subset.</span>
+<span class="sd">    """</span>
+    <span class="k">if</span> <span class="n">recipe</span><span class="o">.</span><span class="n">kind</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">RUN_KINDS</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"run kind must be one of </span><span class="si">{</span><span class="n">RUN_KINDS</span><span class="si">}</span><span class="s2">, got </span><span class="si">{</span><span class="n">recipe</span><span class="o">.</span><span class="n">kind</span><span class="si">!r}</span><span class="s2">"</span>
+        <span class="p">)</span>
+
+    <span class="k">with</span> <span class="n">open_database</span><span class="p">(</span><span class="n">project_path</span><span class="p">)</span> <span class="k">as</span> <span class="n">connection</span><span class="p">:</span>
+        <span class="n">cursor</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            INSERT INTO runs (</span>
+<span class="sd">                kind, name, part, subset, recipe_hash, recipe_json,</span>
+<span class="sd">                status, context_json, created_at</span>
+<span class="sd">            )</span>
+<span class="sd">            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)</span>
+<span class="sd">            """</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="n">recipe</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span>
+                <span class="n">recipe</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">recipe</span><span class="o">.</span><span class="n">part</span><span class="p">,</span>
+                <span class="n">subset</span><span class="p">,</span>
+                <span class="n">recipe</span><span class="o">.</span><span class="n">hash</span><span class="p">,</span>
+                <span class="n">canonical_json</span><span class="p">(</span><span class="n">recipe</span><span class="o">.</span><span class="n">spec</span><span class="p">()),</span>
+                <span class="n">STATUS_RUNNING</span><span class="p">,</span>
+                <span class="kc">None</span> <span class="k">if</span> <span class="n">context</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">canonical_json</span><span class="p">(</span><span class="n">context</span><span class="p">),</span>
+                <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">(</span><span class="n">timezone</span><span class="o">.</span><span class="n">utc</span><span class="p">)</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">run_id</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">lastrowid</span>
+
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"started </span><span class="si">%s</span><span class="s2"> run '</span><span class="si">%s</span><span class="s2">' (run_id=</span><span class="si">%d</span><span class="s2">, part=</span><span class="si">%s</span><span class="s2">, recipe=</span><span class="si">%s</span><span class="s2">)"</span><span class="p">,</span>
+                <span class="n">recipe</span><span class="o">.</span><span class="n">kind</span><span class="p">,</span> <span class="n">recipe</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="n">run_id</span><span class="p">,</span> <span class="n">recipe</span><span class="o">.</span><span class="n">part</span><span class="p">,</span> <span class="n">recipe</span><span class="o">.</span><span class="n">hash</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">run_id</span>
+</code></pre></div></td></tr></table></div>
+            </details>
+    </div>
+
+</div>
+
+
+
+  </div>
+
+    </div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
