@@ -273,7 +273,8 @@ def select_ids(project_path, subset=None, limit=None):
 
 
 def grow_subset(project_path, name, target_size, candidate_ids=None,
-                from_subset=None, seed=selectionhelpers.SAMPLE_SEED):
+                from_subset=None, seed=selectionhelpers.SAMPLE_SEED,
+                candidate_note=None):
     """
     Define a subset if it doesn't exist yet, or grow (or shrink) it toward
     target_size otherwise, keeping every id it already holds.
@@ -300,6 +301,9 @@ def grow_subset(project_path, name, target_size, candidate_ids=None,
       set), so raising the cheap pass's size doesn't silently raise the
       expensive one's too. Mutually exclusive with candidate_ids.
     - `seed` -- passed through to grow_sample.
+    - `candidate_note` -- what `candidate_ids` is, e.g. `"abdomens from
+      body_parts"`, recorded in the note in place of a bare count. Only with
+      `candidate_ids`.
 
     Records target_size, seed, and the candidate pool as the subset's `note`
     (see define_subset), since this is the one place that opaque occurrence_ids
@@ -309,6 +313,8 @@ def grow_subset(project_path, name, target_size, candidate_ids=None,
     """
     if candidate_ids is not None and from_subset is not None:
         raise ValueError("grow_subset takes candidate_ids= or from_subset=, not both")
+    if candidate_note is not None and candidate_ids is None:
+        raise ValueError("candidate_note= describes candidate_ids=, which wasn't given")
 
     try:
         already = select_ids(project_path, subset=name)
@@ -320,7 +326,9 @@ def grow_subset(project_path, name, target_size, candidate_ids=None,
         pool_description = from_subset
     elif candidate_ids is not None:
         candidate_ids = list(candidate_ids)
-        pool_description = f"{len(candidate_ids)} given candidate id(s)"
+        pool_description = (f"{len(candidate_ids)} given candidate id(s)"
+                            if candidate_note is None
+                            else f"{candidate_note} ({len(candidate_ids)} id(s))")
     else:
         candidate_ids = select_ids(project_path)
         pool_description = "whole project"

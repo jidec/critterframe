@@ -10,6 +10,7 @@ place and "mask" in another.
 Drawing only, no input: the two operations that put a panel on screen and wait
 for a person keep their own `_wait_for_key`, because their tests stub cv2 by
 rebinding it in the operation's own module (see the note on either copy).
+`fit_for_display` sizes what those windows show.
 """
 
 import logging
@@ -34,6 +35,12 @@ ADDED_COLOR = (0, 255, 0)
 # covers. Named rather than written inline, so a hand-built comparison can't
 # quietly give "only A" a colour that means something else elsewhere.
 ONLY_MASK_COLOR = (0, 255, 255)
+
+# (width, height) box an interactive window is fitted into: a 1080p screen at
+# Windows' 125% scaling (effectively 1536x864, since cv2's windows aren't
+# DPI-aware), less the taskbar and title bar. Read at call time, so a script
+# on a bigger screen can raise it once.
+DISPLAY_MAX = (1450, 780)
 
 
 def save_panel(project_path, image, name, subdir=""):
@@ -173,6 +180,36 @@ def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=ONLY_MASK_COLOR,
     return panel
 
 
+def fit_for_display(image, max_size="screen", enlarge=True):
+    """
+    An image resized to fit a screen-sized box, and the factor it was resized by.
+
+    Enlarging uses nearest-neighbour so pixels and mask edges stay crisp to
+    click on; shrinking uses area averaging. Divide a clicked point by the
+    factor to get it back in the image's own pixels.
+
+    - `image` -- array to show; returned unchanged (not copied) at factor 1.
+    - `max_size` -- `(width, height)` box, `"screen"` for `DISPLAY_MAX`, or
+      None for no resizing.
+    - `enlarge` -- False only ever shrinks.
+
+    Returns `(display_image, scale)`.
+    """
+    if isinstance(max_size, str):
+        max_size = DISPLAY_MAX
+    if max_size is None:
+        return image, 1.0
+    height, width = np.asarray(image).shape[:2]
+    scale = min(max_size[0] / width, max_size[1] / height)
+    if not enlarge:
+        scale = min(scale, 1.0)
+    if scale == 1.0:
+        return image, 1.0
+    size = (max(1, round(width * scale)), max(1, round(height * scale)))
+    interpolation = cv2.INTER_NEAREST if scale > 1 else cv2.INTER_AREA
+    return cv2.resize(np.asarray(image), size, interpolation=interpolation), scale
+
+
 def annotate(image, text, line=0, color=TEXT_COLOR):
     """
     Draw one line of small diagnostic text at the top-left, in place.
@@ -183,6 +220,22 @@ def annotate(image, text, line=0, color=TEXT_COLOR):
     cv2.putText(image, text, (5, 15 + 17 * line), cv2.FONT_HERSHEY_SIMPLEX,
                 0.4, color, 1)
     return image
+
+
+def bordered(image, color, width=4):
+    """
+    A copy of `image` with a solid frame drawn over its outer `width` pixels.
+
+    The frame is drawn inward, so the result is the same size and everything
+    inside the frame is untouched: for marking a cell by category in a grid.
+    """
+    framed = np.asarray(image).copy()
+    width = max(1, min(int(width), min(framed.shape[:2]) // 2))
+    framed[:width] = color
+    framed[-width:] = color
+    framed[:, :width] = color
+    framed[:, -width:] = color
+    return framed
 
 
 def side_by_side(*images):

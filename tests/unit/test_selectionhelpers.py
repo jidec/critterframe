@@ -21,6 +21,7 @@ tested with the wide view it reads, in test_export.py.
 import pandas as pd
 import pytest
 
+from critterframe.selectionhelpers import group_medoids
 from critterframe.selectionhelpers import (
     SAMPLE_SEED,
     cap_per_group,
@@ -840,3 +841,68 @@ def test_an_out_of_range_index_raises():
 def test_a_non_positive_total_raises():
     with pytest.raises(ValueError, match="total"):
         shard_occurrences(IDS, 0, 0)
+
+
+# ---------------------------------------------------------------------------
+# group_medoids
+# ---------------------------------------------------------------------------
+
+# a2 sits between a1 and a3, and b1 between b2 and b3: each is its group's medoid
+VECTORS = {"a1": [0.0, 0.0], "a2": [1.0, 0.0], "a3": [2.0, 0.0],
+           "b1": [10.0, 10.0], "b2": [10.0, 13.0], "b3": [10.0, 7.0]}
+GROUPS = {"a1": "a", "a2": "a", "a3": "a", "b1": "b", "b2": "b", "b3": "b"}
+
+
+def test_the_member_nearest_the_rest_of_its_group_is_chosen():
+    assert group_medoids(VECTORS, GROUPS) == ["a2", "b1"]
+
+
+def test_a_member_is_measured_against_its_own_group_only():
+    """As one group, everyone is measured against everyone and a3 comes out nearest."""
+    assert group_medoids(VECTORS, {name: "all" for name in VECTORS}) == ["a3"]
+
+
+def test_a_medoid_is_in_the_larger_cluster_not_between_the_two():
+    """m is the member nearest the mean, and typical of neither cluster."""
+    vectors = {"c1": [0.0, 0.0], "c2": [0.0, 1.0], "c3": [1.0, 0.0], "c4": [1.0, 1.0],
+               "c5": [0.5, 0.5], "d1": [10.0, 0.0], "d2": [10.0, 1.0], "m": [3.4, 0.5]}
+    table = pd.DataFrame.from_dict(vectors, orient="index")
+    nearest_the_mean = ((table - table.mean()) ** 2).sum(axis=1).idxmin()
+
+    [medoid] = group_medoids(vectors, {name: "one" for name in vectors})
+    assert nearest_the_mean == "m"
+    assert medoid.startswith("c")
+
+
+def test_a_large_group_is_summed_in_blocks(monkeypatch):
+    """The block size bounds memory and must not change the answer."""
+    import critterframe.selectionhelpers as helpers
+
+    whole = group_medoids(VECTORS, GROUPS, count=2)
+    monkeypatch.setattr(helpers, "MEDOID_BLOCK_ROWS", 2)
+    assert group_medoids(VECTORS, GROUPS, count=2) == whole
+
+
+def test_a_group_smaller_than_the_count_is_taken_whole():
+    assert group_medoids(VECTORS, {"a1": "a", "b1": "b", "b2": "b"}, count=2) == [
+        "a1", "b1", "b2"]
+
+
+def test_a_tie_goes_to_the_first_id_whatever_the_order_given():
+    """With a2 gone, a1 and a3 are each the other's only neighbour."""
+    vectors = {"a3": [2.0, 0.0], "a1": [0.0, 0.0]}
+    groups = {"a3": "a", "a1": "a"}
+    assert group_medoids(vectors, groups) == ["a1"]
+    assert group_medoids(dict(reversed(vectors.items())), groups) == ["a1"]
+
+
+def test_an_id_with_no_group_or_no_vector_is_left_out():
+    groups = {**GROUPS, "a2": None, "zz": "a"}
+    picked = group_medoids(VECTORS, groups, count=3)
+    assert "a2" not in picked and "zz" not in picked
+    assert group_medoids(VECTORS, GROUPS, count=0) == []
+
+
+def test_vectors_can_be_a_frame_and_groups_a_series():
+    frame = pd.DataFrame.from_dict(VECTORS, orient="index")
+    assert group_medoids(frame, pd.Series(GROUPS)) == ["a2", "b1"]

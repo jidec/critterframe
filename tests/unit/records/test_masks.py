@@ -537,143 +537,36 @@ def test_a_table_written_before_info_was_recorded_takes_new_rows(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# merge_masks
+# combined_source_hash
 # ---------------------------------------------------------------------------
 
 
-def box_mask(shape=(100, 100), box=(slice(20, 60), slice(20, 60))):
-    mask = np.zeros(shape, bool)
-    mask[box] = True
-    return mask
+def test_one_upstream_is_its_own_source_hash():
+    """A single-upstream mask keeps the source hash it has always stored."""
+    assert mask_records.combined_source_hash({"organism": "abc"}) == "abc"
+    assert mask_records.combined_source_hash({"organism": None}) is None
 
 
-def test_merge_unions_the_named_parts(tmp_path):
+def test_several_upstreams_move_when_any_one_does():
     """
-    'head' the top half, 'thorax' the bottom half of the same 40x40 box --
-    the merged 'body' part should be exactly their union.
+    A mask merged from several parts is only safe to measure off if its source
+    hash moves when ANY of them is resegmented -- and stays put for the same
+    parts named in another order, or it would be redone for nothing.
     """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(box=(slice(20, 40), slice(20, 60)))),
-        make_row("a", part="thorax", mask=box_mask(box=(slice(40, 60), slice(20, 60)))),
-    ])
+    before = mask_records.combined_source_hash({"head": "h1", "thorax": "t1"})
 
-    n = mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-
-    assert n == 1
-    merged = mask_records.get_mask(tmp_path, "a", part="body")
-    assert np.array_equal(merged, box_mask())
+    assert before == mask_records.combined_source_hash({"thorax": "t1", "head": "h1"})
+    assert before != mask_records.combined_source_hash({"head": "h2", "thorax": "t1"})
+    assert before != mask_records.combined_source_hash({"head": "t1", "thorax": "h1"})
 
 
-def test_merge_writes_to_the_reference_table_when_asked(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask()),
-        make_row("a", part="thorax", mask=box_mask()),
-    ], reference=True)
+def test_an_upstream_with_no_recorded_identity_still_hashes():
+    """None, or the NaN an older table reads back as: no identity, not a crash."""
+    missing = mask_records.combined_source_hash({"head": None, "thorax": "t1"})
 
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body", reference=True)
-
-    assert mask_records.get_mask(tmp_path, "a", part="body", reference=True) is not None
-    assert mask_records.get_mask(tmp_path, "a", part="body") is None
-
-
-def test_an_occurrence_missing_one_named_part_is_excluded_from_the_merge(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask()),
-        make_row("a", part="thorax", mask=box_mask()),
-        make_row("b", part="head", mask=box_mask()),  # no thorax for "b"
-    ])
-
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-
-    assert mask_records.get_mask(tmp_path, "a", part="body") is not None
-    assert mask_records.get_mask(tmp_path, "b", part="body") is None
-
-
-def test_merge_respects_occurrence_ids(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask()),
-        make_row("a", part="thorax", mask=box_mask()),
-        make_row("b", part="head", mask=box_mask()),
-        make_row("b", part="thorax", mask=box_mask()),
-    ])
-
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body",
-                             occurrence_ids=["a"])
-
-    assert mask_records.get_mask(tmp_path, "a", part="body") is not None
-    assert mask_records.get_mask(tmp_path, "b", part="body") is None
-
-
-def test_merge_pads_mismatched_shapes(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(shape=(80, 80))),
-        make_row("a", part="thorax", mask=box_mask()),
-    ])
-
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-
-    merged = mask_records.get_mask(tmp_path, "a", part="body")
-    assert merged.shape == (100, 100)
-    assert np.array_equal(merged, box_mask())
-
-
-def test_merge_requires_at_least_one_part(tmp_path):
-    with pytest.raises(ValueError):
-        mask_records.merge_masks(tmp_path, [], "body")
-
-
-def test_canonical_merge_gets_a_real_identity(tmp_path):
-    """
-    A merged canonical mask is only safe to measure metrics off if it carries
-    an identity that moves when a source part is resegmented -- otherwise a
-    metric on 'body' would keep reading as current after 'head' changes.
-    """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(), recipe_hash="head_v1"),
-        make_row("a", part="thorax", mask=box_mask(), recipe_hash="thorax_v1"),
-    ])
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-
-    merged = mask_records.load_masks(tmp_path, parts=["body"]).iloc[0]
-    assert merged["recipe_hash"] is not None
-    assert merged["source_mask_hash"] is not None
-
-
-def test_resegmenting_a_source_part_moves_the_merged_identity(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(), recipe_hash="head_v1"),
-        make_row("a", part="thorax", mask=box_mask(), recipe_hash="thorax_v1"),
-    ])
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-    before = mask_records.current_derivation_hashes(
-        tmp_path, parts=["body"])[("a", "body")]
-
-    # "head" resegmented -- a new recipe hash, same as run_segments would record.
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(), recipe_hash="head_v2"),
-    ])
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body")
-    after = mask_records.current_derivation_hashes(
-        tmp_path, parts=["body"])[("a", "body")]
-
-    assert before != after
-
-
-def test_reference_merge_carries_no_identity(tmp_path):
-    """
-    No staleness contract applies to the reference table -- a reference is
-    whatever you chose to compare against, and a computed union is as
-    legitimate as a hand-drawn one.
-    """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="head", mask=box_mask(), recipe_hash="head_v1"),
-        make_row("a", part="thorax", mask=box_mask(), recipe_hash="thorax_v1"),
-    ], reference=True)
-    mask_records.merge_masks(tmp_path, ["head", "thorax"], "body", reference=True)
-
-    merged = mask_records.load_masks(tmp_path, parts=["body"], reference=True).iloc[0]
-    assert pd.isna(merged["recipe_hash"])
-    assert pd.isna(merged["source_mask_hash"])
+    assert isinstance(missing, str)
+    assert missing == mask_records.combined_source_hash(
+        {"head": float("nan"), "thorax": "t1"})
 
 
 def test_a_mask_digest_is_stable_and_sees_one_pixel():

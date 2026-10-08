@@ -24,6 +24,7 @@ it lives with the wide-form view it reads rather than here.
 import logging
 import random
 
+import numpy as np
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -219,6 +220,63 @@ def sample_per_group(df, group_col, count, id_col="occurrence_id", seed=SAMPLE_S
         remaining_count -= take
         remaining_groups -= 1
 
+    return sorted(picked)
+
+
+# Rows of a group measured against the whole group at once: bounds the memory
+# of a pairwise distance table, which is otherwise the square of the group.
+MEDOID_BLOCK_ROWS = 1024
+
+
+def _summed_distances(points):
+    """Each row's summed Euclidean distance to every row of `points`, an (n, d) array."""
+    squared = (points ** 2).sum(axis=1)
+    totals = np.empty(len(points))
+    for start in range(0, len(points), MEDOID_BLOCK_ROWS):
+        block = slice(start, start + MEDOID_BLOCK_ROWS)
+        between = squared[block, None] + squared[None, :] - 2 * points[block] @ points.T
+        totals[block] = np.sqrt(np.clip(between, 0, None)).sum(axis=1)
+    return totals
+
+
+def group_medoids(vectors, groups, count=1):
+    """
+    Per group, the `count` ids with the smallest summed distance to the rest of their group.
+
+    The first is the group's medoid: a real member, and in a group with two
+    clusters a member of the larger one, where the member nearest the mean can
+    be a point between them. Distance is Euclidean and equal sums are broken
+    by sorted id. Time grows with the square of a group's size.
+
+    - `vectors` -- `{occurrence_id: vector}`, or a DataFrame indexed by id with
+      one numeric column per dimension. A row with a missing value is dropped.
+    - `groups` -- `{occurrence_id: group}` or a Series indexed by id. An id
+      with a missing group is excluded, as in `sample_per_group`.
+    - `count` -- how many to take per group; a smaller group is taken whole.
+
+    Returns a sorted list of ids.
+    """
+    if count <= 0:
+        return []
+
+    if not isinstance(vectors, pd.DataFrame):
+        vectors = pd.DataFrame.from_dict(
+            {occurrence_id: np.atleast_1d(np.asarray(vector, dtype=float))
+             for occurrence_id, vector in dict(vectors).items()}, orient="index")
+    table = vectors.dropna()
+    table.index = table.index.map(str)
+
+    groups = groups if isinstance(groups, pd.Series) else pd.Series(groups, dtype=object)
+    groups = groups.dropna()
+    groups.index = groups.index.map(str)
+    groups = groups[groups.index.isin(table.index)]
+
+    picked = []
+    for _group, members in groups.groupby(groups, sort=False):
+        ids = sorted(members.index)
+        totals = _summed_distances(table.loc[ids].to_numpy(dtype=float))
+        # stable, over ids already sorted: that is the tie-break
+        picked.extend(ids[index] for index in np.argsort(totals, kind="stable")[:count])
     return sorted(picked)
 
 

@@ -1,6 +1,11 @@
 """
-Which GroundedSAM2 settings work best for dragonfly_bodies_inat.py step 2 --
-text_prompt, box_threshold, text_threshold, and segment()'s mask_threshold?
+Which GroundedSAM2 settings work best for 1_ingest_and_segment_organism.py's
+organism segment -- text_prompt, box_threshold, text_threshold, and segment()'s
+mask_threshold?
+
+Outside the numbered sequence: it feeds nothing, and answers a question about a
+choice the pipeline already makes. Needs 2_annotate_references.py's reference
+part masks.
 
 Each parameter is swept one at a time against a fixed baseline, ranked by how
 much of the body (the union of the head/thorax/abdomen reference masks) the
@@ -38,7 +43,8 @@ SEGMENT_SWEEPS = {
 # The body the organism mask needs to cover, materialized once as a reference
 # part so every sweep candidate below compares against it directly instead of
 # re-unioning head/thorax/abdomen per candidate.
-cf.merge_masks(PROJECT_PATH, parts=BODY_PARTS, into_part="body", reference=True)
+cf.run_segments(PROJECT_PATH, part="body", from_part=BODY_PARTS, steps=[],
+                reference=True, from_reference=True)
 
 def _validate(model_kwargs, segment_kwargs, label):
     return cf.validate_masks(

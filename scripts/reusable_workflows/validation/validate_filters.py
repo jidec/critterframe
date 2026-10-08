@@ -25,7 +25,7 @@ PROJECT_PATH = "projects/my_project"
 PART = "organism"
 
 QC_RUN = "qc"
-ANNOTATION_RUN = "usability_annotation"
+ANNOTATION_RUN = "usability"      # the run and the metric annotate_usability.py stores
 MAX_FPR = 0.02
 
 # 1. QC metrics over the whole project -- cheap, and the export filters every
@@ -42,7 +42,9 @@ filters = cf.get_validated_filters(
     PROJECT_PATH,
     metric_specs={"blur_variance": "below", "edge_fraction": "above",
                   "bilateral_asymmetry": "above"},
-    predicted_run=QC_RUN, annotation_run=ANNOTATION_RUN, part=PART,
+    predicted_run=QC_RUN, annotation_run=ANNOTATION_RUN, label_metric=ANNOTATION_RUN,
+    good_labels=["usable"],   # every other label means it should have been filtered
+    part=PART,
     max_fpr=MAX_FPR,
 )
 

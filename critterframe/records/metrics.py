@@ -224,8 +224,45 @@ def current_rows(project_path, long_df):
     return long_df[keep]
 
 
+def result_keys(project_path, run_name, part, current_only=True):
+    """
+    Which occurrences a metric run has a result for, without reading any value.
+
+    For asking "who has this run finished" of a run whose values are large: an
+    embedding run's values are gigabytes of JSON that `load_metrics` would parse
+    to answer a question that needs none of it.
+
+    - `run_name` -- run that produced the values.
+    - `part` -- part they were measured on.
+    - `current_only` -- only results that are still current (see `current_rows`).
+
+    Returns a DataFrame of `occurrence_id`, `part`, `recipe_hash`,
+    `source_mask_hash`, `run_name`, one row per distinct combination.
+    """
+    columns = ["occurrence_id", "part", "recipe_hash", "source_mask_hash", "run_name"]
+    if not run_records.has_database(project_path):
+        return pd.DataFrame(columns=columns)
+    with open_database(project_path) as connection:
+        rows = [dict(row) for row in connection.execute(
+            """
+            SELECT DISTINCT m.occurrence_id, m.part, m.recipe_hash,
+                   m.source_mask_hash, r.name AS run_name
+            FROM metrics m
+            JOIN runs r ON r.run_id = m.run_id
+            WHERE r.name = ? AND m.part = ?
+            """, (run_name, part))]
+    keys = pd.DataFrame(rows, columns=columns)
+    return current_rows(project_path, keys) if current_only else keys
+
+
+# The most occurrence ids latest_values hands to the database as a filter. More
+# than this and it reads the whole run and narrows afterwards: SQLite caps how
+# many values one statement can bind.
+MAX_FILTERED_IDS = 20000
+
+
 def latest_values(project_path, run_name, part=DEFAULT_PART, metric_name=None,
-                  current_only=True):
+                  current_only=True, occurrence_ids=None):
     """
     The newest value per occurrence for one metric, as a Series indexed by
     occurrence_id -- the narrow lookup group metrics use to assemble a
@@ -244,12 +281,20 @@ def latest_values(project_path, run_name, part=DEFAULT_PART, metric_name=None,
       population from these values, so a stale one doesn't just misreport its
       own occurrence, it shifts the distribution every other occurrence is
       scored against.
+    - `occurrence_ids` -- only these occurrences; every one if None. Matters
+      for a vector metric over a large project, where reading every stored
+      embedding to use a few thousand is gigabytes of parsing.
     """
     if metric_name is None:
         raise ValueError("latest_values needs a metric_name")
 
+    wanted = None if occurrence_ids is None else {str(i) for i in occurrence_ids}
+    in_query = wanted is not None and len(wanted) <= MAX_FILTERED_IDS
     long_df = load_metrics(project_path, run_names=[run_name], parts=[part],
-                           metric_names=[metric_name])
+                           metric_names=[metric_name],
+                           occurrence_ids=sorted(wanted) if in_query else None)
+    if wanted is not None and not in_query and not long_df.empty:
+        long_df = long_df[long_df["occurrence_id"].isin(wanted)]
     if current_only:
         long_df = current_rows(project_path, long_df)
     if long_df.empty:

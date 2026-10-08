@@ -20,17 +20,20 @@ logger = logging.getLogger(__name__)
 
 class StoredValues:
     """
-    What a stored-input metric is scored on: which occurrence-part, and nothing else.
+    What a stored-input metric is scored on: which occurrence-part, and the values its own run measured so far.
 
-    The metric looks its own values up from what its `prepare()` loaded.
+    A metric reading another run looks its values up from what its `prepare()` loaded.
 
     - `occurrence_id` -- occurrence being scored.
     - `part` -- part being scored.
+    - `values` -- `{metric_name: value}` of the metrics before this one in the
+      same run, for this occurrence; what a derived metric with `from_run=None` reads.
     """
 
-    def __init__(self, occurrence_id, part):
+    def __init__(self, occurrence_id, part, values=None):
         self.occurrence_id = str(occurrence_id)
         self.part = part
+        self.values = dict(values or {})
 
     def __repr__(self):
         return f"StoredValues({self.occurrence_id!r}, {self.part!r})"
@@ -78,17 +81,34 @@ class StoredValueMetric(Metric):
 
     - `features` -- Metric operations whose stored values are read. Each must
       be an operation of `from_run`'s current recipe.
-    - `from_run` -- the metric run holding those values.
+    - `from_run` -- the metric run holding those values; None, where a subclass
+      sets `same_run`, for the metrics before this one in its own run.
     """
 
     input = "stored"
+    # Whether from_run=None (read this run's earlier metrics) is meaningful. A
+    # population fit happens in prepare(), before this run has measured anything.
+    same_run = False
 
     def __init__(self, name, function, features, from_run, **kwargs):
         if not features:
             raise ValueError(f"{name} needs at least one feature")
+        if from_run is None and not self.same_run:
+            raise ValueError(f"{name} needs from_run: it fits on another run's stored "
+                             "values before this run measures anything")
         super().__init__(name, function, **kwargs)
         self.features = list(features)
         self.from_run = from_run
+
+    def bind(self, earlier):
+        """
+        This metric with its features resolved against the metrics before it in its run.
+
+        - `earlier` -- the Metric operations listed before this one, already bound.
+
+        Returns the metric to run: itself, unless a subclass names features to look up.
+        """
+        return self
 
     def check_from_run(self, context):
         """
@@ -113,25 +133,32 @@ class StoredValueMetric(Metric):
                 "run measured with, so the values are the ones they describe")
         return recipe_hash
 
-    def feature_values(self, context):
-        """`{metric_name: Series}` of current stored values, restricted to the run's occurrences."""
-        wanted = set(context.occurrence_ids)
+    def feature_values(self, context, occurrence_ids=None):
+        """
+        `{metric_name: Series}` of current stored values.
+
+        - `occurrence_ids` -- the occurrences to read; the run's own if None.
+        """
+        wanted = set(context.occurrence_ids if occurrence_ids is None else occurrence_ids)
         values = {}
         for feature in self.features:
             series = latest_values(context.project_path, self.from_run,
-                                   part=context.part, metric_name=feature.metric_name)
+                                   part=context.part, metric_name=feature.metric_name,
+                                   occurrence_ids=wanted)
             values[feature.metric_name] = series[series.index.isin(wanted)]
         return values
 
-    def feature_table(self, context):
+    def feature_table(self, context, occurrence_ids=None):
         """
         One row per occurrence with an `occurrence_id` column and one numeric
         column per feature, or per element of a vector feature.
 
+        - `occurrence_ids` -- the occurrences to read; the run's own if None.
+
         Returns `(table, columns)`.
         """
         frames = [feature_columns(name, series)
-                  for name, series in self.feature_values(context).items()]
+                  for name, series in self.feature_values(context, occurrence_ids).items()]
         table = pd.concat(frames, axis=1)
         columns = list(table.columns)
         table.index.name = ID_COL
@@ -147,4 +174,6 @@ class StoredValueMetric(Metric):
         return target.occurrence_id
 
     def no_value(self):
+        if self.from_run is None:
+            return NoInput(f"no value earlier in this run for {self.metric_name}")
         return NoInput(f"no current '{self.from_run}' value")

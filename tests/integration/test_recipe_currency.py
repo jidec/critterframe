@@ -86,6 +86,65 @@ def test_a_forced_run_that_processes_nothing_does_not_move_the_pointer(
     assert exported[LENGTH_COLUMN].notna().all()   # the original recipe's values
 
 
+def counted_width(interrupt_at=None):
+    """
+    max_width under its own operation name, optionally interrupted on its Nth
+    call. The function isn't in the spec, so the interrupted metric and the
+    resumed one are the same recipe -- as a real rerun of one script is.
+    """
+    from critterframe.metrics.dimensions import _max_width
+    from critterframe.recipes import Metric
+
+    calls = []
+
+    def measure_width(segment):
+        calls.append(segment.occurrence_id)
+        if interrupt_at is not None and len(calls) == interrupt_at:
+            raise KeyboardInterrupt
+        return _max_width(segment)
+
+    return Metric("counted_width", measure_width, version="1", unit="px")
+
+
+def widths(project_path, metric, **kwargs):
+    return cf.run_metrics(project_path, run_name="widths", metrics=[metric],
+                          visualize=False, **kwargs)["organism"]
+
+
+def test_an_interrupted_forced_move_has_already_moved_the_name(segmented_project):
+    """
+    Values are stored per occurrence, so the name has to move when the first one
+    is. Moved only at the end, an interruption leaves them stored under a recipe
+    the name doesn't point at: invisible to an export, and not resumable, since
+    force is what gets past the name check and force also redoes everything.
+    """
+    widths(segmented_project, counted_width())
+
+    with pytest.raises(KeyboardInterrupt):
+        widths(segmented_project, counted_width(interrupt_at=4),
+               transforms=[cf.orient()], force=True)
+
+    # Resumed the way any interrupted run is: the same call, without force.
+    resumed = widths(segmented_project, counted_width(), transforms=[cf.orient()])
+    assert (resumed["skipped"], resumed["processed"]) == (3, SPECIMENS - 3)
+
+
+def test_what_an_interrupted_forced_move_stored_is_current(segmented_project):
+    """The three values written before the interruption are the export's, not the old recipe's."""
+    widths(segmented_project, counted_width())
+    before = cf.export_metrics(segmented_project, path=False, manifest=False,
+                               drop_empty=False)["widths__organism__counted_width"]
+
+    with pytest.raises(KeyboardInterrupt):
+        widths(segmented_project, counted_width(interrupt_at=4),
+               transforms=[cf.orient()], force=True)
+
+    after = cf.export_metrics(segmented_project, path=False, manifest=False,
+                              drop_empty=False)["widths__organism__counted_width"]
+    assert before.notna().sum() == SPECIMENS
+    assert after.notna().sum() == 3
+
+
 def test_reference_and_canonical_need_separate_names(segmented_project):
     """
     inputs={"masks": ...} changes the hash, so measuring the reference table
@@ -96,3 +155,58 @@ def test_reference_and_canonical_need_separate_names(segmented_project):
     measure(segmented_project)
     with pytest.raises(ValueError, match="currently points at a different"):
         measure(segmented_project, reference=True)
+
+
+def label(project_path, monkeypatch, keys, note):
+    """A scripted labelling pass under one note."""
+    from critterframe.metrics import annotation
+    from helpers.stubs import FakeCv2
+
+    monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=[ord(key) for key in keys]))
+    return cf.run_metrics(
+        project_path,
+        metrics=[cf.exclusive_label_annotation(["good", "bad"], name="quality", note=note)],
+        visualize=False)["organism"]
+
+
+def test_a_labelling_note_is_recorded_with_the_run_and_rewording_it_reasks_nothing(
+        segmented_project, monkeypatch):
+    """
+    The note says how the labels were meant to be given, so it belongs with the
+    run that gave them. It is not the recipe: a reworded note finds every label
+    already there, asks nobody anything, and records the new wording.
+    """
+    first = label(segmented_project, monkeypatch, "1" * SPECIMENS, "bad: any part missing")
+    assert first["processed"] == SPECIMENS
+
+    again = label(segmented_project, monkeypatch, "", "bad = any part of it missing")
+    assert (again["processed"], again["skipped"]) == (0, SPECIMENS)
+
+    runs = load_runs(segmented_project, name="quality")     # newest first
+    notes = [run["operations"]["quality"]["note"] for run in runs["context"]]
+    assert notes == ["bad = any part of it missing", "bad: any part missing"]
+    assert runs["recipe_hash"].nunique() == 1
+
+
+def test_the_refusal_says_what_changed(segmented_project):
+    """
+    "The hash is different" reads like a bug when nothing seems to have changed.
+    The stored recipe and the new one are both in hand at that moment, so the
+    error names the difference instead of leaving two hashes to compare.
+    """
+    measure(segmented_project)
+    with pytest.raises(ValueError) as refused:
+        measure(segmented_project, transforms=[cf.orient(axis_strategy="longer")])
+
+    message = str(refused.value)
+    assert "What this run changes from the recipe the name points at" in message
+    assert "added transform orient(" in message and "at the start" in message
+
+
+def test_a_forced_move_logs_what_changed(segmented_project, caplog):
+    measure(segmented_project)
+    with caplog.at_level("INFO"):
+        measure(segmented_project, transforms=[cf.orient()], force=True)
+
+    assert "force=True moves it from recipe" in caplog.text
+    assert "added transform orient(" in caplog.text

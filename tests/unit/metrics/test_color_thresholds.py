@@ -285,3 +285,114 @@ def test_a_visualized_measurement_draws_one_picture_per_threshold():
     assert (red_picture[30:40] == (0, 0, 255)).all()                                  # matched: own colour
     assert (red_picture[40:] == red_picture[79, 0]).all() and red_picture[79, 0].max() < 100   # rest: dim grey
     assert (unmatched_picture[40:] == (200, 200, 200)).all()
+
+
+# ---------------------------------------------------------------------------
+# color_presence
+# ---------------------------------------------------------------------------
+
+BINS = ["red", "yellow", "green", "blue"]
+
+
+def presence(fractions, **kwargs):
+    kwargs = {"colors": BINS, "min_fraction": 0.10, "n_ranked_colors": 2, **kwargs}
+    return color_thresholds._color_presence({"color_bins": fractions}, **kwargs)
+
+
+def test_a_colour_is_present_from_the_cutoff_up():
+    result = presence({"red": 0.10, "yellow": 0.0999, "green": 0.5, "blue": 0.0})
+    assert [result[f"{color}_present"] for color in BINS] == [True, False, True, False]
+    assert result["n_colors_present"] == 2
+    assert (result["ranked_color_1"], result["ranked_color_2"]) == ("green", "red")
+
+
+def test_unmatched_is_never_a_colour_and_a_missing_one_is_absent():
+    result = presence({"red": 0.2, "unmatched": 0.8})
+    assert "unmatched_present" not in result
+    assert result["n_colors_present"] == 1
+    assert not result["green_present"]
+    assert (result["ranked_color_1"], result["ranked_color_2"]) == ("red", None)
+
+
+def test_ties_keep_the_bins_order():
+    result = presence({"red": 0.3, "yellow": 0.3, "green": 0.3, "blue": 0.3}, n_ranked_colors=3)
+    assert [result[f"ranked_color_{i}"] for i in (1, 2, 3)] == ["red", "yellow", "green"]
+
+
+def test_nothing_present_ranks_nothing():
+    result = presence({"red": 0.0}, n_ranked_colors=0)
+    assert result["n_colors_present"] == 0
+    assert not any(key.startswith("ranked") for key in result)
+
+
+def some_bins(*extra):
+    return cf.threshold_fractions(
+        [color_threshold("red", lch_h=(345, 50)), color_threshold("blue", lch_h=(195, 305)), *extra],
+        unmatched=True, name="color_bins")
+
+
+def test_the_colours_come_from_the_bins_and_everything_is_hashed():
+    metric = cf.color_presence(some_bins())
+    assert metric.arguments["colors"] == ["red", "blue"]
+    assert metric.input == "stored" and metric.metric_name == "color_presence"
+
+    assert metric.spec() != cf.color_presence(some_bins(), min_fraction=0.2).spec()
+    assert metric.spec() != cf.color_presence(some_bins(), n_ranked_colors=3).spec()
+    assert metric.spec() != cf.color_presence(
+        some_bins(color_threshold("green", lch_h=(105, 195)))).spec()
+
+
+@pytest.mark.parametrize("kwargs, error", [
+    ({"min_fraction": 0}, ValueError), ({"min_fraction": 1.5}, ValueError),
+    ({"n_ranked_colors": -1}, ValueError), ({"n_ranked_colors": 1.5}, ValueError),
+])
+def test_a_meaningless_setting_fails_when_built(kwargs, error):
+    with pytest.raises(error):
+        cf.color_presence(some_bins(), **kwargs)
+
+
+def test_it_reads_only_threshold_fractions():
+    with pytest.raises(TypeError, match="threshold_fractions"):
+        cf.color_presence(cf.black_fraction())
+
+
+def test_given_nothing_it_binds_to_the_one_threshold_fractions_before_it():
+    """Bound, it is the metric passing the operation builds, so the recipe hash is the same."""
+    bins = some_bins()
+    bound = cf.color_presence(min_fraction=0.2, n_ranked_colors=3).bind([cf.mask_area(), bins])
+
+    assert bound.spec() == cf.color_presence(bins, min_fraction=0.2, n_ranked_colors=3).spec()
+    assert bound.arguments["colors"] == ["red", "blue"]
+
+
+def test_unbound_it_is_not_a_recipe():
+    metric = cf.color_presence()
+    assert metric.input == "stored" and metric.metric_name == "color_presence"
+    with pytest.raises(ValueError, match="run_metrics"):
+        metric.spec()
+
+
+def test_with_none_or_several_before_it_there_is_nothing_to_pick():
+    other = cf.threshold_fractions([color_threshold("green", lch_h=(105, 195))], name="other_bins")
+    with pytest.raises(ValueError, match="list one first"):
+        cf.color_presence().bind([cf.mask_area()])
+    with pytest.raises(ValueError, match="say which"):
+        cf.color_presence().bind([some_bins(), other])
+
+
+def test_a_name_picks_among_several():
+    other = cf.threshold_fractions([color_threshold("green", lch_h=(105, 195))], name="other_bins")
+    bound = cf.color_presence("other_bins").bind([some_bins(), other])
+    assert bound.spec() == cf.color_presence(other).spec()
+
+    with pytest.raises(ValueError, match="listed before it"):
+        cf.color_presence("missing").bind([some_bins()])
+    with pytest.raises(TypeError, match="threshold_fractions"):
+        cf.color_presence("mask_area").bind([cf.mask_area(), some_bins()])
+
+
+def test_another_runs_fractions_cannot_be_found_by_name():
+    with pytest.raises(ValueError, match="operation"):
+        cf.color_presence(from_run="colour")
+    with pytest.raises(ValueError, match="operation"):
+        cf.color_presence("color_bins", from_run="colour")

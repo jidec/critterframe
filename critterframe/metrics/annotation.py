@@ -1,54 +1,33 @@
 import logging
+from functools import partial
 
 import cv2
 import numpy as np
 
 from ..recipes import Metric
-from ..visualization.panels import annotate, mask_to_bgr, overlay_mask, side_by_side
+from ..visualization.panels import (
+    DISPLAY_MAX,
+    annotate,
+    fit_for_display,
+    mask_to_bgr,
+    overlay_mask,
+    side_by_side,
+)
 
 logger = logging.getLogger(__name__)
 
-# Why a crop shouldn't be trusted, or that it should. Anything other than
-# "usable" means downstream traits from this occurrence are suspect, but the
-# REASONS are worth telling apart -- a metric that catches every cut-off
-# organism while missing every non-organism is a different (and more useful)
-# instrument than one aggregate "bad" rate would suggest.
-#
-# Two different kinds of "not usable" live in this one list. not_an_organism,
-# cut_off, multiple_organisms, broken_body, and obscured mean there is no
-# single complete boundary to draw at all. wrong_life_stage, bad_angle, dead,
-# blurry, overexposed, underexposed, and wrong_organism_for_project usually DO
-# still segment into one clean boundary -- what disqualifies them is the
-# specimen or the image, not the geometry. Both kinds are treated the same
-# way today (excluded from reference masks, training, and the export
-# alike -- see validation.filters.BAD_FLAGS) rather than split, so a
-# segmentable-but-invalid crop currently costs a training example it didn't
-# strictly have to. Worth revisiting if that cost turns out to matter more
-# than the simplicity of one flat "usable or not" gate.
-FLAG_KEYS = {
-    ord("1"): "usable",
-    ord("2"): "not_an_organism",
-    ord("3"): "cut_off",
-    ord("4"): "multiple_organisms",
-    ord("5"): "wrong_life_stage",
-    ord("6"): "bad_angle",
-    ord("7"): "dead",
-    ord("8"): "broken_body",
-    ord("9"): "obscured",
-    ord("0"): "blurry",
-    ord("a"): "overexposed",
-    ord("b"): "underexposed",
-    ord("c"): "wrong_organism_for_project",
-}
+# The keys exclusive_label_annotation hands out, in order: one per label, so
+# this is also how many labels one vocabulary can hold.
+LABEL_KEYS = "1234567890abcdefghijklmnopqrstuvwxyz"
 
-# FLAG_KEYS's legend, wrapped onto a few short lines rather than one long
-# prompt -- 13 entries is too many for a window title to stay readable, so
-# it's drawn on the panel itself instead (see _usability_annotation).
+# A key map's legend, wrapped onto a few short lines rather than one long
+# prompt -- a dozen entries is too many for a window title to stay readable,
+# so it's drawn on the panel itself instead (see _ask_flag).
 _LEGEND_PER_LINE = 4
 
 
-def _legend_lines():
-    entries = [f"{chr(key)}={name}" for key, name in FLAG_KEYS.items()]
+def _legend_lines(keys):
+    entries = [f"{chr(key)}={name}" for key, name in keys.items()]
     return [" ".join(entries[index:index + _LEGEND_PER_LINE])
             for index in range(0, len(entries), _LEGEND_PER_LINE)]
 
@@ -60,51 +39,67 @@ def _legend_lines():
 DEFAULT_POINT_LABELS = ("head", "tail")
 
 
-def usability_annotation(name=None, unit="category"):
+def _keys_for(labels):
+    """`{key code: label}` for a label list, keys taken from LABEL_KEYS in order."""
+    return {ord(key): label for key, label in zip(LABEL_KEYS, labels)}
+
+
+def exclusive_label_annotation(labels, name=None, unit="category", requires_mask=True,
+                               note=None, show_original=False):
     """
-    Metric: show the image, mask, and overlay side by side and ask a human to
-    classify the occurrence. The on-screen legend is generated from FLAG_KEYS,
-    so this list and the prompt can never drift apart:
+    Metric: show the segment and ask a human for exactly one of `labels`, by one
+    keypress. The vocabulary is the caller's, e.g. whether a part's finished mask
+    should reach an export:
 
-      1 = usable                      a single, complete organism
-      2 = not_an_organism             nothing that should have been ingested
-      3 = cut_off                     an organism, but running off the frame edge
-      4 = multiple_organisms          more than one in frame
-      5 = wrong_life_stage            an organism, but not the stage this project studies
-      6 = bad_angle                   photographed from an angle that can't be measured reliably
-      7 = dead                        a dead specimen
-      8 = broken_body                 missing or damaged body parts
-      9 = obscured                    one organism, partly hidden behind debris/vegetation/another organism
-      0 = blurry                      too out of focus to trust
-      a = overexposed                 too bright to trust
-      b = underexposed                too dark to trust
-      c = wrong_organism_for_project  something's there and segments fine, but isn't this project's subject
+        exclusive_label_annotation(
+            ["good", "input_invalid", "wrong_region", "incomplete", "overflow"],
+            name="abdomen_quality")
 
-    A crop matching more than one reason gets whichever one also explains why
-    the segmentation itself can't be trusted -- a crop that's both cut off and
-    blurry is flagged cut_off, not blurry.
+    The labels are part of the recipe: adding or renaming one later is a
+    different recipe, and the labels given under the old list stop being
+    current. Screening a finished segment, run it with the `from_part` and
+    `transforms` the part was segmented with, so the panel is the frame the
+    segmenter saw.
 
-    This is the SCREENING pass, and it comes before any other human work --
-    including segmentation itself: requires_mask=False, so run_metrics
-    measures every occurrence with an image, whether or not it has been
-    segmented yet. Judging a crop's usability doesn't need a boundary, and
-    most of what this flags (dead, wrong_life_stage, blurry, ...) is exactly
-    what you'd want to catch BEFORE spending a segmentation model's time on
-    it, not after. The panel shows image+mask+overlay when a mask exists and
-    the image alone when it doesn't.
+    - `labels` -- the distinct labels to choose between, at most 36. Keys are
+      handed out in this order: 1-9, 0, then a-z. The legend is drawn on the
+      panel.
+    - `name` -- what to store the label under; `"exclusive_label_annotation"`
+      by default.
+    - `unit` -- recorded unit.
+    - `requires_mask` -- True (default) for a label that describes the mask: it
+      is asked only where a mask exists and stops being current when the mask
+      is replaced. False for a label that describes the image, asked of every
+      occurrence with an image and unaffected by resegmenting.
+    - `note` -- optional text on how the labels are meant to be applied.
+      Logged when a run starts and recorded with it, but not part of the
+      recipe: rewording it leaves the labels already given current. What a
+      label means belongs in `labels`.
+    - `show_original` -- put the untouched image first in the panel, with the
+      part outlined on it, where transforms have cropped or rotated the
+      segment away from it. Display only: not part of the recipe and not
+      recorded with the run, so a procedure that relies on it belongs in
+      `note`.
 
-    A flag other than "usable" excludes an occurrence from reference masks,
-    training, and the export alike (see validation.filters.BAD_FLAGS) --
-    whether because there's no single complete boundary to draw (not_an_organism,
-    cut_off, multiple_organisms, broken_body, obscured), or because a valid
-    boundary exists but the specimen or the image itself makes it worthless to
-    measure (wrong_life_stage, bad_angle, dead, blurry, overexposed,
-    underexposed, wrong_organism_for_project). Screen the whole sample, then
-    point the reference passes at the usable ones -- an unscreened sample has
-    nothing for validation.filters to calibrate a QC cutoff against.
+    Returns the chosen label.
     """
-    return Metric("usability_annotation", _usability_annotation, version="1",
-                  unit=unit, metric_name=name, requires_mask=False)
+    labels = [str(label) for label in labels]
+    if not labels:
+        raise ValueError("exclusive_label_annotation needs at least one label")
+    if len(set(labels)) != len(labels):
+        raise ValueError(
+            f"exclusive_label_annotation needs distinct labels, got {labels}")
+    if len(labels) > len(LABEL_KEYS):
+        raise ValueError(
+            f"exclusive_label_annotation has {len(LABEL_KEYS)} keys to hand out, "
+            f"got {len(labels)} labels")
+
+    function = partial(
+        _exclusive_label_of_a_mask if requires_mask else _exclusive_label_annotation,
+        show_original=show_original)
+    return Metric("exclusive_label_annotation", function,
+                  {"labels": labels}, version="1", unit=unit, metric_name=name,
+                  requires_mask=requires_mask, note=note)
 
 
 def click_two_points(labels=DEFAULT_POINT_LABELS, name=None, unit="px_xy"):
@@ -122,7 +117,8 @@ def click_two_points(labels=DEFAULT_POINT_LABELS, name=None, unit="px_xy"):
     - `labels` -- the two point names, in click order.
 
     Returns {<first>, <second>, "length_px", "angle_deg"}, all None if skipped.
-    Points are [x, y] in the current frame, normally original image coordinates.
+    Points are [x, y] in the current frame, normally original image coordinates,
+    whatever size the window was fitted to (see `panels.DISPLAY_MAX`).
     angle_deg is measured in image coordinates (y DOWN), so +90 means the second
     point is directly below the first.
 
@@ -144,16 +140,80 @@ def _panel(segment):
     """
     Image, mask, and overlay side by side -- the standard annotation view.
 
-    Falls back to the image alone when there's no mask yet: usability_annotation
-    runs before segmentation (requires_mask=False), so a screening panel has to
-    work without one; click_two_points still requires a mask (it clicks points
-    ON the segment) and never reaches this fallback.
+    Falls back to the image alone when there's no mask yet: a label that
+    describes the image (exclusive_label_annotation(requires_mask=False)) can
+    be asked before segmentation, so a screening panel has to work without
+    one; click_two_points still requires a mask (it clicks points ON the
+    segment) and never reaches this fallback.
     """
     image = np.asarray(segment.image)
     if segment.mask is None:
         return image
     mask = segment.mask
     return side_by_side(image, mask_to_bgr(mask), overlay_mask(image, mask))
+
+
+def _display_panel(segment, show_original=False):
+    """
+    The standard panel at the size the window shows it. With `show_original`,
+    the untouched image comes first (see `_original_view`).
+    """
+    working = _panel(segment)
+    if not (show_original and segment.mask is not None and _has_moved(segment)):
+        return fit_for_display(working)[0]
+
+    # Each half is resized once, from its own resolution, to the height the two
+    # share on screen. Joining them at the crop's height first would shrink the
+    # photo to a thumbnail and then enlarge that.
+    height, width = working.shape[:2]
+    original_height, original_width = np.asarray(segment.original_image).shape[:2]
+    joined_width = width + original_width * height / original_height
+    scale = min(DISPLAY_MAX[0] / joined_width, DISPLAY_MAX[1] / height)
+    shown_height = max(1, int(height * scale))
+    interpolation = cv2.INTER_NEAREST if scale > 1 else cv2.INTER_AREA
+    working = cv2.resize(working, (max(1, int(width * scale)), shown_height),
+                         interpolation=interpolation)
+    return side_by_side(_original_view(segment, shown_height), working)
+
+
+# The outline drawn on the original image: yellow reads on dark and light alike.
+OUTLINE_COLOR = (0, 255, 255)
+
+
+def _has_moved(segment):
+    """
+    Whether a transform has moved the segment away from the image it started
+    from. False where no original was kept: the working image then IS the original.
+    """
+    original = segment.original_image
+    if original is None:
+        return False
+    return (not np.allclose(segment.matrix, np.eye(2, 3))
+            or np.asarray(original).shape[:2] != np.asarray(segment.image).shape[:2])
+
+
+def _original_view(segment, height):
+    """
+    The image the segment started from, with the part outlined on it, scaled to
+    `height`; None where there is nothing to add (see `_has_moved`).
+    """
+    if not _has_moved(segment):
+        return None
+    original = np.asarray(segment.original_image)
+
+    view = (cv2.cvtColor(original, cv2.COLOR_GRAY2BGR) if original.ndim == 2
+            else original.copy())
+    outline = segment.mask_in_original_coordinates().astype(np.uint8)
+    contours, _hierarchy = cv2.findContours(outline, cv2.RETR_EXTERNAL,
+                                            cv2.CHAIN_APPROX_SIMPLE)
+    # Thick enough to survive the resize below, whatever the photo's size.
+    thickness = max(1, round(view.shape[0] / max(1, height))) + 1
+    cv2.drawContours(view, contours, -1, OUTLINE_COLOR, thickness)
+
+    # Rounded down, so the joined panel never exceeds the box it was sized for.
+    width = max(1, int(view.shape[1] * height / view.shape[0]))
+    interpolation = cv2.INTER_AREA if height < view.shape[0] else cv2.INTER_LINEAR
+    return cv2.resize(view, (width, height), interpolation=interpolation)
 
 
 def _wait_for_key(valid_keys):
@@ -183,14 +243,31 @@ def _ask(segment, panel, prompt, keys):
     return keys[key]
 
 
-def _usability_annotation(segment):
-    panel = _panel(segment)
-    for line, text in enumerate(_legend_lines()):
+def _ask_flag(segment, keys, prompt, show_original=False):
+    """Show the standard panel with `keys`' legend on it, return the chosen label."""
+    # Legend drawn after fitting, so it stays readable whatever the image size.
+    panel = _display_panel(segment, show_original=show_original).copy()
+    for line, text in enumerate(_legend_lines(keys)):
         annotate(panel, text, line=line)
-    return _ask(segment, panel, "usability flag? (legend on image)", FLAG_KEYS)
+    return _ask(segment, panel, prompt, keys)
+
+
+def _exclusive_label_annotation(segment, labels, show_original=False):
+    return _ask_flag(segment, _keys_for(labels), "label? (legend on image)",
+                     show_original=show_original)
+
+
+def _exclusive_label_of_a_mask(segment, labels, show_original=False):
+    if segment.mask is None:
+        raise ValueError(f"{segment.occurrence_id} has no mask yet -- this label "
+                         "describes one (requires_mask=True)")
+    return _exclusive_label_annotation(segment, labels, show_original=show_original)
+
 
 def _click_two_points(segment, labels=DEFAULT_POINT_LABELS):
-    image = overlay_mask(np.asarray(segment.image), segment.require_mask())
+    image, scale = fit_for_display(
+        overlay_mask(np.asarray(segment.image), segment.require_mask()))
+    height, width = segment.require_mask().shape
     window = (f"{segment.occurrence_id} {segment.part} - click {labels[0]}, "
               f"then {labels[1]} (Esc=skip)")
     cv2.imshow(window, image)
@@ -199,7 +276,9 @@ def _click_two_points(segment, labels=DEFAULT_POINT_LABELS):
 
     def on_click(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN and len(points) < 2:
-            points.append((int(x), int(y)))
+            # Stored in the segment's own pixels, not the fitted window's.
+            points.append((min(width - 1, max(0, round(x / scale))),
+                           min(height - 1, max(0, round(y / scale)))))
             color = (0, 255, 0) if len(points) == 1 else (0, 0, 255)
             cv2.circle(image, (x, y), 4, color, -1)
             cv2.imshow(window, image)

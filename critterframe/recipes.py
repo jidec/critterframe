@@ -21,6 +21,7 @@ coordinates to its current ones, and mask_in_original_coordinates() inverts the
 whole chain in one step before persistence.
 """
 
+import difflib
 import hashlib
 import json
 import logging
@@ -164,11 +165,18 @@ class Segment:
       collect(occurrence_id, stage, image), normally a visualization Report.
       None makes every emit_panel() a no-op, which is what most segments run
       with -- panels are for the sampled few.
+    - `original_image` -- the image the segment started from, kept by
+      reference through every transform so an operation can show or consult
+      the untouched photo. The image itself for a segment built without a
+      `matrix`; None where one is given without it.
     """
 
     def __init__(self, image, mask=None, occurrence_id=None, part=DEFAULT_PART,
                  project_path=None, matrix=None, original_shape=None,
-                 panel_sink=None):
+                 panel_sink=None, original_image=None):
+        if original_image is None and matrix is None:
+            original_image = image
+        self.original_image = original_image
         self.image = image
         self.mask = None if mask is None else (np.asarray(mask) > 0)
         self.occurrence_id = occurrence_id
@@ -238,6 +246,7 @@ class Segment:
             matrix=self.matrix if applied is None else _compose(self.matrix, applied),
             original_shape=self.original_shape,
             panel_sink=self.panel_sink,
+            original_image=self.original_image,
         )
 
     def for_part(self, part):
@@ -331,6 +340,10 @@ class Operation:
       invalidated.
     - `model` -- optional model backing this operation; contributes its own
       identity() to the hash.
+    - `note` -- optional free text on how the operation is meant to be used,
+      e.g. the procedure a human label follows. Recorded with each run and
+      never hashed, so rewording it invalidates nothing; whatever changes the
+      output belongs in `parameters`.
     """
 
     kind = "operation"
@@ -341,12 +354,16 @@ class Operation:
     # recipe hash already stored on disk.
     deterministic = True
 
-    def __init__(self, name, function, parameters=None, version="1", model=None):
+    def __init__(self, name, function, parameters=None, version="1", model=None,
+                 note=None):
+        if note is not None and not isinstance(note, str):
+            raise TypeError(f"note must be text, got {type(note).__name__}")
         self.name = name
         self.function = function
         self.parameters = dict(parameters or {})
         self.version = str(version)
         self.model = model
+        self.note = note
 
     def spec(self):
         """
@@ -388,9 +405,14 @@ class Operation:
           ids this run covers, and the part being processed.
 
         Returns None, or a JSON-serializable record of what it prepared, which
-        the run stores alongside its recipe (see records.runs.start_run).
+        the run stores alongside its recipe (see records.runs.start_run). An
+        operation with a `note` returns it here, which is how the note reaches
+        the run record without reaching the hash.
         """
-        return None
+        if self.note is None:
+            return None
+        logger.info("%s: %s", getattr(self, "metric_name", self.name), self.note)
+        return {"note": self.note}
 
     def __repr__(self):
         return f"{type(self).__name__}({self.name}, {self.parameters})"
@@ -473,9 +495,9 @@ class Metric(Operation):
     input = "segment"
 
     def __init__(self, name, function, parameters=None, version="1", model=None,
-                 unit=None, metric_name=None, requires_mask=True):
+                 unit=None, metric_name=None, requires_mask=True, note=None):
         super().__init__(name, function, parameters=parameters, version=version,
-                         model=model)
+                         model=model, note=note)
         self.unit = unit
         self.metric_name = metric_name or name
         self.requires_mask = bool(requires_mask)
@@ -526,9 +548,9 @@ class Recipe:
     - `operations` -- ordered Operations; for a metric recipe, transforms then
       metrics.
     - `part` -- the part this recipe produces or measures.
-    - `from_part` -- the upstream part whose mask this starts from, if any. In
-      identity, since refining the organism mask is not the same recipe pointed
-      at a wing.
+    - `from_part` -- the upstream part whose mask this starts from, if any, or
+      a sorted list of parts whose union it starts from. In identity, since
+      refining the organism mask is not the same recipe pointed at a wing.
     - `inputs` -- any other upstream dependency worth pinning into identity,
       e.g. {"masks": "reference"}.
     """
@@ -614,6 +636,95 @@ def describe_spec(spec):
     names = ", ".join(operation["name"] for operation in spec.get("operations", []))
     from_part = f" from_part={spec['from_part']}" if spec.get("from_part") else ""
     return f"{spec['kind']}:{spec['name']} part={spec['part']}{from_part} [{names}]"
+
+
+def _shown(value, limit=70):
+    """A spec value as short text for a one-line description."""
+    text = repr(value)
+    return text if len(text) <= limit else text[:limit - 3] + "..."
+
+
+def _operation_key(operation):
+    """What makes two operations "the same step" when lining two chains up."""
+    return (operation.get("name"), operation.get("metric_name"))
+
+
+def _operation_shown(operation):
+    """One operation as `kind name(param=value, ...)`."""
+    parameters = ", ".join(f"{key}={_shown(value, 30)}"
+                           for key, value in (operation.get("parameters") or {}).items())
+    name = operation.get("metric_name") or operation.get("name")
+    return f"{operation.get('kind', 'operation')} {name}({parameters})"
+
+
+def _dict_changes(label, old, new):
+    """One line per key that was added, removed or changed between two dicts."""
+    old, new = old or {}, new or {}
+    lines = []
+    for key in sorted(set(old) | set(new), key=str):
+        if key not in old:
+            lines.append(f"{label}{key} added: {_shown(new[key])}")
+        elif key not in new:
+            lines.append(f"{label}{key} removed (was {_shown(old[key])})")
+        elif old[key] != new[key]:
+            lines.append(f"{label}{key}: {_shown(old[key])} -> {_shown(new[key])}")
+    return lines
+
+
+def describe_recipe_change(old_spec, new_spec):
+    """
+    What differs between two recipe specs, one readable line per difference.
+
+    For telling a person why a recipe hash moved: which operation was added or
+    removed, which parameter changed, which model. `name` is left out, since it
+    is not part of a recipe's identity.
+
+    - `old_spec`, `new_spec` -- the plain dicts `Recipe.spec()` produces, or
+      `records.runs.load_runs()` hands back.
+
+    Returns a list of lines, never empty.
+    """
+    old = load_json(canonical_json(old_spec))
+    new = load_json(canonical_json(new_spec))
+
+    lines = []
+    for field in sorted((set(old) | set(new)) - {"name", "operations"}, key=str):
+        if old.get(field) != new.get(field):
+            lines.append(f"{field}: {_shown(old.get(field))} -> {_shown(new.get(field))}")
+
+    old_operations = old.get("operations") or []
+    new_operations = new.get("operations") or []
+    matcher = difflib.SequenceMatcher(
+        a=[_operation_key(operation) for operation in old_operations],
+        b=[_operation_key(operation) for operation in new_operations], autojunk=False)
+
+    for tag, old_start, old_end, new_start, new_end in matcher.get_opcodes():
+        if tag == "equal":
+            for before, after in zip(old_operations[old_start:old_end],
+                                     new_operations[new_start:new_end]):
+                label = (after.get("metric_name") or after.get("name")) + ": "
+                for field in sorted((set(before) | set(after))
+                                    - {"name", "metric_name", "parameters", "model"}, key=str):
+                    if before.get(field) != after.get(field):
+                        lines.append(f"{label}{field} {_shown(before.get(field))} -> "
+                                     f"{_shown(after.get(field))}")
+                lines += _dict_changes(label, before.get("parameters"), after.get("parameters"))
+                if before.get("model") != after.get("model"):
+                    if isinstance(before.get("model"), dict) and isinstance(after.get("model"), dict):
+                        lines += _dict_changes(f"{label}model ", before["model"], after["model"])
+                    else:
+                        lines.append(f"{label}model {_shown(before.get('model'))} -> "
+                                     f"{_shown(after.get('model'))}")
+            continue
+
+        for operation in old_operations[old_start:old_end]:
+            lines.append(f"removed {_operation_shown(operation)}")
+        for index in range(new_start, new_end):
+            where = ("at the start" if index == 0
+                     else f"after {new_operations[index - 1].get('name')}")
+            lines.append(f"added {_operation_shown(new_operations[index])} {where}")
+
+    return lines or ["nothing this comparison reads -- the two specs are the same"]
 
 
 def _describe(recipe):

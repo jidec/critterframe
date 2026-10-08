@@ -344,17 +344,21 @@ def products_dir(project_path, name=""):
     return visualizations_dir(project_path, PRODUCTS_DIR) / name
 
 
-def product_filename(occurrence_id, part=None, extension="png"):
+def product_filename(occurrence_id, part=None, extension="png", label=None):
     """
     The filename one rendered occurrence-part gets:
-    `<occurrence_id>[__<part>].<ext>`.
+    `[<label>__]<occurrence_id>[__<part>].<ext>`.
 
-    Id first, part after a double underscore, so splitting a filename back into
-    ids is one operation in any language.
+    Pieces are joined by a double underscore, so splitting a filename back into
+    them is one operation in any language.
 
     - `part` -- None writes `<occurrence_id>.<ext>`, for a single-part render.
+    - `label` -- text to lead the name with, e.g. a species, so a folder sorts
+      by it. Must already be filename-safe and hold no double underscore.
     """
     stem = str(occurrence_id) if part is None else f"{occurrence_id}__{part}"
+    if label is not None:
+        stem = f"{label}__{stem}"
     return f"{stem}.{str(extension).lstrip('.')}"
 
 

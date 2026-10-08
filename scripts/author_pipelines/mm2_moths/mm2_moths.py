@@ -115,10 +115,30 @@ REVIEW_TARGET = 50  # total screening sample size; raise to grow
 cf.grow_subset(PROJECT_PATH, "review", REVIEW_TARGET)
 cf.run_metrics(
     PROJECT_PATH,
-    run_name="human_annotation_labels",
+    run_name="usability",
     subset="review",
     metrics=[
-        cf.usability_annotation(),
+        cf.exclusive_label_annotation(
+            ["usable", "not_an_organism", "cut_off", "multiple_organisms", "wrong_life_stage",
+             "bad_angle", "dead", "broken_body", "obscured", "blurry", "overexposed",
+             "underexposed", "wrong_organism_for_project"],
+            name="usability",
+            requires_mask=False,     # a label about the image, so it can be asked before segmentation
+            note="usable: a single, complete organism\n"
+                 "not_an_organism: nothing that should have been ingested\n"
+                 "cut_off: an organism, but running off the frame edge\n"
+                 "multiple_organisms: more than one in frame\n"
+                 "wrong_life_stage: an organism, but not the stage this project studies\n"
+                 "bad_angle: photographed from an angle that can't be measured reliably\n"
+                 "dead: a dead specimen\n"
+                 "broken_body: missing or damaged body parts\n"
+                 "obscured: one organism, partly hidden behind debris, vegetation or another organism\n"
+                 "blurry: too out of focus to trust\n"
+                 "overexposed: too bright to trust\n"
+                 "underexposed: too dark to trust\n"
+                 "wrong_organism_for_project: segments fine, but isn't this project's subject\n"
+                 "With more than one reason, give the one that also explains why the "
+                 "segmentation can't be trusted: cut off and blurry is cut_off."),
     ],
 )
 
@@ -133,8 +153,7 @@ cf.define_subset(
     PROJECT_PATH,
     "reference",
     occurrence_ids=cf.occurrences_matching(
-        PROJECT_PATH, "human_annotation_labels",
-        {"usability_annotation": "usable"}),
+        PROJECT_PATH, "usability", {"usability": "usable"}),
 )
 
 # pass 2: reference data, over those only -- correct the mask and click the axis
@@ -187,7 +206,9 @@ filters = cf.get_validated_filters(
     PROJECT_PATH,
     metric_specs=["edge_fraction", "bilateral_asymmetry"],
     predicted_run="qc",
-    annotation_run="human_annotation_labels",
+    annotation_run="usability",
+    label_metric="usability",
+    good_labels=["usable"],   # every other label means it should have been filtered
     max_fpr=0.20,   # "Don't throw away more than 10% of good data"
     min_precision=0.5, # "at least 50% of what I exclude should genuinely be bad"
 )

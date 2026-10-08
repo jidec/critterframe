@@ -167,3 +167,17 @@ def test_the_biggest_blob_survives_and_the_rest_do_not():
 
 def test_one_blob_comes_back_unchanged():
     assert (largest_component(a_mask()) == a_mask()).all()
+
+
+def test_edge_distance_counts_the_frame_as_an_edge():
+    from critterframe.maskops import edge_distance, inscribed_radius
+
+    mask = np.zeros((20, 40), bool)
+    mask[:, 10:30] = True                       # runs off the top and bottom of the frame
+    distance = edge_distance(mask)
+
+    assert distance[0, 20] == pytest.approx(1.0)       # the frame is one pixel away
+    assert distance[10, 20] == pytest.approx(10.0, abs=0.5)
+    assert (distance[~mask] == 0).all()
+    assert inscribed_radius(mask) == pytest.approx(10.0, abs=0.5)
+    assert inscribed_radius(np.zeros((5, 5), bool)) == 0.0

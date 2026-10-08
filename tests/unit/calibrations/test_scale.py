@@ -21,6 +21,7 @@ import critterframe as cf
 from critterframe.calibrations import scale as scale_calibration
 from critterframe.records import calibrations as calibration_records
 from critterframe.records.occurrences import ID_COL
+from critterframe.visualization import panels
 from helpers.stubs import FakeCv2
 from helpers.synthetic import TARGET_MM, draw_target_sheet
 
@@ -251,6 +252,7 @@ def gui(monkeypatch):
     def install(keys=(), clicks=()):
         fake = FakeCv2(keys=keys, clicks=clicks)
         monkeypatch.setattr(scale_calibration, "cv2", fake)
+        monkeypatch.setattr(panels, "DISPLAY_MAX", None)   # 1:1 window, so clicks are image pixels
         return fake
     return install
 
@@ -279,7 +281,7 @@ def test_an_oversized_image_is_shrunk_for_display_but_clicks_stay_full_res(gui):
     ORIGINAL image's pixels, or px_per_mm would be measured at the wrong scale
     entirely -- three times too small here, silently, if this broke.
     """
-    big = np.full((2000, 3000, 3), 40, np.uint8)   # 3x DEFAULT_MAX_DISPLAY's worth
+    big = np.full((2000, 3000, 3), 40, np.uint8)   # 3x the max_display below
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 300, 100),
                                       (cv2.EVENT_LBUTTONDOWN, 600, 100)])
     result = scale_calibration.scale_from_click(big, target_mm=90.0,
@@ -301,6 +303,17 @@ def test_max_display_none_shows_the_image_at_full_resolution(gui):
 
     assert result["point_a"] == [300, 100]
     assert result["length_px"] == pytest.approx(300.0)
+
+
+def test_the_default_window_enlarges_a_small_scene_and_clicks_map_back(gui, monkeypatch):
+    gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 20, 20),
+                                      (cv2.EVENT_LBUTTONDOWN, 26, 28)])
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (600, 400))   # 300x200 shown 2x
+    result = scale_calibration.scale_from_click(a_scene(), target_mm=5.0)
+
+    assert result["point_a"] == [10, 10]
+    assert result["point_b"] == [13, 14]
+    assert result["px_per_mm"] == pytest.approx(1.0)
 
 
 def test_escape_before_both_points_cancels(gui):

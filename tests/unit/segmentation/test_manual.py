@@ -21,6 +21,7 @@ import pytest
 import critterframe as cf
 from critterframe.recipes import Segment
 from critterframe.segmentation import manual
+from critterframe.visualization import panels
 from helpers.stubs import FakeCv2
 
 SAVE = ord("s")
@@ -41,6 +42,7 @@ def gui(monkeypatch):
     def install(keys=(), clicks=()):
         fake = FakeCv2(keys=keys, clicks=clicks)
         monkeypatch.setattr(manual, "cv2", fake)
+        monkeypatch.setattr(panels, "DISPLAY_MAX", None)   # 1:1 window, so clicks are image pixels
         return fake
     return install
 
@@ -341,3 +343,40 @@ def test_a_model_recipe_still_defaults_to_resuming(segmented_project):
     second = cf.run_segments(segmented_project, run_name="again", steps=steps,
                              visualize=False)["organism"]
     assert (second["processed"], second["skipped"]) == (0, 8)
+
+
+# ---------------------------------------------------------------------------
+# A window fitted to the screen still paints the image's own pixels
+# ---------------------------------------------------------------------------
+
+
+def test_painting_in_an_enlarged_window_lands_on_the_right_image_pixels(gui, monkeypatch):
+    """
+    A 100px crop shown 4x: a click at window (200, 200) is image (50, 50), and
+    the 8px on-screen brush is 2 image pixels. Missing the mapping would paint
+    at (200, 200) -- off the image entirely.
+    """
+    fake = gui(keys=[SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 200, 200)])
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (400, 400))
+    drawn, _info = cf.draw_mask(brush_radius=8)(a_segment(with_mask=False))
+
+    assert drawn.mask.shape == (100, 100)
+    assert drawn.mask[50, 50]
+    assert drawn.mask.sum() < 30
+    assert fake.shown[-1][1].shape[:2] == (400, 400)
+
+
+def test_a_drag_leaves_no_gaps_between_mouse_events(gui, monkeypatch):
+    gui(keys=[ord(" "), SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 40, 200),
+                                       (cv2.EVENT_MOUSEMOVE, 360, 200)])
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (400, 400))
+    drawn, _info = cf.draw_mask(brush_radius=4)(a_segment(with_mask=False))
+
+    assert drawn.mask[50, 10:91].all()
+
+
+def test_screen_fitting_did_not_move_the_recipe_hash():
+    """Every manual mask already recorded must still count as done."""
+    assert cf.correct_mask().spec()["version"] == "1"
+    assert cf.correct_mask().spec()["parameters"] == {"brush_radius": 8,
+                                                      "start_empty": False}

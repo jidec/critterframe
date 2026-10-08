@@ -128,6 +128,25 @@ def derivation_hash(recipe_hash, source_mask_hash=None):
     return hash_spec({"recipe": recipe_hash, "from": source_mask_hash})
 
 
+def combined_source_hash(hashes):
+    """
+    One `source_mask_hash` for a mask built from one or several upstream masks.
+
+    A single upstream is its own derivation hash, unchanged. Several are hashed
+    together by part name, so replacing any one of them moves the result.
+
+    - `hashes` -- {part: derivation_hash()} of each upstream mask.
+
+    Returns a hash, or None for a single upstream with no recorded identity.
+    """
+    if len(hashes) == 1:
+        return next(iter(hashes.values()))
+    # A non-string is an upstream with no recorded identity (None, or the NaN
+    # an older table reads back as), which canonical JSON can't carry as NaN.
+    return hash_spec({str(part): value if isinstance(value, str) else None
+                      for part, value in hashes.items()})
+
+
 def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
                   run_id=None, score=None, from_part=None,
                   source_mask_hash=None, info=None):
@@ -399,86 +418,6 @@ def current_derivation_hashes(project_path, parts=None, occurrence_ids=None,
             row.recipe_hash, getattr(row, "source_mask_hash", None))
         for row in df.itertuples(index=False)
     }
-
-
-def merge_masks(project_path, parts, into_part, reference=False,
-                occurrence_ids=None):
-    """
-    Union several parts' masks into one new part, per occurrence.
-
-    An occurrence is included only if it has a mask for every name in
-    `parts` -- a partial union would understate the merged region and
-    silently overstate anything measured against it.
-
-    For the canonical table (`reference=False`), the merged mask is given a
-    real identity rather than none at all, so it carries the same "current
-    only while its source is" guarantee every other derived mask gets (see
-    Repeat-awareness in CLAUDE.md): `recipe_hash` names the merge itself, and
-    `source_mask_hash` is built from each source part's CURRENT derivation
-    hash, so a metric measured off `into_part` correctly goes stale once any
-    source part is resegmented and the merge rerun. `from_part` names a
-    single upstream elsewhere in the package and is left unset here, since a
-    multi-source merge doesn't have one -- the identity lives entirely in
-    `source_mask_hash`.
-
-    For the reference table (`reference=True`), no staleness contract
-    applies -- a reference is whatever you chose to compare against, and a
-    computed union is as legitimate as a hand-drawn one -- so the merged row
-    carries no recipe_hash/source_mask_hash.
-
-    - `project_path` -- project to write into.
-    - `parts` -- part names to union.
-    - `into_part` -- part name the merged mask is saved under.
-    - `reference` -- merge the reference table instead of the canonical one.
-    - `occurrence_ids` -- optional restriction; every occurrence with a mask
-      for all of `parts` by default.
-
-    Returns the number of merged masks written.
-    """
-    parts = list(parts)
-    if not parts:
-        raise ValueError("parts must name at least one part")
-
-    per_part = [mask_lookup(project_path, part=part, reference=reference)
-               for part in parts]
-
-    complete_ids = set(per_part[0])
-    for lookup in per_part[1:]:
-        complete_ids &= set(lookup)
-
-    all_ids = set().union(*(set(lookup) for lookup in per_part))
-    incomplete = len(all_ids) - len(complete_ids)
-    if incomplete:
-        logger.warning("%d occurrence(s) are missing a mask for at least one "
-                       "of %s -- excluded from the '%s' merge", incomplete,
-                       parts, into_part)
-
-    if occurrence_ids is not None:
-        complete_ids &= {str(i) for i in occurrence_ids}
-
-    if not reference:
-        current = current_derivation_hashes(project_path, parts=parts)
-        merge_recipe_hash = hash_spec({"op": "merge_masks", "parts": sorted(parts)})
-
-    rows = []
-    for occurrence_id in sorted(complete_ids):
-        masks = [decode_mask(lookup[occurrence_id]) for lookup in per_part]
-        height = max(mask.shape[0] for mask in masks)
-        width = max(mask.shape[1] for mask in masks)
-        combined = np.zeros((height, width), dtype=bool)
-        for mask in masks:
-            combined[:mask.shape[0], :mask.shape[1]] |= mask
-
-        if reference:
-            rows.append(make_mask_row(occurrence_id, combined, part=into_part))
-        else:
-            source_hash = hash_spec({
-                part: current.get((occurrence_id, part)) for part in parts})
-            rows.append(make_mask_row(occurrence_id, combined, part=into_part,
-                                      recipe_hash=merge_recipe_hash,
-                                      source_mask_hash=source_hash))
-
-    return save_masks(project_path, rows, reference=reference)
 
 
 def parts_present(project_path, reference=False):

@@ -9,17 +9,27 @@ transform chain only so the folder name identifies what is in it and a rerun is 
 """
 
 import logging
+import re
 
 import cv2
+import numpy as np
+import pandas as pd
 
 from .. import drivers, segments as segment_iteration
 from ..project import paths, subsets as subset_selection
 from ..recipes import DEFAULT_PART, Recipe
+from ..records.occurrences import ID_COL, load_occurrences
 from . import pipeline as pipeline_visualization
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_FORMAT = "png"
+
+# What a filename says where the `name_by` column has no value.
+MISSING_LABEL = "unknown"
+
+# Formats that can carry the mask as an alpha channel.
+ALPHA_FORMATS = {"png", "webp", "tif", "tiff"}
 
 
 # The filename contract lives with the rest of the project layout, in
@@ -28,10 +38,40 @@ DEFAULT_FORMAT = "png"
 product_filename = paths.product_filename
 
 
+def file_label(value):
+    """
+    An occurrence column's value as the leading piece of a filename.
+
+    Anything but letters, digits, `.` and `-` becomes `_`, and runs of `_`
+    collapse to one, so a double underscore only ever separates pieces.
+
+    Returns the label; `MISSING_LABEL` for a missing or empty value.
+    """
+    if value is None or (not isinstance(value, str) and pd.isna(value)):
+        return MISSING_LABEL
+    return re.sub(r"[^\w.\-]+|_+", "_", str(value)).strip("_") or MISSING_LABEL
+
+
+def with_alpha(segment):
+    """
+    A segment's image with its mask as an alpha channel: opaque inside, transparent outside.
+
+    Returns a uint8 BGRA array; the image unchanged where the segment has no mask.
+    """
+    image = np.asarray(segment.image)
+    if segment.mask is None:
+        return image
+    if image.ndim == 2:
+        image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
+    alpha = np.where(segment.mask, 255, 0).astype(np.uint8)
+    return np.dstack([image[:, :, :3], alpha])
+
+
 def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
                     parts=None, subset=None, limit=None, occurrence_ids=None,
                     reference=False, extension=DEFAULT_FORMAT, force=False,
-                    from_part=None, visualize=True, visualize_every=None):
+                    from_part=None, visualize=True, visualize_every=None,
+                    name_by=None, transparent=True):
     """
     Render each occurrence-part's segment through a chain of transforms and write
     one image file per occurrence-part.
@@ -66,6 +106,14 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
       was rendered, with every failure listed in its sidecar. False writes
       nothing.
     - `visualize_every` -- also write a grid every N occurrence-parts.
+    - `name_by` -- an occurrence column, e.g. `"species"`, whose value leads
+      each filename: `Aeshna_cyanea__<occurrence_id>.png`. A missing value
+      reads `unknown`. A render named this way gets a folder of its own.
+    - `transparent` -- write the mask as an alpha channel, so everything
+      outside the segment is transparent and the file sits on any
+      background. Ignored, with a log line, for a format that has no alpha
+      (JPEG). False writes the opaque image, in the folder such a render
+      always had.
 
     Returns {part: summary}, each as `drivers.Tally.summary` plus
     `directory` -- the same shape `run_segments` and `run_metrics` return, one
@@ -76,11 +124,22 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
     target_parts = list(parts) if parts else [part]
     qualify = len(target_parts) > 1
 
+    alpha = transparent and str(extension).lstrip(".").lower() in ALPHA_FORMATS
+    if transparent and not alpha:
+        logger.info("render '%s': '%s' files have no transparency -- writing opaque",
+                    name, extension)
+
     recipe = Recipe("render", name, list(transforms), part=part,
                     from_part=from_part,
                     inputs={"masks": "reference" if reference else "canonical",
                             "parts": sorted(target_parts),
-                            "format": extension})
+                            "format": extension,
+                            # Only when set, so a render made before this
+                            # existed keeps its folder.
+                            **({"name_by": name_by} if name_by is not None else {}),
+                            # Only when it applies, so an opaque render keeps
+                            # the folder it always had and no folder holds both.
+                            **({"transparent": True} if alpha else {})})
     directory = paths.products_dir(project_path, f"{name}_{recipe.hash}")
     directory.mkdir(parents=True, exist_ok=True)
 
@@ -89,6 +148,16 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
                                                      limit=limit)
     else:
         occurrence_ids = [str(occurrence_id) for occurrence_id in occurrence_ids]
+
+    labels = {}
+    if name_by is not None:
+        occurrences = load_occurrences(project_path)
+        if name_by not in occurrences.columns:
+            raise KeyError(f"no '{name_by}' column to name files by "
+                           f"(columns: {sorted(occurrences.columns)})")
+        named = occurrences.set_index(ID_COL)[name_by]
+        labels = {occurrence_id: file_label(named.get(occurrence_id))
+                  for occurrence_id in occurrence_ids}
 
     logger.info("render '%s': %d occurrence(s), part(s): %s -> %s",
                 name, len(occurrence_ids), ", ".join(target_parts), directory)
@@ -102,7 +171,8 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
         tally = drivers.Tally(attempted=len(occurrence_ids))
         destinations = {
             occurrence_id: directory / product_filename(
-                occurrence_id, target_part if qualify else None, extension)
+                occurrence_id, target_part if qualify else None, extension,
+                label=labels.get(occurrence_id))
             for occurrence_id in occurrence_ids
         }
         pending = [occurrence_id for occurrence_id, dest in destinations.items()
@@ -115,7 +185,8 @@ def render_segments(project_path, name, transforms=(), part=DEFAULT_PART,
                 report=report, tally=tally,
                 progress=f"render_segments '{name}' part '{target_part}'"):
             try:
-                if not cv2.imwrite(str(destinations[occurrence_id]), segment.image):
+                rendered = with_alpha(segment) if alpha else segment.image
+                if not cv2.imwrite(str(destinations[occurrence_id]), rendered):
                     raise ValueError(f"could not write {destinations[occurrence_id]}")
                 tally.processed += 1
                 segment.emit_panel(segment.image, "rendered")

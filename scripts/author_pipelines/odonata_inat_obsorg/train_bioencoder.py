@@ -1,9 +1,10 @@
 """
-Trains a BioEncoder embedding model on odonata_inat_obsorg.py's organism
-segments, with species as the metric-learning label, and registers the weights
-so odonata_inat_obsorg.py's embedding step can load them.
+Trains a BioEncoder embedding model on this pipeline's organism segments, with
+species as the metric-learning label, and registers the weights so an embedding
+step can load them.
 
-Run directly (`python -m scripts.odonata_inat_obsorg.odonata_inat_obsorg_bioencoder_training`).
+Outside the numbered sequence, and optional: 6_filter_and_export.py embeds with
+an off-the-shelf resnet18 today.
 Also IMPORTABLE for EMBEDDING_TRANSFORMS and the model/run constants -- the
 embedding metric must frame each organism exactly as this dataset export did --
 so everything that does work is guarded by `if __name__ == "__main__":`.
@@ -69,7 +70,7 @@ CONFIG_PATH = f"{BIOENCODER_ROOT}/configs/{RUN_NAME}_stage1.yml"
 CHECKPOINT = f"{BIOENCODER_ROOT}/weights/{RUN_NAME}/first/swa"
 
 PART = "organism"
-# The SAME chain odonata_inat_obsorg.py's embedding metric must use: a model
+# The SAME chain the pipeline's embedding metric must use: a model
 # trained on background-removed, cropped, oriented segments and run on
 # anything else embeds badly with no error to say so. Import it from here.
 EMBEDDING_TRANSFORMS = [cf.remove_background(), cf.crop_to_mask(), cf.orient()]
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     # the export's dataset.json. `parameters` is what
     # extensions.bioencoder.training.load() is called with by
     # embedding.load_registered(PROJECT_PATH, MODEL_NAME), which is all
-    # odonata_inat_obsorg.py needs to embed with this model (ImageNet mean/std,
+    # the pipeline needs to embed with this model (ImageNet mean/std,
     # which BioEncoder trained with, is load()'s default).
     cf.register_model(
         PROJECT_PATH, MODEL_NAME, path=CHECKPOINT, task="embedding",

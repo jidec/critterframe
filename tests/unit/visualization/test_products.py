@@ -21,7 +21,7 @@ import critterframe as cf
 from critterframe.project import paths
 from helpers.models import ThresholdModel
 from critterframe.records.runs import load_runs
-from critterframe.visualization.products import product_filename
+from critterframe.visualization.products import file_label, product_filename
 
 pytestmark = pytest.mark.slow
 
@@ -58,9 +58,83 @@ def test_the_format_is_part_of_the_name():
     assert product_filename("specimen0", extension="jpg") == "specimen0.jpg"
 
 
+def test_a_label_leads_the_name():
+    assert product_filename("specimen0", label="Anax_junius") == "Anax_junius__specimen0.png"
+    assert product_filename("specimen0", "abdomen", label="Anax_junius") == \
+        "Anax_junius__specimen0__abdomen.png"
+
+
+@pytest.mark.parametrize("value, label", [
+    ("Anax junius", "Anax_junius"),
+    ("a__b/c: d", "a_b_c_d"),            # a double underscore only ever separates pieces
+    ("sp. nov-1", "sp._nov-1"),
+    (None, "unknown"), (float("nan"), "unknown"), ("", "unknown"),
+])
+def test_a_column_value_is_made_safe_for_a_filename(value, label):
+    assert file_label(value) == label
+
+
 # ---------------------------------------------------------------------------
 # render_segments
 # ---------------------------------------------------------------------------
+
+
+def test_files_can_be_named_by_an_occurrence_column(segmented_project):
+    summary = render(segmented_project, name_by="species")
+    names = sorted(path.name for path in summary["directory"].glob("*.png"))
+
+    assert len(names) == 8
+    assert "Libellula_lydia__specimen0.png" in names and "Anax_junius__specimen1.png" in names
+    assert render(segmented_project, name_by="species")["processed"] == 0     # a rerun finds them
+
+
+def test_naming_by_a_column_is_a_folder_of_its_own(segmented_project):
+    """So one folder never holds both naming schemes, and an unnamed render keeps its folder."""
+    plain = render(segmented_project)["directory"]
+    named = render(segmented_project, name_by="species")["directory"]
+
+    assert named != plain
+    assert render(segmented_project)["directory"] == plain
+
+
+def read_unchanged(path):
+    import cv2
+    return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
+
+
+def test_a_render_carries_its_mask_as_transparency(segmented_project):
+    """Opaque where the specimen is, transparent elsewhere, so it sits on any background."""
+    summary = render(segmented_project)
+    image = read_unchanged(summary["directory"] / "specimen0.png")
+
+    assert image.shape[2] == 4
+    alpha = image[:, :, 3]
+    assert set(alpha.ravel().tolist()) == {0, 255}
+    # remove_background blanked everything outside the mask, so alpha and blanking agree
+    assert not image[alpha == 0][:, :3].any()
+    assert image[alpha == 255][:, :3].any()
+
+
+def test_an_opaque_render_is_asked_for_and_kept_apart(segmented_project):
+    transparent = render(segmented_project)["directory"]
+    opaque = render(segmented_project, transparent=False)["directory"]
+
+    assert opaque != transparent
+    assert read_unchanged(opaque / "specimen0.png").shape[2] == 3
+
+
+def test_a_format_without_alpha_is_written_opaque(segmented_project, caplog):
+    """In the folder a JPEG render always had: transparency never applied to it."""
+    with caplog.at_level("INFO"):
+        asked = render(segmented_project, extension="jpg")["directory"]
+    assert "no transparency" in caplog.text
+    assert read_unchanged(asked / "specimen0.jpg").shape[2] == 3
+    assert render(segmented_project, extension="jpg", transparent=False)["directory"] == asked
+
+
+def test_naming_by_an_unknown_column_raises(segmented_project):
+    with pytest.raises(KeyError, match="name files by"):
+        render(segmented_project, name_by="nope")
 
 
 def test_a_render_writes_one_file_per_occurrence(segmented_project):

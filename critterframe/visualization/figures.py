@@ -146,7 +146,8 @@ def histogram(values, bins=30, title=None, xlabel=None, ylabel="count", marks=No
     return figure
 
 
-def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups=None):
+def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups=None,
+            annotations=None):
     """
     One point per pair, e.g. predicted against reference values.
 
@@ -154,12 +155,21 @@ def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups
     - `title`, `xlabel`, `ylabel` -- text for the axes.
     - `diagonal` -- draw y = x, for comparing two measurements of one thing.
     - `groups` -- optional label per point, coloured by group.
+    - `annotations` -- optional text per point, drawn beside it; None for a
+      point leaves it bare.
 
     Returns a Figure.
     """
     figure, axes = _new_figure(title, xlabel, ylabel)
     xs = np.asarray(xs, float)
     ys = np.asarray(ys, float)
+    for x, y, text in zip(xs, ys, annotations or []):
+        if text and np.isfinite(x) and np.isfinite(y):
+            axes.annotate(str(text), xy=(x, y), xytext=(4, 4),
+                          textcoords="offset points", fontsize=6)
+    if annotations:
+        # Room for the text beside a point at the edge of the data.
+        axes.margins(x=0.25, y=0.15)
 
     if groups is None:
         axes.scatter(xs, ys, s=10)

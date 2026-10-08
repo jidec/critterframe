@@ -315,6 +315,25 @@ def test_latest_values_ignores_stale_values_by_default(tmp_path):
                                             current_only=False)) == 1
 
 
+def test_latest_values_can_read_only_some_occurrences(tmp_path, monkeypatch):
+    """
+    A group metric over a few thousand occurrences of a project holding half a
+    million embeddings should not parse the other half million. The answer is
+    the same whether the database narrows it or, past the number of ids one
+    statement can bind, the frame does.
+    """
+    store(tmp_path, {"a": 1.0, "b": 2.0, "c": 3.0})
+
+    def some():
+        return metric_records.latest_values(tmp_path, "traits", metric_name="body_length",
+                                            occurrence_ids=["a", "c", "nobody"])
+
+    assert some().to_dict() == {"a": 1.0, "c": 3.0}
+
+    monkeypatch.setattr(metric_records, "MAX_FILTERED_IDS", 1)
+    assert some().to_dict() == {"a": 1.0, "c": 3.0}
+
+
 def test_latest_values_needs_a_metric_name(tmp_path):
     with pytest.raises(ValueError, match="needs a metric_name"):
         metric_records.latest_values(tmp_path, "traits")

@@ -25,6 +25,7 @@ from ..visualization.panels import (
     REMOVED_COLOR,
     annotate,
     diff_panel,
+    fit_for_display,
     overlay_mask,
 )
 
@@ -51,10 +52,12 @@ def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     organism, or one running off the edge there is no single boundary to paint,
     so whatever gets painted is invented and then drags down the IoU
     validate_masks reports as if the segmenter had erred. Screen with
-    usability_annotation first, then run this over the crops flagged usable.
+    exclusive_label_annotation(requires_mask=False) first, then run this over
+    the crops labelled usable.
 
-    - `brush_radius` -- starting brush size in pixels; adjustable in-session
-      with '+'/'-' and not itself re-hashed by that adjustment.
+    - `brush_radius` -- starting brush size in SCREEN pixels, since the window
+      is fitted to `panels.DISPLAY_MAX`; adjustable in-session with '+'/'-'
+      and not itself re-hashed by that adjustment.
     """
     return Segmentation("correct_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": False},
@@ -69,8 +72,8 @@ def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
     first training set where there's nothing to correct yet. Same window and
     controls as correct_mask(), just starting from an empty mask.
 
-    - `brush_radius` -- starting brush size in pixels; adjustable in-session
-      with '+'/'-' and not itself re-hashed by that adjustment.
+    - `brush_radius` -- starting brush size in SCREEN pixels, as in
+      correct_mask().
     """
     return Segmentation("draw_mask", _paint,
                         {"brush_radius": brush_radius, "start_empty": True},
@@ -113,34 +116,48 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
         original = segment.mask
 
     edited = (original.astype(np.uint8) * 255).copy()
-    painting = {"mode": None}       # "erase", "add", or None when not dragging
+    painting = {"mode": None, "last": None}   # mode: "erase", "add", or None
     brush = {"radius": brush_radius}
     instructions = "left=erase right=add (+/-=brush, 's'=save, Esc=cancel)"
     window = f"{segment.occurrence_id} {segment.part} - {instructions}"
+    # The window shows a resized copy; `edited` stays at the segment's own
+    # resolution, so every mouse position is mapped back before painting.
+    _shown, scale = fit_for_display(image)
+    height, width = image.shape[:2]
 
     def redraw():
-        shown = annotate(overlay_mask(image, edited), f"brush radius: {brush['radius']}")
-        cv2.imshow(window, shown)
+        shown, _scale = fit_for_display(overlay_mask(image, edited))
+        cv2.imshow(window, annotate(shown, f"brush radius: {brush['radius']}"))
+
+    def to_image(x, y):
+        return (min(width - 1, max(0, round(x / scale))),
+                min(height - 1, max(0, round(y / scale))))
 
     def paint_at(x, y, value):
-        cv2.circle(edited, (x, y), brush["radius"], value, -1)
+        point = to_image(x, y)
+        radius = max(1, round(brush["radius"] / scale))
+        if painting["last"] is not None:
+            # Mouse-move events are sparse; join them so a fast drag leaves no gaps.
+            cv2.line(edited, painting["last"], point, value, 2 * radius + 1)
+        cv2.circle(edited, point, radius, value, -1)
+        painting["last"] = point
 
     def on_mouse(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
-            painting["mode"] = "erase"
+            painting["mode"], painting["last"] = "erase", None
             paint_at(x, y, 0)
             redraw()
         elif event == cv2.EVENT_RBUTTONDOWN:
-            painting["mode"] = "add"
+            painting["mode"], painting["last"] = "add", None
             paint_at(x, y, 255)
             redraw()
         elif event == cv2.EVENT_MOUSEMOVE and painting["mode"] is not None:
             paint_at(x, y, 0 if painting["mode"] == "erase" else 255)
             redraw()
         elif event in (cv2.EVENT_LBUTTONUP, cv2.EVENT_RBUTTONUP):
-            painting["mode"] = None
+            painting["mode"], painting["last"] = None, None
 
-    cv2.imshow(window, image)
+    cv2.imshow(window, _shown)
     cv2.setMouseCallback(window, on_mouse)
     redraw()
 

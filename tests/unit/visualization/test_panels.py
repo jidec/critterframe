@@ -17,7 +17,9 @@ import numpy as np
 import pytest
 
 from critterframe.project import paths
+from critterframe.visualization import panels
 from critterframe.visualization.panels import (
+    fit_for_display,
     PanelFiles,
     annotate,
     diff_panel,
@@ -184,3 +186,44 @@ def test_full_resolution_is_the_point(tmp_path):
                                    np.zeros((4, 4, 3), np.uint8)])
 def test_any_display_ready_panel_can_be_saved(tmp_path, panel):
     assert save_panel(tmp_path, panel, "specimen0").exists()
+
+
+# ---------------------------------------------------------------------------
+# fit_for_display -- sizing an interactive window to the screen
+# ---------------------------------------------------------------------------
+
+
+def test_a_big_image_is_shrunk_into_the_box_keeping_its_aspect():
+    shown, scale = fit_for_display(np.zeros((3000, 4000, 3), np.uint8), (1450, 780))
+
+    assert scale == pytest.approx(0.26)
+    assert shown.shape[:2] == (780, 1040)
+
+
+def test_a_small_image_is_enlarged_to_fill_the_box():
+    image = np.zeros((100, 100, 3), np.uint8)
+    image[50, 50] = 255
+    shown, scale = fit_for_display(image, (1450, 780))
+
+    assert scale == pytest.approx(7.8)
+    assert shown.shape[:2] == (780, 780)
+    # Nearest-neighbour: an enlarged pixel stays one crisp value, not a blur.
+    assert set(np.unique(shown)) == {0, 255}
+
+
+def test_enlarge_false_only_ever_shrinks():
+    image = np.zeros((100, 100, 3), np.uint8)
+    shown, scale = fit_for_display(image, (1450, 780), enlarge=False)
+    assert scale == 1.0 and shown is image
+
+
+def test_no_box_means_no_resizing():
+    image = np.zeros((3000, 4000, 3), np.uint8)
+    shown, scale = fit_for_display(image, None)
+    assert scale == 1.0 and shown is image
+
+
+def test_the_default_box_is_read_at_call_time(monkeypatch):
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (50, 50))
+    _shown, scale = fit_for_display(np.zeros((100, 100, 3), np.uint8))
+    assert scale == pytest.approx(0.5)

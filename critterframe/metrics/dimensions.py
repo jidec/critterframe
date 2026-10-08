@@ -1,14 +1,15 @@
 """
-Size and shape metrics: body_length, max_width, mask_area, bounding_box.
+Size and shape metrics: body_length, max_width, mask_area, bounding_box, elongation, jaggedness.
 
-Run these on ORIENTED masks. body_length and max_width measure image axes, and
+Run body_length and max_width on ORIENTED masks: they measure image axes, and
 only orientation makes an image axis correspond to the organism's own.
+elongation and jaggedness need no orientation.
 """
 
 import cv2
 import numpy as np
 
-from ..maskops import mask_bounds
+from ..maskops import inscribed_radius, mask_bounds
 from ..recipes import Metric
 from ..visualization.panels import annotate, mask_to_bgr
 
@@ -55,6 +56,50 @@ def mask_area(name=None, unit="px2"):
     """
     return Metric("mask_area", _mask_area, version="1", unit=unit,
                   metric_name=name)
+
+
+def elongation(name=None, unit="ratio"):
+    """
+    Metric: how much longer the mask is than it is wide, from the spread of its
+    pixels along its two principal axes.
+
+    The square root of the ratio of those two variances, which is exactly
+    length / width for a rectangle and the axis ratio for an ellipse. It needs
+    no orientation; 1 is round. Pixels far from the centre weigh by their
+    squared distance, so a leg, a wing or a stray speck pulls it toward round:
+    run it after `remove_islands()` / `remove_appendages()` for the body's own
+    shape, or before them where a pulled value is the signal (a leaking mask).
+    """
+    return Metric("elongation", _elongation, version="1", unit=unit, metric_name=name)
+
+
+# The default smoothing scale for jaggedness, as a share of the inscribed radius.
+DEFAULT_SMOOTHING_FRACTION = 0.2
+
+
+def jaggedness(fraction=DEFAULT_SMOOTHING_FRACTION, px=None, name=None, unit="ratio"):
+    """
+    Metric: how much edge the mask loses when its outline is smoothed. 1.0 is
+    smooth; a toothed or ragged edge is higher.
+
+    The mask's perimeter over the perimeter of the same mask smoothed at a small
+    scale: teeth and small notches go, the overall shape stays, so a smoothly
+    curved part reads as smooth. A raster edge's staircase is on both sides and
+    cancels. Thin appendages are narrower than the scale and count as
+    roughness: run it after `remove_appendages()` for the body's own edge.
+
+    - `fraction` -- the smoothing scale as a share of the mask's maximum
+      inscribed radius (half its thickness), so "fine" is relative to the
+      part. Between 0 and 1.
+    - `px` -- the smoothing scale in pixels instead; `fraction` is then ignored.
+    """
+    if px is not None:
+        if not px > 0:
+            raise ValueError(f"px must be positive, got {px!r}")
+    elif not 0 < fraction < 1:
+        raise ValueError(f"fraction must be in (0, 1), got {fraction!r}")
+    return Metric("jaggedness", _jaggedness, {"fraction": fraction, "px": px},
+                  version="1", unit=unit, metric_name=name)
 
 
 def bounding_box(name=None, unit="px"):
@@ -131,6 +176,75 @@ def _max_width(segment):
         segment.emit_panel(panel, "max_width")
 
     return width
+
+
+def _principal_axes(mask):
+    """
+    `(centroid_xy, variances, axes)` of a mask's pixels: variances largest first,
+    each with a pixel's own 1/12 added, and the matching unit axes as columns.
+    """
+    ys, xs = np.nonzero(mask)
+    if len(xs) < 2:
+        raise ValueError("too few pixels to have a shape")
+    coordinates = np.stack([xs, ys]).astype(np.float64)
+    # A pixel is a unit square, not a point: its own spread is 1/12 per axis.
+    # Without it a mask one pixel wide has zero width and an infinite ratio.
+    covariance = np.cov(coordinates, bias=True) + np.eye(2) / 12.0
+    variances, axes = np.linalg.eigh(covariance)
+    order = np.argsort(variances)[::-1]
+    return coordinates.mean(axis=1), variances[order], axes[:, order]
+
+
+def _elongation(segment):
+    mask = segment.require_mask()
+    centroid, variances, axes = _principal_axes(mask)
+    value = float(np.sqrt(variances[0] / variances[1]))
+
+    if segment.panel_sink is not None:
+        panel = mask_to_bgr(mask)
+        for variance, axis, color in zip(variances, axes.T, ((0, 255, 0), (0, 0, 255))):
+            reach = 2 * np.sqrt(variance) * axis
+            start = tuple(int(round(v)) for v in centroid - reach)
+            end = tuple(int(round(v)) for v in centroid + reach)
+            cv2.line(panel, start, end, color, 1)
+        annotate(panel, f"elongation {value:.2f}")
+        segment.emit_panel(panel, "elongation")
+    return value
+
+
+def _outer_perimeter(mask):
+    """The summed length of a mask's outer contours; holes are not counted."""
+    contours, _hierarchy = cv2.findContours(np.asarray(mask).astype(np.uint8),
+                                            cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    return sum(cv2.arcLength(contour, True) for contour in contours), contours
+
+
+def _jaggedness(segment, fraction=DEFAULT_SMOOTHING_FRACTION, px=None):
+    mask = segment.require_mask()
+    if mask.sum() < 2:
+        raise ValueError("too few pixels to have an edge")
+
+    sigma = max(1.0, float(px) if px is not None else fraction * inscribed_radius(mask))
+    # Padded so the blur has room: clipped at the frame, a mask running off it
+    # would be smoothed into a straight cut along the edge.
+    pad = int(np.ceil(3 * sigma)) + 1
+    padded = cv2.copyMakeBorder(mask.astype(np.float32), pad, pad, pad, pad,
+                                cv2.BORDER_CONSTANT, value=0)
+    smoothed = cv2.GaussianBlur(padded, (0, 0), sigma) > 0.5
+    if not smoothed.any():
+        raise ValueError("too small for the smoothing scale")
+
+    perimeter, _contours = _outer_perimeter(mask)
+    smoothed_perimeter, smoothed_contours = _outer_perimeter(smoothed)
+    value = float(perimeter / smoothed_perimeter)
+
+    if segment.panel_sink is not None:
+        panel = mask_to_bgr(mask)
+        shifted = [contour - pad for contour in smoothed_contours]
+        cv2.drawContours(panel, shifted, -1, (0, 0, 255), 1)
+        annotate(panel, f"jaggedness {value:.2f} at {sigma:.1f}px")
+        segment.emit_panel(panel, "jaggedness")
+    return value
 
 
 def _mask_area(segment):

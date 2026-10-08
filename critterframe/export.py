@@ -19,19 +19,23 @@ so the project knows what it has handed out.
 
 import logging
 import operator
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from .calibrations import scale as scale_calibration
 from .project import paths, subsets as subset_selection
 from .recipes import DEFAULT_PART, hash_spec, recorded_callable
 from .records import calibrations as calibration_records
+from .records import masks as mask_records
+from .records import metrics as metric_records
 from .records import runs as run_records
 from .records.metrics import TRANSFORM_INFO_UNIT, load_metrics
-from .records.occurrences import ID_COL, ids_record
-from .selectionhelpers import rows_matching
+from .records.occurrences import ID_COL, ids_record, load_occurrences
+from .selectionhelpers import group_medoids, rows_matching
 from .storage.jsonfiles import append_jsonl, read_jsonl, write_json
 
 logger = logging.getLogger(__name__)
@@ -257,6 +261,17 @@ def _apply_filters(df, filters):
     """
     Narrow df to the rows passing every condition, ANDed together.
 
+    - `filters` -- as `_passing` takes them.
+    """
+    keep = _passing(df, filters)
+    logger.info("filters kept %d of %d occurrences", int(keep.sum()), len(df))
+    return df[keep]
+
+
+def _passing(df, filters):
+    """
+    Which rows of df pass every condition, ANDed together, as a boolean Series.
+
     - `filters` -- {column: (op, value)} or {column: predicate}. op is one of
       "<", "<=", ">", ">=", "==", "!=", "in", "not in"; a predicate is a
       callable(series) -> boolean series.
@@ -294,8 +309,118 @@ def _apply_filters(df, filters):
 
         keep &= passes.fillna(False) & series.notna()
 
-    logger.info("filters kept %d of %d occurrences", int(keep.sum()), len(df))
-    return df[keep]
+    return keep
+
+
+def _blank_failing_parts(df, part_filters, part_columns):
+    """
+    Empty each part's columns on the rows failing that part's filters.
+
+    Every part is judged before any is blanked, so a filter reading another
+    part's column sees the value as measured.
+
+    - `part_filters` -- `{part: filters}`, each as `_passing` takes them.
+    - `part_columns` -- `{part: its columns in df}`.
+
+    Returns `(df, counts, blanked)`: `counts` is `{part: {kept, filtered_out,
+    not_measured}}` and `blanked` `{part: occurrence ids emptied}`.
+    """
+    failing = {}
+    for part, filters in part_filters.items():
+        measured = df[part_columns[part]].notna().any(axis=1)
+        failing[part] = (measured & ~_passing(df, filters), measured)
+
+    df = df.copy()
+    counts, blanked = {}, {}
+    for part, (fails, measured) in failing.items():
+        for column in part_columns[part]:
+            df[column] = df[column].where(~fails)
+        blanked[part] = set(df.loc[fails, ID_COL].astype(str))
+        counts[part] = {"kept": int((measured & ~fails).sum()),
+                        "filtered_out": int(fails.sum()),
+                        "not_measured": int((~measured).sum())}
+        logger.info("part '%s': filters kept %d of %d measured occurrence(s)",
+                    part, counts[part]["kept"], int(measured.sum()))
+    return df, counts, blanked
+
+
+def _exported_name(column, unit, units):
+    """The name a column of `unit` is exported under: suffixed where `units` converts it."""
+    conversion = CONVERTIBLE_UNITS.get(unit) if units == "mm" else None
+    return f"{column}_{conversion[0]}" if conversion else column
+
+
+def _filter_only_rows(project_path, filters, present, units, current_only):
+    """
+    The stored values behind filter columns the export's own selection left out.
+
+    - `filters` -- as `_apply_filters` takes them.
+    - `present` -- columns the export already has, under their exported names.
+    - `units` -- as `export_metrics` takes it, since a filter names the
+      converted column.
+
+    Returns `(long rows, _column_provenance of them)`, or `(None, {})` where
+    no filter needs anything more or no run holds it.
+    """
+    wanted = {column for column in filters if column not in present}
+    if not wanted:
+        return None, {}
+
+    # A column can't be split back into run, part and metric (a metric name may
+    # hold "__" itself), so the run is found by prefix and the rest by building
+    # that run's columns.
+    stored = run_records.load_runs(project_path, kind="metric")
+    names = [] if stored.empty else sorted(
+        {name for name in stored["name"].dropna()
+         if any(column.startswith(f"{name}__") for column in wanted)})
+    if not names:
+        return None, {}
+
+    long_df = _current_long(project_path, run_names=names,
+                            current_only=current_only)
+    behind = {(info["run_name"], info["part"], info["metric_name"])
+              for column, info in _column_provenance(long_df).items()
+              if _exported_name(column, info["unit"], units) in wanted}
+    if not behind:
+        return None, {}
+
+    keys = zip(long_df["run_name"], long_df["part"], long_df["metric_name"])
+    rows = long_df[[key in behind for key in keys]]
+    return rows, _column_provenance(rows)
+
+
+def _apply_rename(df, rename):
+    """
+    Relabel exported columns, changing no value and no column order.
+
+    - `rename` -- {exported column: new name}.
+
+    Renaming a column that isn't in the export raises rather than leaving the
+    default name in a file expected to carry the short one. So does a new name
+    that would land on another column, and renaming occurrence_id.
+    """
+    if ID_COL in rename:
+        raise ValueError(f"'{ID_COL}' can't be renamed -- it is what every "
+                         "export is keyed by")
+
+    missing = sorted(column for column in rename if column not in df.columns)
+    if missing:
+        raise KeyError(
+            f"rename column(s) {missing} not in the export "
+            f"(available: {sorted(df.columns)})"
+        )
+
+    targets = [str(name) for name in rename.values()]
+    repeated = sorted({name for name in targets if targets.count(name) > 1})
+    if repeated:
+        raise ValueError(f"rename gives more than one column the name(s) {repeated}")
+
+    kept = set(df.columns) - set(rename)
+    taken = sorted(kept & set(targets))
+    if taken:
+        raise ValueError(f"rename target(s) {taken} are already columns of the export")
+
+    return df.rename(columns={column: str(name) for column, name in rename.items()})
 
 
 def occurrences_matching(project_path, run_name, rules, part=DEFAULT_PART,
@@ -339,6 +464,168 @@ def occurrences_matching(project_path, run_name, rules, part=DEFAULT_PART,
     logger.info("%d of %d occurrence(s) in run '%s' match %s",
                 len(matched), len(df), run_name, rules)
     return sorted(matched[ID_COL].astype(str))
+
+
+def _is_number(value):
+    return (isinstance(value, (int, float, np.integer, np.floating))
+            and not isinstance(value, (bool, np.bool_)) and not pd.isna(value))
+
+
+def _feature_vector(value):
+    """
+    One stored metric value as `(shape, vector)`, or None where it holds no number.
+
+    A list is itself, a number a 1-long vector, and a dict its numeric values
+    in sorted key order, with text, true/false and missing entries skipped.
+    `shape` is what two values must share to be compared: the length, or for
+    a dict the keys used.
+    """
+    if isinstance(value, dict):
+        keys = tuple(sorted(key for key, entry in value.items() if _is_number(entry)))
+        if not keys:
+            return None
+        return keys, np.asarray([value[key] for key in keys], dtype=float)
+    if isinstance(value, (list, tuple, np.ndarray)):
+        return len(value), np.asarray(value, dtype=float)
+    if _is_number(value):
+        return 1, np.asarray([value], dtype=float)
+    return None
+
+
+def exemplars_per_group(project_path, run_name, group_col, part=DEFAULT_PART,
+                        metric_name=None, count=1, occurrence_ids=None,
+                        normalize=True):
+    """
+    Per group, the occurrences most typical of it: the group's medoid in a
+    stored feature space, e.g. one specimen per species by its embedding.
+
+    The medoid is the member with the smallest summed distance to the rest of
+    its group. Computed from the current stored values on each call; nothing
+    is stored.
+
+    - `project_path` -- project to read from.
+    - `run_name` -- the metric run holding the feature, e.g. an embedding run.
+    - `group_col` -- occurrence column naming the group, e.g. `"species"`. An
+      occurrence with no value for it is excluded.
+    - `part` -- part the feature was measured on.
+    - `metric_name` -- the feature; defaults to `run_name`, what a run of one
+      metric is called. A vector, a number, or a dict of numbers such as
+      a `threshold_fractions` result, whose text and true/false entries are
+      skipped.
+    - `count` -- how many per group.
+    - `occurrence_ids` -- only these occurrences: who can be chosen and who
+      each is measured against, e.g. the parts that passed their filters.
+    - `normalize` -- scale each vector to unit length first, so two images
+      are compared by what they show and not by how strongly; a zero vector
+      is left as it is. False compares the stored values as they are, which
+      suits values already on one scale, e.g. fractions. A single number is
+      never scaled.
+
+    Returns a sorted list of occurrence ids.
+    """
+    occurrences = load_occurrences(project_path)
+    if group_col not in occurrences.columns:
+        raise KeyError(f"no '{group_col}' column to group by "
+                       f"(columns: {sorted(occurrences.columns)})")
+
+    metric_name = run_name if metric_name is None else metric_name
+    values = metric_records.latest_values(project_path, run_name, part=part,
+                                          metric_name=metric_name,
+                                          occurrence_ids=occurrence_ids)
+    if occurrence_ids is not None:
+        values = values[values.index.isin({str(i) for i in occurrence_ids})]
+    if values.empty:
+        logger.warning("run '%s' has no current '%s' values for part '%s' -- no "
+                       "exemplars", run_name, metric_name, part)
+        return []
+
+    features = {occurrence_id: _feature_vector(value)
+                for occurrence_id, value in values.items()}
+    features = {occurrence_id: feature for occurrence_id, feature in features.items()
+                if feature is not None}
+    shapes = Counter(shape for shape, _vector in features.values())
+    common = shapes.most_common(1)[0][0] if shapes else None
+    usable = {occurrence_id: vector for occurrence_id, (shape, vector) in features.items()
+              if shape == common}
+    if len(usable) < len(values):
+        logger.warning("%d stored '%s' value(s) aren't shaped like the rest -- left out",
+                       len(values) - len(usable), metric_name)
+    if not usable:
+        return []
+
+    # A single number has no direction: scaled to unit length, every member
+    # of a group would be the same point.
+    if normalize and len(next(iter(usable.values()))) > 1:
+        lengths = {occurrence_id: float(np.linalg.norm(vector))
+                   for occurrence_id, vector in usable.items()}
+        usable = {occurrence_id: vector / lengths[occurrence_id] if lengths[occurrence_id] else vector
+                  for occurrence_id, vector in usable.items()}
+
+    groups = occurrences.set_index(ID_COL)[group_col]
+    exemplars = group_medoids(usable, groups, count=count)
+    logger.info("%d exemplar(s) of '%s' by '%s' among %d occurrence(s)",
+                len(exemplars), group_col, metric_name, len(usable))
+    return exemplars
+
+
+def completed_ids(project_path, run_name, part=None, kind=None, reference=False):
+    """
+    The occurrences a run has a current result for: a pool for `grow_subset` or
+    `define_subset`, or a count of how far a run has got.
+
+    For a segmentation run, the occurrences whose current mask for `part` was
+    made by one of that run's recipes. For a metric run, the occurrences with a
+    current value for `part`. An imported mask is not attributed to its import
+    run (each carries a hash of its own pixels); for "has any mask for this
+    part" use `occurrence_ids_with_mask`.
+
+    - `project_path` -- project to read from.
+    - `run_name` -- the run.
+    - `part` -- which part. Optional where the run covers exactly one.
+    - `kind` -- `"segment"` or `"metric"`, where both kinds of run share the name.
+    - `reference` -- for a segmentation run, read the reference masks.
+
+    Returns a sorted list of occurrence ids, limited to occurrences still in
+    the occurrence table.
+    """
+    runs = run_records.load_runs(project_path, name=run_name)
+    if runs.empty:
+        known = sorted(set(run_records.load_runs(project_path)["name"]))
+        raise KeyError(f"no run named {run_name!r} -- this project has {known}")
+
+    kinds = sorted(set(runs["kind"]))
+    if kind is None:
+        if len(kinds) > 1:
+            raise ValueError(
+                f"{run_name!r} names both a segmentation and a metric run -- say "
+                "which with kind='segment' or kind='metric'")
+        kind = kinds[0]
+    elif kind not in kinds:
+        raise KeyError(f"no {kind} run named {run_name!r} -- it is a {kinds[0]} run")
+    runs = runs[runs["kind"] == kind]
+
+    parts = sorted(set(runs["part"]))
+    if part is None:
+        if len(parts) > 1:
+            raise ValueError(
+                f"run {run_name!r} covers parts {parts} -- say which with part=")
+        part = parts[0]
+    elif part not in parts:
+        raise KeyError(f"run {run_name!r} has no part {part!r} -- it covers {parts}")
+
+    if kind == "segment":
+        hashes = set(runs.loc[runs["part"] == part, "recipe_hash"])
+        masks = mask_records.load_masks(
+            project_path, parts=[part], reference=reference,
+            columns=["occurrence_id", "part", "recipe_hash"])
+        done = set() if masks.empty else set(
+            masks.loc[masks["recipe_hash"].isin(hashes), ID_COL].astype(str))
+    else:
+        done = set(metric_records.result_keys(project_path, run_name, part)[ID_COL]
+                   .astype(str))
+
+    present = set(subset_selection.select_ids(project_path))
+    return sorted(done & present)
 
 
 def _plain(value):
@@ -400,7 +687,8 @@ def _calibration_record(project_path, resolved):
     }
 
 
-def _export_record(project_path, df, long_df, provenance, selection, path=None):
+def _export_record(project_path, df, long_df, provenance, selection, path=None,
+                   rename=None, part_counts=None):
     """
     What this export IS: the occurrences, the runs and recipes behind them, what
     each column holds, and how it was selected.
@@ -415,19 +703,31 @@ def _export_record(project_path, df, long_df, provenance, selection, path=None):
       conversion.
     - `selection` -- the arguments that chose these rows and columns.
     - `path` -- where the export was written, if it was.
+    - `rename` -- the {default name: exported name} already applied to `df`.
+    - `part_counts` -- what `part_filters` did to each part, where given.
 
     Returns the record as a dict.
     """
     values = long_df[long_df[ID_COL].astype(str).isin(set(df[ID_COL].astype(str)))]
 
+    rename = {column: str(name) for column, name in (rename or {}).items()}
+    default_of = {name: column for column, name in rename.items()}
+    default_columns = [default_of.get(column, column) for column in df.columns]
+    scale_col = rename.get(scale_calibration.SCALE_COL, scale_calibration.SCALE_COL)
+
     columns = {}
     for column, info in provenance.items():
-        final = _converted_name(column, df.columns)
-        if final not in df.columns:
+        final = _converted_name(column, default_columns)
+        if final not in default_columns:
             continue
-        columns[final] = dict(info, source_unit=info["unit"])
+        exported = rename.get(final, final)
+        columns[exported] = dict(info, source_unit=info["unit"])
         if final != column:
-            columns[final]["unit"] = final[len(column) + 1:]
+            columns[exported]["unit"] = final[len(column) + 1:]
+        # The default name, so a relabelled column still says which
+        # run__part__metric column it is.
+        if exported != final:
+            columns[exported]["column"] = final
 
     stored = run_records.load_runs(project_path)
     by_id = ({row["run_id"]: row for row in stored.to_dict("records")}
@@ -466,9 +766,12 @@ def _export_record(project_path, df, long_df, provenance, selection, path=None):
         },
         "selection": selection,
         "calibration": (
-            _calibration_record(project_path, df[scale_calibration.SCALE_COL])
-            if scale_calibration.SCALE_COL in df.columns else None),
+            _calibration_record(project_path, df[scale_col])
+            if scale_col in df.columns else None),
     }
+    # Only when part filters ran, so an export made without them keeps its hash.
+    if part_counts:
+        record["part_counts"] = part_counts
 
     record["export_hash"] = hash_spec(record)
     record["created_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -512,14 +815,16 @@ def load_exports(project_path):
 def export_metrics(project_path, path=None, run_names=None, parts=None,
                    metric_names=None, filters=None, occurrence_columns=None,
                    subset=None, drop_empty=True, current_only=True,
-                   units=None, manifest=True, transform_info=False):
+                   units=None, manifest=True, transform_info=False, rename=None,
+                   part_filters=None):
     """
     Build the wide, one-row-per-occurrence trait table, optionally write it to
     CSV, and return it.
 
     Order of operations matters: metadata is joined, empty columns dropped,
     units converted, then filters applied -- so a threshold written in
-    millimetres filters millimetres.
+    millimetres filters millimetres. `filters` drops rows, then `part_filters`
+    empties the parts that fail.
 
     - `project_path` -- project to export from.
     - `path` -- CSV to write. None (the default) writes a uniquely-named
@@ -529,7 +834,9 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
     - `run_names` -- run names to include; every run if None.
     - `parts` -- parts to include; every part if None.
     - `metric_names` -- metric names to include; all if None.
-    - `filters` -- `{column: (op, value)}`; see `_apply_filters`.
+    - `filters` -- `{column: (op, value)}`; see `_apply_filters`. A column
+      that `run_names`, `parts` or `metric_names` left out is still read for
+      the filter, and isn't exported.
     - `occurrence_columns` -- occurrence-table columns to join alongside the
       traits; every occurrence column if None.
     - `subset` -- restrict to a named subset.
@@ -544,6 +851,15 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
       transforms recorded, e.g. `body_dimensions__abdomen__orient__unreliable`.
       Left out by default unless named in `metric_names`; `filters` can target
       them either way.
+    - `rename` -- `{exported column: new name}`, e.g.
+      `{"traits__organism__body_length_mm": "body_length"}`. Applied last, so
+      `filters` still names the default columns; the manifest lists each
+      renamed column under its new name with the default one beside it.
+    - `part_filters` -- `{part: filters}`, each shaped like `filters`. An
+      occurrence failing a part's filters keeps its row and has that part's
+      columns emptied, so parts filtered separately share one table; with
+      `drop_empty`, a row left with no value is dropped. The manifest counts
+      each part's kept, filtered-out and unmeasured occurrences.
 
     Returns the exported DataFrame.
     """
@@ -558,7 +874,31 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
                             metric_names=metric_names,
                             current_only=current_only)
     provenance = _column_provenance(long_df)
-    df = _wide_from_long(long_df)
+
+    occurrences = subset_selection.select_occurrences(
+        project_path, subset=subset,
+        columns=list(occurrence_columns) if occurrence_columns else None,
+    )
+
+    # A filter may name a column the selection left out: its values are loaded
+    # for the filter and never exported. Nothing to look for when nothing was
+    # narrowed, since every column is already here.
+    filter_rows, filter_provenance = None, {}
+    part_filters = dict(part_filters or {})
+    filter_columns = set(filters or {}) | {
+        column for conditions in part_filters.values() for column in conditions}
+    if filter_columns and not (run_names is None and parts is None
+                               and metric_names is None):
+        present = set(occurrences.columns) | {
+            _exported_name(column, info["unit"], units)
+            for column, info in provenance.items()}
+        if units == "mm":
+            present.add(scale_calibration.SCALE_COL)
+        filter_rows, filter_provenance = _filter_only_rows(
+            project_path, filter_columns, present, units, current_only)
+
+    df = _wide_from_long(long_df if filter_rows is None
+                         else pd.concat([long_df, filter_rows]))
 
     # Transform-info columns stay in the frame until filters have run, so a
     # filter can target one, and are dropped after unless asked for.
@@ -569,13 +909,10 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
         long_df = long_df[long_df["unit"] != TRANSFORM_INFO_UNIT]
         provenance = {column: info for column, info in provenance.items()
                       if column not in hidden}
+    hidden |= set(filter_provenance)
     metric_columns = [column for column in df.columns
                       if column != ID_COL and column not in hidden]
 
-    occurrences = subset_selection.select_occurrences(
-        project_path, subset=subset,
-        columns=list(occurrence_columns) if occurrence_columns else None,
-    )
     # Left join, always: the subset restriction is already carried by the
     # left side, so `how` only decides whether an unmeasured occurrence
     # survives -- and that's drop_empty's decision alone. (An inner join
@@ -612,15 +949,43 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
             )
         df = _to_millimetres(
             df,
-            {column: info["unit"] for column, info in provenance.items()},
+            {column: info["unit"] for column, info
+             in {**provenance, **filter_provenance}.items()},
             scale,
         )
         metric_columns = [_converted_name(column, df.columns)
                           for column in metric_columns]
+        # a filter-only column was converted too, and is dropped under that name
+        hidden = {_converted_name(column, df.columns) for column in hidden}
 
     if filters:
         df = _apply_filters(df, filters)
+
+    part_counts = {}
+    if part_filters:
+        part_columns = {
+            part: [exported for column, info in provenance.items()
+                   if info["part"] == part
+                   and (exported := _converted_name(column, df.columns)) in df.columns]
+            for part in part_filters}
+        nothing = sorted(part for part, columns in part_columns.items() if not columns)
+        if nothing:
+            raise ValueError(
+                f"part_filters names part(s) {nothing} with no exported column to "
+                f"empty -- this export holds {sorted({info['part'] for info in provenance.values()})}")
+        df, part_counts, blanked = _blank_failing_parts(df, part_filters, part_columns)
+        if drop_empty and metric_columns:
+            df = df[df[metric_columns].notna().any(axis=1)]
+        # The manifest counts only the values that are in the file.
+        emptied = [str(occurrence_id) in blanked.get(part, ())
+                   for occurrence_id, part in zip(long_df[ID_COL], long_df["part"])]
+        long_df = long_df[[not gone for gone in emptied]]
+
     df = df.drop(columns=[column for column in hidden if column in df.columns])
+    if filter_rows is not None:
+        # The manifest names the runs that decided the rows, as well as the
+        # ones whose columns were exported.
+        long_df = pd.concat([long_df, filter_rows])
 
     # occurrence_id first, then joined metadata, then the traits -- so the
     # identifying columns are on the left where anyone opening the CSV expects.
@@ -628,6 +993,9 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
                           and c != ID_COL] + [c for c in metric_columns
                                               if c in df.columns]
     df = df[ordered].reset_index(drop=True)
+
+    if rename:
+        df = _apply_rename(df, rename)
 
     if path is not None:
         path = Path(path)
@@ -658,8 +1026,14 @@ def export_metrics(project_path, path=None, run_names=None, parts=None,
                 # Recorded only when on, so an export made before this option
                 # existed keeps the hash it was written under.
                 **({"transform_info": True} if transform_info else {}),
+                **({"rename": {column: str(name)
+                               for column, name in rename.items()}}
+                   if rename else {}),
+                **({"part_filters": {part: _recorded_filters(conditions)
+                                     for part, conditions in part_filters.items()}}
+                   if part_filters else {}),
             },
-            path=path), path=path)
+            path=path, rename=rename, part_counts=part_counts), path=path)
 
     return df
 

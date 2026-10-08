@@ -117,3 +117,88 @@ def test_the_function_and_its_version_are_in_the_hash():
     assert spec["parameters"]["function"].endswith("test_derived.width_ratio")
     assert ratio(version="2").spec() != spec
     assert cf.derived(width_ratio, [cf.body_length()], from_run="traits").spec() != spec
+
+
+def scaled(values, factor):
+    return values["body_length"] * factor
+
+
+def test_parameters_reach_the_function_and_the_hash(metadata_project):
+    store_traits(metadata_project)
+    metric = cf.derived(scaled, [cf.body_length()], from_run="traits",
+                        parameters={"factor": 2})
+    metric.prepare(a_context(metadata_project))
+
+    assert metric(StoredValues("specimen1", "organism")) == pytest.approx(202.0)
+    assert metric.spec() != cf.derived(scaled, [cf.body_length()], from_run="traits",
+                                       parameters={"factor": 3}).spec()
+
+
+def test_no_parameters_leaves_the_spec_as_it_was():
+    """A derived hash recorded before parameters existed must not move."""
+    assert "arguments" not in ratio().spec()["parameters"]
+    assert ratio().spec() == ratio(parameters={}).spec()
+
+
+def test_parameters_must_be_json():
+    with pytest.raises(TypeError, match="JSON"):
+        cf.derived(scaled, [cf.body_length()], parameters={"factor": object()})
+
+
+def test_with_no_from_run_it_reads_this_runs_earlier_values(metadata_project):
+    """Nothing is loaded: the values arrive with the occurrence."""
+    metric = cf.derived(width_ratio, [cf.body_length(), cf.max_width()])
+    record = metric.prepare(a_context(metadata_project))
+
+    assert record["from_run"] is None
+    values = {"body_length": 50.0, "max_width": 10.0, "mask_area": 1.0}
+    assert metric(StoredValues("specimen0", "organism", values)) == pytest.approx(0.2)
+    with pytest.raises(NoInput, match="earlier in this run"):
+        metric(StoredValues("specimen0", "organism", {"body_length": 50.0}))
+
+
+def test_a_named_feature_binds_to_the_earlier_metric_of_that_name():
+    """Binding fills in what passing the operation does, so the recipe hash is the same."""
+    named = cf.derived(width_ratio, ["body_length", "max_width"])
+    bound = named.bind([cf.mask_area(), cf.body_length(), cf.max_width()])
+
+    assert bound.spec() == cf.derived(width_ratio, [cf.body_length(), cf.max_width()]).spec()
+    values = {"body_length": 50.0, "max_width": 10.0}
+    assert bound(StoredValues("specimen0", "organism", values)) == pytest.approx(0.2)
+
+
+def test_binding_leaves_the_named_metric_as_it_was():
+    """One instance reused in two runs is bound to each run's own metrics."""
+    named = cf.derived(scaled, ["body_length"], parameters={"factor": 2})
+    in_px = named.bind([cf.body_length()])
+    in_mm = named.bind([cf.body_length(unit="mm")])
+
+    assert named.unbound == ["body_length"]
+    assert in_px is not named and in_px.spec() != in_mm.spec()
+    assert in_px.bind([]) is in_px
+
+
+def test_a_named_metric_is_not_a_recipe_until_bound(metadata_project):
+    named = cf.derived(width_ratio, ["body_length", "max_width"])
+    with pytest.raises(ValueError, match="run_metrics"):
+        named.spec()
+    with pytest.raises(ValueError, match="run_metrics"):
+        named.prepare(a_context(metadata_project))
+    with pytest.raises(ValueError, match="run_metrics"):
+        named(StoredValues("specimen0", "organism", {"body_length": 1.0, "max_width": 1.0}))
+
+
+def test_a_name_nothing_earlier_carries_is_refused():
+    named = cf.derived(width_ratio, ["body_length", "max_width"])
+    with pytest.raises(ValueError, match="listed before it"):
+        named.bind([cf.body_length()])
+
+
+def test_another_runs_features_cannot_be_named():
+    with pytest.raises(ValueError, match="pass the operations"):
+        cf.derived(width_ratio, ["body_length", "max_width"], from_run="traits")
+
+
+def test_a_group_metric_cannot_read_its_own_run():
+    with pytest.raises(ValueError, match="needs from_run"):
+        cf.outlier([cf.body_length()], from_run=None)

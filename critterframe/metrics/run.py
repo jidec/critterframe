@@ -13,7 +13,7 @@ from collections import Counter
 
 from .. import drivers, segments as segment_iteration
 from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe, load_json
+from ..recipes import DEFAULT_PART, Recipe, hash_spec, load_json
 from ..records import failures as failure_records
 from ..records import masks as mask_records
 from ..records import metrics as metric_records
@@ -88,6 +88,30 @@ def _format_value(value):
 def _reads_stored(operation):
     """Whether a metric is computed from stored values (a StoredValues) rather than a Segment."""
     return getattr(operation, "input", "segment") == "stored"
+
+
+def _bind_same_run_features(metrics):
+    """
+    `metrics` with each stored-input metric bound to the ones listed before it.
+
+    Refuses a metric reading its own run (`from_run=None`) whose features aren't listed before it.
+    """
+    bound = []
+    earlier = set()
+    for operation in metrics:
+        if _reads_stored(operation):
+            operation = operation.bind(list(bound))
+        if _reads_stored(operation) and getattr(operation, "from_run", "") is None:
+            missing = [feature.metric_name for feature in operation.features
+                       if hash_spec(feature.spec()) not in earlier]
+            if missing:
+                raise ValueError(
+                    f"{operation.metric_name} reads {missing} from this run (from_run=None), "
+                    "but no metric configured that way is listed before it in metrics= -- "
+                    "list the same operations first, or pass from_run= to read another run")
+        earlier.add(hash_spec(operation.spec()))
+        bound.append(operation)
+    return bound
 
 
 def _visualize_measurement(state, rows):
@@ -202,10 +226,14 @@ def _current_for_population(project_path, keys, recipe_hash, part, prepared):
         # The upstream recipe sits beside the population: a group metric fit
         # on values another recipe has since replaced is stale even when the
         # occurrences are the same ones.
+        # fit_hash is for a fit that depends on more than WHO was in it: a
+        # label-fitted score moves when a label changes on the same ids. Absent
+        # from every other record, where None matches None.
         stored, record = stored or {}, record or {}
         return (stored.get("population", {}).get("ids_hash")
                 == record.get("population", {}).get("ids_hash")
-                and stored.get("from_recipe_hash") == record.get("from_recipe_hash"))
+                and stored.get("from_recipe_hash") == record.get("from_recipe_hash")
+                and stored.get("fit_hash") == record.get("fit_hash"))
 
     def population_matches(occurrence_id):
         run_id = run_id_by_occurrence.get(occurrence_id)
@@ -282,7 +310,9 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
       `transforms` is empty -- a maskless recipe reaches every occurrence
       with an image, segmented or not, and measures with a maskless Segment;
       otherwise, exactly as before, only occurrence-parts already segmented
-      are measured.
+      are measured. Evaluated in list order: a `derived(..., from_run=None)`
+      reads the values of the metrics listed before it, which it may name
+      rather than hold (`derived(fn, ["body_length"])`, `color_presence()`).
     - `run_name` -- what to call this run. Recorded on the run, not part of
       recipe identity (see Recipe.hash) -- but still what every exported
       column and `records.metrics.latest_values` read values back by, so two
@@ -294,7 +324,7 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
       the `copied` count below.
       Defaults to the metric's own `metric_name` when `metrics` holds
       exactly one -- the common case for a single screening pass
-      (`metrics=[cf.usability_annotation()]`), where that name is the
+      (`metrics=[cf.exclusive_label_annotation([...], name="usability")]`), where that name is the
       obviously right one and typing it twice is pure repetition. Measuring
       more than one metric in a call has no such obvious name, so it's
       required there: run_metrics raises immediately rather than guessing
@@ -317,7 +347,9 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
       without it, changing what `run_name` measures raises rather than
       silently taking over the name (`records.runs.resolve_recipe_currency`)
       -- values already on record stay on record but stop being current
-      once this run has actually produced something under the new recipe.
+      as soon as this run stores its first value under the new recipe. An
+      interrupted forced run has therefore already moved the name: resume it
+      without `force`, which skips what it finished.
     - `visualize` -- as in `run_segments` (default True). The last column of
       a metric grid is the measured segment with its values written on it.
     - `visualize_every` -- as in `run_segments`: in addition to the one grid
@@ -390,6 +422,9 @@ def run_metrics(project_path, metrics, run_name=None, transforms=(),
             "recorded info would land in the same export column; pass name= to "
             "the metric")
 
+    # Before any recipe is built, so a recipe never changes once it exists.
+    metrics = _bind_same_run_features(metrics)
+
     if transforms and all(_reads_stored(operation) for operation in metrics):
         raise ValueError(
             "transforms= has nothing to act on: every metric here reads stored "
@@ -429,9 +464,10 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
     # Fails fast, before any mask lookup or prepare() hook runs, if run_name
     # already points at a different recipe for this part and force wasn't
     # given to move it. needs_currency_commit is only True for a forced move
-    # still waiting on confirmation that it produced something -- see below.
+    # still waiting on its first written value -- see commit_currency below.
     needs_currency_commit = run_records.resolve_recipe_currency(
-        project_path, "metric", run_name, part, recipe.hash, force)
+        project_path, "metric", run_name, part, recipe.hash, force,
+        recipe_spec=recipe.spec())
 
     # Opened before prepare() so a group metric can write its fit figures; the
     # sample is fixed later, once begin() knows what this run will measure.
@@ -551,10 +587,24 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
     # Copied first, in one batch write, before anything is measured for real --
     # cheap because it's a straight re-insert of values another run already
     # computed, no image, transform, or model involved.
+    def commit_currency():
+        # A forced move is committed at the FIRST value written rather than at
+        # the end of the run: values are stored per occurrence, so a run
+        # interrupted before an end-of-run commit would leave them stored under
+        # a recipe the name doesn't point at -- not current, and not resumable,
+        # since force is what gets past the name check and force also redoes
+        # everything. A run that writes nothing still never moves the pointer.
+        nonlocal needs_currency_commit
+        if needs_currency_commit:
+            run_records.commit_recipe_currency(project_path, "metric",
+                                               run_name, part, recipe.hash)
+            needs_currency_commit = False
+
     if copy_rows:
         metric_records.append_metrics(
             project_path, run_id, recipe.hash,
             [row for rows in copy_rows.values() for row in rows])
+        commit_currency()
 
     processed = 0
     failure_rows = []
@@ -615,17 +665,19 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
             try:
                 state, transform_info = (build_state(occurrence_id) if needs_segment
                                          else (None, []))
-                stored = StoredValues(occurrence_id, part)
-
-                rows = [
-                    metric_records.make_metric_row(
-                        occurrence_id, part, operation.metric_name,
-                        operation(stored if _reads_stored(operation) else state),
+                # In list order, so a derived metric with from_run=None reads
+                # the values measured before it for this occurrence.
+                computed = {}
+                rows = []
+                for operation in metrics:
+                    value = operation(StoredValues(occurrence_id, part, computed)
+                                      if _reads_stored(operation) else state)
+                    computed[operation.metric_name] = value
+                    rows.append(metric_records.make_metric_row(
+                        occurrence_id, part, operation.metric_name, value,
                         unit=operation.unit,
                         source_mask_hash=source_hashes.get((occurrence_id, part)),
-                    )
-                    for operation in metrics
-                ]
+                    ))
 
                 if state is not None:
                     _visualize_measurement(state, rows)
@@ -643,6 +695,7 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                 # human-annotation run can be hours of clicking, and an
                 # interruption should cost the current occurrence, not the day.
                 metric_records.append_metrics(project_path, run_id, recipe.hash, rows)
+                commit_currency()
                 processed += 1
                 tally.processed += 1
                 resolved.append((occurrence_id, part))
@@ -681,14 +734,10 @@ def _run_one_part(project_path, run_name, metrics, transforms, part,
                            skipped=skipped, failed=tally.failed, flags=tally.flags)
 
     if needs_currency_commit:
-        if processed > 0 or copy_rows:
-            run_records.commit_recipe_currency(project_path, "metric",
-                                               run_name, part, recipe.hash)
-        else:
-            logger.warning(
-                "run_name '%s': force=True allowed a recipe change for part "
-                "'%s', but nothing was processed -- it still points at the "
-                "previous recipe", run_name, part)
+        logger.warning(
+            "run_name '%s': force=True allowed a recipe change for part "
+            "'%s', but nothing was processed -- it still points at the "
+            "previous recipe", run_name, part)
 
     return tally.summary(copied=len(copy_rows), run_id=run_id,
                          previously_failed=len(failed_before), elapsed_s=elapsed)

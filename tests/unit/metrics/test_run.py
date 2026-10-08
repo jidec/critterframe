@@ -223,7 +223,7 @@ def test_an_explicit_run_name_still_overrides_the_default(segmented_project):
 def _saw_mask():
     """A synthetic maskless metric: records whether a mask happened to be
     there, without ever requiring one -- exercises the general mechanism
-    without needing usability_annotation's interactive window."""
+    without needing an annotation's interactive window."""
     return Metric("saw_mask", lambda segment: segment.mask is not None,
                   version="1", unit="category", requires_mask=False)
 

@@ -37,3 +37,14 @@ def test_a_figure_renders_as_a_display_ready_panel():
     image = figures.to_image(figures.funnel({"read": 3, "kept": 2}))
     assert image.dtype == np.uint8
     assert image.ndim == 3 and image.shape[2] == 3
+
+
+def test_a_scatter_can_name_its_points():
+    """Text beside a point, for a chart whose points are settings and not specimens."""
+    figure = figures.scatter([1.0, 2.0, 3.0], [3.0, 1.0, 2.0],
+                             annotations=["first", None, "third"])
+    texts = [text.get_text() for text in figure.axes[0].texts]
+    assert texts == ["first", "third"]
+
+    plain = figures.scatter([1.0, 2.0], [2.0, 1.0])
+    assert len(plain.axes[0].texts) == 0

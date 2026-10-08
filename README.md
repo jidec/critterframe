@@ -158,7 +158,7 @@ my_project/
 ### Core concepts
 
 | Term                    | Meaning                                                                                                                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **Project**             | A self-contained collection of organismal occurrence images, metadata, and derivations intended to be analyzed as a coherent biological dataset and sharing at least some processing steps. |
 | **Raw import**          | Source data preserved before any structural or judgment-based decisions are applied, such as a GBIF Darwin Core archive as downloaded. Archived in the `raw_imports/` folder.               |
 | **Import**              | A raw import reshaped into occurrences and narrowed through explicit inclusion decisions such as `drop`, `group_col`, and `max_per_group`. A manifest records those decisions.              |
@@ -178,6 +178,7 @@ my_project/
 | **Reference set**       | A collection of human-reviewed or otherwise trusted data used to evaluate a pipeline component.                                                                                             |
 | **Stratified sampling** | Sampling separately within predefined groups, such as taxa or collections, to ensure that each is adequately represented.                                                                   |
 | **Validation**          | Comparison against a reference set to quantify how well a pipeline step performs.                                                                                                           |
+| **Export**              | A set of metrics & associated occurrence data where decisions about its contents and shape are based on downstream analysis intent.                                                         |
 
 ### Processing terms
 
@@ -234,28 +235,33 @@ critterframe/
     transforms/
         orient.py            PCA orientation, axis chosen by asymmetry rather than length
         appendages.py    remove legs/antennae from a mask
+        islands.py          remove_islands: drop disconnected fragments, keeping the organism
+        erode.py             erode: pull a mask in from its edges, by a share of its own thickness
         crop.py               crop, crop_to_mask, rotate, resize, remove_background
     metrics/
-        dimensions.py    body_length, max_width, mask_area, bounding_box
+        dimensions.py    body_length, max_width, mask_area, bounding_box, elongation, jaggedness
+        islands.py         n_islands: fragments of a mask apart from the organism
         position.py        centroid, relative_position, image_bounds -- reported in original coordinates
         quality.py          blur, asymmetry, edge fraction -- automated QC
         pixels.py            masked_pixels: the organism's pixels, the one rule every colour metric shares
         color_means.py    mean_color, mean_lightness, white_balanced_color, background_color
-        color_thresholds.py  ColorThreshold cutoffs across colour spaces; threshold_fractions and presets
+        color_thresholds.py  ColorThreshold cutoffs across colour spaces; threshold_fractions, color_presence and presets
         inductive_color_thresholds.py  the same thresholds fitted per group: a chroma gate and hue arcs
         color_clusters.py  per-group colour palette proportions
         embedding.py      EmbeddingModel over any torch network, pretrained() timm backbones, embedding()
         stored.py          StoredValues + the base for metrics computed from stored values, not pixels
-        derived.py        derived(): a value from one occurrence-part's own stored values, e.g. a ratio
+        derived.py        derived(): a value from one occurrence-part's own values, e.g. a ratio
         outliers.py        group metrics over a population of stored values: outlier(), cluster()
-        annotation.py    human labels: usability_annotation, click_two_points
+        label_score.py   label_score(): a score fitted on stored features against stored human labels
+        annotation.py    human labels: exclusive_label_annotation, click_two_points
         run.py                run_metrics() + RunContext + _completed_keys
     calibrations/
         scale.py            px/mm from a target of known size
     validation/
         masks.py            IoU against reference masks
         metrics.py         predicted vs. reference values
-        filters.py           calibrate thresholds against human labels
+        filters.py           calibrate thresholds against human labels; audit a filter set on held-out ones
+        filter_grids.py    image grids of what a filter set catches, misses and costs
     visualization/
         panels.py           one picture of one operation's decision; shared drawing helpers and colour conventions
         grids.py             many panels as one image: image_grid, comparison_grid
@@ -289,7 +295,7 @@ Validation should be a part of every pipeline: critterframe supports validation 
 
 For reference set creation/annotation
 - `correct_masks` or `manual_masks` to create a reference/ground truth mask set
-- `usability_flags`
+- `exclusive_label_annotation` to give each item exactly one label from a vocabulary of your own, one keypress each, e.g. screening images as usable or not before any mask is drawn, or finished segments as good or why not (no valid input, wrong region, incomplete, overflow)
 - Stratified sampling of reference sets across grouping columns (e.g. taxa, collections)
 
 For segmentation:
@@ -299,8 +305,12 @@ For traits:
 - `compare_metrics` to assess agreement between an automatically computed trait and a human-measured one
 
 For the validity/quality of final outputs (AKA noise filtering):
-- `get_validated_filters` that given candidate columns (e.g. seg model confidence, transform reliability flags) and project-scoped negative image cases (e.g. blurry, cutoff) computes filtering columns & values that screen out invalid or low quality examples under different coverage-quality tradeoffs
+- `get_validated_filters` that given candidate columns (e.g. seg model confidence, transform reliability flags) and project-scoped negative image cases (e.g. blurry, cutoff) computes filtering columns & values that screen out invalid or low quality examples under different coverage-quality tradeoffs. Candidates from several runs go in one call; a categorical one such as a cluster assignment has its worst categories dropped within the same budget, i.e. picking clusters by their labels rather than by eye; a candidate that catches nothing is left out; what the chosen filters do together is logged, & on held-out labels too with `audit_subset=`
+- `audit_filters` that scores any filter set, e.g. one written by hand, on labels it was not calibrated on: the share of bad rows before & after filtering and the share of rows kept, each with an interval
+- `label_score` to fit a score directly to the labels (e.g. on embeddings) & threshold it like any other candidate
 - Certain group-level metrics (e.g. outlier labels/scores, cluster assignments) are especially useful filtering candidates
+
+Accuracy & validity are separate claims. Reference masks exist only where a correct mask can be drawn, so `validate_masks` says how accurate a segment is on a valid input. Invalid inputs still reach every later step, so what share of an export is bad needs a label that exists for every input: screen a random sample of finished segments, calibrate filters on one part of it & audit them on the rest.
 
 For the whole pipeline:
 - Coming soon - "sensitivity analysis" exports across defensible alternative metric parameters and filtering tradeoffs

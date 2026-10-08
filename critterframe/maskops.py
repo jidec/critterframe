@@ -102,3 +102,31 @@ def largest_component(mask):
     # largest area among the rest.
     biggest = 1 + int(np.argmax(stats[1:, cv2.CC_STAT_AREA]))
     return labels == biggest
+
+
+def edge_distance(mask):
+    """
+    Each mask pixel's distance to the nearest pixel outside the mask, with the frame's edge counting as outside.
+
+    Without that padding a mask running off the frame would have no edge on
+    that side, and everything measured from this would treat it as thicker.
+
+    - `mask` -- boolean array.
+
+    Returns a float32 array the shape of `mask`, 0 outside it.
+    """
+    padded = cv2.copyMakeBorder(np.asarray(mask).astype(np.uint8), 1, 1, 1, 1,
+                                cv2.BORDER_CONSTANT, value=0)
+    return cv2.distanceTransform(padded, cv2.DIST_L2, cv2.DIST_MASK_PRECISE)[1:-1, 1:-1]
+
+
+def inscribed_radius(mask):
+    """
+    The radius of the largest disc that fits inside the mask: half its thickness at the thickest point.
+
+    The size measure to scale anything by that acts against thickness (an
+    erosion, a smoothing), so a thin part and a round one are treated alike.
+
+    - `mask` -- boolean array.
+    """
+    return float(edge_distance(mask).max()) if np.asarray(mask).any() else 0.0

@@ -35,6 +35,12 @@ pytestmark = pytest.mark.slow
 SPECIMENS = 8
 
 
+def screen():
+    """The project's own image screen: keys 1, 2, 3 in this order, asked without a mask."""
+    return cf.exclusive_label_annotation(["usable", "not_an_organism", "cut_off"],
+                                         name="usability", requires_mask=False)
+
+
 @pytest.fixture
 def graded(measured_project):
     """
@@ -168,12 +174,12 @@ def test_a_qc_threshold_is_calibrated_against_human_labels(graded, monkeypatch):
     flags[1] = ord("2")            # not_an_organism
     monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=flags))
 
-    cf.run_metrics(graded, run_name="screening",
-                   metrics=[cf.usability_annotation()], visualize=False)
+    cf.run_metrics(graded, run_name="screening", metrics=[screen()], visualize=False)
 
     wide = metrics_wide(graded)
     sweep = sweep_thresholds(wide, "traits__organism__blur_variance", "below",
-                             "screening__organism__usability_annotation")
+                             "screening__organism__usability",
+                             bad_labels=["not_an_organism", "cut_off"])
 
     assert not sweep.empty
     assert set(sweep["n_bad"]) == {2}
@@ -193,11 +199,9 @@ def test_the_labels_pick_out_the_crops_worth_more_human_time(graded, monkeypatch
     flags[0] = ord("2")
     monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=flags))
 
-    cf.run_metrics(graded, run_name="screening",
-                   metrics=[cf.usability_annotation()], visualize=False)
+    cf.run_metrics(graded, run_name="screening", metrics=[screen()], visualize=False)
 
-    usable = cf.occurrences_matching(graded, "screening",
-                                     {"usability_annotation": "usable"})
+    usable = cf.occurrences_matching(graded, "screening", {"usability": "usable"})
     assert len(usable) == SPECIMENS - 1
 
     cf.define_subset(graded, "usable", occurrence_ids=usable)
@@ -234,3 +238,67 @@ def test_a_filter_calibrated_this_way_narrows_the_export_and_deletes_nothing(
     filtered = cf.export_metrics(graded, filters={column: (">", cutoff)})
     assert 0 < len(filtered) < SPECIMENS
     assert len(cf.export_metrics(graded)) == SPECIMENS
+
+
+# A project's own screening vocabulary; the run takes the label's name, "quality".
+QUALITY = cf.exclusive_label_annotation(
+    ["good", "input_invalid", "wrong_region", "incomplete", "overflow"], name="quality")
+QUALITY_BAD = ["input_invalid", "wrong_region", "incomplete", "overflow"]
+
+
+@pytest.fixture
+def screened(graded, monkeypatch):
+    """
+    The finished segments screened by a person in two separate samples: one to
+    choose thresholds on, one to score them on. Each holds one bad segment, the
+    blurriest of its four, so blur is a score that can find it.
+    """
+    blur = cf.export_metrics(graded, path=False, manifest=False).set_index(
+        "occurrence_id")["traits__organism__blur_variance"]
+    ids = sorted(blur.index)
+    cf.define_subset(graded, "calibrate", occurrence_ids=ids[:4])
+    cf.define_subset(graded, "audit", occurrence_ids=ids[4:])
+
+    for subset, members, bad_key in (("calibrate", ids[:4], ord("3")),
+                                     ("audit", ids[4:], ord("4"))):
+        blurriest = blur[members].idxmin()
+        monkeypatch.setattr(annotation, "cv2", FakeCv2(
+            keys=[bad_key if member == blurriest else ord("1") for member in members]))
+        cf.run_metrics(graded, subset=subset, metrics=[QUALITY], visualize=False)
+    return graded
+
+
+def test_filters_are_chosen_on_one_sample_and_scored_on_another(screened):
+    """
+    The fourth comparison, and the only one that covers every input: reference
+    masks exist only where a correct mask could be drawn, so they cannot say
+    what share of an export is garbage. A screening label can, and a filter set
+    scored on the labels that chose it describes those labels.
+    """
+    filters = cf.get_validated_filters(
+        screened, {"blur_variance": "below"}, "traits", "quality",
+        label_metric="quality", good_labels=["good"],
+        subset="calibrate", audit_subset="audit", max_fpr=0.0, visualize=False)
+    assert list(filters) == ["traits__organism__blur_variance"]
+
+    audit = cf.audit_filters(screened, filters, "quality", label_metric="quality",
+                             bad_labels=QUALITY_BAD, subset="audit", visualize=False)
+
+    assert (audit["n"], audit["n_bad"]) == (4, 1)
+    assert audit["n_incomplete"] == 1 and audit["n_wrong_region"] == 0
+    exported = cf.export_metrics(screened, subset="audit", filters=filters,
+                                 path=False, manifest=False)
+    assert audit["n_kept"] == len(exported)
+
+
+def test_a_quality_label_describes_the_mask_it_was_given_for(screened):
+    """
+    Resegmenting voids the screening, where a usability label -- which
+    describes the image -- would survive it. An audit of masks nobody has
+    looked at has nothing to say.
+    """
+    cf.run_segments(screened, steps=[cf.segment(ThresholdModel(erode=1))],
+                    visualize=False)
+
+    assert cf.audit_filters(screened, {}, "quality", label_metric="quality",
+                            good_labels=["good"], visualize=False) == {}

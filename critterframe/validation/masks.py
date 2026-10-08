@@ -49,7 +49,8 @@ def validate_masks(project_path, part=DEFAULT_PART, parts=None,
       files. Not combinable with `reference_part`, which names one specific
       pairing.
     - `reference_part` -- reference part to compare `part` against, if
-      different, e.g. a merged part from `merge_masks()`. Defaults to `part`.
+      different, e.g. a part merged from several with `run_segments`'
+      `from_part=[...]`. Defaults to `part`.
     - `transforms` -- optional transforms applied to BOTH masks before
       comparing. Use this when the reference represents something other
       than raw model output: if the human correction also erased

@@ -373,6 +373,25 @@ def test_ids_come_back_as_a_list_of_strings(collections_project):
 # ---------------------------------------------------------------------------
 
 
+def test_a_pool_passed_as_ids_can_say_what_it_was(collections_project):
+    """
+    A named source subset names itself in the note; a list of ids is only a
+    count unless the caller says where it came from.
+    """
+    cf.grow_subset(collections_project, "review", 2, candidate_ids=["occ0", "occ1", "occ2"],
+                   candidate_note="has an abdomen mask")
+    note = cf.load_subsets(collections_project)["review"]["note"]
+    assert "has an abdomen mask (3 id(s))" in note
+
+
+def test_a_pool_note_needs_a_pool_of_ids(collections_project):
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
+    for kwargs in ({}, {"from_subset": "amnh"}):
+        with pytest.raises(ValueError, match="describes candidate_ids"):
+            cf.grow_subset(collections_project, "review", 2,
+                           candidate_note="something", **kwargs)
+
+
 def test_grow_subset_creates_the_subset_on_the_first_call(collections_project):
     """No KeyError reaches the caller for a name subsets.toml doesn't have yet."""
     ids = cf.grow_subset(collections_project, "review", 2)

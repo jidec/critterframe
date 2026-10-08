@@ -12,6 +12,10 @@ Two forms:
                  outputs={"head": [segment(head_model)],
                           "abdomen": [segment(abdomen_model)]})
 
+    # one part merged from several existing ones
+    run_segments(project_path, part="body",
+                 from_part=["head", "thorax", "abdomen"], steps=[])
+
 Shared steps run ONCE per occurrence and the segment forks per part, so a
 three-part run does one background removal rather than three. Each part still
 gets its own recipe and run record, so changing the abdomen model leaves head
@@ -127,8 +131,58 @@ def _visualize_result(state, score):
     state.emit_panel(panel, "mask")
 
 
+def _upstream_parts(from_part):
+    """
+    The upstream part names `from_part` asks for, sorted; empty for None.
+
+    Sorted and deduplicated because the starting mask is their union, which
+    doesn't depend on the order they were named in.
+    """
+    if from_part is None:
+        return []
+    if isinstance(from_part, str):
+        return [from_part]
+    parts = sorted({str(part) for part in from_part})
+    if not parts:
+        raise ValueError("from_part names no part -- pass a part name, "
+                         "several, or None")
+    return parts
+
+
+def _upstream_mask(source_rows, occurrence_id):
+    """
+    The mask a from_part recipe starts from: the union of every upstream
+    part's mask for one occurrence.
+
+    - `source_rows` -- {upstream part: {occurrence_id: mask row}}.
+
+    Raises NoInput naming the first upstream part with no mask.
+    """
+    rows = []
+    for upstream, lookup in source_rows.items():
+        row = lookup.get(occurrence_id)
+        if row is None:
+            raise drivers.NoInput(drivers.no_mask(upstream))
+        rows.append((upstream, row))
+
+    combined = None
+    for upstream, row in rows:
+        mask = mask_records.decode_mask(row)
+        if combined is None:
+            combined = mask
+        elif mask.shape != combined.shape:
+            # Padding would store a mask that no longer matches the image.
+            raise ValueError(
+                f"the '{upstream}' mask is {mask.shape} but another upstream "
+                f"part's is {combined.shape} -- masks of one occurrence must "
+                "share the original image's shape to be merged")
+        else:
+            combined = combined | mask
+    return combined
+
+
 def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
-                   reference):
+                   reference, from_reference=False):
     """
     Turn the caller's arguments into {part: Recipe}.
 
@@ -155,6 +209,10 @@ def _build_recipes(run_name, steps, outputs, shared_steps, part, from_part,
 
     shared = list(shared_steps or [])
     inputs = {"masks": "reference" if reference else "canonical"}
+    if from_reference:
+        # Added only when set, so every recipe hash recorded before the flag
+        # existed still holds.
+        inputs["from_masks"] = "reference"
 
     def default_name(output_part):
         return f"{output_part}_reference" if reference else output_part
@@ -215,7 +273,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                  outputs=None, shared_steps=None, from_part=None, subset=None,
                  limit=None, force=None, visualize=True, visualize_every=None,
                  reference=False, batch_size=DEFAULT_BATCH_SIZE, shard=None,
-                 retry_failed=False):
+                 retry_failed=False, from_reference=False):
     """
     Run a segmentation recipe over a project's occurrences.
 
@@ -238,7 +296,10 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
       of from none. How refinement chains work: a part-specific model starts
       from the organism mask rather than rediscovering it. Which upstream
       mask each output came from is recorded, so resegmenting the upstream
-      recomputes everything below it.
+      recomputes everything below it. A list of parts starts from their
+      union, e.g. `part="body", from_part=["head", "thorax", "abdomen"],
+      steps=[]` merges three parts into one; an occurrence missing any of
+      them counts as `no_input`.
     - `subset` -- name of a subset to process, or None for every occurrence.
     - `limit` -- optional cap on occurrences, for trying a recipe out.
     - `force` -- redo occurrence-parts this recipe already covered from the
@@ -276,6 +337,9 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
       this exact recipe (and, for a `from_part` recipe, this exact upstream
       mask). False (the default) leaves them recorded as failed; a changed
       recipe or upstream retries them automatically with no flag needed.
+    - `from_reference` -- read the `from_part` masks from the reference table
+      instead of the canonical one. Independent of `reference`, which says
+      where the result is written.
 
     Returns {part: summary}, each as `drivers.Tally.summary` plus `run_id`,
     `previously_failed` and `elapsed_s` (the whole call's, shared by every part). `skipped` counts occurrence-parts excluded for
@@ -286,8 +350,17 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
     """
     paths.require_project(project_path)
 
+    upstream_parts = _upstream_parts(from_part)
+    if from_reference and not upstream_parts:
+        raise ValueError("from_reference=True needs a from_part to read")
+    # One upstream stays a plain name, so a recipe written with a single part
+    # hashes as it always has.
+    from_part = None if not upstream_parts else (
+        upstream_parts[0] if len(upstream_parts) == 1 else upstream_parts)
+    from_label = "+".join(upstream_parts) or None
+
     recipes = _build_recipes(run_name, steps, outputs, shared_steps, part,
-                             from_part, reference)
+                             from_part, reference, from_reference)
     occurrence_ids = subset_selection.select_ids(project_path, subset=subset,
                                                  limit=limit)
 
@@ -320,15 +393,23 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
     # doing depends on which upstream mask each part would be cut out of: a
     # derived part goes stale the moment the part it came from is resegmented,
     # while its own recipe hash sits there unchanged.
-    source_masks = {}
-    if from_part is not None:
-        source_masks = mask_records.mask_lookup(project_path, part=from_part,
-                                                occurrence_ids=occurrence_ids)
-    source_hashes = {
-        occurrence_id: mask_records.derivation_hash(
-            row["recipe_hash"], row.get("source_mask_hash"))
-        for occurrence_id, row in source_masks.items()
+    source_rows = {
+        upstream: mask_records.mask_lookup(project_path, part=upstream,
+                                           occurrence_ids=occurrence_ids,
+                                           reference=from_reference)
+        for upstream in upstream_parts
     }
+    # Only an occurrence holding every upstream part has a source to hash; one
+    # missing any of them is never complete and is counted as no_input below.
+    source_hashes = {}
+    for occurrence_id in occurrence_ids if upstream_parts else ():
+        rows = [lookup.get(occurrence_id) for lookup in source_rows.values()]
+        if all(row is not None for row in rows):
+            source_hashes[occurrence_id] = mask_records.combined_source_hash({
+                upstream: mask_records.derivation_hash(
+                    row["recipe_hash"], row.get("source_mask_hash"))
+                for upstream, row in zip(source_rows, rows)
+            })
 
     # Which occurrence-parts still need work, per part. Computed up front so a
     # fully-cached run does no image loading at all rather than loading every
@@ -459,16 +540,12 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                     raise drivers.NoInput(drivers.NO_IMAGE)
 
                 start_mask = None
-                if from_part is not None:
-                    source = source_masks.get(occurrence_id)
-                    if source is None:
-                        raise drivers.NoInput(
-                            drivers.no_mask(from_part))
-                    start_mask = mask_records.decode_mask(source)
+                if upstream_parts:
+                    start_mask = _upstream_mask(source_rows, occurrence_id)
 
                 base = segment_iteration.build_segment(
                     image, mask=start_mask, occurrence_id=occurrence_id,
-                    part=from_part or DEFAULT_PART, project_path=project_path,
+                    part=from_label or DEFAULT_PART, project_path=project_path,
                     panel_sink=pipeline_visualization.panel_sink(
                         shared_sink, occurrence_id))
 
@@ -528,7 +605,7 @@ def run_segments(project_path, steps=None, run_name=None, part=DEFAULT_PART,
                         recipe_hash=recipe.hash,
                         run_id=run_ids[output_part],
                         score=score,
-                        from_part=from_part,
+                        from_part=from_label,
                         source_mask_hash=source_hashes.get(occurrence_id),
                         info=mask_info,
                     ))

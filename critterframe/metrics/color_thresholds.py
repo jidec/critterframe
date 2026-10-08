@@ -12,6 +12,7 @@ import numpy as np
 from ..colorspaces import convert, get_space, in_arc
 from ..recipes import Metric
 from ..visualization.panels import annotate, side_by_side
+from .derived import DerivedMetric, derived
 from .pixels import masked_pixels
 
 # Hue arcs in degrees, half-open [start, end). Red wraps through 0, which
@@ -36,6 +37,9 @@ BLACK_THRESHOLD = 0.20
 
 # The key `threshold_fractions(unmatched=True)` reports pixels matching no threshold under.
 UNMATCHED = "unmatched"
+
+# The operation name color_presence recognizes a threshold_fractions metric by.
+THRESHOLD_FRACTIONS = "threshold_fractions"
 
 # How bright an organism pixel a threshold did NOT match is drawn in its panel, as a fraction of its grey level.
 _DIMMED = 0.35
@@ -171,10 +175,106 @@ def threshold_fractions(thresholds, unmatched=False, name=None, unit="fraction")
     if unmatched and UNMATCHED in names:
         raise ValueError(f"a threshold named {UNMATCHED!r} collides with unmatched=True")
 
-    return Metric("threshold_fractions", _threshold_fractions,
+    return Metric(THRESHOLD_FRACTIONS, _threshold_fractions,
                   {"thresholds": [threshold.spec() for threshold in thresholds],
                    "unmatched": bool(unmatched)},
                   version="1", unit=unit, metric_name=name)
+
+
+def color_presence(fractions=None, from_run=None, min_fraction=0.10, n_ranked_colors=2,
+                   name="color_presence", unit=None):
+    """
+    Metric: which colours of a `threshold_fractions` result are present, how many, and the largest.
+
+    Derived from the stored fractions: list it after a `threshold_fractions`
+    in the same run, or pass that operation and `from_run`. Returns
+    `{<colour>_present, n_colors_present, ranked_color_1 ... ranked_color_<n>}`;
+    `"unmatched"` never counts, a colour with no stored fraction is absent,
+    and ties keep the bins' order.
+
+    - `fractions` -- which `threshold_fractions` to read: None for the one
+      listed before this in the same run, its metric name where there are
+      several, or the operation itself, configured as measured.
+    - `from_run` -- the run that stored it, which needs the operation; None
+      for an earlier metric in this run.
+    - `min_fraction` -- the share of the organism a colour must cover to be present.
+    - `n_ranked_colors` -- how many `ranked_color_<i>` to report, largest first; None past those present.
+    """
+    if not 0 < min_fraction <= 1:
+        raise ValueError(f"min_fraction must be in (0, 1], got {min_fraction!r}")
+    if isinstance(n_ranked_colors, bool) or not isinstance(n_ranked_colors, int) or n_ranked_colors < 0:
+        raise ValueError(f"n_ranked_colors must be a non-negative integer, got {n_ranked_colors!r}")
+
+    if fractions is None or isinstance(fractions, str):
+        if from_run is not None:
+            raise ValueError(
+                f"color_presence needs the threshold_fractions(...) operation run {from_run!r} "
+                "measured with -- only a metric of this same run can be found by name")
+        return _UnboundColorPresence(fractions, min_fraction, n_ranked_colors, name, unit)
+
+    if getattr(fractions, "name", None) != THRESHOLD_FRACTIONS:
+        raise TypeError("color_presence reads a threshold_fractions(...) metric, got "
+                        f"{getattr(fractions, 'name', type(fractions).__name__)!r}")
+
+    colors = [spec["name"] for spec in fractions.parameters["thresholds"]]
+    return derived(_color_presence, [fractions], from_run, name=name, unit=unit,
+                   parameters={"colors": colors, "min_fraction": min_fraction,
+                               "n_ranked_colors": n_ranked_colors})
+
+
+def _color_presence(values, colors, min_fraction, n_ranked_colors):
+    (stored,) = values.values()
+    present = {color: stored[color] for color in colors
+               if stored.get(color) is not None and stored[color] >= min_fraction}
+    # sorted() is stable, so equal fractions keep the bins' order.
+    ranked = sorted(present, key=lambda color: -present[color])
+    result = {f"{color}_present": color in present for color in colors}
+    result["n_colors_present"] = len(present)
+    for rank in range(n_ranked_colors):
+        result[f"ranked_color_{rank + 1}"] = ranked[rank] if rank < len(ranked) else None
+    return result
+
+
+class _UnboundColorPresence(DerivedMetric):
+    """A `color_presence` that hasn't been given its `threshold_fractions`; `bind()` finds it in the run."""
+
+    def __init__(self, fractions, min_fraction, n_ranked_colors, name, unit):
+        # The named feature only marks this unbound; bind() does its own lookup.
+        super().__init__(_color_presence, [fractions or THRESHOLD_FRACTIONS], name=name, unit=unit)
+        self.fractions = fractions
+        self.min_fraction = min_fraction
+        self.n_ranked_colors = n_ranked_colors
+
+    def bind(self, earlier):
+        """
+        The `color_presence` of the `threshold_fractions` listed before this one.
+
+        - `earlier` -- the Metric operations listed before this one in the run.
+
+        Returns the bound metric, the same one passing that operation builds.
+        """
+        candidates = [operation for operation in earlier
+                      if getattr(operation, "name", None) == THRESHOLD_FRACTIONS]
+        if self.fractions is None:
+            if len(candidates) != 1:
+                names = [operation.metric_name for operation in candidates]
+                raise ValueError(
+                    f"{self.metric_name} reads the threshold_fractions listed before it in "
+                    f"metrics=, and found {names or 'none'} -- "
+                    + ('say which with fractions="<its name>"' if names
+                       else "list one first"))
+            chosen = candidates[0]
+        else:
+            named = [operation for operation in earlier
+                     if operation.metric_name == self.fractions]
+            if not named:
+                raise ValueError(
+                    f"{self.metric_name} reads {self.fractions!r} from this run, but no "
+                    "metric of that name is listed before it in metrics=")
+            chosen = named[0]
+        return color_presence(chosen, min_fraction=self.min_fraction,
+                              n_ranked_colors=self.n_ranked_colors,
+                              name=self.metric_name, unit=self.unit)
 
 
 def threshold_masks(pixels, thresholds):

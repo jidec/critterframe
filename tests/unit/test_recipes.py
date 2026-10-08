@@ -612,3 +612,182 @@ def test_load_json_passes_none_through():
 def test_a_hash_is_short_and_stable():
     assert len(hash_spec({"a": 1})) == 16
     assert hash_spec({"a": 1}) == hash_spec({"a": 1})
+
+
+# ---------------------------------------------------------------------------
+# A note: recorded beside the recipe, never in it
+# ---------------------------------------------------------------------------
+
+
+def test_a_note_is_not_part_of_what_an_operation_is():
+    """
+    How an operation is meant to be used is description, not work. Rewording it
+    must not make stored results look like the product of a different recipe.
+    """
+    from critterframe.recipes import Metric
+
+    def measure(segment):
+        return 1
+
+    plain = Metric("measure", measure, unit="px")
+    noted = Metric("measure", measure, unit="px", note="measured along the body axis")
+    reworded = Metric("measure", measure, unit="px", note="along the long axis")
+
+    assert plain.spec() == noted.spec() == reworded.spec()
+    assert "note" not in noted.spec()
+
+
+def test_a_note_reaches_the_run_through_prepare(caplog):
+    """
+    prepare() is what a run records beside the recipe, so that is where a note
+    goes. Without one there is nothing to record, as before.
+    """
+    from critterframe.recipes import Metric
+
+    def measure(segment):
+        return 1
+
+    assert Metric("measure", measure).prepare(None) is None
+
+    with caplog.at_level("INFO"):
+        record = Metric("measure", measure, note="along the body axis").prepare(None)
+    assert record == {"note": "along the body axis"}
+    assert "along the body axis" in caplog.text
+
+
+def test_a_note_has_to_be_text():
+    """It is stored as JSON, and a callable or a model slipped in here would fail at the write."""
+    from critterframe.recipes import Metric
+
+    with pytest.raises(TypeError, match="note must be text"):
+        Metric("measure", lambda segment: 1, note=["step one", "step two"])
+
+
+# ---------------------------------------------------------------------------
+# Saying what changed between two recipes
+# ---------------------------------------------------------------------------
+
+
+def traits_recipe(*operations, part="organism"):
+    return Recipe("metric", "traits", list(operations), part=part,
+                  inputs={"masks": "canonical"}).spec()
+
+
+def changes(old, new):
+    from critterframe.recipes import describe_recipe_change
+
+    return describe_recipe_change(old, new)
+
+
+def test_an_added_step_is_named_with_where_it_went():
+    """
+    Two hashes say that a recipe moved; a person needs to know which line of
+    their script did it.
+    """
+    old = traits_recipe(cf.remove_background(), cf.crop_to_mask(), cf.body_length())
+    new = traits_recipe(cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(),
+                        cf.body_length())
+
+    assert changes(old, new) == [
+        "added transform remove_islands(min_area_frac=None) after remove_background"]
+    assert changes(new, old) == ["removed transform remove_islands(min_area_frac=None)"]
+
+
+def test_a_changed_parameter_is_named_with_both_values():
+    old = traits_recipe(cf.orient(), cf.body_length())
+    new = traits_recipe(cf.orient(axis_strategy="longer"), cf.body_length())
+
+    assert changes(old, new) == ["orient: axis_strategy: 'skew' -> 'longer'"]
+
+
+def test_what_a_metric_is_called_or_measured_in_is_a_change_too():
+    old = traits_recipe(cf.body_length())
+    assert changes(old, traits_recipe(cf.body_length(unit="mm"))) == [
+        "body_length: unit 'px' -> 'mm'"]
+
+    renamed = changes(old, traits_recipe(cf.body_length(name="length")))
+    assert renamed == ["removed metric body_length()", "added metric length() at the start"]
+
+
+def test_a_changed_model_is_named_by_what_about_it_changed():
+    """A retrained checkpoint moves the fingerprint and nothing else, and the line says so."""
+    old = traits_recipe(cf.segment(ThresholdModel()))
+    new = traits_recipe(cf.segment(ThresholdModel(erode=2)))
+
+    lines = changes(old, new)
+    assert len(lines) == 1
+    assert lines[0].startswith("segment: model ") and "->" in lines[0]
+
+
+def test_the_part_and_inputs_are_compared_but_not_the_name():
+    """name is not part of a recipe's identity, so a rename is not a difference."""
+    old = traits_recipe(cf.body_length())
+    assert changes(old, traits_recipe(cf.body_length(), part="abdomen")) == [
+        "part: 'organism' -> 'abdomen'"]
+
+    renamed = dict(old, name="something_else")
+    assert changes(old, renamed) == ["nothing this comparison reads -- the two specs are the same"]
+
+
+def test_a_spec_read_back_from_a_run_compares_equal_to_the_live_one():
+    """
+    One side is always a stored spec, which has been through JSON: tuples came
+    back as lists. That alone must not read as a change.
+    """
+    import json
+
+    live = traits_recipe(cf.orient(), cf.body_length())
+    stored = json.loads(json.dumps(live))
+    assert changes(stored, live) == ["nothing this comparison reads -- the two specs are the same"]
+
+
+# ---------------------------------------------------------------------------
+# The image a segment started from
+# ---------------------------------------------------------------------------
+
+
+def a_photo_with_a_specimen():
+    image = np.zeros((120, 200, 3), np.uint8)
+    mask = np.zeros((120, 200), bool)
+    mask[40:100, 120:140] = True
+    image[mask] = 200
+    return image, mask
+
+
+def test_a_segment_keeps_the_image_it_started_from():
+    """
+    By reference: the run's loop holds that array anyway, so carrying it costs
+    nothing, and it cannot be re-read mid-run because the store is already open.
+    """
+    image, mask = a_photo_with_a_specimen()
+    segment = Segment(image, mask=mask, occurrence_id="a")
+
+    assert segment.original_image is image
+    assert segment.replace(image=image[:10, :10]).original_image is image
+    assert segment.for_part("abdomen").original_image is image
+
+
+def test_the_original_survives_a_transform_chain():
+    """Cropped, rotated and background-removed, the segment still has the untouched photo."""
+    image, mask = a_photo_with_a_specimen()
+    untouched = image.copy()
+    segment = Segment(image, mask=mask, occurrence_id="a")
+    for operation in (cf.remove_background(), cf.crop_to_mask(), cf.orient()):
+        segment, _info = operation(segment)
+
+    assert segment.image.shape != image.shape
+    assert segment.original_image is image
+    assert np.array_equal(image, untouched)
+
+
+def test_a_segment_built_mid_chain_has_no_original_unless_given_one():
+    """
+    With a matrix, the image handed in is already not the original, and calling
+    it one would show a crop as the untouched photo.
+    """
+    image, _mask = a_photo_with_a_specimen()
+    shifted = np.array([[1.0, 0.0, -5.0], [0.0, 1.0, 0.0]])
+
+    assert Segment(image[:, 5:], matrix=shifted, original_shape=image.shape[:2]).original_image is None
+    assert Segment(image[:, 5:], matrix=shifted, original_shape=image.shape[:2],
+                   original_image=image).original_image is image

@@ -107,6 +107,14 @@
     options:
       show_root_full_path: false
 
+::: critterframe.remove_islands
+    options:
+      show_root_full_path: false
+
+::: critterframe.erode
+    options:
+      show_root_full_path: false
+
 ::: critterframe.crop
     options:
       show_root_full_path: false
@@ -137,7 +145,7 @@
     options:
       show_root_full_path: false
 
-::: critterframe.usability_annotation
+::: critterframe.exclusive_label_annotation
     options:
       show_root_full_path: false
 
@@ -173,6 +181,10 @@
     options:
       show_root_full_path: false
 
+::: critterframe.color_presence
+    options:
+      show_root_full_path: false
+
 ::: critterframe.red_fraction
     options:
       show_root_full_path: false
@@ -197,7 +209,19 @@
     options:
       show_root_full_path: false
 
+::: critterframe.n_islands
+    options:
+      show_root_full_path: false
+
 ::: critterframe.max_width
+    options:
+      show_root_full_path: false
+
+::: critterframe.elongation
+    options:
+      show_root_full_path: false
+
+::: critterframe.jaggedness
     options:
       show_root_full_path: false
 
@@ -206,6 +230,10 @@
       show_root_full_path: false
 
 ::: critterframe.outlier
+    options:
+      show_root_full_path: false
+
+::: critterframe.label_score
     options:
       show_root_full_path: false
 
@@ -299,6 +327,18 @@
     options:
       show_root_full_path: false
 
+::: critterframe.completed_ids
+    options:
+      show_root_full_path: false
+
+::: critterframe.exemplars_per_group
+    options:
+      show_root_full_path: false
+
+::: critterframe.occurrence_ids_with_mask
+    options:
+      show_root_full_path: false
+
 ::: critterframe.sample_occurrences
     options:
       show_root_full_path: false
@@ -322,6 +362,10 @@
 # validation
 
 ::: critterframe.get_validated_filters
+    options:
+      show_root_full_path: false
+
+::: critterframe.audit_filters
     options:
       show_root_full_path: false
 

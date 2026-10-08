@@ -11,6 +11,7 @@ import logging
 import cv2
 import numpy as np
 
+from ..maskops import mask_bounds
 from .panels import TEXT_COLOR
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,28 @@ def _as_bgr(image):
     if image.shape[2] == 4:
         return cv2.cvtColor(image, cv2.COLOR_BGRA2BGR)
     return image
+
+
+def mask_cutout(segment, background=BACKGROUND):
+    """
+    The segment's masked pixels on the grid background, cropped to the mask; the image when there's no mask.
+
+    How a gallery shows one member: the organism or part alone, at the size of
+    its own bounding box, so cells compare specimens and not their surroundings.
+    """
+    image = np.asarray(segment.image)
+    if image.ndim == 2:
+        image = np.dstack([image] * 3)
+    if segment.mask is None:
+        return image
+    mask = np.asarray(segment.mask) > 0
+    if not mask.any():
+        return image
+    out = np.empty_like(image)
+    out[:] = background
+    out[mask] = image[mask]
+    box = mask_bounds(mask)
+    return out[box["y"]:box["y"] + box["height"], box["x"]:box["x"] + box["width"]]
 
 
 def fit_cell(image, cell=DEFAULT_CELL, background=BACKGROUND):

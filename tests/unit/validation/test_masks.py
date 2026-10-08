@@ -288,8 +288,8 @@ def test_an_unknown_metric_is_rejected(segmented_project):
 def test_reference_part_compares_against_a_different_named_part(segmented_project):
     """
     'organism' predicted against a reference stored under 'body' instead of
-    'organism' -- e.g. a merged part from merge_masks() -- with no new
-    function needed.
+    'organism' -- e.g. a part merged from several by run_segments -- with no
+    new function needed.
     """
     occurrence_id = mask_records.load_masks(segmented_project).iloc[0]["occurrence_id"]
     _set_masks(segmented_project, occurrence_id,

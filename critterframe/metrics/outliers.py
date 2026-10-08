@@ -17,7 +17,6 @@ from functools import partial
 import numpy as np
 import pandas as pd
 
-from ..maskops import mask_bounds
 from ..recipes import Metric
 from ..selectionhelpers import sample_occurrences
 from .pixels import masked_pixels
@@ -36,7 +35,7 @@ POPULATION = None
 
 # Groups with fewer reference occurrences than this don't get their own model.
 # Fitting an outlier detector on three points produces confident nonsense.
-MIN_GROUP_SIZE = 5
+MIN_GROUP_SIZE = 1
 
 # Groups drawn by name in the reference figure; the rest are pooled as "(other)".
 FIGURE_GROUPS = 10
@@ -569,23 +568,6 @@ def _reduced(model, n_components):
                          PCA(n_components=n_components, random_state=0), model)
 
 
-def _cutout(segment):
-    """The segment's masked pixels on the grid background, cropped to the mask; the image when there's no mask."""
-    image = np.asarray(segment.image)
-    if image.ndim == 2:
-        image = np.dstack([image] * 3)
-    if segment.mask is None:
-        return image
-    mask = np.asarray(segment.mask) > 0
-    if not mask.any():
-        return image
-    out = np.empty_like(image)
-    out[:] = grids.BACKGROUND
-    out[mask] = image[mask]
-    box = mask_bounds(mask)
-    return out[box["y"]:box["y"] + box["height"], box["x"]:box["x"] + box["width"]]
-
-
 class ClusterMetric(GroupMetric):
     """
     Which cluster an occurrence falls into within its own group's trait
@@ -688,7 +670,7 @@ class ClusterMetric(GroupMetric):
                 context.project_path, part=context.part,
                 transforms=context.transforms, reference=context.reference,
                 occurrence_ids=wanted, progress=f"{self.metric_name} gallery"):
-            cells[occurrence_id] = _cutout(segment)
+            cells[occurrence_id] = grids.mask_cutout(segment)
         if not cells:
             return
 

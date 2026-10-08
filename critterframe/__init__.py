@@ -27,7 +27,7 @@ from .ingest import ingest_images, ingest_occurrences, load_imports
 from .recipes import DEFAULT_PART
 
 # --- segmentation ----------------------------------------------------------
-from .records.masks import merge_mask_shards, merge_masks, load_masks
+from .records.masks import load_masks, merge_mask_shards, occurrence_ids_with_mask
 from .segmentation.groundedsam import groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
 from .segmentation.mask_import_export import export_masks, import_masks
@@ -36,10 +36,15 @@ from .segmentation.run import run_segments, segment
 # --- transforms ------------------------------------------------------------
 from .transforms.appendages import remove_appendages
 from .transforms.crop import crop, crop_to_mask, remove_background, resize, rotate
+from .transforms.erode import erode
+from .transforms.islands import remove_islands
 from .transforms.orient import orient
 
 # --- metrics ---------------------------------------------------------------
-from .metrics.annotation import click_two_points, usability_annotation
+from .metrics.annotation import (
+    click_two_points,
+    exclusive_label_annotation,
+)
 from .metrics.color_clusters import color_clusters
 from .metrics.color_means import (
     background_color,
@@ -49,6 +54,7 @@ from .metrics.color_means import (
 )
 from .metrics.color_thresholds import (
     black_fraction,
+    color_presence,
     color_threshold,
     hue_fraction,
     hue_thresholds,
@@ -57,10 +63,20 @@ from .metrics.color_thresholds import (
     yellow_fraction,
 )
 from .metrics.derived import derived
+from .metrics.label_score import label_score
 from .metrics.embedding import embedding
 from .metrics.inductive_color_thresholds import inductive_color_thresholds
+from .metrics.islands import n_islands
 from .metrics.mask_info import mask_info
-from .metrics.dimensions import body_length, bounding_box, length, mask_area, max_width
+from .metrics.dimensions import (
+    body_length,
+    bounding_box,
+    elongation,
+    jaggedness,
+    length,
+    mask_area,
+    max_width,
+)
 from .metrics.outliers import cluster, outlier
 from .metrics.position import centroid, image_bounds, relative_position
 from .metrics.quality import (
@@ -81,8 +97,8 @@ from .records.metrics import load_metrics
 from .records.runs import load_runs
 
 # --- getting data out ------------------------------------------------------
-from .export import (export_metrics, export_units, load_exports,
-                     occurrences_matching)
+from .export import (completed_ids, exemplars_per_group, export_metrics, export_units,
+                     load_exports, occurrences_matching)
 from .selectionhelpers import (
     grow_sample,
     sample_occurrences,
@@ -94,6 +110,7 @@ from .visualization.products import render_segments
 
 # --- validation ------------------------------------------------------------
 from .validation.filters import (
+    audit_filters,
     get_validated_filters,
     suggest_threshold,
     sweep_thresholds,
@@ -104,6 +121,7 @@ from .validation.metrics import compare_metrics
 __all__ = [
     "DEFAULT_PART",
     "archive_project",
+    "audit_filters",
     "background_color",
     "bilateral_asymmetry",
     "black_fraction",
@@ -114,9 +132,11 @@ __all__ = [
     "click_two_points",
     "cluster",
     "color_clusters",
+    "color_presence",
     "color_threshold",
     "compare_metrics",
     "comparison_grid",
+    "completed_ids",
     "correct_mask",
     "crop",
     "crop_to_mask",
@@ -128,7 +148,11 @@ __all__ = [
     "download_images",
     "draw_mask",
     "edge_fraction",
+    "elongation",
     "embedding",
+    "erode",
+    "exclusive_label_annotation",
+    "exemplars_per_group",
     "export_masks",
     "export_metrics",
     "export_training_data",
@@ -145,6 +169,8 @@ __all__ = [
     "inductive_color_thresholds",
     "ingest_images",
     "ingest_occurrences",
+    "jaggedness",
+    "label_score",
     "length",
     "list_models",
     "load_exports",
@@ -163,7 +189,8 @@ __all__ = [
     "measure_scale_by_hand",
     "measure_scales",
     "merge_mask_shards",
-    "merge_masks",
+    "n_islands",
+    "occurrence_ids_with_mask",
     "occurrences_matching",
     "orient",
     "outlier",
@@ -173,6 +200,7 @@ __all__ = [
     "relative_position",
     "remove_appendages",
     "remove_background",
+    "remove_islands",
     "render_segments",
     "resize",
     "rotate",
@@ -192,7 +220,6 @@ __all__ = [
     "sweep_thresholds",
     "threshold_fractions",
     "unregister_model",
-    "usability_annotation",
     "validate_masks",
     "white_balanced_color",
     "yellow_fraction",

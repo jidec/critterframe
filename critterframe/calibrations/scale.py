@@ -34,7 +34,7 @@ from ..records.occurrences import ID_COL
 from ..storage.imagestore import ImageStore
 from ..visualization import figures
 from ..visualization import pipeline as pipeline_visualization
-from ..visualization.panels import annotate
+from ..visualization.panels import annotate, fit_for_display
 
 logger = logging.getLogger(__name__)
 
@@ -44,11 +44,11 @@ logger = logging.getLogger(__name__)
 CALIBRATION_TYPE = "scale"
 SCALE_COL = "px_per_mm"
 
-# Longest side, in pixels, scale_from_click() shrinks its window to. A
-# full-resolution scene image (a light-trap sheet, easily 4000px+) routinely
-# exceeds any screen; cv2 does not scale a window to fit one on its own, so
-# without this the scale bar it's meant to show can end up off-screen.
-DEFAULT_MAX_DISPLAY = 1200
+# What scale_from_click() fits its window to by default: the shared screen box
+# (panels.DISPLAY_MAX). A full-resolution scene image (a light-trap sheet,
+# easily 4000px+) routinely exceeds any screen, and cv2 does not scale a window
+# on its own, so without this the scale bar can end up off-screen.
+DEFAULT_MAX_DISPLAY = "screen"
 
 # Scales to try the template at, as multiples of its own size. Wide because a
 # template cropped from one project's photo may meet a camera at a different
@@ -226,13 +226,12 @@ def scale_from_click(image, target_mm=None, name=None, max_display=DEFAULT_MAX_D
       a project re-measuring one recurring scale bar doesn't have to hardcode
       its length at every call site.
     - `name` -- shown in the window title and the log line.
-    - `max_display` -- longest side, in pixels, the window is shrunk to for
-      display -- a full-resolution scene image (a light-trap sheet, easily
-      4000px+) is routinely bigger than the screen, and cv2 neither scales nor
-      letterboxes a window to fit one on its own. None shows the image at full
-      resolution. Either way, the two clicked points are converted back to the
-      ORIGINAL image's pixel coordinates before being returned, so shrinking
-      the window for display doesn't touch px_per_mm.
+    - `max_display` -- `"screen"` (default) fits the window to
+      `panels.DISPLAY_MAX`, enlarging a small image as well as shrinking a big
+      one; an int is a longest side the window is only ever shrunk to; None
+      shows the image at full resolution. Either way, the clicked points are
+      converted back to the ORIGINAL image's pixels, so resizing the window
+      doesn't touch px_per_mm.
 
     Left-click the two ends of the scale object, in either order; Esc cancels
     before both points land, and a blank or non-positive typed length cancels
@@ -243,16 +242,15 @@ def scale_from_click(image, target_mm=None, name=None, max_display=DEFAULT_MAX_D
     """
     original = np.asarray(image)
     height, width = original.shape[:2]
-    display_scale = 1.0
-    if max_display is not None and max(height, width) > max_display:
-        display_scale = max_display / max(height, width)
-
-    display = original.copy()
+    display = original
     if display.ndim == 2:
         display = cv2.cvtColor(display, cv2.COLOR_GRAY2BGR)
-    if display_scale != 1.0:
-        display = cv2.resize(display, None, fx=display_scale, fy=display_scale,
-                             interpolation=cv2.INTER_AREA)
+    if isinstance(max_display, (int, float)):
+        display, display_scale = fit_for_display(
+            display, (max_display, max_display), enlarge=False)
+    else:
+        display, display_scale = fit_for_display(display, max_display)
+    display = display.copy()
 
     window = f"{name or 'scale'} - click the two ends of the scale object (Esc=cancel)"
     cv2.imshow(window, display)
@@ -285,7 +283,8 @@ def scale_from_click(image, target_mm=None, name=None, max_display=DEFAULT_MAX_D
     # Back to ORIGINAL-image pixels -- the only frame px_per_mm can mean
     # anything in, since that's the frame every other measurement is made in.
     (x0, y0), (x1, y1) = (
-        (round(x / display_scale), round(y / display_scale))
+        (min(width - 1, max(0, round(x / display_scale))),
+         min(height - 1, max(0, round(y / display_scale))))
         for x, y in display_points
     )
     length_px = float(np.hypot(x1 - x0, y1 - y0))
@@ -617,8 +616,8 @@ def measure_scale_by_hand(project_path, image, target_mm=None, scope=ID_COL,
       only what has no scale yet counts toward what gets written, so a rerun
       after adding new occurrences only asks to click once more, not measure
       everyone again.
-    - `max_display` -- passed through to `scale_from_click()`; shrinks the
-      window so a full-resolution scene image fits on screen.
+    - `max_display` -- passed through to `scale_from_click()`; fits the
+      window to the screen.
 
     Returns scale_from_click()'s result dict with `covered` added -- how many
     rows were written -- or None if cancelled (nothing is recorded) or if

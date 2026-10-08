@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from ..project import paths
-from ..recipes import canonical_json, load_json
+from ..recipes import canonical_json, describe_recipe_change, load_json
 from ..storage.jsonfiles import append_jsonl
 from ..storage.sqlite import connect
 
@@ -365,7 +365,8 @@ def _write_current_recipe(connection, kind, name, part, recipe_hash):
     )
 
 
-def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force):
+def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force,
+                            recipe_spec=None):
     """
     Settle whether (kind, name, part) may proceed under recipe_hash, and
     whether the caller still owes commit_recipe_currency() once real work
@@ -385,6 +386,11 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force):
     force is falsy, naming both hashes. force=True acknowledges the change
     explicitly instead of it happening as a side effect of write order.
 
+    `recipe_spec` is this run's `Recipe.spec()`. Given it, the error (and the
+    log line of a forced move) says WHAT differs from the recipe the name
+    points at, operation by operation: two hashes alone can't tell a person
+    whether they changed something or the package did.
+
     Returns True when the caller must call commit_recipe_currency() itself
     once it knows real work was done; False when there is nothing left to do
     (first use, or already pointing here) because that case is safe to write
@@ -399,6 +405,18 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force):
             _write_current_recipe(connection, kind, name, part, recipe_hash)
             return False
 
+        differs = ""
+        if recipe_spec is not None:
+            row = connection.execute(
+                "SELECT recipe_json FROM runs WHERE kind = ? AND recipe_hash = ? "
+                "ORDER BY run_id DESC LIMIT 1",
+                (kind, current),
+            ).fetchone()
+            if row is not None:
+                changed = describe_recipe_change(load_json(row["recipe_json"]), recipe_spec)
+                differs = ("\nWhat this run changes from the recipe the name points at:\n"
+                           + "\n".join(f"  - {line}" for line in changed))
+
         if not force:
             raise ValueError(
                 f"run_name {name!r} currently points at a different metric "
@@ -408,8 +426,11 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force):
                 f"proceeding would silently interleave two recipes under one "
                 f"name. Pass force=True to move {name!r} onto this recipe -- "
                 f"values already on record stay there but stop being current "
-                f"-- or give this recipe its own name instead."
+                f"-- or give this recipe its own name instead.{differs}"
             )
+        if differs:
+            logger.info("run_name %r part %r: force=True moves it from recipe %s "
+                        "to %s.%s", name, part, current, recipe_hash, differs)
         return True
 
 
