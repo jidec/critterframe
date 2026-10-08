@@ -38,7 +38,7 @@ from critterframe.recipes import (
 from helpers.models import ThresholdModel, UnidentifiedModel
 
 FRAME = (200, 300)
-BLOB = (slice(60, 100), slice(200, 240))     # y, x -- upper right of the frame
+BLOB = (slice(60, 100), slice(200, 240))  # y, x -- upper right of the frame
 
 
 def a_frame():
@@ -87,7 +87,7 @@ def test_rgb_swaps_channels_and_widens_grayscale():
     image has to come back three-channel or a model receives the wrong rank.
     """
     image = np.zeros((2, 2, 3), np.uint8)
-    image[..., 0] = 255                       # blue in BGR
+    image[..., 0] = 255  # blue in BGR
     assert Segment(image).rgb[0, 0].tolist() == [0, 0, 255]
     assert Segment(np.zeros((2, 2), np.uint8)).rgb.shape == (2, 2, 3)
 
@@ -147,8 +147,7 @@ def test_compose_applies_the_new_transform_after_the_old():
     """
     shift_right = np.array([[1.0, 0, 10], [0, 1.0, 0]])
     shift_down = np.array([[1.0, 0, 0], [0, 1.0, 5]])
-    assert np.allclose(_compose(shift_right, shift_down),
-                       [[1, 0, 10], [0, 1, 5]])
+    assert np.allclose(_compose(shift_right, shift_down), [[1, 0, 10], [0, 1, 5]])
 
 
 def test_a_transform_that_moves_pixels_composes_onto_the_matrix():
@@ -172,8 +171,7 @@ CHAINS = {
     "no transforms": [],
     "crop": [cf.crop(region="upper_right")],
     "crop then rotate": [cf.crop(region="upper_right"), cf.rotate(30)],
-    "crop rotate resize": [cf.crop(region="upper_right"), cf.rotate(30),
-                           cf.resize(scale=2.0)],
+    "crop rotate resize": [cf.crop(region="upper_right"), cf.rotate(30), cf.resize(scale=2.0)],
     "crop_to_mask": [cf.crop_to_mask()],
     "resize alone": [cf.resize(scale=0.5)],
     "rotate alone": [cf.rotate(90)],
@@ -258,8 +256,7 @@ def test_a_sink_receives_the_stage_and_the_occurrence():
     segment = a_segment(panel_sink=sink)
     segment.emit_panel(np.zeros((4, 4, 3), np.uint8), "orientation")
 
-    assert [(occurrence, stage) for occurrence, stage, _ in sink.collected] == [
-        ("test", "orientation")]
+    assert [(occurrence, stage) for occurrence, stage, _ in sink.collected] == [("test", "orientation")]
 
 
 def test_the_sink_survives_replace():
@@ -277,17 +274,13 @@ def test_the_sink_survives_replace():
 
 
 def test_an_operations_spec_covers_what_changes_its_output():
-    operation = Operation("thing", lambda segment: segment,
-                          parameters={"a": 1}, version="2")
-    assert operation.spec() == {"name": "thing", "kind": "operation",
-                                "version": "2", "parameters": {"a": 1}}
+    operation = Operation("thing", lambda segment: segment, parameters={"a": 1}, version="2")
+    assert operation.spec() == {"name": "thing", "kind": "operation", "version": "2", "parameters": {"a": 1}}
 
 
 def test_a_model_reaches_the_spec_through_its_own_identity():
-    operation = Operation("segment", lambda segment, model: segment,
-                          model=ThresholdModel(cutoff=120))
-    assert operation.spec()["model"] == {"class": "ThresholdModel",
-                                         "cutoff": 120, "erode": 0}
+    operation = Operation("segment", lambda segment, model: segment, model=ThresholdModel(cutoff=120))
+    assert operation.spec()["model"] == {"class": "ThresholdModel", "cutoff": 120, "erode": 0}
 
 
 def test_a_model_without_an_identity_is_only_its_class_name():
@@ -362,23 +355,18 @@ def test_determinism_is_not_part_of_identity():
     would orphan every one of them. Same category as a visualize flag.
     """
     reproducible = Segmentation("paint", None, {"brush_radius": 8})
-    by_hand = Segmentation("paint", None, {"brush_radius": 8},
-                           deterministic=False)
+    by_hand = Segmentation("paint", None, {"brush_radius": 8}, deterministic=False)
 
     assert reproducible.spec() == by_hand.spec()
-    assert Recipe("segment", "refs", [reproducible]).hash \
-        == Recipe("segment", "refs", [by_hand]).hash
+    assert Recipe("segment", "refs", [reproducible]).hash == Recipe("segment", "refs", [by_hand]).hash
 
 
 def test_a_recipe_reports_which_of_its_operations_will_not_reproduce():
     """What run_segments asks before deciding whether it may skip anything."""
-    recipe = Recipe("segment", "refs",
-                    [cf.crop_to_mask(), cf.draw_mask(), cf.orient()],
-                    part="organism")
+    recipe = Recipe("segment", "refs", [cf.crop_to_mask(), cf.draw_mask(), cf.orient()], part="organism")
 
     assert [op.name for op in recipe.nondeterministic_operations()] == ["draw_mask"]
-    assert Recipe("segment", "auto",
-                  [cf.segment(ThresholdModel())]).nondeterministic_operations() == []
+    assert Recipe("segment", "auto", [cf.segment(ThresholdModel())]).nondeterministic_operations() == []
 
 
 def test_hand_drawing_is_the_case_this_exists_for():
@@ -396,14 +384,17 @@ def test_prepare_all_collects_what_its_operations_prepared():
     The channel a group metric hands its fit back through. Keyed by metric name
     where there is one, since that is what the value is stored under.
     """
+
     class Fitting(Metric):
         def prepare(self, context):
             return {"fitted": context}
 
-    recipe = Recipe("metric", "scores",
-                    [cf.body_length(),
-                     Fitting("outlier", None, metric_name="unusual")],
-                    part="organism")
+    recipe = Recipe(
+        "metric",
+        "scores",
+        [cf.body_length(), Fitting("outlier", None, metric_name="unusual")],
+        part="organism",
+    )
 
     assert recipe.prepare_all("the-context") == {"unusual": {"fitted": "the-context"}}
 
@@ -433,14 +424,17 @@ def test_the_same_configuration_hashes_the_same():
     assert base_recipe().hash == base_recipe().hash
 
 
-@pytest.mark.parametrize("difference", [
-    {"part": "wing"},
-    {"from_part": "organism"},
-    {"inputs": {"masks": "reference"}},
-    {"kind": "segment"},
-    {"operations": [cf.max_width()]},
-    {"operations": [cf.body_length(), cf.max_width()]},
-])
+@pytest.mark.parametrize(
+    "difference",
+    [
+        {"part": "wing"},
+        {"from_part": "organism"},
+        {"inputs": {"masks": "reference"}},
+        {"kind": "segment"},
+        {"operations": [cf.max_width()]},
+        {"operations": [cf.body_length(), cf.max_width()]},
+    ],
+)
 def test_a_different_recipe_hashes_differently(difference):
     """
     The sensitivity family. Miss one of these and the package serves cached
@@ -460,8 +454,10 @@ def test_operation_order_is_part_of_identity():
 
 
 def test_a_changed_operation_parameter_moves_the_hash():
-    assert (base_recipe(operations=[cf.remove_appendages(relative_radius=0.1)]).hash
-            != base_recipe(operations=[cf.remove_appendages(relative_radius=0.2)]).hash)
+    assert (
+        base_recipe(operations=[cf.remove_appendages(relative_radius=0.1)]).hash
+        != base_recipe(operations=[cf.remove_appendages(relative_radius=0.2)]).hash
+    )
 
 
 def test_a_bumped_version_moves_the_hash():
@@ -473,10 +469,8 @@ def test_a_bumped_version_moves_the_hash():
 
 def test_a_different_checkpoint_moves_the_hash():
     """Two runs with different weights are never mistaken for equivalent work."""
-    first = base_recipe(kind="segment",
-                        operations=[cf.segment(ThresholdModel(cutoff=100))])
-    second = base_recipe(kind="segment",
-                         operations=[cf.segment(ThresholdModel(cutoff=120))])
+    first = base_recipe(kind="segment", operations=[cf.segment(ThresholdModel(cutoff=100))])
+    second = base_recipe(kind="segment", operations=[cf.segment(ThresholdModel(cutoff=120))])
     assert first.hash != second.hash
 
 
@@ -485,8 +479,10 @@ def test_a_renamed_metric_moves_the_hash():
     Storing the same measurement under a second name is different work -- the
     export gets another column -- so it must not be skipped as already done.
     """
-    assert (base_recipe(operations=[cf.mask_area(name="area_px")]).hash
-            != base_recipe(operations=[cf.mask_area()]).hash)
+    assert (
+        base_recipe(operations=[cf.mask_area(name="area_px")]).hash
+        != base_recipe(operations=[cf.mask_area()]).hash
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -568,10 +564,8 @@ def test_describe_carries_the_spec_as_well_as_the_hash():
 
 
 def test_operations_of_selects_one_kind_in_order():
-    recipe = base_recipe(operations=[cf.remove_appendages(), cf.orient(),
-                                     cf.body_length()])
-    assert [op.name for op in recipe.operations_of("transform")] == [
-        "remove_appendages", "orient"]
+    recipe = base_recipe(operations=[cf.remove_appendages(), cf.orient(), cf.body_length()])
+    assert [op.name for op in recipe.operations_of("transform")] == ["remove_appendages", "orient"]
     assert [op.name for op in recipe.operations_of("metric")] == ["body_length"]
 
 
@@ -584,12 +578,15 @@ def test_canonical_json_is_deterministic_and_compact():
     assert canonical_json({"b": 1, "a": [2, 3]}) == '{"a":[2,3],"b":1}'
 
 
-@pytest.mark.parametrize("value, expected", [
-    (np.float64(1.5), "1.5"),
-    (np.int64(3), "3"),
-    (np.array([1, 2]), "[1,2]"),
-    (np.bool_(True), "true"),
-])
+@pytest.mark.parametrize(
+    "value, expected",
+    [
+        (np.float64(1.5), "1.5"),
+        (np.int64(3), "3"),
+        (np.array([1, 2]), "[1,2]"),
+        (np.bool_(True), "true"),
+    ],
+)
 def test_numpy_values_serialize_as_plain_json(value, expected):
     """
     Metric values arrive from numpy constantly. Without this they would not be
@@ -669,8 +666,7 @@ def test_a_note_has_to_be_text():
 
 
 def traits_recipe(*operations, part="organism"):
-    return Recipe("metric", "traits", list(operations), part=part,
-                  inputs={"masks": "canonical"}).spec()
+    return Recipe("metric", "traits", list(operations), part=part, inputs={"masks": "canonical"}).spec()
 
 
 def changes(old, new):
@@ -685,11 +681,9 @@ def test_an_added_step_is_named_with_where_it_went():
     their script did it.
     """
     old = traits_recipe(cf.remove_background(), cf.crop_to_mask(), cf.body_length())
-    new = traits_recipe(cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(),
-                        cf.body_length())
+    new = traits_recipe(cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(), cf.body_length())
 
-    assert changes(old, new) == [
-        "added transform remove_islands(min_area_frac=None) after remove_background"]
+    assert changes(old, new) == ["added transform remove_islands(min_area_frac=None) after remove_background"]
     assert changes(new, old) == ["removed transform remove_islands(min_area_frac=None)"]
 
 
@@ -702,8 +696,7 @@ def test_a_changed_parameter_is_named_with_both_values():
 
 def test_what_a_metric_is_called_or_measured_in_is_a_change_too():
     old = traits_recipe(cf.body_length())
-    assert changes(old, traits_recipe(cf.body_length(unit="mm"))) == [
-        "body_length: unit 'px' -> 'mm'"]
+    assert changes(old, traits_recipe(cf.body_length(unit="mm"))) == ["body_length: unit 'px' -> 'mm'"]
 
     renamed = changes(old, traits_recipe(cf.body_length(name="length")))
     assert renamed == ["removed metric body_length()", "added metric length() at the start"]
@@ -722,8 +715,7 @@ def test_a_changed_model_is_named_by_what_about_it_changed():
 def test_the_part_and_inputs_are_compared_but_not_the_name():
     """name is not part of a recipe's identity, so a rename is not a difference."""
     old = traits_recipe(cf.body_length())
-    assert changes(old, traits_recipe(cf.body_length(), part="abdomen")) == [
-        "part: 'organism' -> 'abdomen'"]
+    assert changes(old, traits_recipe(cf.body_length(), part="abdomen")) == ["part: 'organism' -> 'abdomen'"]
 
     renamed = dict(old, name="something_else")
     assert changes(old, renamed) == ["nothing this comparison reads -- the two specs are the same"]
@@ -789,5 +781,9 @@ def test_a_segment_built_mid_chain_has_no_original_unless_given_one():
     shifted = np.array([[1.0, 0.0, -5.0], [0.0, 1.0, 0.0]])
 
     assert Segment(image[:, 5:], matrix=shifted, original_shape=image.shape[:2]).original_image is None
-    assert Segment(image[:, 5:], matrix=shifted, original_shape=image.shape[:2],
-                   original_image=image).original_image is image
+    assert (
+        Segment(
+            image[:, 5:], matrix=shifted, original_shape=image.shape[:2], original_image=image
+        ).original_image
+        is image
+    )

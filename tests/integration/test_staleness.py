@@ -32,20 +32,27 @@ LENGTH_COLUMN = "traits__organism__body_length"
 
 def measure(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_metrics(project_path, run_name="traits",
-                          transforms=[cf.remove_appendages(), cf.orient()],
-                          metrics=[cf.body_length(), cf.max_width(),
-                                   cf.mask_area(name="area_px", unit="px2"),
-                                   cf.mean_lightness(), cf.blur_variance(),
-                                   cf.bilateral_asymmetry(),
-                                   cf.edge_fraction()],
-                          **kwargs)["organism"]
+    return cf.run_metrics(
+        project_path,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[
+            cf.body_length(),
+            cf.max_width(),
+            cf.mask_area(name="area_px", unit="px2"),
+            cf.mean_lightness(),
+            cf.blur_variance(),
+            cf.bilateral_asymmetry(),
+            cf.edge_fraction(),
+        ],
+        **kwargs,
+    )["organism"]
 
 
 def resegment(project_path, erode=2):
-    return cf.run_segments(project_path,
-                           steps=[cf.segment(ThresholdModel(erode=erode))],
-                           visualize=False)["organism"]
+    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel(erode=erode))], visualize=False)[
+        "organism"
+    ]
 
 
 def test_the_export_holds_every_occurrence_before_anything_moves(measured_project):
@@ -70,8 +77,7 @@ def test_resegmenting_empties_the_export_without_deleting_a_value(measured_proje
     assert len(load_metrics(measured_project)) == len(before)
 
 
-def test_an_occurrence_with_no_current_value_can_be_kept_in_the_export(
-        measured_project):
+def test_an_occurrence_with_no_current_value_can_be_kept_in_the_export(measured_project):
     """
     `drop_empty=False` keeps the occurrence and its metadata, with no trait
     columns to show for it -- for an export that has to line up with a full
@@ -134,16 +140,14 @@ def test_resegmenting_one_occurrence_leaves_its_neighbours_current(measured_proj
     must not blank the export for everything else.
     """
     before = cf.export_metrics(measured_project)["occurrence_id"].tolist()
-    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel(erode=2))],
-                    limit=1, visualize=False)
+    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel(erode=2))], limit=1, visualize=False)
 
     after = cf.export_metrics(measured_project)["occurrence_id"].tolist()
     assert len(after) == SPECIMENS - 1
     assert set(before) - set(after) == {before[0]}
 
 
-def test_resegmenting_back_to_the_original_recipe_revives_the_old_values(
-        measured_project):
+def test_resegmenting_back_to_the_original_recipe_revives_the_old_values(measured_project):
     """
     A consequence of identity being a hash rather than a timestamp, and worth
     pinning: the values were never stale in themselves, only stale relative to
@@ -152,8 +156,7 @@ def test_resegmenting_back_to_the_original_recipe_revives_the_old_values(
     resegment(measured_project)
     assert len(cf.export_metrics(measured_project)) == 0
 
-    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel())],
-                    force=True, visualize=False)
+    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel())], force=True, visualize=False)
     revived = cf.export_metrics(measured_project)
     assert len(revived) == SPECIMENS
     assert revived[LENGTH_COLUMN].notna().all()
@@ -168,8 +171,8 @@ def test_stale_values_are_gone_from_the_narrow_lookup_too(measured_project):
     from critterframe.records.metrics import latest_values
 
     resegment(measured_project)
-    assert latest_values(measured_project, "traits",
-                         metric_name="body_length").empty
-    assert len(latest_values(measured_project, "traits",
-                             metric_name="body_length",
-                             current_only=False)) == SPECIMENS
+    assert latest_values(measured_project, "traits", metric_name="body_length").empty
+    assert (
+        len(latest_values(measured_project, "traits", metric_name="body_length", current_only=False))
+        == SPECIMENS
+    )

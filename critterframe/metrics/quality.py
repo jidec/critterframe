@@ -1,10 +1,4 @@
-"""
-Automated QC metrics: blur, asymmetry, edge fraction, mask fraction.
-
-Heuristics that flag likely-bad images and likely-bad masks. The WARN constants
-are eyeballed defaults, not derived -- treat them as a sanity check and
-calibrate real thresholds against human labels with validation.filters.
-"""
+"""Automated QC metrics: blur_variance, bilateral_asymmetry, edge_fraction, mask_fraction."""
 
 import cv2
 import numpy as np
@@ -47,69 +41,31 @@ WARN_THRESHOLDS = {
 
 
 def blur_variance(name=None, unit="laplacian_var"):
-    """
-    Metric: variance of the Laplacian over the masked region -- a standard
-    focus-blur proxy, since sharp edges produce large second derivatives and a
-    blurry image is muted everywhere.
+    """Metric: variance of the Laplacian over the masked pixels. Higher is sharper.
 
-    Restricted to mask pixels, so an out-of-focus or cluttered BACKGROUND can't
-    drag the score down and a busy background can't fake a high one. The
-    question is whether the ORGANISM is in focus.
-
-    Rotation-invariant, so it can run before or after orient(). Higher is
-    sharper. There's no universal scale -- compare across images from the same
-    setup, or against BLUR_WARN_VARIANCE as a rough default cutoff.
+    There is no universal scale: compare images from one setup, or use `BLUR_WARN_VARIANCE`
+    as a rough cutoff.
     """
-    return Metric("blur_variance", _blur_variance, version="1", unit=unit,
-                  metric_name=name)
+    return Metric("blur_variance", _blur_variance, version="1", unit=unit, metric_name=name)
 
 
 def bilateral_asymmetry(name=None, unit="fraction"):
+    """Metric: 1 minus the IoU of an oriented mask with its mirror across its vertical centerline.
+
+    0 is perfectly symmetric, 1 no overlap. Run it after `orient()`: on an unoriented mask
+    the left-right split is arbitrary.
     """
-    Metric: how left-right asymmetric an ORIENTED mask is -- mirrors it across its
-    own vertical centreline and returns 1 minus the IoU with its mirror.
-
-    Most organisms are bilaterally symmetric viewed dorsally, so a high score
-    usually means a bad segmentation rather than a lopsided specimen.
-
-    Only meaningful once the body axis is vertical: on an unoriented mask the
-    left/right split is arbitrary. A different question from orient()'s axis
-    choice, which uses end-to-end asymmetry.
-
-    Returns [0, 1]: 0.0 is perfectly symmetric, 1.0 is no overlap with its mirror.
-    """
-    return Metric("bilateral_asymmetry", _bilateral_asymmetry, version="1",
-                  unit=unit, metric_name=name)
+    return Metric("bilateral_asymmetry", _bilateral_asymmetry, version="1", unit=unit, metric_name=name)
 
 
 def edge_fraction(name=None, unit="fraction"):
-    """
-    Metric: fraction of mask pixels sitting on the image border -- how cut off
-    the organism is by the edge of the frame.
-
-    A cut-off organism is the failure case that most reliably corrupts size
-    traits while looking perfectly fine as a segmentation: the mask is a correct
-    outline of the visible part, and every length taken from it is an
-    underestimate. Unlike blur or asymmetry, this doesn't degrade gradually --
-    anything meaningfully above zero is worth excluding.
-
-    Measured on the mask in ORIGINAL image coordinates, since "the edge of the
-    frame" means the real frame, not the edge of a crop a recipe made.
-    """
-    return Metric("edge_fraction", _edge_fraction, version="1", unit=unit,
-                  metric_name=name)
+    """Metric: the fraction of mask pixels on the border of the original image."""
+    return Metric("edge_fraction", _edge_fraction, version="1", unit=unit, metric_name=name)
 
 
 def mask_fraction(name=None, unit="fraction"):
-    """
-    Metric: fraction of the original image the mask covers.
-
-    A blunt but effective catch for both segmentation failure directions: a mask
-    covering 0.1% of the frame usually found a speck of dirt, and one covering
-    80% usually found the substrate instead of the organism.
-    """
-    return Metric("mask_fraction", _mask_fraction, version="1", unit=unit,
-                  metric_name=name)
+    """Metric: the fraction of the original image the mask covers."""
+    return Metric("mask_fraction", _mask_fraction, version="1", unit=unit, metric_name=name)
 
 
 def _to_gray(image):
@@ -126,8 +82,7 @@ def _blur_variance(segment):
     variance = float(laplacian[mask].var())
 
     if segment.panel_sink is not None:
-        panel = cv2.normalize(np.abs(laplacian), None, 0, 255,
-                              cv2.NORM_MINMAX).astype(np.uint8)
+        panel = cv2.normalize(np.abs(laplacian), None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         panel = cv2.cvtColor(panel, cv2.COLOR_GRAY2BGR)
         panel[~mask] = 0
         flag = "  BLURRY" if variance < BLUR_WARN_VARIANCE else ""
@@ -168,14 +123,12 @@ def _edge_fraction(segment):
     if total == 0:
         raise ValueError("empty mask")
 
-    border = int(mask[0].sum() + mask[-1].sum()
-                 + mask[1:-1, 0].sum() + mask[1:-1, -1].sum())
+    border = int(mask[0].sum() + mask[-1].sum() + mask[1:-1, 0].sum() + mask[1:-1, -1].sum())
     fraction = border / total
 
     if segment.panel_sink is not None:
         panel = mask_to_bgr(mask)
-        cv2.rectangle(panel, (0, 0), (mask.shape[1] - 1, mask.shape[0] - 1),
-                      (0, 0, 255), 1)
+        cv2.rectangle(panel, (0, 0), (mask.shape[1] - 1, mask.shape[0] - 1), (0, 0, 255), 1)
         flag = "  CUT OFF" if fraction > EDGE_WARN_FRACTION else ""
         annotate(panel, f"edge {fraction:.1%} of {total}px{flag}")
         segment.emit_panel(panel, "edge_fraction")

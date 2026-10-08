@@ -1,6 +1,4 @@
-"""
-Erode: pull a mask in from its edges, by a share of its own thickness or a fixed number of pixels.
-"""
+"""Erode: pull a mask in from its edges, by a share of its thickness or a fixed number of pixels."""
 
 import cv2
 import numpy as np
@@ -14,18 +12,15 @@ DEFAULT_FRACTION = 0.1
 
 
 def erode(fraction=DEFAULT_FRACTION, px=None):
-    """
-    Operation: shrink the working mask inward from every edge.
+    """Operation: shrink the mask inward from every edge.
 
-    Moves no pixels and never grows the mask; the image is left as it is. In a
-    metric run it tightens the mask for that measurement only, and stored masks
-    are untouched. A section thinner than twice the erosion is cut through:
-    `n_components` in the info says how many pieces are left.
+    A section thinner than twice the erosion is cut through; `n_components` in the info counts
+    the pieces left.
 
-    - `fraction` -- erode by this share of the mask's maximum inscribed radius
-      (half its thickness at the thickest point), so an elongated part and a
-      round one lose the same share of their thickness. Between 0 and 1.
-    - `px` -- erode by this many pixels instead; `fraction` is then ignored.
+    Args:
+        fraction: Share of the mask's maximum inscribed radius (half its thickness at the
+            thickest point) to remove, between 0 and 1.
+        px: Pixels to remove instead; `fraction` is then ignored.
     """
     if px is not None:
         if not px > 0:
@@ -60,8 +55,7 @@ def _erode(segment, fraction=DEFAULT_FRACTION, px=None):
         "area_before": area_before,
         "area_after": area_after,
         "removed_fraction": 1.0 - (area_after / area_before),
-        "n_components": int(cv2.connectedComponents(eroded.astype(np.uint8),
-                                                    connectivity=8)[0]) - 1,
+        "n_components": int(cv2.connectedComponents(eroded.astype(np.uint8), connectivity=8)[0]) - 1,
         "degenerate": degenerate,
     }
 
@@ -70,7 +64,7 @@ def _erode(segment, fraction=DEFAULT_FRACTION, px=None):
 
 
 def _visualize(segment, eroded, info):
-    """Retained mask in white, the ERODED rim in red, the same convention as remove_islands."""
+    """Emit a panel: retained mask white, eroded rim red."""
     if segment.panel_sink is None:
         return
 
@@ -80,7 +74,6 @@ def _visualize(segment, eroded, info):
     panel[original & ~eroded] = (0, 0, 255)
 
     # Two short lines: a part crop is often narrower than one long line of text.
-    annotate(panel, f"eroded {info['radius_px']:.1f}px"
-                    + (" DEGENERATE" if info["degenerate"] else ""))
+    annotate(panel, f"eroded {info['radius_px']:.1f}px" + (" DEGENERATE" if info["degenerate"] else ""))
     annotate(panel, f"{info['removed_fraction']:.0%} of area", line=1)
     segment.emit_panel(panel, "erode")

@@ -66,8 +66,7 @@ def test_segmentation_recipe_digest():
     updated 2026-09 when that exclusion shipped: renaming a run must not force
     every occurrence to be treated as unfinished work.
     """
-    recipe = Recipe("segment", "organisms", [segment(FrozenModel())],
-                    part="organism")
+    recipe = Recipe("segment", "organisms", [segment(FrozenModel())], part="organism")
     assert recipe.hash == "cdcefe5567bb1c27"
 
 
@@ -89,8 +88,7 @@ def test_derivation_hash_chain_digest():
     mask it was cut out of. This is what moves every wing metric when the
     organism underneath is resegmented.
     """
-    assert derivation_hash("aaaaaaaaaaaaaaaa",
-                           "bbbbbbbbbbbbbbbb") == "b710b93cc6715f34"
+    assert derivation_hash("aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb") == "b710b93cc6715f34"
 
 
 def test_derivation_hash_without_an_upstream_is_the_recipe_hash():

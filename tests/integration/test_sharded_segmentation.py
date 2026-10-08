@@ -28,8 +28,9 @@ SPECIMENS = 8
 
 def shard_run(project_path, index, total, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())],
-                           shard=(index, total), **kwargs)["organism"]
+    return cf.run_segments(
+        project_path, steps=[cf.segment(ThresholdModel())], shard=(index, total), **kwargs
+    )["organism"]
 
 
 def test_two_shards_together_cover_every_occurrence_once(image_project):
@@ -62,7 +63,7 @@ def test_a_shard_rerun_before_merging_is_resolved_rather_than_duplicated(image_p
     """
     shard_run(image_project, 0, 2)
     shard_run(image_project, 1, 2)
-    shard_run(image_project, 0, 2, force=True)   # redo shard 0's work
+    shard_run(image_project, 0, 2, force=True)  # redo shard 0's work
 
     merged = cf.merge_mask_shards(image_project)
 
@@ -76,8 +77,7 @@ def test_an_unsharded_run_still_writes_directly(image_project):
     shard=None is the default and must remain exactly today's behaviour: no
     staging, straight into masks.parquet.
     """
-    result = cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
-                             visualize=False)["organism"]
+    result = cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())], visualize=False)["organism"]
 
     assert result["processed"] == SPECIMENS
     assert len(mask_records.load_masks(image_project)) == SPECIMENS
@@ -90,8 +90,7 @@ def test_two_shards_running_at_the_same_time_lose_nothing(image_project):
     confirm the merge still accounts for every occurrence exactly once.
     """
     with ThreadPoolExecutor(max_workers=2) as executor:
-        futures = [executor.submit(shard_run, image_project, index, 2)
-                  for index in range(2)]
+        futures = [executor.submit(shard_run, image_project, index, 2) for index in range(2)]
         results = [future.result() for future in futures]
 
     assert sum(result["processed"] for result in results) == SPECIMENS

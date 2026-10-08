@@ -21,21 +21,25 @@ from critterframe.project import subsets as subset_selection
 from critterframe.records.occurrences import ID_COL, ids_record, save_occurrences
 from helpers.compare import is_iso_utc
 
-try:                                    # 3.11+
+try:  # 3.11+
     import tomllib
-except ModuleNotFoundError:             # 3.10, via the tomli backport
+except ModuleNotFoundError:  # 3.10, via the tomli backport
     import tomli as tomllib
 
 
 @pytest.fixture
 def collections_project(tmp_path):
     """Six occurrences across three collections and two years."""
-    save_occurrences(tmp_path, pd.DataFrame({
-        ID_COL: [f"occ{index}" for index in range(6)],
-        "collection": ["AMNH", "AMNH", "MCZ", "MCZ", "Alabama Museum",
-                       "Alabama Museum"],
-        "year": [2019, 2020, 2019, 2021, 2021, 2022],
-    }))
+    save_occurrences(
+        tmp_path,
+        pd.DataFrame(
+            {
+                ID_COL: [f"occ{index}" for index in range(6)],
+                "collection": ["AMNH", "AMNH", "MCZ", "MCZ", "Alabama Museum", "Alabama Museum"],
+                "year": [2019, 2020, 2019, 2021, 2021, 2022],
+            }
+        ),
+    )
     return tmp_path
 
 
@@ -50,8 +54,7 @@ def test_a_project_without_subsets_is_not_an_error(tmp_path):
 
 
 def test_definitions_land_in_a_hand_editable_file(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     path = paths.subsets_path(collections_project)
 
     assert path.exists()
@@ -64,18 +67,20 @@ def test_what_we_write_is_what_tomllib_reads_back(collections_project):
     which is where correctness actually matters, since that is what has to cope
     with whatever a human hand-edits.
     """
-    written = subset_selection._save_subsets(collections_project, {
-        "quoted": {"column": 'a "difficult" name', "values": ["x\\y", "z"]},
-        "numeric": {"column": "year", "values": [2019, 2020]},
-        "flagged": {"column": "ok", "values": [True]},
-    })
+    written = subset_selection._save_subsets(
+        collections_project,
+        {
+            "quoted": {"column": 'a "difficult" name', "values": ["x\\y", "z"]},
+            "numeric": {"column": "year", "values": [2019, 2020]},
+            "flagged": {"column": "ok", "values": [True]},
+        },
+    )
     with paths.subsets_path(collections_project).open("rb") as handle:
         assert tomllib.load(handle)["subsets"] == written
 
 
 def test_saving_replaces_the_whole_table(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     subset_selection._save_subsets(collections_project, {"only": {"query": "year > 2020"}})
     assert list(subset_selection.load_subsets(collections_project)) == ["only"]
 
@@ -86,8 +91,7 @@ def test_saving_replaces_the_whole_table(collections_project):
 
 
 def test_a_column_and_values_rule(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     definition = subset_selection.load_subsets(collections_project)["amnh"]
     assert definition["column"] == "collection"
     assert definition["values"] == ["AMNH"]
@@ -95,8 +99,7 @@ def test_a_column_and_values_rule(collections_project):
 
 def test_a_query_rule_for_what_a_column_cannot_express(collections_project):
     cf.define_subset(collections_project, "recent", query="year >= 2021")
-    assert subset_selection.select_ids(collections_project,
-                                       subset="recent") == ["occ3", "occ4", "occ5"]
+    assert subset_selection.select_ids(collections_project, subset="recent") == ["occ3", "occ4", "occ5"]
 
 
 def test_an_explicit_id_list_is_its_own_definition(collections_project):
@@ -104,64 +107,50 @@ def test_an_explicit_id_list_is_its_own_definition(collections_project):
     For a hand-picked selection with no rule behind it -- a validation set
     chosen by eye -- where writing the ids down IS the definition.
     """
-    cf.define_subset(collections_project, "checked",
-                     occurrence_ids=["occ0", "occ4"])
-    assert subset_selection.select_ids(collections_project,
-                                       subset="checked") == ["occ0", "occ4"]
+    cf.define_subset(collections_project, "checked", occurrence_ids=["occ0", "occ4"])
+    assert subset_selection.select_ids(collections_project, subset="checked") == ["occ0", "occ4"]
 
 
 def test_ids_are_stored_as_strings(collections_project):
     cf.define_subset(collections_project, "numeric", occurrence_ids=[1, 2])
-    assert subset_selection.load_subsets(collections_project)["numeric"][
-        "occurrence_ids"] == ["1", "2"]
+    assert subset_selection.load_subsets(collections_project)["numeric"]["occurrence_ids"] == ["1", "2"]
 
 
 def test_from_subset_freezes_another_subsets_current_membership(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.define_subset(collections_project, "frozen", from_subset="amnh")
 
-    assert subset_selection.select_ids(collections_project, subset="frozen") \
-        == ["occ0", "occ1"]
+    assert subset_selection.select_ids(collections_project, subset="frozen") == ["occ0", "occ1"]
 
 
 def test_from_subset_is_independent_once_defined(collections_project):
     """The whole point of freezing: redefining the source, or the project
     growing under it, must not move the frozen copy."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.define_subset(collections_project, "frozen", from_subset="amnh")
 
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["MCZ"])
-    assert subset_selection.select_ids(collections_project, subset="frozen") \
-        == ["occ0", "occ1"]
+    cf.define_subset(collections_project, "amnh", column="collection", values=["MCZ"])
+    assert subset_selection.select_ids(collections_project, subset="frozen") == ["occ0", "occ1"]
 
 
 def test_from_subset_gets_a_default_note(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.define_subset(collections_project, "frozen", from_subset="amnh")
 
-    assert subset_selection.load_subsets(collections_project)["frozen"]["note"] \
-        == "frozen from subset 'amnh'"
+    assert subset_selection.load_subsets(collections_project)["frozen"]["note"] == "frozen from subset 'amnh'"
 
 
 def test_from_subset_respects_an_explicit_note(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
-    cf.define_subset(collections_project, "frozen", from_subset="amnh",
-                     note="my own reason")
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
+    cf.define_subset(collections_project, "frozen", from_subset="amnh", note="my own reason")
 
-    assert subset_selection.load_subsets(collections_project)["frozen"]["note"] \
-        == "my own reason"
+    assert subset_selection.load_subsets(collections_project)["frozen"]["note"] == "my own reason"
 
 
 def test_from_subset_also_gets_the_resolved_digest(collections_project):
     """Reuses the occurrence_ids branch entirely -- a frozen-from-subset copy
     is just as permanently accurate as a hand-given id list."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.define_subset(collections_project, "frozen", from_subset="amnh")
 
     definition = subset_selection.load_subsets(collections_project)["frozen"]
@@ -173,12 +162,15 @@ def test_from_subset_of_an_unknown_name_raises(collections_project):
         cf.define_subset(collections_project, "frozen", from_subset="ghost")
 
 
-@pytest.mark.parametrize("kwargs", [
-    {},
-    {"values": ["AMNH"], "query": "year > 2020"},
-    {"column": "collection", "values": ["AMNH"], "occurrence_ids": ["occ0"]},
-    {"occurrence_ids": ["occ0"], "from_subset": "amnh"},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {},
+        {"values": ["AMNH"], "query": "year > 2020"},
+        {"column": "collection", "values": ["AMNH"], "occurrence_ids": ["occ0"]},
+        {"occurrence_ids": ["occ0"], "from_subset": "amnh"},
+    ],
+)
 def test_exactly_one_rule_is_required(collections_project, kwargs):
     with pytest.raises(ValueError, match="exactly one of"):
         cf.define_subset(collections_project, "bad", **kwargs)
@@ -190,12 +182,9 @@ def test_values_need_a_column_to_match_on(collections_project):
 
 
 def test_redefining_a_subset_replaces_it(collections_project):
-    cf.define_subset(collections_project, "one", column="collection",
-                     values=["AMNH"])
-    cf.define_subset(collections_project, "one", column="collection",
-                     values=["MCZ"])
-    assert subset_selection.select_ids(collections_project,
-                                       subset="one") == ["occ2", "occ3"]
+    cf.define_subset(collections_project, "one", column="collection", values=["AMNH"])
+    cf.define_subset(collections_project, "one", column="collection", values=["MCZ"])
+    assert subset_selection.select_ids(collections_project, subset="one") == ["occ2", "occ3"]
 
 
 # ---------------------------------------------------------------------------
@@ -206,24 +195,24 @@ def test_redefining_a_subset_replaces_it(collections_project):
 
 
 def test_every_subset_gets_a_created_at(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
-    assert is_iso_utc(
-        subset_selection.load_subsets(collections_project)["amnh"]["created_at"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
+    assert is_iso_utc(subset_selection.load_subsets(collections_project)["amnh"]["created_at"])
 
 
 def test_a_note_is_stored_when_given(collections_project):
-    cf.define_subset(collections_project, "checked", occurrence_ids=["occ0"],
-                     note="hand-picked after reviewing outliers")
-    assert subset_selection.load_subsets(collections_project)["checked"]["note"] \
+    cf.define_subset(
+        collections_project, "checked", occurrence_ids=["occ0"], note="hand-picked after reviewing outliers"
+    )
+    assert (
+        subset_selection.load_subsets(collections_project)["checked"]["note"]
         == "hand-picked after reviewing outliers"
+    )
 
 
 def test_no_note_key_when_none_is_given(collections_project):
     """None is genuinely unset, not an empty string -- same reasoning
     runs.context_json uses for a run with nothing to say."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     assert "note" not in subset_selection.load_subsets(collections_project)["amnh"]
 
 
@@ -243,16 +232,16 @@ def test_an_occurrence_ids_subset_stores_its_own_resolved_digest(collections_pro
 def test_a_live_rule_has_no_resolved_digest(collections_project):
     """A column/query subset's membership can change without redefining it,
     so a digest captured at definition time would only ever mislead."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     definition = subset_selection.load_subsets(collections_project)["amnh"]
     assert "resolved_count" not in definition
     assert "resolved_ids_hash" not in definition
 
 
 def test_define_subsets_applies_one_note_to_every_subset_in_the_batch(collections_project):
-    cf.define_subsets(collections_project, "collection",
-                      {"AMNH": "amnh", "MCZ": "mcz"}, note="from the 2026 import")
+    cf.define_subsets(
+        collections_project, "collection", {"AMNH": "amnh", "MCZ": "mcz"}, note="from the 2026 import"
+    )
     subsets = subset_selection.load_subsets(collections_project)
     assert subsets["amnh"]["note"] == "from the 2026 import"
     assert subsets["mcz"]["note"] == "from the 2026 import"
@@ -267,8 +256,7 @@ def test_grow_subset_records_how_it_sampled(collections_project):
 
 
 def test_grow_subset_records_a_narrower_candidate_pool(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     amnh_ids = subset_selection.select_ids(collections_project, subset="amnh")
 
     cf.grow_subset(collections_project, "review", 2, candidate_ids=amnh_ids)
@@ -281,18 +269,16 @@ def test_several_subsets_are_defined_from_one_column(collections_project):
     The usual shape: a single metadata column already separates the groups and
     only the names need tidying.
     """
-    cf.define_subsets(collections_project, "collection", {
-        "AMNH": "amnh", "MCZ": "mcz", "Alabama Museum": "alabama"})
-    assert sorted(subset_selection.load_subsets(collections_project)) == [
-        "alabama", "amnh", "mcz"]
+    cf.define_subsets(
+        collections_project, "collection", {"AMNH": "amnh", "MCZ": "mcz", "Alabama Museum": "alabama"}
+    )
+    assert sorted(subset_selection.load_subsets(collections_project)) == ["alabama", "amnh", "mcz"]
 
 
 def test_several_values_can_map_to_one_subset(collections_project):
     """Which merges them -- two spellings of one collection, say."""
-    cf.define_subsets(collections_project, "collection",
-                      {"AMNH": "east", "MCZ": "east"})
-    assert subset_selection.select_ids(collections_project, subset="east") == [
-        "occ0", "occ1", "occ2", "occ3"]
+    cf.define_subsets(collections_project, "collection", {"AMNH": "east", "MCZ": "east"})
+    assert subset_selection.select_ids(collections_project, subset="east") == ["occ0", "occ1", "occ2", "occ3"]
 
 
 # ---------------------------------------------------------------------------
@@ -309,53 +295,42 @@ def test_no_subset_selects_the_whole_project(collections_project):
 
 
 def test_an_unknown_subset_name_raises_and_lists_the_real_ones(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     with pytest.raises(KeyError, match="no subset named 'amhn'"):
         subset_selection.select_occurrences(collections_project, subset="amhn")
 
 
 def test_a_subset_selecting_on_a_missing_column_raises(collections_project):
-    subset_selection._save_subsets(collections_project,
-                                  {"ghost": {"column": "site", "values": ["x"]}})
+    subset_selection._save_subsets(collections_project, {"ghost": {"column": "site", "values": ["x"]}})
     with pytest.raises(KeyError, match="which the occurrence table doesn't have"):
         subset_selection.select_occurrences(collections_project, subset="ghost")
 
 
-def test_the_rule_column_is_read_even_when_other_columns_were_asked_for(
-        collections_project):
+def test_the_rule_column_is_read_even_when_other_columns_were_asked_for(collections_project):
     """
     Otherwise narrowing the read would break the very rule doing the
     narrowing.
     """
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
-    selected = subset_selection.select_occurrences(collections_project,
-                                                   subset="amnh",
-                                                   columns=["year"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
+    selected = subset_selection.select_occurrences(collections_project, subset="amnh", columns=["year"])
     assert len(selected) == 2
     assert {"year", "collection", ID_COL} <= set(selected.columns)
 
 
 def test_a_limit_applies_after_selection(collections_project):
     """For trying a recipe on a handful before committing to the project."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
-    assert subset_selection.select_ids(collections_project, subset="amnh",
-                                       limit=1) == ["occ0"]
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
+    assert subset_selection.select_ids(collections_project, subset="amnh", limit=1) == ["occ0"]
 
 
 def test_selection_returns_a_clean_index(collections_project):
-    cf.define_subset(collections_project, "mcz", column="collection",
-                     values=["MCZ"])
-    selected = subset_selection.select_occurrences(collections_project,
-                                                   subset="mcz")
+    cf.define_subset(collections_project, "mcz", column="collection", values=["MCZ"])
+    selected = subset_selection.select_occurrences(collections_project, subset="mcz")
     assert selected.index.tolist() == [0, 1]
 
 
 def test_an_occurrence_can_belong_to_several_subsets(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.define_subset(collections_project, "2020", column="year", values=[2020])
 
     assert "occ1" in subset_selection.select_ids(collections_project, subset="amnh")
@@ -378,8 +353,13 @@ def test_a_pool_passed_as_ids_can_say_what_it_was(collections_project):
     A named source subset names itself in the note; a list of ids is only a
     count unless the caller says where it came from.
     """
-    cf.grow_subset(collections_project, "review", 2, candidate_ids=["occ0", "occ1", "occ2"],
-                   candidate_note="has an abdomen mask")
+    cf.grow_subset(
+        collections_project,
+        "review",
+        2,
+        candidate_ids=["occ0", "occ1", "occ2"],
+        candidate_note="has an abdomen mask",
+    )
     note = cf.load_subsets(collections_project)["review"]["note"]
     assert "has an abdomen mask (3 id(s))" in note
 
@@ -388,8 +368,7 @@ def test_a_pool_note_needs_a_pool_of_ids(collections_project):
     cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     for kwargs in ({}, {"from_subset": "amnh"}):
         with pytest.raises(ValueError, match="describes candidate_ids"):
-            cf.grow_subset(collections_project, "review", 2,
-                           candidate_note="something", **kwargs)
+            cf.grow_subset(collections_project, "review", 2, candidate_note="something", **kwargs)
 
 
 def test_grow_subset_creates_the_subset_on_the_first_call(collections_project):
@@ -413,8 +392,7 @@ def test_candidate_ids_default_to_the_whole_project(collections_project):
 
 
 def test_a_narrower_candidate_pool_restricts_what_is_drawn(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     amnh_ids = subset_selection.select_ids(collections_project, subset="amnh")
 
     ids = cf.grow_subset(collections_project, "review", 2, candidate_ids=amnh_ids)
@@ -422,8 +400,7 @@ def test_a_narrower_candidate_pool_restricts_what_is_drawn(collections_project):
 
 
 def test_from_subset_draws_from_a_named_subset(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     amnh_ids = subset_selection.select_ids(collections_project, subset="amnh")
 
     ids = cf.grow_subset(collections_project, "review", 2, from_subset="amnh")
@@ -433,8 +410,7 @@ def test_from_subset_draws_from_a_named_subset(collections_project):
 def test_from_subset_names_the_source_in_the_note(collections_project):
     """Unlike candidate_ids, from_subset lets the note name WHICH subset the
     candidates came from, not just a bare count."""
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     cf.grow_subset(collections_project, "review", 2, from_subset="amnh")
 
     note = subset_selection.load_subsets(collections_project)["review"]["note"]
@@ -444,20 +420,16 @@ def test_from_subset_names_the_source_in_the_note(collections_project):
 def test_from_subset_re_resolves_its_source_on_every_call(collections_project):
     """A live source subset can grow between calls -- from_subset must pick
     up its CURRENT membership each time, not a stale snapshot."""
-    cf.define_subset(collections_project, "recent", column="year",
-                     values=[2021])
+    cf.define_subset(collections_project, "recent", column="year", values=[2021])
     first = cf.grow_subset(collections_project, "review", 5, from_subset="recent")
     assert sorted(first) == ["occ3", "occ4"]
 
-    cf.define_subset(collections_project, "recent", column="year",
-                     values=[2021, 2022])
+    cf.define_subset(collections_project, "recent", column="year", values=[2021, 2022])
     second = cf.grow_subset(collections_project, "review", 5, from_subset="recent")
     assert sorted(second) == ["occ3", "occ4", "occ5"]
 
 
 def test_candidate_ids_and_from_subset_are_mutually_exclusive(collections_project):
-    cf.define_subset(collections_project, "amnh", column="collection",
-                     values=["AMNH"])
+    cf.define_subset(collections_project, "amnh", column="collection", values=["AMNH"])
     with pytest.raises(ValueError, match="not both"):
-        cf.grow_subset(collections_project, "review", 2, candidate_ids=["occ0"],
-                       from_subset="amnh")
+        cf.grow_subset(collections_project, "review", 2, candidate_ids=["occ0"], from_subset="amnh")

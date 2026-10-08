@@ -70,8 +70,7 @@ def test_only_an_empty_field_reads_as_missing():
     """
     from io import BytesIO
 
-    table = archive.read_darwincore_table(
-        BytesIO(b"gbifID\tstateProvince\n1\tNA\n2\t\n"))
+    table = archive.read_darwincore_table(BytesIO(b"gbifID\tstateProvince\n1\tNA\n2\t\n"))
     assert table["stateProvince"].iloc[0] == "NA"
     assert pd.isna(table["stateProvince"].iloc[1])
 
@@ -103,18 +102,26 @@ def test_a_leaked_verbatim_multimedia_row_is_recovered_by_name(caplog):
     from io import BytesIO
 
     verbatim_values = {
-        "gbifID": "2", "datasetKey": "ds-1", "type": "StillImage", "format": "image/jpeg",
-        "identifier": "https://example.com/2.jpg", "references": "", "title": "",
-        "description": "", "created": "", "creator": "Bob", "contributor": "",
-        "publisher": "", "audience": "", "source": "", "license": "",
-        "rightsHolder": "", "datasetID": "",
+        "gbifID": "2",
+        "datasetKey": "ds-1",
+        "type": "StillImage",
+        "format": "image/jpeg",
+        "identifier": "https://example.com/2.jpg",
+        "references": "",
+        "title": "",
+        "description": "",
+        "created": "",
+        "creator": "Bob",
+        "contributor": "",
+        "publisher": "",
+        "audience": "",
+        "source": "",
+        "license": "",
+        "rightsHolder": "",
+        "datasetID": "",
     }
     bad_row = "\t".join(verbatim_values[field] for field in archive.VERBATIM_MULTIMEDIA_FIELDS)
-    text = (
-        "gbifID\ttype\tidentifier\tcreator\n"
-        "1\tStillImage\thttps://example.com/1.jpg\tAlice\n"
-        f"{bad_row}\n"
-    )
+    text = f"gbifID\ttype\tidentifier\tcreator\n1\tStillImage\thttps://example.com/1.jpg\tAlice\n{bad_row}\n"
     with caplog.at_level("WARNING"):
         table = archive.read_darwincore_table(BytesIO(text.encode()))
 
@@ -152,11 +159,12 @@ def test_usecols_narrows_both_tables_and_always_keeps_the_join_key(tmp_path):
     zpath = write_archive_zip(tmp_path / "gbif.zip")
 
     occurrence_df, multimedia_df = archive.read_darwincore_archive(
-        zpath, occurrence_usecols=["scientificName"], multimedia_usecols=["type"])
+        zpath, occurrence_usecols=["scientificName"], multimedia_usecols=["type"]
+    )
 
     assert set(occurrence_df.columns) == {"scientificName", "gbifID"}
     assert set(multimedia_df.columns) == {"type", "gbifID"}
-    assert len(occurrence_df) == 3   # every row still read, just narrower
+    assert len(occurrence_df) == 3  # every row still read, just narrower
 
 
 def test_usecols_none_reads_every_column_as_before(tmp_path):
@@ -212,8 +220,7 @@ def test_a_root_level_file_wins_over_a_nested_verbatim_copy(tmp_path):
     with zipfile.ZipFile(zpath, "w") as zf:
         zf.writestr("occurrence.txt", OCCURRENCE_TXT)
         zf.writestr("multimedia.txt", MULTIMEDIA_TXT)
-        zf.writestr("verbatim/multimedia.txt",
-                   "gbifID\tdatasetKey\ttype\n1\tds-1\tStillImage\n")
+        zf.writestr("verbatim/multimedia.txt", "gbifID\tdatasetKey\ttype\n1\tds-1\tStillImage\n")
 
     occurrence_df, multimedia_df = archive.read_darwincore_archive(zpath)
     assert list(multimedia_df.columns) == ["gbifID", "type", "identifier", "creator"]
@@ -232,14 +239,16 @@ def test_neither_a_zip_nor_a_directory_raises(tmp_path):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("host", [
-    "inaturalist-open-data.s3.amazonaws.com",
-    "static.inaturalist.org",
-])
+@pytest.mark.parametrize(
+    "host",
+    [
+        "inaturalist-open-data.s3.amazonaws.com",
+        "static.inaturalist.org",
+    ],
+)
 def test_an_inat_photo_url_is_rewritten_to_the_requested_size(host):
     url = f"https://{host}/photos/404810759/original.jpg"
-    assert ingest.rewrite_inat_photo_size(url, "medium") == \
-        f"https://{host}/photos/404810759/medium.jpg"
+    assert ingest.rewrite_inat_photo_size(url, "medium") == f"https://{host}/photos/404810759/medium.jpg"
 
 
 def test_a_non_inat_url_passes_through_untouched():
@@ -258,8 +267,7 @@ def test_a_missing_identifier_passes_through():
 
 def test_an_unknown_size_raises_rather_than_guessing():
     with pytest.raises(ValueError, match="unknown iNaturalist photo size"):
-        ingest.rewrite_inat_photo_size("https://static.inaturalist.org/photos/1/original.jpg",
-                                       "huge")
+        ingest.rewrite_inat_photo_size("https://static.inaturalist.org/photos/1/original.jpg", "huge")
 
 
 # ---------------------------------------------------------------------------
@@ -268,17 +276,21 @@ def test_an_unknown_size_raises_rather_than_guessing():
 
 
 def multimedia_frame():
-    return pd.DataFrame({
-        "gbifID": ["1", "1", "2"],
-        "type": ["StillImage", "StillImage", "StillImage"],
-        "identifier": ["https://x/first.jpg", "https://x/second.jpg", "https://x/only.jpg"],
-    })
+    return pd.DataFrame(
+        {
+            "gbifID": ["1", "1", "2"],
+            "type": ["StillImage", "StillImage", "StillImage"],
+            "identifier": ["https://x/first.jpg", "https://x/second.jpg", "https://x/only.jpg"],
+        }
+    )
 
 
 def test_the_default_rule_takes_the_first_row_per_occurrence():
     selected = ingest.select_media(multimedia_frame())
     assert selected.set_index("gbifID")["identifier"].to_dict() == {
-        "1": "https://x/first.jpg", "2": "https://x/only.jpg"}
+        "1": "https://x/first.jpg",
+        "2": "https://x/only.jpg",
+    }
 
 
 def test_the_last_rule_takes_the_last_row_per_occurrence():
@@ -291,21 +303,25 @@ def test_type_filtering_happens_before_the_one_per_occurrence_rule():
     Otherwise "first" could hand back a sound recording for an occurrence
     whose actual first photo sorts later in the file.
     """
-    media = pd.DataFrame({
-        "gbifID": ["1", "1"],
-        "type": ["Sound", "StillImage"],
-        "identifier": ["https://x/call.mp3", "https://x/photo.jpg"],
-    })
+    media = pd.DataFrame(
+        {
+            "gbifID": ["1", "1"],
+            "type": ["Sound", "StillImage"],
+            "identifier": ["https://x/call.mp3", "https://x/photo.jpg"],
+        }
+    )
     selected = ingest.select_media(media, media_type="StillImage")
     assert selected["identifier"].tolist() == ["https://x/photo.jpg"]
 
 
 def test_media_type_none_keeps_every_row_regardless_of_type():
-    media = pd.DataFrame({
-        "gbifID": ["1", "1"],
-        "type": ["Sound", "StillImage"],
-        "identifier": ["https://x/call.mp3", "https://x/photo.jpg"],
-    })
+    media = pd.DataFrame(
+        {
+            "gbifID": ["1", "1"],
+            "type": ["Sound", "StillImage"],
+            "identifier": ["https://x/call.mp3", "https://x/photo.jpg"],
+        }
+    )
 
     filtered = ingest.select_media(media, media_type="StillImage")
     assert filtered["identifier"].tolist() == ["https://x/photo.jpg"]
@@ -354,8 +370,7 @@ def test_multimedia_columns_are_prefixed_to_avoid_colliding_with_occurrences():
     license for different things.
     """
     occurrence_df = pd.DataFrame({"gbifID": ["1"], "type": ["Occurrence"]})
-    media_df = pd.DataFrame({"gbifID": ["1"], "type": ["StillImage"],
-                             "identifier": ["https://x/photo.jpg"]})
+    media_df = pd.DataFrame({"gbifID": ["1"], "type": ["StillImage"], "identifier": ["https://x/photo.jpg"]})
 
     merged = ingest.merge_occurrence_media(occurrence_df, media_df)
     assert merged["type"].iloc[0] == "Occurrence"
@@ -399,8 +414,7 @@ def test_drop_none_keeps_absent_occurrences(tmp_path):
     # imageless-exclusion behaviour covered elsewhere.
     occurrence = OCCURRENCE_TXT
     multimedia = MULTIMEDIA_TXT + "3\tStillImage\thttps://x/3.jpg\n"
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence,
-                              multimedia=multimedia)
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence, multimedia=multimedia)
 
     table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath, drop=None)
     assert sorted(table["occurrence_id"]) == ["1", "2", "3"]
@@ -425,12 +439,8 @@ def test_a_present_occurrence_with_no_media_row_is_excluded(tmp_path):
         "1\tPRESENT\tOrthetrum trinacria\n"
         "4\tPRESENT\tNo photo taken\n"
     )
-    multimedia = (
-        "gbifID\ttype\tidentifier\n"
-        "1\tStillImage\thttps://x/1.jpg\n"
-    )
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence,
-                              multimedia=multimedia)
+    multimedia = "gbifID\ttype\tidentifier\n1\tStillImage\thttps://x/1.jpg\n"
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence, multimedia=multimedia)
 
     table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath)
     assert sorted(table["occurrence_id"]) == ["1"]
@@ -439,11 +449,11 @@ def test_a_present_occurrence_with_no_media_row_is_excluded(tmp_path):
 def test_inat_photo_size_rewrites_only_the_inat_row(tmp_path):
     zpath = write_archive_zip(tmp_path / "gbif.zip")
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      inat_photo_size="small")
+    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath, inat_photo_size="small")
     by_id = table.set_index("occurrence_id")
-    assert by_id.loc["1", "image_url"] == \
-        "https://inaturalist-open-data.s3.amazonaws.com/photos/111/small.jpg"
+    assert (
+        by_id.loc["1", "image_url"] == "https://inaturalist-open-data.s3.amazonaws.com/photos/111/small.jpg"
+    )
     assert by_id.loc["2", "image_url"] == "https://observation.org/photos/222.jpg"
 
 
@@ -455,23 +465,24 @@ def test_an_extracted_directory_ingests_the_same_as_its_zip(tmp_path):
 
 
 def test_preloaded_tables_work_without_touching_disk(tmp_path):
-    occurrence_df, multimedia_df = archive.read_darwincore_archive(
-        write_archive_zip(tmp_path / "gbif.zip"))
+    occurrence_df, multimedia_df = archive.read_darwincore_archive(write_archive_zip(tmp_path / "gbif.zip"))
 
-    table = ingest.ingest_occurrences(tmp_path / "project", occurrence_df=occurrence_df,
-                                      multimedia_df=multimedia_df)
+    table = ingest.ingest_occurrences(
+        tmp_path / "project", occurrence_df=occurrence_df, multimedia_df=multimedia_df
+    )
     assert sorted(table["occurrence_id"]) == ["1", "2"]
 
 
 def test_archive_path_and_preloaded_tables_together_is_an_error(tmp_path):
-    occurrence_df, multimedia_df = archive.read_darwincore_archive(
-        write_archive_zip(tmp_path / "gbif.zip"))
+    occurrence_df, multimedia_df = archive.read_darwincore_archive(write_archive_zip(tmp_path / "gbif.zip"))
 
     with pytest.raises(ValueError, match="not both"):
-        ingest.ingest_occurrences(tmp_path / "project",
-                                  archive_path=tmp_path / "gbif.zip",
-                                  occurrence_df=occurrence_df,
-                                  multimedia_df=multimedia_df)
+        ingest.ingest_occurrences(
+            tmp_path / "project",
+            archive_path=tmp_path / "gbif.zip",
+            occurrence_df=occurrence_df,
+            multimedia_df=multimedia_df,
+        )
 
 
 def test_no_source_at_all_is_an_error(tmp_path):
@@ -531,8 +542,7 @@ def test_media_rule_and_related_decisions_land_in_the_import_manifest(tmp_path):
     zpath = write_archive_zip(tmp_path / "gbif.zip")
     project = tmp_path / "project"
 
-    ingest.ingest_occurrences(project, archive_path=zpath, media_rule="last",
-                              inat_photo_size="small")
+    ingest.ingest_occurrences(project, archive_path=zpath, media_rule="last", inat_photo_size="small")
 
     manifests = cf.load_imports(project)
     assert len(manifests) == 1
@@ -562,11 +572,11 @@ def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
         "3\tStillImage\thttps://x/3.jpg\n"
         "4\tStillImage\thttps://x/4.jpg\n"
     )
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence,
-                              multimedia=multimedia)
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence, multimedia=multimedia)
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      group_col="species", max_per_group=1)
+    table = ingest.ingest_occurrences(
+        tmp_path / "project", archive_path=zpath, group_col="species", max_per_group=1
+    )
     counts = table["species"].value_counts()
     assert counts["common"] == 1
     assert counts["rare"] == 1
@@ -597,8 +607,9 @@ def test_deduplication_is_off_by_default(tmp_path):
     needs this -- gbifID 1 and 2 would fingerprint alike (~5m apart, same
     eventDate) if dedupe_key_cols were given, but nothing is asked for here.
     """
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
-                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    zpath = write_archive_zip(
+        tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT, multimedia=DUPLICATE_MULTIMEDIA_TXT
+    )
 
     table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath)
     assert sorted(table["occurrence_id"]) == ["1", "2", "3"]
@@ -611,12 +622,14 @@ def test_opting_in_deduplicates_the_same_sighting_from_two_sources(tmp_path):
     alike under DEFAULT_DEDUPE_KEY_COLS, so only one survives even though
     nothing shares an id.
     """
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
-                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    zpath = write_archive_zip(
+        tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT, multimedia=DUPLICATE_MULTIMEDIA_TXT
+    )
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS)
-    assert len(table) == 2   # one of {1, 2}, plus 3
+    table = ingest.ingest_occurrences(
+        tmp_path / "project", archive_path=zpath, dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS
+    )
+    assert len(table) == 2  # one of {1, 2}, plus 3
     assert "3" in set(table["occurrence_id"])
 
 
@@ -632,8 +645,8 @@ def test_missing_dedupe_columns_is_not_a_failure(tmp_path, caplog):
 
     with caplog.at_level("WARNING"):
         table = ingest.ingest_occurrences(
-            tmp_path / "project", archive_path=zpath,
-            dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS)
+            tmp_path / "project", archive_path=zpath, dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS
+        )
     assert sorted(table["occurrence_id"]) == ["1", "2"]
     assert "skipping deduplication" in caplog.text
 
@@ -656,12 +669,15 @@ def test_dedupe_happens_before_the_group_cap(tmp_path):
         "2\tStillImage\thttps://x/2.jpg\n"
         "3\tStillImage\thttps://x/3.jpg\n"
     )
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence,
-                              multimedia=multimedia)
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence, multimedia=multimedia)
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
-                                      group_col="species", max_per_group=2)
+    table = ingest.ingest_occurrences(
+        tmp_path / "project",
+        archive_path=zpath,
+        dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
+        group_col="species",
+        max_per_group=2,
+    )
     # Without dedupe-before-cap this could land on {1, 2} -- one real sighting
     # twice -- and never reach 3 at all.
     assert len(table) == 2
@@ -669,12 +685,14 @@ def test_dedupe_happens_before_the_group_cap(tmp_path):
 
 
 def test_dedupe_decisions_land_in_the_import_manifest(tmp_path):
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
-                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    zpath = write_archive_zip(
+        tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT, multimedia=DUPLICATE_MULTIMEDIA_TXT
+    )
     project = tmp_path / "project"
 
-    ingest.ingest_occurrences(project, archive_path=zpath,
-                              dedupe_key_cols=("decimalLatitude",), dedupe_rule="first")
+    ingest.ingest_occurrences(
+        project, archive_path=zpath, dedupe_key_cols=("decimalLatitude",), dedupe_rule="first"
+    )
 
     extra = cf.load_imports(project).iloc[0]["extra"]
     assert extra["dedupe_key_cols"] == ["decimalLatitude"]
@@ -696,15 +714,18 @@ def test_omitting_dedupe_key_cols_is_recorded_as_none(tmp_path):
 def test_reingesting_with_a_changed_dedupe_decision_does_reparse(tmp_path, monkeypatch):
     """Same reasoning as group_col/max_per_group: a changed judgement about
     the same bytes is still a different import, not a skip."""
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
-                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    zpath = write_archive_zip(
+        tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT, multimedia=DUPLICATE_MULTIMEDIA_TXT
+    )
     project = tmp_path / "project"
 
-    ingest.ingest_occurrences(project, archive_path=zpath,
-                              dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
-                              trust_source_file_unchanged=True)
-    table = ingest.ingest_occurrences(project, archive_path=zpath,
-                                      trust_source_file_unchanged=True)
+    ingest.ingest_occurrences(
+        project,
+        archive_path=zpath,
+        dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
+        trust_source_file_unchanged=True,
+    )
+    table = ingest.ingest_occurrences(project, archive_path=zpath, trust_source_file_unchanged=True)
 
     assert sorted(table["occurrence_id"]) == ["1", "2", "3"]
     assert len(cf.load_imports(project)) == 2
@@ -713,8 +734,9 @@ def test_reingesting_with_a_changed_dedupe_decision_does_reparse(tmp_path, monke
 def test_a_repeat_ingest_with_dedupe_on_skips_the_parse(tmp_path, monkeypatch):
     """The skip check has to hash the dedupe decisions too, or it never
     recognizes an import that deduplicated."""
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT,
-                              multimedia=DUPLICATE_MULTIMEDIA_TXT)
+    zpath = write_archive_zip(
+        tmp_path / "gbif.zip", occurrence=DUPLICATE_OCCURRENCE_TXT, multimedia=DUPLICATE_MULTIMEDIA_TXT
+    )
     project = tmp_path / "project"
     kwargs = dict(archive_path=zpath, dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS)
 
@@ -734,8 +756,9 @@ def _parse_forbidden(*a, **kw):
 
 def write_sourced_archive(path, rows):
     """rows: (gbifID, institutionCode, species, lat) -- one photo each."""
-    occurrence = "gbifID\toccurrenceStatus\tinstitutionCode\tspecies\t" \
-                 "decimalLatitude\tdecimalLongitude\teventDate\n"
+    occurrence = (
+        "gbifID\toccurrenceStatus\tinstitutionCode\tspecies\tdecimalLatitude\tdecimalLongitude\teventDate\n"
+    )
     multimedia = "gbifID\ttype\tidentifier\n"
     for gbif_id, institution, species, lat in rows:
         occurrence += f"{gbif_id}\tPRESENT\t{institution}\t{species}\t{lat}\t20.0\t2024-05-01\n"
@@ -759,27 +782,32 @@ MIXED_SOURCE_ROWS = [
 def test_prioritize_inat_caps_from_inat_rows_only_when_there_are_enough(tmp_path):
     zpath = write_sourced_archive(tmp_path / "gbif.zip", MIXED_SOURCE_ROWS)
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      group_col="species", max_per_group=2,
-                                      prioritize_inat=True)
+    table = ingest.ingest_occurrences(
+        tmp_path / "project", archive_path=zpath, group_col="species", max_per_group=2, prioritize_inat=True
+    )
     common = table[table["species"] == "common"]
     rare = table[table["species"] == "rare"]
     assert (common["institutionCode"] == "iNaturalist").all()
     assert len(common) == 2
-    assert "6" in set(rare["occurrence_id"])   # the only iNat row, plus one other
+    assert "6" in set(rare["occurrence_id"])  # the only iNat row, plus one other
     assert len(rare) == 2
 
 
 def test_prioritize_inat_lets_dedupe_remove_only_the_other_source(tmp_path):
-    rows = [("1", "Observation.org", "common", 1.0),
-            ("2", "iNaturalist", "common", 1.0),     # same sighting as 1
-            ("3", "iNaturalist", "common", 3.0),
-            ("4", "iNaturalist", "common", 3.0)]     # coincidental iNat match
+    rows = [
+        ("1", "Observation.org", "common", 1.0),
+        ("2", "iNaturalist", "common", 1.0),  # same sighting as 1
+        ("3", "iNaturalist", "common", 3.0),
+        ("4", "iNaturalist", "common", 3.0),
+    ]  # coincidental iNat match
     zpath = write_sourced_archive(tmp_path / "gbif.zip", rows)
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
-                                      prioritize_inat=True)
+    table = ingest.ingest_occurrences(
+        tmp_path / "project",
+        archive_path=zpath,
+        dedupe_key_cols=ingest.DEFAULT_DEDUPE_KEY_COLS,
+        prioritize_inat=True,
+    )
     assert sorted(table["occurrence_id"]) == ["2", "3", "4"]
 
 
@@ -804,16 +832,19 @@ def test_toggling_prioritize_inat_reparses_and_repeating_it_does_not(tmp_path, m
 
     monkeypatch.setattr(archive, "read_darwincore_archive", _parse_forbidden)
     ingest.ingest_occurrences(project, prioritize_inat=True, **kwargs)
-    ingest.ingest_occurrences(project, prioritize_inat=True,
-                              trust_source_file_unchanged=True, **kwargs)
+    ingest.ingest_occurrences(project, prioritize_inat=True, trust_source_file_unchanged=True, **kwargs)
 
 
 def test_prioritize_inat_needs_institution_code(tmp_path):
     zpath = write_archive_zip(tmp_path / "gbif.zip")
     with pytest.raises(KeyError, match="institutionCode"):
-        ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                  group_col="scientificName", max_per_group=1,
-                                  prioritize_inat=True)
+        ingest.ingest_occurrences(
+            tmp_path / "project",
+            archive_path=zpath,
+            group_col="scientificName",
+            max_per_group=1,
+            prioritize_inat=True,
+        )
 
 
 def test_occurrence_columns_narrows_the_read_end_to_end(tmp_path):
@@ -825,10 +856,11 @@ def test_occurrence_columns_narrows_the_read_end_to_end(tmp_path):
     """
     zpath = write_archive_zip(tmp_path / "gbif.zip")
 
-    table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath,
-                                      occurrence_columns=["occurrenceStatus"])
+    table = ingest.ingest_occurrences(
+        tmp_path / "project", archive_path=zpath, occurrence_columns=["occurrenceStatus"]
+    )
     assert "scientificName" not in table.columns
-    assert sorted(table["occurrence_id"]) == ["1", "2"]   # ABSENT still dropped
+    assert sorted(table["occurrence_id"]) == ["1", "2"]  # ABSENT still dropped
 
 
 def test_the_raw_import_keeps_columns_usecols_would_have_dropped(tmp_path):
@@ -840,8 +872,7 @@ def test_the_raw_import_keeps_columns_usecols_would_have_dropped(tmp_path):
     zpath = write_archive_zip(tmp_path / "gbif.zip")
     project = tmp_path / "project"
 
-    ingest.ingest_occurrences(project, archive_path=zpath,
-                              occurrence_columns=["occurrenceStatus"])
+    ingest.ingest_occurrences(project, archive_path=zpath, occurrence_columns=["occurrenceStatus"])
 
     [raw] = (project / "raw_imports").glob("*.zip")
     with zipfile.ZipFile(raw) as archived:
@@ -857,13 +888,9 @@ def test_a_numeric_looking_string_column_is_not_silently_coerced(tmp_path):
     rather than round-tripping it through a written-then-reread CSV is what
     keeps that true; a plain CSV round trip would let "007" come back as 7.
     """
-    occurrence = (
-        "gbifID\toccurrenceStatus\tcatalogNumber\n"
-        "1\tPRESENT\t007\n"
-    )
+    occurrence = "gbifID\toccurrenceStatus\tcatalogNumber\n1\tPRESENT\t007\n"
     multimedia = "gbifID\ttype\tidentifier\n1\tStillImage\thttps://x/1.jpg\n"
-    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence,
-                              multimedia=multimedia)
+    zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence, multimedia=multimedia)
 
     table = ingest.ingest_occurrences(tmp_path / "project", archive_path=zpath)
     assert table.set_index("occurrence_id").loc["1", "catalogNumber"] == "007"
@@ -880,23 +907,25 @@ def test_default_inat_occurrence_columns_works_end_to_end(tmp_path):
     """
     header = list(ingest.DEFAULT_INAT_OCCURRENCE_COLUMNS) + ["catalogNumber"]
     row1 = {c: "" for c in header}
-    row1.update(gbifID="1", occurrenceStatus="PRESENT",
-               scientificName="Orthetrum trinacria", catalogNumber="XYZ-1")
+    row1.update(
+        gbifID="1", occurrenceStatus="PRESENT", scientificName="Orthetrum trinacria", catalogNumber="XYZ-1"
+    )
     row2 = {c: "" for c in header}
-    row2.update(gbifID="2", occurrenceStatus="ABSENT",
-               scientificName="Nothing observed", catalogNumber="XYZ-2")
-    occurrence = "\t".join(header) + "\n" + "\n".join(
-        "\t".join(row[c] for c in header) for row in (row1, row2)) + "\n"
+    row2.update(
+        gbifID="2", occurrenceStatus="ABSENT", scientificName="Nothing observed", catalogNumber="XYZ-2"
+    )
+    occurrence = (
+        "\t".join(header) + "\n" + "\n".join("\t".join(row[c] for c in header) for row in (row1, row2)) + "\n"
+    )
     zpath = write_archive_zip(tmp_path / "gbif.zip", occurrence=occurrence)
 
     table = ingest.ingest_occurrences(
-        tmp_path / "project", archive_path=zpath,
-        occurrence_columns=ingest.DEFAULT_INAT_OCCURRENCE_COLUMNS)
+        tmp_path / "project", archive_path=zpath, occurrence_columns=ingest.DEFAULT_INAT_OCCURRENCE_COLUMNS
+    )
 
-    assert sorted(table["occurrence_id"]) == ["1"]        # ABSENT still dropped
-    assert table.set_index("occurrence_id").loc["1", "scientificName"] == \
-        "Orthetrum trinacria"
-    assert "catalogNumber" not in table.columns            # not in the default set
+    assert sorted(table["occurrence_id"]) == ["1"]  # ABSENT still dropped
+    assert table.set_index("occurrence_id").loc["1", "scientificName"] == "Orthetrum trinacria"
+    assert "catalogNumber" not in table.columns  # not in the default set
 
 
 def test_reingesting_the_same_archive_skips_the_expensive_parse(tmp_path, monkeypatch):
@@ -913,8 +942,9 @@ def test_reingesting_the_same_archive_skips_the_expensive_parse(tmp_path, monkey
     first = ingest.ingest_occurrences(project, archive_path=zpath)
 
     def _no_parse(*a, **kw):
-        raise AssertionError("read_darwincore_archive ran on a repeat ingest "
-                             "-- already_ingested should have skipped it")
+        raise AssertionError(
+            "read_darwincore_archive ran on a repeat ingest -- already_ingested should have skipped it"
+        )
 
     monkeypatch.setattr(archive, "read_darwincore_archive", _no_parse)
 
@@ -929,9 +959,9 @@ def test_reingesting_with_different_decisions_does_reparse(tmp_path, monkeypatch
     project = tmp_path / "project"
 
     ingest.ingest_occurrences(project, archive_path=zpath, drop=None)
-    table = ingest.ingest_occurrences(project, archive_path=zpath)   # default drop
+    table = ingest.ingest_occurrences(project, archive_path=zpath)  # default drop
 
-    assert sorted(table["occurrence_id"]) == ["1", "2"]    # ABSENT dropped this time
+    assert sorted(table["occurrence_id"]) == ["1", "2"]  # ABSENT dropped this time
 
 
 def test_trust_source_file_unchanged_skips_the_copy_and_hash(tmp_path, monkeypatch):
@@ -942,15 +972,14 @@ def test_trust_source_file_unchanged_skips_the_copy_and_hash(tmp_path, monkeypat
     zpath = write_archive_zip(tmp_path / "gbif.zip")
     project = tmp_path / "project"
 
-    first = ingest.ingest_occurrences(project, archive_path=zpath,
-                                      trust_source_file_unchanged=True)
+    first = ingest.ingest_occurrences(project, archive_path=zpath, trust_source_file_unchanged=True)
 
     def _no_copy(*a, **kw):
         raise AssertionError("raw_archive_bytes ran on a fingerprint hit")
+
     monkeypatch.setattr(archive, "raw_archive_bytes", _no_copy)
 
-    second = ingest.ingest_occurrences(project, archive_path=zpath,
-                                       trust_source_file_unchanged=True)
+    second = ingest.ingest_occurrences(project, archive_path=zpath, trust_source_file_unchanged=True)
     pd.testing.assert_frame_equal(first, second)
 
 
@@ -964,8 +993,7 @@ def test_trust_source_file_unchanged_falls_back_when_the_archive_changed(tmp_pat
     changed_multimedia = MULTIMEDIA_TXT + "4\tStillImage\thttps://x/4.jpg\n"
     write_archive_zip(zpath, occurrence=changed_occurrence, multimedia=changed_multimedia)
 
-    table = ingest.ingest_occurrences(project, archive_path=zpath,
-                                      trust_source_file_unchanged=True)
+    table = ingest.ingest_occurrences(project, archive_path=zpath, trust_source_file_unchanged=True)
     assert "4" in table["occurrence_id"].tolist()
 
 
@@ -974,10 +1002,10 @@ def test_trust_source_file_unchanged_still_reingests_on_a_changed_decision(tmp_p
     zpath = write_archive_zip(tmp_path / "gbif.zip")
     project = tmp_path / "project"
 
-    ingest.ingest_occurrences(project, archive_path=zpath, drop=None,
-                              trust_source_file_unchanged=True)
-    table = ingest.ingest_occurrences(project, archive_path=zpath,
-                                      trust_source_file_unchanged=True)   # default drop
+    ingest.ingest_occurrences(project, archive_path=zpath, drop=None, trust_source_file_unchanged=True)
+    table = ingest.ingest_occurrences(
+        project, archive_path=zpath, trust_source_file_unchanged=True
+    )  # default drop
 
     assert sorted(table["occurrence_id"]) == ["1", "2"]
 
@@ -991,8 +1019,9 @@ def test_the_zip_member_is_streamed_not_materialized_whole(tmp_path, monkeypatch
     zpath = write_archive_zip(tmp_path / "gbif.zip")
 
     def _no_eager_read(self, name, *a, **kw):
-        raise AssertionError(f"ZipFile.read() was called for {name!r} -- "
-                             "the member should be streamed via .open() instead")
+        raise AssertionError(
+            f"ZipFile.read() was called for {name!r} -- the member should be streamed via .open() instead"
+        )
 
     monkeypatch.setattr(zipfile.ZipFile, "read", _no_eager_read)
 

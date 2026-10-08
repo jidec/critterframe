@@ -22,9 +22,11 @@ from critterframe.extensions.antenna_lighttraps.calibrations import (
 )
 from helpers.stubs import FakeResponse, FakeSession
 
-CROP_URL = ("https://object-arbutus.cloud.computecanada.ca/ami-media-staging/"
-            "uploads/detections/199/2026-06-11/"
-            "bronzeBobcat_2026_06_11__01_15_20_HDR0_detection_2121474.jpg")
+CROP_URL = (
+    "https://object-arbutus.cloud.computecanada.ca/ami-media-staging/"
+    "uploads/detections/199/2026-06-11/"
+    "bronzeBobcat_2026_06_11__01_15_20_HDR0_detection_2121474.jpg"
+)
 SHEET_ID = "bronzeBobcat/2026-06-11/bronzeBobcat_2026_06_11__01_15_20_HDR0.jpg"
 
 
@@ -45,12 +47,15 @@ def test_the_session_is_the_device_and_the_night():
     assert ingest.parse_session_path(SHEET_ID) == "bronzeBobcat/2026-06-11"
 
 
-@pytest.mark.parametrize("url", [
-    None,
-    np.nan,
-    "https://example.com/nothing",
-    "https://example.com/uploads/plain_crop.jpg",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        None,
+        np.nan,
+        "https://example.com/nothing",
+        "https://example.com/uploads/plain_crop.jpg",
+    ],
+)
 def test_a_url_that_does_not_parse_gives_nothing_rather_than_a_guess(url, caplog):
     """
     A wrong sheet id would attach a scale measured on one night to crops from
@@ -66,8 +71,7 @@ def test_a_sheet_id_that_does_not_parse_gives_nothing():
 
 
 def test_the_derived_columns_land_on_the_table():
-    table = pd.DataFrame({"occurrence_id": ["1", "2"],
-                          "image_url": [CROP_URL, None]})
+    table = pd.DataFrame({"occurrence_id": ["1", "2"], "image_url": [CROP_URL, None]})
     derived = ingest.add_derived_columns(table)
 
     assert derived["sheet_image_id"].iloc[0] == SHEET_ID
@@ -89,8 +93,7 @@ def test_the_non_organism_vocabulary_belongs_to_the_extension():
     Which determinations mean "no organism here" is knowledge about the source,
     so the extension owns the vocabulary and the core owns the mechanism.
     """
-    assert ingest.NON_ORGANISM_DETERMINATIONS == {
-        "determination_name": ["Not Lepidoptera"]}
+    assert ingest.NON_ORGANISM_DETERMINATIONS == {"determination_name": ["Not Lepidoptera"]}
 
 
 def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
@@ -100,15 +103,23 @@ def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
     against an already-downloaded CSV so this never touches the network.
     """
     csv_path = tmp_path / "export.csv"
-    pd.DataFrame({
-        "id": ["1", "2", "3", "4"],
-        "best_detection_url": [f"https://x/crop_{index}.jpg" for index in range(4)],
-        "determination_name": ["moth"] * 4,
-    }).to_csv(csv_path, index=False)
+    pd.DataFrame(
+        {
+            "id": ["1", "2", "3", "4"],
+            "best_detection_url": [f"https://x/crop_{index}.jpg" for index in range(4)],
+            "determination_name": ["moth"] * 4,
+        }
+    ).to_csv(csv_path, index=False)
 
-    table = ingest.ingest_occurrences(tmp_path / "project", import_csv_path=csv_path,
-                                      drop=None, group_col="determination_name",
-                                      max_per_group=1)
+    # project= is given because the archived import is named for it; nothing here reads the environment.
+    table = ingest.ingest_occurrences(
+        tmp_path / "project",
+        import_csv_path=csv_path,
+        project=199,
+        drop=None,
+        group_col="determination_name",
+        max_per_group=1,
+    )
     assert len(table) == 1
 
 
@@ -122,11 +133,20 @@ def test_paging_follows_the_server_s_own_next_link():
     Rather than counting pages ourselves: a page size the server silently caps,
     or a record inserted mid-walk, then costs us no rows.
     """
-    session = FakeSession({"captures/": [
-        FakeResponse(json_data={"count": 3, "results": [{"id": 1}, {"id": 2}],
-                                "next": "https://antenna/api/v2/captures/?page=2"}),
-        FakeResponse(json_data={"count": 3, "results": [{"id": 3}], "next": None}),
-    ]})
+    session = FakeSession(
+        {
+            "captures/": [
+                FakeResponse(
+                    json_data={
+                        "count": 3,
+                        "results": [{"id": 1}, {"id": 2}],
+                        "next": "https://antenna/api/v2/captures/?page=2",
+                    }
+                ),
+                FakeResponse(json_data={"count": 3, "results": [{"id": 3}], "next": None}),
+            ]
+        }
+    )
 
     walked = list(api.paginate(session, "captures/"))
     assert [record["id"] for record in walked] == [1, 2, 3]
@@ -134,11 +154,20 @@ def test_paging_follows_the_server_s_own_next_link():
 
 def test_the_first_request_carries_the_query_and_the_rest_do_not():
     """`next` already encodes them, and re-sending them can conflict."""
-    session = FakeSession({"captures/": [
-        FakeResponse(json_data={"count": 1, "results": [{"id": 1}],
-                                "next": "https://antenna/api/v2/captures/?page=2"}),
-        FakeResponse(json_data={"count": 1, "results": [], "next": None}),
-    ]})
+    session = FakeSession(
+        {
+            "captures/": [
+                FakeResponse(
+                    json_data={
+                        "count": 1,
+                        "results": [{"id": 1}],
+                        "next": "https://antenna/api/v2/captures/?page=2",
+                    }
+                ),
+                FakeResponse(json_data={"count": 1, "results": [], "next": None}),
+            ]
+        }
+    )
 
     list(api.paginate(session, "captures/", params={"event": 5}))
     assert session.calls[0][2]["params"]["event"] == 5
@@ -152,14 +181,16 @@ def test_an_export_is_requested_polled_and_downloaded(monkeypatch, tmp_path):
     generous and why a timed-out poll doesn't cancel it.
     """
     monkeypatch.setattr(api.time, "sleep", lambda seconds: None)
-    session = FakeSession({
-        "/exports/12/": [
-            FakeResponse(json_data={"id": 12, "job": {"progress": 0.5}}),
-            FakeResponse(json_data={"id": 12, "file_url": "https://antenna/x.csv"}),
-        ],
-        "/exports/": FakeResponse(json_data={"id": 12}),
-        "x.csv": FakeResponse(content=b"occurrence_id\n1\n"),
-    })
+    session = FakeSession(
+        {
+            "/exports/12/": [
+                FakeResponse(json_data={"id": 12, "job": {"progress": 0.5}}),
+                FakeResponse(json_data={"id": 12, "file_url": "https://antenna/x.csv"}),
+            ],
+            "/exports/": FakeResponse(json_data={"id": 12}),
+            "x.csv": FakeResponse(content=b"occurrence_id\n1\n"),
+        }
+    )
 
     export_id = api.request_export(session, project=199)
     export = api.poll_export(session, export_id, interval=0)
@@ -175,8 +206,9 @@ def test_an_export_that_never_becomes_ready_times_out(monkeypatch):
     it -- it can be fetched later by id.
     """
     monkeypatch.setattr(api.time, "sleep", lambda seconds: None)
-    session = FakeSession({"/exports/12/": (
-        lambda url, kwargs: FakeResponse(json_data={"id": 12, "job": {}}))})
+    session = FakeSession(
+        {"/exports/12/": (lambda url, kwargs: FakeResponse(json_data={"id": 12, "job": {}}))}
+    )
 
     with pytest.raises(TimeoutError, match="export 12 not ready"):
         api.poll_export(session, 12, interval=0, timeout=0.05)
@@ -214,7 +246,7 @@ def test_the_environment_beats_the_fallback(monkeypatch):
 def test_no_project_id_anywhere_raises_rather_than_guessing(monkeypatch):
     """Silently exporting the wrong project is worse than failing."""
     monkeypatch.delenv("ANTENNA_PROJECT_ID", raising=False)
-    monkeypatch.setattr(api, "_environment_loaded", True)   # don't read .env
+    monkeypatch.setattr(api, "_environment_loaded", True)  # don't read .env
     with pytest.raises(RuntimeError, match="no Antenna project id"):
         api.project_id()
 
@@ -265,8 +297,7 @@ def test_a_sheet_is_fetched_through_the_session_it_is_given(draw_target_sheet):
     encoded = cv2.imencode(".jpg", sheet)[1].tobytes()
     session = FakeSession({"sheet.jpg": FakeResponse(content=encoded)})
 
-    image = antenna_scale._download_sheet("https://antenna/sheet.jpg",
-                                          session=session)
+    image = antenna_scale._download_sheet("https://antenna/sheet.jpg", session=session)
     assert image.shape == sheet.shape
     assert session.urls() == ["https://antenna/sheet.jpg"]
 

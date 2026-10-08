@@ -1,12 +1,4 @@
-"""
-The sqlite schema for run + metric records, and the migrations that keep older
-databases readable.
-
-A run is one execution of a recipe over a set of occurrences. Owns all three
-tables, since a metric row references its run: `runs` and `metrics` are the
-immutable history; `current_recipes` is the metric-side pointer that says
-which recipe a run_name presently means (see resolve_recipe_currency).
-"""
+"""Run records: the sqlite schema for runs, metrics and the current-recipe pointer, with its migrations."""
 
 import logging
 from contextlib import contextmanager
@@ -41,48 +33,28 @@ ADDED_RUN_COLUMNS = {"context_json": "TEXT"}
 
 
 def _add_missing_run_columns(connection):
-    """Add any `runs` column introduced after this project's database was created."""
+    """Add any `runs` column introduced after this database was created."""
     stored = {row["name"] for row in connection.execute("PRAGMA table_info(runs)")}
     for column, declaration in ADDED_RUN_COLUMNS.items():
         if column not in stored:
             logger.info("migrating runs table: adding '%s' column", column)
-            connection.execute(
-                f"ALTER TABLE runs ADD COLUMN {column} {declaration}")
+            connection.execute(f"ALTER TABLE runs ADD COLUMN {column} {declaration}")
 
 
 def _drop_legacy_metric_columns(connection):
-    """
-    Bring a metrics table written before those columns were removed into line
-    with the schema above.
+    """Drop the per-row `version` and `created_at` columns an older metrics table carries.
 
-    This migrates rather than tolerating both shapes because the old created_at
-    was NOT NULL: a database still carrying it doesn't just hold dead weight, it
-    rejects every insert that doesn't fill it. Dropping the column is what lets
-    an existing project keep running.
-
-    Neither column's contents are recoverable afterward. Both were duplicates --
-    the recipe spec on each row's run carries the operation version, and the run
-    carries the time -- so what's lost is per-row timing WITHIN a long run,
-    which nothing here ever read.
+    The old `created_at` was NOT NULL, so a table still holding it rejects every new insert.
     """
     stored = {row["name"] for row in connection.execute("PRAGMA table_info(metrics)")}
     for column in LEGACY_METRIC_COLUMNS:
         if column in stored:
-            logger.info("migrating metrics table: dropping legacy '%s' column",
-                        column)
+            logger.info("migrating metrics table: dropping legacy '%s' column", column)
             connection.execute(f"ALTER TABLE metrics DROP COLUMN {column}")
 
 
 def ensure_schema(connection):
-    """
-    Create the runs and metrics tables if they don't exist yet.
-
-    Both tables are created together, by whichever of the two modules opens the
-    database first, so neither has to care about ordering. Flexible sections
-    (the recipe, a metric's value) are stored as JSON so new operations and new
-    metric shapes don't require a schema change -- which is exactly the freedom
-    a package whose whole point is composable, user-defined recipes needs.
-    """
+    """Create the runs, metrics and current-recipe tables if missing, and migrate older ones."""
     connection.execute(
         """
         CREATE TABLE IF NOT EXISTS runs (
@@ -172,33 +144,20 @@ def ensure_schema(connection):
 
 
 def has_database(project_path):
-    """
-    Whether this project has a runs_and_metrics.sqlite yet.
+    """Return whether the project has a runs and metrics database yet.
 
-    What a READ checks before opening one: `connect` creates the file, and a
-    project that has never run anything should stay as it is when something
-    merely asks what it holds (see project.paths' "creates nothing").
-
-    - `project_path` -- project to check.
+    Args:
+        project_path: Project to check.
     """
     return paths.runs_and_metrics_path(project_path).exists()
 
 
 @contextmanager
 def open_database(project_path):
-    """
-    A project's runs_and_metrics.sqlite, with both tables guaranteed to exist, CLOSED on exit.
+    """Open a project's runs and metrics database as a context manager that closes on exit.
 
-    A context manager rather than a bare connection: left open, every read a
-    summary or an export makes holds a file handle for the rest of the process,
-    which on Windows is enough to stop the project directory being moved or
-    deleted.
-
-    The schema is ensured on every open rather than once per path. The DDL is
-    idempotent and cheap, and remembering which paths are ready is wrong as
-    soon as one is deleted and recreated under the same name.
-
-    - `project_path` -- project whose database to open.
+    Args:
+        project_path: Project whose database to open; created if missing.
     """
     connection = connect(paths.runs_and_metrics_path(project_path))
     try:
@@ -210,28 +169,17 @@ def open_database(project_path):
 
 
 def start_run(project_path, recipe, subset=None, context=None):
-    """
-    Open a run record for a recipe about to execute, and return its run_id.
+    """Open a run record for a recipe about to execute, and return its run id.
 
-    The full recipe spec is written now rather than at the end, so an
-    interrupted run still records what it was trying to do.
-
-    - `project_path` -- project to record the run in.
-    - `recipe` -- the Recipe being executed (see critterframe.recipes).
-    - `subset` -- name of the subset being processed, if the run was scoped to
-      one. Recorded but deliberately NOT part of the recipe hash: which
-      occurrences a recipe ran over is a property of the run, not of the
-      recipe, so processing the rest of a project later continues the same work
-      instead of counting as different work.
-    - `context` -- JSON-serializable record of what this run covered and what
-      its operations fit: the occurrence set as a count and an ids_digest, the
-      limit, and any prepare() records. Not hashed either, for the same reason
-      as subset.
+    Args:
+        project_path: Project to record the run in.
+        recipe: The `Recipe` being executed.
+        subset: Name of the subset being processed. Recorded, not hashed.
+        context: JSON-serializable record of what the run covers and what its operations
+            fit. Recorded, not hashed.
     """
     if recipe.kind not in RUN_KINDS:
-        raise ValueError(
-            f"run kind must be one of {RUN_KINDS}, got {recipe.kind!r}"
-        )
+        raise ValueError(f"run kind must be one of {RUN_KINDS}, got {recipe.kind!r}")
 
     with open_database(project_path) as connection:
         cursor = connection.execute(
@@ -256,36 +204,40 @@ def start_run(project_path, recipe, subset=None, context=None):
         )
         run_id = cursor.lastrowid
 
-    logger.info("started %s run '%s' (run_id=%d, part=%s, recipe=%s)",
-                recipe.kind, recipe.name, run_id, recipe.part, recipe.hash)
+    logger.info(
+        "started %s run '%s' (run_id=%d, part=%s, recipe=%s)",
+        recipe.kind,
+        recipe.name,
+        run_id,
+        recipe.part,
+        recipe.hash,
+    )
     return run_id
 
 
-def finish_run(project_path, run_id, processed=0, skipped=0, failed=0,
-               status=STATUS_COMPLETE, flags=None):
-    """
-    Close a run record with its counts.
+def finish_run(project_path, run_id, processed=0, skipped=0, failed=0, status=STATUS_COMPLETE, flags=None):
+    """Close a run record with its counts, and append it to `runs.jsonl`.
 
-    - `processed` -- occurrence-parts this run actually derived something for.
-    - `skipped` -- occurrence-parts already covered by an equivalent recipe, so
-      no work was repeated.
-    - `failed` -- occurrence-parts that raised. Individual failures never stop a
-      run; they're counted here and logged as they happen.
-    - `status` -- STATUS_COMPLETE, or STATUS_FAILED if the run itself (not an
-      individual occurrence) blew up.
-    - `flags` -- `{flag: count}` of the operations that called their own result
-      doubtful (see `drivers.FLAG_KEYS`), folded into the run's context. An
-      operation reports these in its `info`, and until they are recorded here
-      they exist only as text on a sampled panel.
+    Args:
+        project_path: Project the run belongs to.
+        run_id: The run.
+        processed: Occurrence-parts the run derived something for.
+        skipped: Occurrence-parts already covered by an equivalent recipe.
+        failed: Occurrence-parts that raised.
+        status: `STATUS_COMPLETE`, or `STATUS_FAILED` if the run itself failed.
+        flags: `{flag: count}` of results their own operations called doubtful, folded
+            into the run's context.
     """
     with open_database(project_path) as connection:
         if flags:
             stored = connection.execute(
-                "SELECT context_json FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+                "SELECT context_json FROM runs WHERE run_id = ?", (run_id,)
+            ).fetchone()
             context = load_json(stored["context_json"]) or {}
             context["flags"] = flags
-            connection.execute("UPDATE runs SET context_json = ? WHERE run_id = ?",
-                               (canonical_json(context), run_id))
+            connection.execute(
+                "UPDATE runs SET context_json = ? WHERE run_id = ?", (canonical_json(context), run_id)
+            )
 
         connection.execute(
             """
@@ -294,31 +246,19 @@ def finish_run(project_path, run_id, processed=0, skipped=0, failed=0,
                 n_failed = ?
             WHERE run_id = ?
             """,
-            (status, datetime.now(timezone.utc).isoformat(),
-             processed, skipped, failed, run_id),
+            (status, datetime.now(timezone.utc).isoformat(), processed, skipped, failed, run_id),
         )
-        row = connection.execute(
-            "SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
+        row = connection.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
 
-    logger.info("finished run %d: processed=%d skipped=%d failed=%d (%s)",
-                run_id, processed, skipped, failed, status)
+    logger.info(
+        "finished run %d: processed=%d skipped=%d failed=%d (%s)", run_id, processed, skipped, failed, status
+    )
     _append_run_log(project_path, dict(row))
     return run_id
 
 
 def _append_run_log(project_path, row):
-    """
-    Append one finished run to runs.jsonl, mirroring export.py's
-    exports.jsonl: a human-readable log a person can grep/jq/git-diff without
-    opening runs_and_metrics.sqlite.
-
-    Only finish_run calls this -- a run left at STATUS_RUNNING by an
-    interrupted process keeps its sqlite row but never reaches the log, the
-    same "one line per call that actually completed" reasoning
-    paths.imports_log_path's docstring gives for imports.jsonl. This is a
-    derived mirror, not a second source of truth: load_runs() from sqlite
-    stays the primary, filterable reader.
-    """
+    """Append one finished run to `runs.jsonl`, the readable mirror of the runs table."""
     record = dict(row)
     record["recipe"] = load_json(record.pop("recipe_json"))
     record["context"] = load_json(record.pop("context_json", None))
@@ -327,15 +267,10 @@ def _append_run_log(project_path, row):
 
 
 def _seeded_current_hash(connection, kind, name, part):
-    """
-    The recipe presently designated for (kind, name, part): the pointer if one
-    has been written, else whichever hash run history's own insertion order
-    would already call current.
+    """Return the recipe hash `(kind, name, part)` points at.
 
-    The fallback is what makes turning this on safe for a project that already
-    has runs: the first metric run after upgrading seeds the pointer from
-    history instead of arbitrarily adopting whatever recipe happens to run
-    next, so nothing moves under a name that hasn't actually changed.
+    The pointer where one is written, else the hash run history's insertion order makes
+    newest, so a project with runs from before the pointer existed keeps what it had.
     """
     row = connection.execute(
         "SELECT recipe_hash FROM current_recipes WHERE kind = ? AND name = ? AND part = ?",
@@ -345,8 +280,7 @@ def _seeded_current_hash(connection, kind, name, part):
         return row["recipe_hash"]
 
     row = connection.execute(
-        "SELECT recipe_hash FROM runs WHERE kind = ? AND name = ? AND part = ? "
-        "ORDER BY run_id DESC LIMIT 1",
+        "SELECT recipe_hash FROM runs WHERE kind = ? AND name = ? AND part = ? ORDER BY run_id DESC LIMIT 1",
         (kind, name, part),
     ).fetchone()
     return None if row is None else row["recipe_hash"]
@@ -365,36 +299,26 @@ def _write_current_recipe(connection, kind, name, part, recipe_hash):
     )
 
 
-def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force,
-                            recipe_spec=None):
-    """
-    Settle whether (kind, name, part) may proceed under recipe_hash, and
-    whether the caller still owes commit_recipe_currency() once real work
-    confirms the change.
+def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force, recipe_spec=None):
+    """Decide whether a metric run name may proceed under a recipe hash.
 
-    A no-op for anything but "metric": masks.parquet upserts to a single
-    current row per occurrence-part, so a segment run_name pointing at several
-    recipe hashes over a project's life is neither ambiguous nor new -- it's
-    exactly what resegmenting is. Metrics have no such row to make "current"
-    unambiguous on their own; the metrics table is append-only, so without
-    this, "current" only ever meant "whichever recipe ran most recently,"
-    silently, and export.metrics_wide / records.metrics.latest_values key on
-    run_name alone -- two recipes sharing a name would interleave under one
-    export column or one group-metric fit with no record they ever differed.
+    Does nothing for a segment run.
 
-    Raises when (kind, name, part) already points at a different recipe and
-    force is falsy, naming both hashes. force=True acknowledges the change
-    explicitly instead of it happening as a side effect of write order.
+    Args:
+        project_path: Project the run belongs to.
+        kind: Run kind.
+        name: Run name.
+        part: Part being measured.
+        recipe_hash: Hash of the recipe about to run.
+        force: Allow the name to move onto a different recipe.
+        recipe_spec: This run's `Recipe.spec()`, so the error can say what differs.
 
-    `recipe_spec` is this run's `Recipe.spec()`. Given it, the error (and the
-    log line of a forced move) says WHAT differs from the recipe the name
-    points at, operation by operation: two hashes alone can't tell a person
-    whether they changed something or the package did.
+    Returns:
+        True when the caller must call `commit_recipe_currency` once a value is stored;
+        False when the pointer already points here or was written now.
 
-    Returns True when the caller must call commit_recipe_currency() itself
-    once it knows real work was done; False when there is nothing left to do
-    (first use, or already pointing here) because that case is safe to write
-    immediately, before any occurrence is processed.
+    Raises:
+        ValueError: If the name points at a different recipe and `force` is falsy.
     """
     if kind != "metric":
         return False
@@ -414,8 +338,9 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force,
             ).fetchone()
             if row is not None:
                 changed = describe_recipe_change(load_json(row["recipe_json"]), recipe_spec)
-                differs = ("\nWhat this run changes from the recipe the name points at:\n"
-                           + "\n".join(f"  - {line}" for line in changed))
+                differs = "\nWhat this run changes from the recipe the name points at:\n" + "\n".join(
+                    f"  - {line}" for line in changed
+                )
 
         if not force:
             raise ValueError(
@@ -429,32 +354,36 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force,
                 f"-- or give this recipe its own name instead.{differs}"
             )
         if differs:
-            logger.info("run_name %r part %r: force=True moves it from recipe %s "
-                        "to %s.%s", name, part, current, recipe_hash, differs)
+            logger.info(
+                "run_name %r part %r: force=True moves it from recipe %s to %s.%s",
+                name,
+                part,
+                current,
+                recipe_hash,
+                differs,
+            )
         return True
 
 
 def commit_recipe_currency(project_path, kind, name, part, recipe_hash):
-    """
-    Move (kind, name, part)'s pointer to recipe_hash.
+    """Move a run name's pointer to a recipe hash.
 
-    Called once a forced recipe change has actually produced at least one
-    value, not from resolve_recipe_currency itself: writing the pointer before
-    confirming that would mean a run that starts under a forced change and
-    then fails for every occurrence empties out every occurrence's current
-    value for this name, rather than leaving the previous recipe's values
-    (the safer outcome) in place.
+    Args:
+        project_path: Project the run belongs to.
+        kind: Run kind.
+        name: Run name.
+        part: Part measured.
+        recipe_hash: Hash to point at.
     """
     if kind != "metric":
         return
     with open_database(project_path) as connection:
         _write_current_recipe(connection, kind, name, part, recipe_hash)
-    logger.info("run_name %r for part %r now points at recipe %s",
-               name, part, recipe_hash)
+    logger.info("run_name %r for part %r now points at recipe %s", name, part, recipe_hash)
 
 
 def current_recipe_pointers(project_path, kind="metric"):
-    """{(name, part): recipe_hash} for every name with a recorded pointer."""
+    """Return `{(name, part): recipe_hash}` for every name with a recorded pointer."""
     if not has_database(project_path):
         return {}
     with open_database(project_path) as connection:
@@ -466,15 +395,13 @@ def current_recipe_pointers(project_path, kind="metric"):
 
 
 def current_recipe(project_path, name, part, kind="metric"):
-    """
-    `(recipe_hash, recipe spec)` currently designated for (kind, name, part), or `(None, None)`.
+    """Return the `(recipe_hash, recipe spec)` a run name points at, or `(None, None)`.
 
-    Read-only: the pointer where one is written, else the newest run's recipe,
-    the same fallback `resolve_recipe_currency` seeds from.
-
-    - `name` -- run name.
-    - `part` -- part it measured.
-    - `kind` -- run kind.
+    Args:
+        project_path: Project to read from.
+        name: Run name.
+        part: Part it measured.
+        kind: Run kind.
     """
     if not has_database(project_path):
         return None, None
@@ -483,41 +410,50 @@ def current_recipe(project_path, name, part, kind="metric"):
         if recipe_hash is None:
             return None, None
         row = connection.execute(
-            "SELECT recipe_json FROM runs WHERE kind = ? AND recipe_hash = ? "
-            "ORDER BY run_id DESC LIMIT 1",
+            "SELECT recipe_json FROM runs WHERE kind = ? AND recipe_hash = ? ORDER BY run_id DESC LIMIT 1",
             (kind, recipe_hash),
         ).fetchone()
     return recipe_hash, None if row is None else load_json(row["recipe_json"])
 
 
 def _empty_runs_frame():
-    """
-    A run table with no rows but every column, so a caller can filter or read a
-    column off a project that has never run anything without special-casing it.
-    """
-    return pd.DataFrame(columns=[
-        "run_id", "kind", "name", "part", "subset", "recipe_hash", "status",
-        "created_at", "finished_at", "n_processed", "n_skipped", "n_failed",
-        "recipe", "context",
-    ])
+    """Return a run table with every column and no rows."""
+    return pd.DataFrame(
+        columns=[
+            "run_id",
+            "kind",
+            "name",
+            "part",
+            "subset",
+            "recipe_hash",
+            "status",
+            "created_at",
+            "finished_at",
+            "n_processed",
+            "n_skipped",
+            "n_failed",
+            "recipe",
+            "context",
+        ]
+    )
 
 
 def load_runs(project_path, kind=None, name=None, recipe_hash=None, run_id=None):
-    """
-    Read run records as a DataFrame, newest first, with the stored recipe spec
-    and run context parsed back into `recipe` and `context` columns of dicts.
+    """Read run records as a DataFrame, newest first.
 
-    - `kind` -- optional "segment"/"metric" filter.
-    - `name` -- optional run-name filter.
-    - `recipe_hash` -- optional exact-recipe filter, for "when has this exact
-      recipe been run before".
-    - `run_id` -- optional exact-run filter, for looking up one run by id.
+    The stored recipe and context are parsed into `recipe` and `context` columns of dicts.
+
+    Args:
+        project_path: Project to read from.
+        kind: `"segment"` or `"metric"`.
+        name: Run name.
+        recipe_hash: Exact recipe.
+        run_id: Exact run.
     """
     query = "SELECT * FROM runs"
     conditions = []
     parameters = []
-    for column, value in (("kind", kind), ("name", name),
-                          ("recipe_hash", recipe_hash), ("run_id", run_id)):
+    for column, value in (("kind", kind), ("name", name), ("recipe_hash", recipe_hash), ("run_id", run_id)):
         if value is not None:
             conditions.append(f"{column} = ?")
             parameters.append(value)

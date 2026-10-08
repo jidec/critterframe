@@ -1,8 +1,4 @@
-"""
-Image grids for filter calibration and audit: which labelled items a filter set catches, misses and costs.
-
-Drawn from the labelled rows only and capped, so they stay bounded whatever the project's size.
-"""
+"""Image grids for a filter calibration or audit: what a filter set catches, misses and costs."""
 
 import logging
 
@@ -39,19 +35,20 @@ _REMOVES_LOW = {">=": True, ">": True, "<=": False, "<": False}
 
 
 def short_name(column):
-    """An export column without its run and part, e.g. `mask_info__segment__score`."""
+    """Return an export column without its run and part, e.g. `mask_info__segment__score`."""
     return str(column).split("__", 2)[-1]
 
 
 def thin_ranks(count, cap, keep=()):
-    """
-    Which of `count` ranked items to show when only `cap` fit: evenly spaced, plus `keep`.
+    """Return which of `count` ranked items to show when only `cap` fit: evenly spaced, plus `keep`.
 
-    - `count` -- how many items there are, in rank order.
-    - `cap` -- the most to show.
-    - `keep` -- ranks that must be shown, e.g. the items either side of a cutoff.
+    Args:
+        count: How many items there are, in rank order.
+        cap: The most to show.
+        keep: Ranks that must be shown, e.g. the items either side of a cutoff.
 
-    Returns sorted ranks, at most `cap` of them unless `keep` alone is longer.
+    Returns:
+        Sorted ranks, at most `cap` unless `keep` alone is longer.
     """
     keep = sorted({rank for rank in keep if 0 <= rank < count})
     if count <= cap:
@@ -65,14 +62,14 @@ def thin_ranks(count, cap, keep=()):
 
 
 def _cell(image, bad, caption):
-    """One cutout fitted to a cell, framed by its label's colour, captioned underneath."""
+    """Return one cutout fitted to a cell, framed in its label's color, with a caption underneath."""
     fitted = grids.fit_cell(image, cell=CELL)
     framed = bordered(fitted, BAD_COLOR if bad else GOOD_COLOR, BORDER)
     return np.vstack([framed, grids._text_strip(caption, CELL[1], grids.LABEL_HEIGHT)])
 
 
 def _text_cell(lines):
-    """A cell holding only text, the size of a captioned cell: a row heading or a cutoff marker."""
+    """Return a cell holding only text, the size of a captioned cell."""
     cell = np.full((CELL[0] + grids.LABEL_HEIGHT, CELL[1], 3), grids.BACKGROUND, np.uint8)
     for line, text in enumerate(lines):
         annotate(cell, text, line=line, color=(255, 255, 255))
@@ -80,21 +77,21 @@ def _text_cell(lines):
 
 
 def _wrap(text, width=22):
-    """`text` broken into lines a text cell can hold."""
+    """Return `text` broken into lines a text cell can hold."""
     text = str(text)
-    return [text[start:start + width] for start in range(0, len(text), width)] or [""]
+    return [text[start : start + width] for start in range(0, len(text), width)] or [""]
 
 
 def _cutouts(project_path, part, occurrence_ids):
-    """`{occurrence_id: masked cutout}` for the ids that have an image and a mask for `part`."""
+    """Return `{occurrence_id: masked cutout}` for the ids with an image and a mask for the part."""
     wanted = sorted({str(occurrence_id) for occurrence_id in occurrence_ids})
     if not wanted:
         return {}
     cells = {}
     try:
         for occurrence_id, segment in iterate_segments(
-                project_path, part=part, occurrence_ids=wanted,
-                progress="filter grids"):
+            project_path, part=part, occurrence_ids=wanted, progress="filter grids"
+        ):
             cells[occurrence_id] = grids.mask_cutout(segment)
     except Exception as exc:
         # No image store, no mask table: a project that can't show pictures
@@ -117,38 +114,51 @@ class _Plan:
         self.needed = set()
 
     def take(self, ids, cap):
-        """Up to `cap` of `ids`, the same ones every run, and remembered as needing a cutout."""
+        """Return up to `cap` of `ids`, the same ones every run, and mark them as needing a cutout."""
         ids = [str(occurrence_id) for occurrence_id in ids]
         chosen = sample_occurrences(ids, cap) if len(ids) > cap else sorted(ids)
         self.needed.update(chosen)
         return chosen
 
     def bad_first(self, ids, cap):
-        """Up to `cap` of `ids`, bad ones first, so the evidence against a group is what's visible."""
+        """Return up to `cap` of `ids`, bad ones first."""
         ids = sorted(str(occurrence_id) for occurrence_id in ids)
         ordered = ([i for i in ids if self.is_bad[i]] + [i for i in ids if not self.is_bad[i]])[:cap]
         self.needed.update(ordered)
         return ordered
 
 
-def draw_filter_grids(report, project_path, part, labelled, label_col, bad_labels,
-                      filters, kept, passes, strips=None, categories=None):
-    """
-    Write the image grids of one calibration or audit into its report.
-
-    - `report` -- the pipeline report to write into; nothing is drawn for a NullReport.
-    - `project_path`, `part` -- where the cutouts come from: the part the labels describe.
-    - `labelled` -- wide frame of the labelled rows, with `occurrence_id`.
-    - `label_col`, `bad_labels` -- the label column, and the labels that count as bad.
-    - `filters` -- the filter set, as `export_metrics(filters=...)`.
-    - `kept` -- boolean mask over `labelled`: rows passing every filter.
-    - `passes` -- `{column: boolean mask}`: rows passing each filter alone.
-    - `strips` -- `{column: name}` for the continuous candidates to draw a score strip for.
-    - `categories` -- `{column: (name, table, dropped)}` for categorical candidates: the
-      per-category table of the sweep and the categories dropped.
+def draw_filter_grids(
+    report,
+    project_path,
+    part,
+    labelled,
+    label_col,
+    bad_labels,
+    filters,
+    kept,
+    passes,
+    strips=None,
+    categories=None,
+):
+    """Write the image grids of one calibration or audit into its report.
 
     Writes `outcomes`, `misses`, `cost`, `only_here`, `<name>__strip` and
     `<name>__categories`, each only where it has something to show.
+
+    Args:
+        report: The pipeline report to write into; nothing is drawn for a `NullReport`.
+        project_path: Project the cutouts come from.
+        part: Part the labels describe.
+        labelled: Wide frame of the labelled rows, with `occurrence_id`.
+        label_col: The label column.
+        bad_labels: The labels that count as bad.
+        filters: The filter set, as `export_metrics(filters=)` takes it.
+        kept: Boolean mask over `labelled`: rows passing every filter.
+        passes: `{column: boolean mask}`: rows passing each filter alone.
+        strips: `{column: name}` for the continuous candidates to draw a score strip for.
+        categories: `{column: (name, table, dropped)}` for categorical candidates: the
+            sweep's per-category table and the categories dropped.
     """
     if not report or labelled.empty:
         return
@@ -196,8 +206,7 @@ def draw_filter_grids(report, project_path, part, labelled, label_col, bad_label
         boundary = sum(not ok for ok in passing) if removes_low else sum(passing)
         ranks = thin_ranks(len(values), STRIP_CELLS, keep=(boundary - 1, boundary))
         plan.needed.update(ordered_ids[rank] for rank in ranks)
-        strip_plans[column] = (name, ordered_ids, values, ranks, boundary, comparator,
-                               threshold, removes_low)
+        strip_plans[column] = (name, ordered_ids, values, ranks, boundary, comparator, threshold, removes_low)
 
     category_plans = {}
     for column, (name, table, dropped) in (categories or {}).items():
@@ -214,12 +223,16 @@ def draw_filter_grids(report, project_path, part, labelled, label_col, bad_label
     def cell(occurrence_id, caption=None):
         if occurrence_id not in cutouts:
             return None
-        return _cell(cutouts[occurrence_id], plan.is_bad[occurrence_id],
-                     plan.labels[occurrence_id] if caption is None else caption)
+        return _cell(
+            cutouts[occurrence_id],
+            plan.is_bad[occurrence_id],
+            plan.labels[occurrence_id] if caption is None else caption,
+        )
 
     def cells(ids, caption=None):
-        made = [cell(occurrence_id, None if caption is None else caption(occurrence_id))
-                for occurrence_id in ids]
+        made = [
+            cell(occurrence_id, None if caption is None else caption(occurrence_id)) for occurrence_id in ids
+        ]
         return [image for image in made if image is not None]
 
     full_cell = (CELL[0] + grids.LABEL_HEIGHT, CELL[1])
@@ -238,67 +251,126 @@ def draw_filter_grids(report, project_path, part, labelled, label_col, bad_label
             report.figure(name, grid)
 
     # 1. outcomes, and the two rows that matter in full
-    write("outcomes", rows_grid(
-        [[_text_cell([name, f"n={len(outcomes[name])}"])] + cells(shown)
-         for name, shown in outcome_rows.items()],
-        f"labelled rows by outcome, {len(filters)} filter(s): red frame = bad label, "
-        "green = good", keep_empty=True))
+    write(
+        "outcomes",
+        rows_grid(
+            [
+                [_text_cell([name, f"n={len(outcomes[name])}"])] + cells(shown)
+                for name, shown in outcome_rows.items()
+            ],
+            f"labelled rows by outcome, {len(filters)} filter(s): red frame = bad label, green = good",
+            keep_empty=True,
+        ),
+    )
 
     removed_by = {
-        occurrence_id: ", ".join(short_name(column) for column, passed in passes.items()
-                                 if not np.asarray(passed, bool)[index])
-        for index, occurrence_id in enumerate(plan.ids)}
+        occurrence_id: ", ".join(
+            short_name(column) for column, passed in passes.items() if not np.asarray(passed, bool)[index]
+        )
+        for index, occurrence_id in enumerate(plan.ids)
+    }
     shown = cells(misses)
     if shown:
-        write("misses", grids.image_grid(
-            shown, columns=ROW_CELLS, cell=full_cell,
-            title="bad labels the filters keep" + _showing(len(misses), len(outcomes["bad, kept"]))))
+        write(
+            "misses",
+            grids.image_grid(
+                shown,
+                columns=ROW_CELLS,
+                cell=full_cell,
+                title="bad labels the filters keep" + _showing(len(misses), len(outcomes["bad, kept"])),
+            ),
+        )
     shown = cells(cost, caption=lambda occurrence_id: removed_by[occurrence_id])
     if shown:
-        write("cost", grids.image_grid(
-            shown, columns=ROW_CELLS, cell=full_cell,
-            title="good labels the filters remove, and by which"
-                  + _showing(len(cost), len(outcomes["good, removed"]))))
+        write(
+            "cost",
+            grids.image_grid(
+                shown,
+                columns=ROW_CELLS,
+                cell=full_cell,
+                title="good labels the filters remove, and by which"
+                + _showing(len(cost), len(outcomes["good, removed"])),
+            ),
+        )
 
     # 2. per-filter unique removals
-    write("only_here", rows_grid(
-        [[_text_cell(_wrap(short_name(column))
-                     + [f"{sum(plan.is_bad[i] for i in alone)} bad, "
-                        f"{sum(not plan.is_bad[i] for i in alone)} good"])] + cells(shown_ids)
-         for column, (shown_ids, alone) in only_here.items()],
-        "what each filter removes that no other filter does"))
+    write(
+        "only_here",
+        rows_grid(
+            [
+                [
+                    _text_cell(
+                        _wrap(short_name(column))
+                        + [
+                            f"{sum(plan.is_bad[i] for i in alone)} bad, "
+                            f"{sum(not plan.is_bad[i] for i in alone)} good"
+                        ]
+                    )
+                ]
+                + cells(shown_ids)
+                for column, (shown_ids, alone) in only_here.items()
+            ],
+            "what each filter removes that no other filter does",
+        ),
+    )
 
     # 3. one strip per continuous candidate
-    for column, (name, ordered_ids, values, ranks, boundary, comparator, threshold,
-                 removes_low) in strip_plans.items():
+    for column, (
+        name,
+        ordered_ids,
+        values,
+        ranks,
+        boundary,
+        comparator,
+        threshold,
+        removes_low,
+    ) in strip_plans.items():
         strip = []
         for rank in ranks:
             if rank == boundary:
-                strip.append(_text_cell(
-                    ["cutoff", f"keep {comparator} {threshold:g}",
-                     "<- removed" if removes_low else "removed ->"]))
-            image = cell(ordered_ids[rank],
-                         f"{values[rank]:.3g} {plan.labels[ordered_ids[rank]]}")
+                strip.append(
+                    _text_cell(
+                        [
+                            "cutoff",
+                            f"keep {comparator} {threshold:g}",
+                            "<- removed" if removes_low else "removed ->",
+                        ]
+                    )
+                )
+            image = cell(ordered_ids[rank], f"{values[rank]:.3g} {plan.labels[ordered_ids[rank]]}")
             if image is not None:
                 strip.append(image)
         if boundary >= len(values):
-            strip.append(_text_cell(["cutoff", f"keep {comparator} {threshold:g}",
-                                     "<- removed" if removes_low else "removed ->"]))
+            strip.append(
+                _text_cell(
+                    [
+                        "cutoff",
+                        f"keep {comparator} {threshold:g}",
+                        "<- removed" if removes_low else "removed ->",
+                    ]
+                )
+            )
         if any(image is not None for image in strip):
-            write(f"{name}__strip", grids.image_grid(
-                strip, columns=ROW_CELLS, cell=full_cell,
-                title=f"{name}, ascending{_showing(len(ranks), len(values))}"))
+            write(
+                f"{name}__strip",
+                grids.image_grid(
+                    strip,
+                    columns=ROW_CELLS,
+                    cell=full_cell,
+                    title=f"{name}, ascending{_showing(len(ranks), len(values))}",
+                ),
+            )
 
     # 4. one gallery per categorical candidate
     for column, (name, rows, dropped) in category_plans.items():
         gallery = []
         for row, members in rows:
-            state = ("DROPPED" if row.category in dropped
-                     else "" if row.enough_labels else "too few labels")
+            state = "DROPPED" if row.category in dropped else "" if row.enough_labels else "too few labels"
             heading = [f"{row.category}", f"{row.n_bad}/{row.n} bad"] + ([state] if state else [])
             gallery.append([_text_cell(heading)] + cells(members))
-        write(f"{name}__categories", rows_grid(
-            gallery, f"{name}: labelled members per category, worst first"))
+        write(
+            f"{name}__categories", rows_grid(gallery, f"{name}: labelled members per category, worst first")
+        )
 
 
 def _passes(value, comparator, threshold):

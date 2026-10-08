@@ -112,8 +112,7 @@ def test_transforms_are_applied_on_the_way_out(segmented_project):
     those operations in front of it when it runs.
     """
     plain = dict(iterate_segments(segmented_project))
-    cropped = dict(iterate_segments(segmented_project,
-                                    transforms=[cf.crop_to_mask()]))
+    cropped = dict(iterate_segments(segmented_project, transforms=[cf.crop_to_mask()]))
     assert cropped["specimen0"].shape != plain["specimen0"].shape
 
 
@@ -126,15 +125,19 @@ def _segment_core(project_path, reference=False):
     from_part example, reused so this file exercises the real dependency."""
     from helpers.models import ThresholdModel
 
-    return cf.run_segments(project_path, run_name="core", part="core",
-                           from_part="organism",
-                           shared_steps=[cf.remove_background()],
-                           steps=[cf.segment(ThresholdModel(erode=3))],
-                           reference=reference, visualize=False)["core"]
+    return cf.run_segments(
+        project_path,
+        run_name="core",
+        part="core",
+        from_part="organism",
+        shared_steps=[cf.remove_background()],
+        steps=[cf.segment(ThresholdModel(erode=3))],
+        reference=reference,
+        visualize=False,
+    )["core"]
 
 
-def test_from_part_reads_the_upstream_mask_from_canonical_even_for_a_reference_part(
-        segmented_project):
+def test_from_part_reads_the_upstream_mask_from_canonical_even_for_a_reference_part(segmented_project):
     """
     Regression: a hand-drawn part correction (draw_mask()/correct_mask(), run
     with reference=True) starts from the upstream part's CANONICAL mask -- the
@@ -145,9 +148,15 @@ def test_from_part_reads_the_upstream_mask_from_canonical_even_for_a_reference_p
     """
     _segment_core(segmented_project, reference=True)
 
-    view = dict(iterate_segments(segmented_project, part="core",
-                                 from_part="organism", reference=True,
-                                 transforms=[cf.crop_to_mask()]))
+    view = dict(
+        iterate_segments(
+            segmented_project,
+            part="core",
+            from_part="organism",
+            reference=True,
+            transforms=[cf.crop_to_mask()],
+        )
+    )
     assert len(view) == SPECIMENS
     assert all(segment.mask is not None for segment in view.values())
 
@@ -160,11 +169,10 @@ def test_from_part_frames_the_image_by_the_upstream_masks_crop(segmented_project
     """
     _segment_core(segmented_project)
 
-    organism_view = dict(iterate_segments(segmented_project,
-                                          transforms=[cf.crop_to_mask()]))
-    core_view = dict(iterate_segments(segmented_project, part="core",
-                                      from_part="organism",
-                                      transforms=[cf.crop_to_mask()]))
+    organism_view = dict(iterate_segments(segmented_project, transforms=[cf.crop_to_mask()]))
+    core_view = dict(
+        iterate_segments(segmented_project, part="core", from_part="organism", transforms=[cf.crop_to_mask()])
+    )
 
     assert core_view["specimen0"].shape == organism_view["specimen0"].shape
 
@@ -173,10 +181,8 @@ def test_without_from_part_the_crop_follows_the_parts_own_mask(segmented_project
     """The mismatch from_part exists to avoid, made explicit."""
     _segment_core(segmented_project)
 
-    organism_view = dict(iterate_segments(segmented_project,
-                                          transforms=[cf.crop_to_mask()]))
-    core_view = dict(iterate_segments(segmented_project, part="core",
-                                      transforms=[cf.crop_to_mask()]))
+    organism_view = dict(iterate_segments(segmented_project, transforms=[cf.crop_to_mask()]))
+    core_view = dict(iterate_segments(segmented_project, part="core", transforms=[cf.crop_to_mask()]))
 
     assert core_view["specimen0"].shape != organism_view["specimen0"].shape
 
@@ -188,9 +194,9 @@ def test_the_parts_own_mask_still_rides_along_reprojected(segmented_project):
     """
     _segment_core(segmented_project)
 
-    core_view = dict(iterate_segments(segmented_project, part="core",
-                                      from_part="organism",
-                                      transforms=[cf.crop_to_mask()]))
+    core_view = dict(
+        iterate_segments(segmented_project, part="core", from_part="organism", transforms=[cf.crop_to_mask()])
+    )
     segment = core_view["specimen0"]
 
     assert 0 < segment.mask.sum() < segment.mask.size
@@ -222,16 +228,14 @@ def test_an_unsplit_export_is_one_flat_directory(segmented_project, tmp_path):
 
 def test_splits_become_directories(segmented_project, tmp_path):
     out = tmp_path / "split"
-    manifest = cf.export_training_data(segmented_project, out,
-                                       splits=splits_of(segmented_project))
+    manifest = cf.export_training_data(segmented_project, out, splits=splits_of(segmented_project))
 
     assert (out / "train" / "images").is_dir()
     assert (out / "val" / "images").is_dir()
     assert manifest["split"].value_counts().to_dict() == {"train": 6, "val": 2}
 
 
-def test_a_split_may_be_named_as_a_subset_instead_of_listed(segmented_project,
-                                                            tmp_path):
+def test_a_split_may_be_named_as_a_subset_instead_of_listed(segmented_project, tmp_path):
     """
     Both are how a project legitimately holds a selection: split_ids hands back
     ids, and a selection worth keeping gets frozen as a subset.
@@ -239,8 +243,9 @@ def test_a_split_may_be_named_as_a_subset_instead_of_listed(segmented_project,
     cf.define_subset(segmented_project, "boxA", column="device", values=["boxA"])
     cf.define_subset(segmented_project, "boxB", column="device", values=["boxB"])
 
-    manifest = cf.export_training_data(segmented_project, tmp_path / "subsets",
-                                       splits={"train": "boxA", "val": "boxB"})
+    manifest = cf.export_training_data(
+        segmented_project, tmp_path / "subsets", splits={"train": "boxA", "val": "boxB"}
+    )
     assert manifest["split"].value_counts().to_dict() == {"train": 4, "val": 4}
 
 
@@ -249,30 +254,28 @@ def test_an_occurrence_in_two_splits_is_refused(segmented_project, tmp_path):
     splits["val"] = splits["val"] + splits["train"][:1]
 
     with pytest.raises(ValueError, match="two splits"):
-        cf.export_training_data(segmented_project, tmp_path / "leaky",
-                                splits=splits)
+        cf.export_training_data(segmented_project, tmp_path / "leaky", splits=splits)
 
 
-def test_splits_and_a_limit_are_two_ways_of_saying_which(segmented_project,
-                                                          tmp_path):
+def test_splits_and_a_limit_are_two_ways_of_saying_which(segmented_project, tmp_path):
     with pytest.raises(ValueError, match="not both"):
-        cf.export_training_data(segmented_project, tmp_path / "x",
-                                splits=splits_of(segmented_project), limit=3)
+        cf.export_training_data(
+            segmented_project, tmp_path / "x", splits=splits_of(segmented_project), limit=3
+        )
 
 
 def test_class_folders_make_an_imagefolder_tree(segmented_project, tmp_path):
     out = tmp_path / "classes"
-    manifest = cf.export_training_data(segmented_project, out,
-                                       splits=splits_of(segmented_project),
-                                       class_by="species")
+    manifest = cf.export_training_data(
+        segmented_project, out, splits=splits_of(segmented_project), class_by="species"
+    )
 
     assert (out / "train" / "Anax_junius").is_dir()
     assert set(manifest["class"]) == {"Anax junius", "Libellula lydia"}
     assert manifest["image_path"].str.startswith(("train/", "val/")).all()
 
 
-def test_an_occurrence_with_no_class_is_left_out(segmented_project, tmp_path,
-                                                  caplog):
+def test_an_occurrence_with_no_class_is_left_out(segmented_project, tmp_path, caplog):
     """
     The class IS the training target here, so an image without one has nothing
     to teach -- unlike a split, where an unlabelled image is still data.
@@ -280,11 +283,11 @@ def test_an_occurrence_with_no_class_is_left_out(segmented_project, tmp_path,
     table = pd.read_parquet(segmented_project / "occurrences.parquet")
     table.loc[:2, "species"] = None
     from critterframe.records.occurrences import save_occurrences
+
     save_occurrences(segmented_project, table)
 
     with caplog.at_level("INFO"):
-        manifest = cf.export_training_data(segmented_project, tmp_path / "some",
-                                           class_by="species")
+        manifest = cf.export_training_data(segmented_project, tmp_path / "some", class_by="species")
     assert len(manifest) == SPECIMENS - 3
     assert "no value in 'species'" in caplog.text
 
@@ -316,12 +319,16 @@ def test_reference_masks_can_be_exported_instead(segmented_project, tmp_path):
     """
     from helpers.models import ThresholdModel
 
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=3))],
-                    reference=True, limit=4, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=3))],
+        reference=True,
+        limit=4,
+        visualize=False,
+    )
 
-    manifest = cf.export_training_data(segmented_project, tmp_path / "ref",
-                                       reference=True, masks=True)
+    manifest = cf.export_training_data(segmented_project, tmp_path / "ref", reference=True, masks=True)
     assert len(manifest) == 4
 
 
@@ -329,55 +336,60 @@ def test_export_can_frame_a_part_by_its_upstream(segmented_project, tmp_path):
     _segment_core(segmented_project)
 
     core_manifest = cf.export_training_data(
-        segmented_project, tmp_path / "core", part="core", from_part="organism",
-        transforms=[cf.crop_to_mask()], masks=True)
+        segmented_project,
+        tmp_path / "core",
+        part="core",
+        from_part="organism",
+        transforms=[cf.crop_to_mask()],
+        masks=True,
+    )
     organism_manifest = cf.export_training_data(
-        segmented_project, tmp_path / "organism", transforms=[cf.crop_to_mask()])
+        segmented_project, tmp_path / "organism", transforms=[cf.crop_to_mask()]
+    )
 
-    joined = core_manifest.merge(organism_manifest, on="occurrence_id",
-                                 suffixes=("_core", "_organism"))
+    joined = core_manifest.merge(organism_manifest, on="occurrence_id", suffixes=("_core", "_organism"))
     assert (joined["height_core"] == joined["height_organism"]).all()
     assert (joined["width_core"] == joined["width_organism"]).all()
 
 
-def test_metadata_and_metrics_ride_along_in_the_manifest(measured_project,
-                                                          tmp_path):
+def test_metadata_and_metrics_ride_along_in_the_manifest(measured_project, tmp_path):
     """
     So a stored trait or QC score can be a training target, a stratification
     key, or a filter downstream without a second join.
     """
-    manifest = cf.export_training_data(measured_project, tmp_path / "rich",
-                                       metadata=["species", "device"],
-                                       metrics=["traits"])
+    manifest = cf.export_training_data(
+        measured_project, tmp_path / "rich", metadata=["species", "device"], metrics=["traits"]
+    )
     assert {"species", "device"} <= set(manifest.columns)
     assert "traits__organism__body_length" in manifest.columns
 
 
 def test_the_dataset_record_says_what_was_exported(segmented_project, tmp_path):
     out = tmp_path / "recorded"
-    cf.export_training_data(segmented_project, out,
-                            splits=splits_of(segmented_project),
-                            transforms=[cf.remove_background()], masks=True)
+    cf.export_training_data(
+        segmented_project,
+        out,
+        splits=splits_of(segmented_project),
+        transforms=[cf.remove_background()],
+        masks=True,
+    )
     record = dataset_record(out)
 
     assert record["part"] == "organism"
     assert record["from_part"] is None
     assert record["masks"] is True
     assert record["splits"]["train"]["count"] == 6
-    assert [operation["name"] for operation in record["transforms"]] == [
-        "remove_background"]
+    assert [operation["name"] for operation in record["transforms"]] == ["remove_background"]
 
 
 def test_the_dataset_record_names_its_from_part(segmented_project, tmp_path):
     _segment_core(segmented_project)
     out = tmp_path / "core"
-    cf.export_training_data(segmented_project, out, part="core",
-                            from_part="organism", masks=True)
+    cf.export_training_data(segmented_project, out, part="core", from_part="organism", masks=True)
     assert dataset_record(out)["from_part"] == "organism"
 
 
-def test_the_record_identifies_the_data_without_listing_it(segmented_project,
-                                                            tmp_path):
+def test_the_record_identifies_the_data_without_listing_it(segmented_project, tmp_path):
     """
     Digests rather than ids: the record must be able to prove which set was
     used, which a digest does, and thousands of ids would make it unreadable.
@@ -389,8 +401,10 @@ def test_the_record_identifies_the_data_without_listing_it(segmented_project,
     cf.export_training_data(segmented_project, second, splits=splits)
 
     assert dataset_record(first)["data_hash"] == dataset_record(second)["data_hash"]
-    assert dataset_record(first)["splits"]["train"]["ids_hash"] == \
-        dataset_record(second)["splits"]["train"]["ids_hash"]
+    assert (
+        dataset_record(first)["splits"]["train"]["ids_hash"]
+        == dataset_record(second)["splits"]["train"]["ids_hash"]
+    )
 
 
 def test_a_different_selection_is_a_different_dataset(segmented_project, tmp_path):
@@ -399,42 +413,34 @@ def test_a_different_selection_is_a_different_dataset(segmented_project, tmp_pat
 
     cf.export_training_data(segmented_project, tmp_path / "a", splits=splits)
     cf.export_training_data(segmented_project, tmp_path / "b", splits=other)
-    assert dataset_record(tmp_path / "a")["data_hash"] != \
-        dataset_record(tmp_path / "b")["data_hash"]
+    assert dataset_record(tmp_path / "a")["data_hash"] != dataset_record(tmp_path / "b")["data_hash"]
 
 
-def test_a_different_transform_chain_is_a_different_dataset(segmented_project,
-                                                             tmp_path):
+def test_a_different_transform_chain_is_a_different_dataset(segmented_project, tmp_path):
     """
     Because it changes what the model will see -- which is exactly the thing a
     registered model's provenance needs to be able to distinguish.
     """
     cf.export_training_data(segmented_project, tmp_path / "a")
-    cf.export_training_data(segmented_project, tmp_path / "b",
-                            transforms=[cf.remove_background()])
-    assert dataset_record(tmp_path / "a")["data_hash"] != \
-        dataset_record(tmp_path / "b")["data_hash"]
+    cf.export_training_data(segmented_project, tmp_path / "b", transforms=[cf.remove_background()])
+    assert dataset_record(tmp_path / "a")["data_hash"] != dataset_record(tmp_path / "b")["data_hash"]
 
 
-def test_the_record_describes_what_was_written_not_what_was_asked_for(
-        image_project, tmp_path):
+def test_the_record_describes_what_was_written_not_what_was_asked_for(image_project, tmp_path):
     """
     Occurrences drop out for want of a mask or a class, and a record that
     counted the request would overstate the training set.
     """
     from helpers.models import ThresholdModel
 
-    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
-                    limit=3, visualize=False)
+    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())], limit=3, visualize=False)
     out = tmp_path / "partial"
-    cf.export_training_data(image_project, out,
-                            splits={"train": [f"specimen{i}" for i in range(8)]})
+    cf.export_training_data(image_project, out, splits={"train": [f"specimen{i}" for i in range(8)]})
 
     assert dataset_record(out)["splits"]["train"]["count"] == 3
 
 
-def test_exporting_from_an_unsegmented_project_says_so(image_project, tmp_path,
-                                                       caplog):
+def test_exporting_from_an_unsegmented_project_says_so(image_project, tmp_path, caplog):
     with caplog.at_level("WARNING"):
         manifest = cf.export_training_data(image_project, tmp_path / "empty")
     assert manifest.empty
@@ -451,8 +457,16 @@ def test_write_dataset_keeps_its_own_shape(segmented_project, tmp_path):
     manifest = write_dataset(segmented_project, out, label_columns=["species"])
 
     assert (out / "images").is_dir() and (out / "masks").is_dir()
-    assert {"occurrence_id", "part", "image_path", "mask_path", "height",
-            "width", "mask_area", "species"} <= set(manifest.columns)
+    assert {
+        "occurrence_id",
+        "part",
+        "image_path",
+        "mask_path",
+        "height",
+        "width",
+        "mask_area",
+        "species",
+    } <= set(manifest.columns)
 
 
 # ---------------------------------------------------------------------------
@@ -464,8 +478,9 @@ def test_each_split_gets_a_grid_named_for_the_datasets_hash(segmented_project, t
     from critterframe.project import paths
 
     out = tmp_path / "data"
-    cf.export_training_data(segmented_project, out, splits=splits_of(segmented_project),
-                            transforms=[cf.crop_to_mask()])
+    cf.export_training_data(
+        segmented_project, out, splits=splits_of(segmented_project), transforms=[cf.crop_to_mask()]
+    )
     data_hash = dataset_record(out)["data_hash"]
 
     grids = sorted(path.name for path in paths.pipeline_dir(segmented_project).glob("dataset__*.jpg"))

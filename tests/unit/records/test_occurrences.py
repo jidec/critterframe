@@ -55,10 +55,8 @@ def test_the_image_url_column_is_optional():
 
 def test_the_image_url_column_is_renamed_when_given():
     frame = source_table(photo=["http://x/1.jpg", "http://x/2.jpg"])
-    normalized = occurrence_records.normalize(frame, id_col="id",
-                                              image_col="photo")
-    assert normalized[IMAGE_URL_COL].tolist() == ["http://x/1.jpg",
-                                                  "http://x/2.jpg"]
+    normalized = occurrence_records.normalize(frame, id_col="id", image_col="photo")
+    assert normalized[IMAGE_URL_COL].tolist() == ["http://x/1.jpg", "http://x/2.jpg"]
 
 
 def test_everything_else_the_source_sent_is_kept():
@@ -84,9 +82,9 @@ def test_ids_become_strings():
 
 def test_datetime_and_numeric_columns_are_coerced():
     frame = source_table(when=["2024-01-01", "2024-06-30"], size=["1.5", "2"])
-    normalized = occurrence_records.normalize(frame, id_col="id",
-                                              datetime_cols=["when"],
-                                              numeric_cols=["size"])
+    normalized = occurrence_records.normalize(
+        frame, id_col="id", datetime_cols=["when"], numeric_cols=["size"]
+    )
     assert pd.api.types.is_datetime64_any_dtype(normalized["when"])
     assert normalized["size"].tolist() == [1.5, 2.0]
 
@@ -96,11 +94,10 @@ def test_coercion_is_best_effort():
     One malformed timestamp shouldn't cost the whole ingest, so an unparseable
     value becomes NaT/NaN rather than raising.
     """
-    frame = source_table(when=["2024-01-01", "not a date"],
-                         size=["1.5", "not a number"])
-    normalized = occurrence_records.normalize(frame, id_col="id",
-                                              datetime_cols=["when"],
-                                              numeric_cols=["size"])
+    frame = source_table(when=["2024-01-01", "not a date"], size=["1.5", "not a number"])
+    normalized = occurrence_records.normalize(
+        frame, id_col="id", datetime_cols=["when"], numeric_cols=["size"]
+    )
     assert pd.isna(normalized["when"].iloc[1])
     assert np.isnan(normalized["size"].iloc[1])
 
@@ -111,8 +108,8 @@ def test_naming_a_column_the_source_lacks_is_harmless():
     optional columns they carry.
     """
     normalized = occurrence_records.normalize(
-        source_table(), id_col="id", datetime_cols=["absent"],
-        numeric_cols=["also_absent"])
+        source_table(), id_col="id", datetime_cols=["absent"], numeric_cols=["also_absent"]
+    )
     assert len(normalized) == 2
 
 
@@ -173,8 +170,7 @@ def test_saving_validates_again(tmp_path):
     would otherwise reach the table unchallenged.
     """
     with pytest.raises(ValueError, match="duplicate occurrence id"):
-        occurrence_records.save_occurrences(tmp_path,
-                                            pd.DataFrame({ID_COL: ["a", "a"]}))
+        occurrence_records.save_occurrences(tmp_path, pd.DataFrame({ID_COL: ["a", "a"]}))
 
 
 def test_a_save_replaces_the_whole_table(tmp_path):
@@ -182,23 +178,21 @@ def test_a_save_replaces_the_whole_table(tmp_path):
     Snapshot semantics: an external export is the complete desired state, not a
     delta.
     """
-    occurrence_records.save_occurrences(tmp_path,
-                                        pd.DataFrame({ID_COL: ["a", "b"]}))
+    occurrence_records.save_occurrences(tmp_path, pd.DataFrame({ID_COL: ["a", "b"]}))
     occurrence_records.save_occurrences(tmp_path, pd.DataFrame({ID_COL: ["c"]}))
     assert occurrence_records.occurrence_ids(tmp_path) == ["c"]
 
 
 def test_ids_come_back_as_strings(tmp_path):
-    occurrence_records.save_occurrences(tmp_path,
-                                        pd.DataFrame({ID_COL: ["1", "2"]}))
+    occurrence_records.save_occurrences(tmp_path, pd.DataFrame({ID_COL: ["1", "2"]}))
     assert occurrence_records.load_occurrences(tmp_path)[ID_COL].tolist() == ["1", "2"]
 
 
 def test_columns_can_be_read_selectively(tmp_path):
     """The id is always included, since every caller keys on it."""
     occurrence_records.save_occurrences(
-        tmp_path, pd.DataFrame({ID_COL: ["a"], "species": ["Anax"],
-                                "notes": ["x"]}))
+        tmp_path, pd.DataFrame({ID_COL: ["a"], "species": ["Anax"], "notes": ["x"]})
+    )
     narrow = occurrence_records.load_occurrences(tmp_path, columns=["species"])
     assert narrow.columns.tolist() == [ID_COL, "species"]
 
@@ -223,13 +217,11 @@ def test_a_digest_identifies_the_set_not_the_order():
     data, and a record that said otherwise would report a difference nobody
     made.
     """
-    assert (occurrence_records.ids_digest(["b", "a", "c"])
-            == occurrence_records.ids_digest(["a", "b", "c"]))
+    assert occurrence_records.ids_digest(["b", "a", "c"]) == occurrence_records.ids_digest(["a", "b", "c"])
 
 
 def test_a_digest_ignores_duplicates():
-    assert (occurrence_records.ids_digest(["a", "a", "b"])
-            == occurrence_records.ids_digest(["a", "b"]))
+    assert occurrence_records.ids_digest(["a", "a", "b"]) == occurrence_records.ids_digest(["a", "b"])
 
 
 def test_a_digest_reads_numbers_as_the_ids_they_are():
@@ -237,8 +229,7 @@ def test_a_digest_reads_numbers_as_the_ids_they_are():
 
 
 def test_a_different_set_digests_differently():
-    assert (occurrence_records.ids_digest(["a", "b"])
-            != occurrence_records.ids_digest(["a", "c"]))
+    assert occurrence_records.ids_digest(["a", "b"]) != occurrence_records.ids_digest(["a", "c"])
 
 
 def test_an_empty_set_has_a_digest():

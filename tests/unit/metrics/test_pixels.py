@@ -20,9 +20,16 @@ from helpers.synthetic import flat, half_and_half
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("metric", [cf.mean_lightness(), cf.mean_color(),
-                                    cf.black_fraction(), cf.red_fraction(),
-                                    cf.threshold_fractions(cf.hue_thresholds(), unmatched=True)])
+@pytest.mark.parametrize(
+    "metric",
+    [
+        cf.mean_lightness(),
+        cf.mean_color(),
+        cf.black_fraction(),
+        cf.red_fraction(),
+        cf.threshold_fractions(cf.hue_thresholds(), unmatched=True),
+    ],
+)
 def test_the_background_never_reaches_the_measurement(metric):
     """
     The rule every colour metric shares. Change what is OUTSIDE the mask and
@@ -39,17 +46,31 @@ def test_the_background_never_reaches_the_measurement(metric):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("metric", [cf.mean_lightness(), cf.mean_color(),
-                                    cf.black_fraction(), cf.red_fraction(),
-                                    cf.threshold_fractions(cf.hue_thresholds(), unmatched=True)])
+@pytest.mark.parametrize(
+    "metric",
+    [
+        cf.mean_lightness(),
+        cf.mean_color(),
+        cf.black_fraction(),
+        cf.red_fraction(),
+        cf.threshold_fractions(cf.hue_thresholds(), unmatched=True),
+    ],
+)
 def test_every_colour_metric_needs_a_mask(metric):
     with pytest.raises(ValueError, match="has no mask yet"):
         metric(Segment(np.zeros((10, 10, 3), np.uint8)))
 
 
-@pytest.mark.parametrize("metric", [cf.mean_lightness(), cf.mean_color(),
-                                    cf.black_fraction(), cf.red_fraction(),
-                                    cf.threshold_fractions(cf.hue_thresholds(), unmatched=True)])
+@pytest.mark.parametrize(
+    "metric",
+    [
+        cf.mean_lightness(),
+        cf.mean_color(),
+        cf.black_fraction(),
+        cf.red_fraction(),
+        cf.threshold_fractions(cf.hue_thresholds(), unmatched=True),
+    ],
+)
 def test_every_colour_metric_reports_a_fraction(metric):
     assert metric.unit == "fraction"
 

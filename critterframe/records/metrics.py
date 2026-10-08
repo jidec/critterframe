@@ -1,17 +1,4 @@
-"""
-Long-table storage for metric values, current_rows, latest_values.
-
-A metric is any derived value associated with an occurrence and a part: a
-trait, a QC value, a human label, an embedding, a cluster assignment, an
-outlier score.
-
-Values are stored long, one row per occurrence-part-metric, because that is
-what an interruptible run can append to, and reshaped wide on the way out.
-Nothing is ever rewritten or deleted: a value stops being current -- measured
-from a mask that has since been replaced, or from a recipe its run_name has
-since moved off of (records.runs.resolve_recipe_currency) -- but stays in the
-table, which is what makes provenance answerable.
-"""
+"""Metric records: long storage of values, and which of them are still current."""
 
 import logging
 
@@ -29,23 +16,20 @@ logger = logging.getLogger(__name__)
 # out unless asked, and they are always filterable.
 TRANSFORM_INFO_UNIT = "transform_info"
 
+# Occurrence ids bound into one query by load_metrics.
+OCCURRENCE_ID_CHUNK = 10_000
 
-def make_metric_row(occurrence_id, part, metric_name, value, unit=None,
-                    source_mask_hash=None):
-    """
-    Build one metric value record.
 
-    - `occurrence_id` -- occurrence the value belongs to.
-    - `part` -- part the value was measured on.
-    - `metric_name` -- what it is stored under.
-    - `value` -- the value. Usually a scalar; a dict reports several related
-      numbers and export splits it into one column per key. Must be
-      JSON-serializable.
-    - `unit` -- what the value is expressed in, e.g. "px", "category".
-    - `source_mask_hash` -- identity of the MASK this was measured from, from
-      records.masks.derivation_hash(). Recorded per row rather than on the run,
-      because one run legitimately spans occurrences whose masks came from
-      different recipes.
+def make_metric_row(occurrence_id, part, metric_name, value, unit=None, source_mask_hash=None):
+    """Build one metric value record.
+
+    Args:
+        occurrence_id: Occurrence the value belongs to.
+        part: Part it was measured on.
+        metric_name: Name it is stored under.
+        value: The value: a JSON-serializable scalar, list or dict.
+        unit: What the value is expressed in, e.g. `"px"`.
+        source_mask_hash: Derivation hash of the mask it was measured from.
     """
     return {
         "occurrence_id": str(occurrence_id),
@@ -58,18 +42,13 @@ def make_metric_row(occurrence_id, part, metric_name, value, unit=None,
 
 
 def append_metrics(project_path, run_id, recipe_hash, rows):
-    """
-    Append metric values produced by one run.
+    """Append the metric values one run produced.
 
-    Written per occurrence as the run progresses rather than buffered to the
-    end, so an interrupted run keeps everything it had already computed -- and
-    so its next attempt correctly skips that work instead of redoing it.
-
-    - `project_path` -- project to write into.
-    - `run_id` -- the run these values came from (see records.runs).
-    - `recipe_hash` -- the recipe's hash, denormalized onto every row so the
-      repeat-check query never has to join back to runs.
-    - `rows` -- list of records from make_metric_row().
+    Args:
+        project_path: Project to write into.
+        run_id: The run the values came from.
+        recipe_hash: The run's recipe hash, stored on every row.
+        rows: Records from `make_metric_row`.
     """
     if not rows:
         return 0
@@ -101,30 +80,21 @@ def append_metrics(project_path, run_id, recipe_hash, rows):
     return len(rows)
 
 
-def load_metrics(project_path, run_names=None, parts=None, metric_names=None,
-                 occurrence_ids=None, current_only=False):
-    """
-    Read metric values in LONG form -- one row per occurrence-part-metric --
-    joined to the run that produced each.
+def load_metrics(
+    project_path, run_names=None, parts=None, metric_names=None, occurrence_ids=None, current_only=False
+):
+    """Read metric values in long form, one row per occurrence-part-metric.
 
-    Long form is the honest shape of the underlying data and the right one for
-    inspecting provenance (which run, which mask, which unit, when). Use
-    export.metrics_wide() when you want one row per occurrence to analyze.
+    Each row carries its run's name, kind and start time as `run_name`, `run_kind` and
+    `run_created_at`.
 
-    The run's name, kind, and start time come along as run_name/run_kind/
-    run_created_at, which is why no row stores its own copy of any of them.
-
-    - `run_names` -- run names to include; all runs if None.
-    - `parts` -- parts to include; all parts if None.
-    - `metric_names` -- metric names to include; all if None.
-    - `occurrence_ids` -- occurrences to include; all if None, the same filter
-      `records.masks.load_masks` takes.
-    - `current_only` -- keep only the rows that are still current: measured
-      from a mask the project still holds, under the recipe the run name
-      currently points at (see `current_rows`). False (the default) is the
-      provenance view, which is what this long form is for; every reader
-      presenting values -- the wide table, a unit map, a group metric's
-      reference population -- asks for True.
+    Args:
+        project_path: Project to read from.
+        run_names: Run names to include; all if None.
+        parts: Parts to include; all if None.
+        metric_names: Metric names to include; all if None.
+        occurrence_ids: Occurrences to include; all if None.
+        current_only: Keep only rows that are still current (see `current_rows`).
     """
     query = """
         SELECT m.*, r.name AS run_name, r.kind AS run_kind,
@@ -134,64 +104,86 @@ def load_metrics(project_path, run_names=None, parts=None, metric_names=None,
     """
     conditions = []
     parameters = []
-    for column, values in (("r.name", run_names), ("m.part", parts),
-                           ("m.metric_name", metric_names),
-                           ("m.occurrence_id", occurrence_ids)):
+    for column, values in (
+        ("r.name", run_names),
+        ("m.part", parts),
+        ("m.metric_name", metric_names),
+    ):
         if values is not None:
             placeholders = ",".join("?" for _ in values)
             conditions.append(f"{column} IN ({placeholders})")
             parameters.extend(values)
-    if conditions:
-        query += " WHERE " + " AND ".join(conditions)
+
+    # Occurrence ids are bound a chunk at a time: one parameter per occurrence
+    # passes SQLite's variable limit on a large project.
+    id_chunks = [None]
+    if occurrence_ids is not None:
+        unique_ids = list(dict.fromkeys(occurrence_ids))
+        id_chunks = [
+            unique_ids[start : start + OCCURRENCE_ID_CHUNK]
+            for start in range(0, len(unique_ids), OCCURRENCE_ID_CHUNK)
+        ]
 
     rows = []
     if run_records.has_database(project_path):
         with open_database(project_path) as connection:
-            rows = [dict(row) for row in connection.execute(query, parameters)]
+            for id_chunk in id_chunks:
+                chunk_conditions = list(conditions)
+                chunk_parameters = list(parameters)
+                if id_chunk is not None:
+                    placeholders = ",".join("?" for _ in id_chunk)
+                    chunk_conditions.append(f"m.occurrence_id IN ({placeholders})")
+                    chunk_parameters.extend(id_chunk)
+                chunk_query = query
+                if chunk_conditions:
+                    chunk_query += " WHERE " + " AND ".join(chunk_conditions)
+                rows.extend(dict(row) for row in connection.execute(chunk_query, chunk_parameters))
 
     for row in rows:
         row["value"] = load_json(row.pop("value_json"))
 
     if not rows:
-        return pd.DataFrame(columns=[
-            "metric_id", "run_id", "occurrence_id", "part", "metric_name",
-            "value", "unit", "recipe_hash", "source_mask_hash", "run_name",
-            "run_kind", "run_created_at",
-        ])
+        return pd.DataFrame(
+            columns=[
+                "metric_id",
+                "run_id",
+                "occurrence_id",
+                "part",
+                "metric_name",
+                "value",
+                "unit",
+                "recipe_hash",
+                "source_mask_hash",
+                "run_name",
+                "run_kind",
+                "run_created_at",
+            ]
+        )
 
     long_df = pd.DataFrame(rows)
     return current_rows(project_path, long_df) if current_only else long_df
 
 
 def current_rows(project_path, long_df):
-    """
-    Drop values that no longer describe what the project currently holds:
-    measured from a mask that's since been replaced, or produced by a recipe
-    a run_name has since moved off of (records.runs.commit_recipe_currency).
+    """Drop the values that no longer describe what the project holds.
 
-    Long-form in, long-form out, so this composes onto any query. The two
-    checks are independent judgements over the same rows, not a pipeline --
-    a row needs to pass both to count as current.
+    A row is current when its mask is still the project's and its recipe is the one its
+    run name points at. Kept without judgement: a row with no `source_mask_hash`,
+    everything in a project with no mask table, and a run name with no pointer.
 
-    Canonical and reference masks are pooled into one currency test, because the
-    long table doesn't record which table a run measured -- so a reference-mask
-    value must not be discarded for failing to match a canonical mask it was
-    never derived from.
+    Args:
+        project_path: Project to judge against.
+        long_df: Long-form rows from `load_metrics`.
 
-    Two things are kept rather than judged on the mask side: rows with no
-    source_mask_hash, which are of unrecorded provenance rather than known-stale,
-    and everything when the project has no mask table at all, since "no masks"
-    must not mean "no values". On the recipe side, a (run_name, part) with no
-    recorded pointer is kept too -- nothing has ever moved off it, so there's
-    nothing to judge stale.
+    Returns:
+        The current rows, in the same form.
     """
     if long_df.empty:
         return long_df
 
     current_masks = {}
     for reference in (False, True):
-        hashes = mask_records.current_derivation_hashes(project_path,
-                                                        reference=reference)
+        hashes = mask_records.current_derivation_hashes(project_path, reference=reference)
         for key, recipe_hash in hashes.items():
             current_masks.setdefault(key, set()).add(recipe_hash)
 
@@ -204,53 +196,57 @@ def current_rows(project_path, long_df):
         # is an unrecorded source, which is unjudgeable rather than stale.
         if not isinstance(row.source_mask_hash, str):
             return True
-        return row.source_mask_hash in current_masks.get(
-            (row.occurrence_id, row.part), ())
+        return row.source_mask_hash in current_masks.get((row.occurrence_id, row.part), ())
 
     def recipe_is_current(row):
         pointed = pointers.get((row.run_name, row.part))
         return pointed is None or pointed == row.recipe_hash
 
     keep = pd.Series(
-        [mask_is_current(row) and recipe_is_current(row)
-         for row in long_df.itertuples(index=False)],
+        [mask_is_current(row) and recipe_is_current(row) for row in long_df.itertuples(index=False)],
         index=long_df.index,
     )
     superseded = int((~keep).sum())
     if superseded:
-        logger.info("ignoring %d metric value(s) either measured from a mask "
-                    "that has since been replaced or produced by a recipe "
-                    "their run_name has since moved off of", superseded)
+        logger.info(
+            "ignoring %d metric value(s) either measured from a mask "
+            "that has since been replaced or produced by a recipe "
+            "their run_name has since moved off of",
+            superseded,
+        )
     return long_df[keep]
 
 
 def result_keys(project_path, run_name, part, current_only=True):
-    """
-    Which occurrences a metric run has a result for, without reading any value.
+    """Return which occurrences a metric run has a result for, without reading any value.
 
-    For asking "who has this run finished" of a run whose values are large: an
-    embedding run's values are gigabytes of JSON that `load_metrics` would parse
-    to answer a question that needs none of it.
+    Args:
+        project_path: Project to read from.
+        run_name: Run that produced the values.
+        part: Part they were measured on.
+        current_only: Only results that are still current.
 
-    - `run_name` -- run that produced the values.
-    - `part` -- part they were measured on.
-    - `current_only` -- only results that are still current (see `current_rows`).
-
-    Returns a DataFrame of `occurrence_id`, `part`, `recipe_hash`,
-    `source_mask_hash`, `run_name`, one row per distinct combination.
+    Returns:
+        A DataFrame of `occurrence_id`, `part`, `recipe_hash`, `source_mask_hash` and
+        `run_name`, one row per distinct combination.
     """
     columns = ["occurrence_id", "part", "recipe_hash", "source_mask_hash", "run_name"]
     if not run_records.has_database(project_path):
         return pd.DataFrame(columns=columns)
     with open_database(project_path) as connection:
-        rows = [dict(row) for row in connection.execute(
-            """
+        rows = [
+            dict(row)
+            for row in connection.execute(
+                """
             SELECT DISTINCT m.occurrence_id, m.part, m.recipe_hash,
                    m.source_mask_hash, r.name AS run_name
             FROM metrics m
             JOIN runs r ON r.run_id = m.run_id
             WHERE r.name = ? AND m.part = ?
-            """, (run_name, part))]
+            """,
+                (run_name, part),
+            )
+        ]
     keys = pd.DataFrame(rows, columns=columns)
     return current_rows(project_path, keys) if current_only else keys
 
@@ -261,38 +257,35 @@ def result_keys(project_path, run_name, part, current_only=True):
 MAX_FILTERED_IDS = 20000
 
 
-def latest_values(project_path, run_name, part=DEFAULT_PART, metric_name=None,
-                  current_only=True, occurrence_ids=None):
-    """
-    The newest value per occurrence for one metric, as a Series indexed by
-    occurrence_id -- the narrow lookup group metrics use to assemble a
-    reference population's feature columns without reshaping the whole project
-    wide first.
+def latest_values(
+    project_path, run_name, part=DEFAULT_PART, metric_name=None, current_only=True, occurrence_ids=None
+):
+    """Return the newest value per occurrence for one metric.
 
-    Newest means last written: metric_id is the metrics table's insertion order,
-    so it ranks two values computed within one run as well as two computed years
-    apart, which a timestamp written once per batch could not.
+    Args:
+        project_path: Project to read from.
+        run_name: Run that produced the values.
+        part: Part they were measured on.
+        metric_name: Metric to read. Required.
+        current_only: Only values that are still current.
+        occurrence_ids: Occurrences to read; all if None. Worth passing for a vector
+            metric, where reading every stored value is slow.
 
-    - `run_name` -- run that produced the values.
-    - `part` -- part they were measured on.
-    - `metric_name` -- metric to pull; required.
-    - `current_only` -- as in export.metrics_wide, and on by default for the
-      same reason with more at stake: a group metric fits a reference
-      population from these values, so a stale one doesn't just misreport its
-      own occurrence, it shifts the distribution every other occurrence is
-      scored against.
-    - `occurrence_ids` -- only these occurrences; every one if None. Matters
-      for a vector metric over a large project, where reading every stored
-      embedding to use a few thousand is gigabytes of parsing.
+    Returns:
+        A Series indexed by occurrence id.
     """
     if metric_name is None:
         raise ValueError("latest_values needs a metric_name")
 
     wanted = None if occurrence_ids is None else {str(i) for i in occurrence_ids}
     in_query = wanted is not None and len(wanted) <= MAX_FILTERED_IDS
-    long_df = load_metrics(project_path, run_names=[run_name], parts=[part],
-                           metric_names=[metric_name],
-                           occurrence_ids=sorted(wanted) if in_query else None)
+    long_df = load_metrics(
+        project_path,
+        run_names=[run_name],
+        parts=[part],
+        metric_names=[metric_name],
+        occurrence_ids=sorted(wanted) if in_query else None,
+    )
     if wanted is not None and not in_query and not long_df.empty:
         long_df = long_df[long_df["occurrence_id"].isin(wanted)]
     if current_only:

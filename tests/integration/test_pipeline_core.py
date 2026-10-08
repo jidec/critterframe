@@ -26,8 +26,7 @@ from helpers.synthetic import specimen_metadata, write_specimens
 pytestmark = pytest.mark.slow
 
 SPECIMENS = 8
-METRICS = [cf.body_length(), cf.max_width(),
-           cf.mask_area(name="area_px", unit="px2"), cf.mean_lightness()]
+METRICS = [cf.body_length(), cf.max_width(), cf.mask_area(name="area_px", unit="px2"), cf.mean_lightness()]
 
 
 def test_a_project_can_be_built_from_nothing_but_a_folder_of_images(tmp_path):
@@ -40,20 +39,17 @@ def test_a_project_can_be_built_from_nothing_but_a_folder_of_images(tmp_path):
     project = tmp_path / "project"
     ids = write_specimens(images, count=SPECIMENS)
 
-    ingested = cf.ingest_images(project, images,
-                                metadata=specimen_metadata(ids))
+    ingested = cf.ingest_images(project, images, metadata=specimen_metadata(ids))
     assert ingested["processed"] == SPECIMENS
     assert paths.occurrences_path(project).exists()
     assert not paths.masks_path(project).exists()
 
-    segmented = cf.run_segments(project, steps=[cf.segment(ThresholdModel())],
-                                visualize=False)["organism"]
+    segmented = cf.run_segments(project, steps=[cf.segment(ThresholdModel())], visualize=False)["organism"]
     assert segmented["processed"] == SPECIMENS
     assert paths.masks_path(project).exists()
-    assert paths.runs_and_metrics_path(project).exists()   # the run record
+    assert paths.runs_and_metrics_path(project).exists()  # the run record
 
-    measured = cf.run_metrics(project, run_name="traits", metrics=METRICS,
-                              visualize=False)["organism"]
+    measured = cf.run_metrics(project, run_name="traits", metrics=METRICS, visualize=False)["organism"]
     assert measured["processed"] == SPECIMENS
 
     exported = cf.export_metrics(project)
@@ -97,8 +93,7 @@ def test_the_numbers_describe_the_specimens_that_went_in(measured_project):
 
 
 def test_occurrence_metadata_can_ride_along(measured_project):
-    exported = cf.export_metrics(measured_project,
-                                 occurrence_columns=["device", "species"])
+    exported = cf.export_metrics(measured_project, occurrence_columns=["device", "species"])
     assert set(exported["device"]) == {"boxA", "boxB"}
 
 
@@ -165,27 +160,29 @@ def test_a_transform_chain_changes_the_numbers_it_should(segmented_project):
     different answer from measuring the raw mask -- which is what makes the
     chain part of the recipe rather than a preference.
     """
-    cf.run_metrics(segmented_project, run_name="raw", metrics=[cf.body_length()],
-                   visualize=False)
-    cf.run_metrics(segmented_project, run_name="cleaned",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.body_length()], visualize=False)
+    cf.run_metrics(segmented_project, run_name="raw", metrics=[cf.body_length()], visualize=False)
+    cf.run_metrics(
+        segmented_project,
+        run_name="cleaned",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[cf.body_length()],
+        visualize=False,
+    )
 
     exported = cf.export_metrics(segmented_project)
-    assert not exported["raw__organism__body_length"].equals(
-        exported["cleaned__organism__body_length"])
+    assert not exported["raw__organism__body_length"].equals(exported["cleaned__organism__body_length"])
 
 
-def test_a_project_survives_a_re_ingest_of_its_occurrences(measured_project,
-                                                           tmp_path):
+def test_a_project_survives_a_re_ingest_of_its_occurrences(measured_project, tmp_path):
     """
     Masks and metrics are keyed by occurrence id, so occurrences still present
     keep everything derived from them. This is what makes a scheduled re-ingest
     safe on a source that grows.
     """
     source = tmp_path / "again.csv"
-    pd.DataFrame({"occurrence_id": [f"specimen{index}" for index in range(8)],
-                  "device": ["boxA"] * 8}).to_csv(source, index=False)
+    pd.DataFrame(
+        {"occurrence_id": [f"specimen{index}" for index in range(8)], "device": ["boxA"] * 8}
+    ).to_csv(source, index=False)
 
     cf.ingest_occurrences(measured_project, source)
 

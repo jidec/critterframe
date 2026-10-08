@@ -239,9 +239,9 @@ def test_map_size_is_read_at_call_time(tmp_path, monkeypatch):
     """
     from critterframe.storage import imagestore
 
-    monkeypatch.setattr(imagestore, "DEFAULT_MAP_SIZE", 1024 ** 2)
+    monkeypatch.setattr(imagestore, "DEFAULT_MAP_SIZE", 1024**2)
     with imagestore.ImageStore(tmp_path) as small:
-        assert small.env.info()["map_size"] == 1024 ** 2
+        assert small.env.info()["map_size"] == 1024**2
 
 
 # ---------------------------------------------------------------------------

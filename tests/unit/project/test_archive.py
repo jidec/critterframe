@@ -22,15 +22,15 @@ def archived(measured_project, tmp_path):
     scripts = tmp_path / "pipeline"
     scripts.mkdir()
     (scripts / "run.py").write_text("print('segment and measure')\n")
-    dest = cf.archive_project(measured_project, tmp_path / "deposit",
-                              source_doi="10.15468/dl.example", scripts=scripts)
+    dest = cf.archive_project(
+        measured_project, tmp_path / "deposit", source_doi="10.15468/dl.example", scripts=scripts
+    )
     return measured_project, dest
 
 
 def test_images_raw_data_and_working_files_are_left_out(archived):
     _project, dest = archived
-    for name in (paths.IMAGES_DIR, paths.MASK_SHARDS_DIR, paths.FAILURES_FILE,
-                 paths.VISUALIZATIONS_DIR):
+    for name in (paths.IMAGES_DIR, paths.MASK_SHARDS_DIR, paths.FAILURES_FILE, paths.VISUALIZATIONS_DIR):
         assert not (dest / name).exists()
     raw = dest / paths.RAW_IMPORTS_DIR
     if raw.exists():
@@ -39,8 +39,14 @@ def test_images_raw_data_and_working_files_are_left_out(archived):
 
 def test_the_record_of_what_was_done_is_kept(archived):
     project, dest = archived
-    for name in (paths.OCCURRENCES_FILE, paths.MASKS_FILE, paths.RUNS_LOG_FILE,
-                 "environment.json", "README.md", "code/run.py"):
+    for name in (
+        paths.OCCURRENCES_FILE,
+        paths.MASKS_FILE,
+        paths.RUNS_LOG_FILE,
+        "environment.json",
+        "README.md",
+        "code/run.py",
+    ):
         assert (dest / name).exists(), name
     assert list((dest / paths.EXPORTS_DIR).glob("*.export.json"))
 
@@ -48,8 +54,10 @@ def test_the_record_of_what_was_done_is_kept(archived):
 def test_the_database_is_one_complete_file(archived):
     project, dest = archived
     query = "SELECT COUNT(*) FROM metrics"
-    with closing(sqlite3.connect(paths.runs_and_metrics_path(project))) as original, \
-            closing(sqlite3.connect(dest / paths.RUNS_AND_METRICS_FILE)) as copy:
+    with (
+        closing(sqlite3.connect(paths.runs_and_metrics_path(project))) as original,
+        closing(sqlite3.connect(dest / paths.RUNS_AND_METRICS_FILE)) as copy,
+    ):
         assert copy.execute(query).fetchone() == original.execute(query).fetchone()
         assert copy.execute("PRAGMA journal_mode").fetchone()[0] == "delete"
 
@@ -59,8 +67,7 @@ def test_source_paths_are_reduced_to_file_names(archived):
     original = pd.read_parquet(paths.occurrences_path(project))["source_path"]
     archived_paths = pd.read_parquet(dest / paths.OCCURRENCES_FILE)["source_path"]
     assert all("/" in value or "\\" in value for value in original)
-    assert list(archived_paths) == [value.replace("\\", "/").rsplit("/", 1)[-1]
-                                    for value in original]
+    assert list(archived_paths) == [value.replace("\\", "/").rsplit("/", 1)[-1] for value in original]
 
 
 def test_no_record_names_the_machine_that_made_it(archived):
@@ -85,14 +92,21 @@ def test_a_windows_path_is_reduced_on_any_platform(measured_project, tmp_path):
     log = paths.imports_log_path(measured_project)
     log.parent.mkdir(parents=True, exist_ok=True)
     with open(log, "a", encoding="utf-8") as handle:
-        handle.write(json.dumps({"import_source_path": r"C:\Users\someone\data\pull.zip",
-                                 "extra": {"source": "/home/someone/data/pull.zip"}}) + "\n")
+        handle.write(
+            json.dumps(
+                {
+                    "import_source_path": r"C:\Users\someone\data\pull.zip",
+                    "extra": {"source": "/home/someone/data/pull.zip"},
+                }
+            )
+            + "\n"
+        )
 
     dest = cf.archive_project(measured_project, tmp_path / "deposit")
-    last = (dest / paths.RAW_IMPORTS_DIR / paths.IMPORTS_LOG_FILE).read_text(
-        encoding="utf-8").splitlines()[-1]
-    assert json.loads(last) == {"import_source_path": "pull.zip",
-                                "extra": {"source": "pull.zip"}}
+    last = (
+        (dest / paths.RAW_IMPORTS_DIR / paths.IMPORTS_LOG_FILE).read_text(encoding="utf-8").splitlines()[-1]
+    )
+    assert json.loads(last) == {"import_source_path": "pull.zip", "extra": {"source": "pull.zip"}}
 
 
 def test_a_non_empty_destination_is_refused(measured_project, tmp_path):

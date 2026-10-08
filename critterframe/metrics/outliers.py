@@ -1,15 +1,4 @@
-"""
-Group metrics: outlier(), cluster().
-
-"Is this specimen unusual?" isn't answerable from one segment -- it needs a
-reference population, and usually the population of THIS species, since a body
-length unremarkable for one species is impossible for another.
-
-A group metric stores, exports, and composes like any other metric. The only
-difference is that it fits once before the run's per-occurrence loop, via
-prepare(), then scores each occurrence against its group's fitted model.
-Reference values are read from an earlier metric run rather than recomputed.
-"""
+"""Group metrics, fitted per group in prepare(): outlier(), cluster(), and their base classes."""
 
 import logging
 from functools import partial
@@ -45,23 +34,18 @@ GALLERY_MEMBERS = 8
 
 
 def group_lookup(project_path, group_col, occurrence_ids=None):
-    """
-    {occurrence_id: group} read off the occurrence table.
+    """Return `{occurrence_id: group}` read from the occurrence table.
 
-    Shared rather than reimplemented per group metric: "which group does this
-    occurrence belong to, with a population-wide fallback when the answer is
-    missing" is the same question for every metric fit per group, whether it
-    fits on stored trait values (GroupMetric below) or on something heavier
-    like pooled pixels (metrics.color_clusters).
-
-    - `group_col` -- occurrence column naming the group. None returns an empty
-      mapping, which puts every occurrence on the population-wide fallback.
+    Args:
+        project_path: Project to read from.
+        group_col: Occurrence column naming the group. None returns an empty mapping, which
+            puts every occurrence on the population-wide fit.
+        occurrence_ids: Occurrences to read; all if None.
     """
     if not group_col:
         return {}
 
-    occurrence_records.require_columns(project_path, group_col,
-                                       "nothing to group by")
+    occurrence_records.require_columns(project_path, group_col, "nothing to group by")
 
     groups = load_occurrences(project_path, columns=[group_col])
     if occurrence_ids is not None:
@@ -75,16 +59,12 @@ def group_lookup(project_path, group_col, occurrence_ids=None):
 
 
 def fitted_for(fits, group_by_id, occurrence_id):
-    """
-    `(fit, group)` for one occurrence: its own group's, or the population-wide fallback.
+    """Return `(fit, group)` for one occurrence: its group's fit, or the population-wide one.
 
-    Shared by every metric fit per group -- on stored trait values, or on
-    pooled pixels -- so "which model scored this, and what does its score
-    mean" is answered one way.
-
-    - `fits` -- `{group: fitted thing}`, including a POPULATION entry.
-    - `group_by_id` -- `{occurrence_id: group}` (see `group_lookup`).
-    - `occurrence_id` -- the occurrence being scored.
+    Args:
+        fits: `{group: fit}`, including a `POPULATION` entry.
+        group_by_id: `{occurrence_id: group}`, from `group_lookup`.
+        occurrence_id: The occurrence being scored.
     """
     group = group_by_id.get(occurrence_id, POPULATION)
     fit = fits.get(group)
@@ -94,35 +74,39 @@ def fitted_for(fits, group_by_id, occurrence_id):
 
 
 class PooledPixelGroupMetric(Metric):
-    """
-    Base for a metric fit per group on POOLED PIXELS rather than on stored values.
+    """Base for a metric fitted per group on pixels pooled from the reference images.
 
-    The other half of the group-metric story. `GroupMetric` fits one ready-made
-    feature row per reference occurrence, read from an earlier run's values;
-    this one reads every reference occurrence's image and pools thousands of
-    pixels per group -- so the fit is expensive, happens once in `prepare()`,
-    and is what a colour vocabulary discovered from a population needs.
+    A subclass supplies `_fit(pixels)`, `_score(segment)` and its own `spec()`.
 
-    A subclass supplies `_fit(pixels)` and `_score(segment)`, and describes
-    itself in `spec()`; everything else here is the pooling, the
-    minimum-group-size fallback, and the fit record.
-
-    - `transforms` -- operations applied when gathering the reference pixels.
-      Pass the SAME ones the run uses, or the fit describes a different
-      representation than the one being scored.
-    - `group_col` -- occurrence column to group by. None fits one population.
-    - `min_group_size` -- groups with fewer reference occurrences than this
-      share the population-wide fit.
-    - `sample_pixels` -- pixels sampled per reference occurrence when POOLING.
-      Scoring is the subclass's business and normally samples nothing.
-    - `reference` -- fit against reference masks instead of canonical ones.
+    Args:
+        name: Operation name.
+        score_fn: The function scoring one segment.
+        group_col: Occurrence column to group by. None fits one population.
+        transforms: Operations applied when gathering the reference pixels; pass the ones
+            the run uses.
+        min_group_size: Groups with fewer reference occurrences than this share the
+            population-wide fit.
+        sample_pixels: Pixels sampled per reference occurrence when pooling.
+        reference: Fit against reference masks.
+        metric_name: Name the value is stored under.
+        unit: Recorded unit.
+        version: Method version.
     """
 
-    def __init__(self, name, score_fn, group_col=None, transforms=(),
-                 min_group_size=MIN_GROUP_SIZE, sample_pixels=2000,
-                 reference=False, metric_name=None, unit="category", version="1"):
-        super().__init__(name, score_fn, version=version, unit=unit,
-                         metric_name=metric_name or name)
+    def __init__(
+        self,
+        name,
+        score_fn,
+        group_col=None,
+        transforms=(),
+        min_group_size=MIN_GROUP_SIZE,
+        sample_pixels=2000,
+        reference=False,
+        metric_name=None,
+        unit="category",
+        version="1",
+    ):
+        super().__init__(name, score_fn, version=version, unit=unit, metric_name=metric_name or name)
         self.group_col = group_col
         self.transforms = list(transforms)
         self.min_group_size = min_group_size
@@ -137,38 +121,33 @@ class PooledPixelGroupMetric(Metric):
         raise NotImplementedError
 
     def _pixels(self, segment):
-        """
-        One segment's masked pixels for pooling, or None where there's no mask.
-
-        Subclasses that pool something other than raw BGR override this.
-        """
+        """Return one segment's masked pixels for pooling, or None where there is no mask."""
         return masked_pixels(segment, cap=self.sample_pixels)
 
     def _describe_fit(self, group):
-        """Extra keys about one group's fit for the run record, e.g. what it found."""
+        """Return extra keys about one group's fit for the run record."""
         return {}
 
     def prepare(self, context):
-        """
-        Pool every reference occurrence's masked pixels per group and fit each group.
+        """Pool every reference occurrence's masked pixels per group, and fit each group.
 
-        Expensive -- it reads every reference image -- so it happens once per
-        run through this hook rather than once per occurrence.
-
-        Returns the fit record the run stores: each fit's contributing
-        occurrences as a count and a digest, with groups too small to fit
-        their own marked fitted=False.
+        Returns:
+            The fit record: each fit's contributing occurrences as a count and digest, with
+            groups too small for their own fit marked `fitted=False`.
         """
         from ..segments import iterate_segments
 
-        self.group_by_id = group_lookup(context.project_path, self.group_col,
-                                        context.occurrence_ids)
+        self.group_by_id = group_lookup(context.project_path, self.group_col, context.occurrence_ids)
 
         pooled = {}
         contributors = {}
         for occurrence_id, segment in iterate_segments(
-                context.project_path, part=context.part, transforms=self.transforms,
-                reference=self.reference, occurrence_ids=context.occurrence_ids):
+            context.project_path,
+            part=context.part,
+            transforms=self.transforms,
+            reference=self.reference,
+            occurrence_ids=context.occurrence_ids,
+        ):
             pixels = self._pixels(segment)
             if pixels is None:
                 continue
@@ -192,7 +171,10 @@ class PooledPixelGroupMetric(Metric):
                 logger.warning(
                     "group %r has only %d reference occurrence(s) (< "
                     "min_group_size=%d) -- using the population-wide fit",
-                    group, len(chunks), self.min_group_size)
+                    group,
+                    len(chunks),
+                    self.min_group_size,
+                )
             if group is not POPULATION:
                 record = dict(ids_record(contributors[group]), fitted=fitted)
                 if fitted:
@@ -203,13 +185,12 @@ class PooledPixelGroupMetric(Metric):
             "group_col": self.group_col,
             "min_group_size": self.min_group_size,
             "reference": self.reference,
-            "population": dict(ids_record(contributors[POPULATION]),
-                               **self._describe_fit(POPULATION)),
+            "population": dict(ids_record(contributors[POPULATION]), **self._describe_fit(POPULATION)),
             "groups": groups,
         }
 
     def _fit_for(self, occurrence_id):
-        """This occurrence's group's fit, falling back to the population-wide one."""
+        """Return this occurrence's group's fit, or the population-wide one."""
         if not self.fits:
             raise RuntimeError(
                 f"{self.metric_name} was never fit -- group metrics are fit by "
@@ -220,47 +201,57 @@ class PooledPixelGroupMetric(Metric):
 
 
 def _estimator_spec(model):
-    """An sklearn model's configuration as JSON: its class and scalar parameters, per pipeline step."""
+    """Return an sklearn model's configuration as JSON: class and scalar parameters, per pipeline step."""
     steps = getattr(model, "steps", None)
     if steps is not None:
         return {"pipeline": [_estimator_spec(step) for _name, step in steps]}
     params = {}
     if hasattr(model, "get_params"):
-        params = {key: value
-                  for key, value in sorted(model.get_params(deep=False).items())
-                  if value is None or isinstance(value, (str, int, float, bool))}
+        params = {
+            key: value
+            for key, value in sorted(model.get_params(deep=False).items())
+            if value is None or isinstance(value, (str, int, float, bool))
+        }
     return {"class": type(model).__name__, "params": params}
 
 
 class GroupMetric(StoredValueMetric):
-    """
-    Base for metrics fit once per group over a population of stored values.
+    """Base for a metric fitted once per group over a population of stored values.
 
-    The population is visible only to the fit in `prepare()`; each occurrence is
-    then scored on its own stored row. Usable directly by supplying
-    model_factory and score_fn; OutlierMetric and ClusterMetric below are the
-    two cases that come up. A feature may be vector-valued (an embedding): each
-    element becomes one column of the fit.
+    The population is seen only by the fit in `prepare()`; each occurrence is then scored
+    on its own stored row. A vector feature contributes one column per element.
 
-    - `features` -- ordered Metric operations making up the feature vector,
-      e.g. [body_length(), max_width()]. Each must be an operation of
-      `from_run`'s current recipe.
-    - `from_run` -- the earlier metric run holding those stored values.
-    - `group_col` -- occurrence column to group by before fitting, e.g.
-      "taxon". None fits one population-wide model.
-    - `min_group_size` -- groups smaller than this fall back to the population
-      model.
-    - `model_factory` -- zero-arg callable returning a fresh, unfit model with
-      .fit(X), X being one row per reference occurrence.
-    - `score_fn` -- callable (model, features) -> dict, features a 1xN array.
-    - `default_model_factory` -- the subclass's own default model; a configured
-      model differing from it reaches the hash.
+    Args:
+        features: Ordered metric operations making up the feature vector, e.g.
+            `[body_length(), max_width()]`. Each must be an operation of `from_run`'s
+            current recipe.
+        from_run: The metric run holding those stored values.
+        group_col: Occurrence column to group by, e.g. `"taxon"`. None fits one model.
+        min_group_size: Groups smaller than this use the population-wide model.
+        model_factory: Zero-argument callable returning an unfitted model with `.fit(X)`.
+        score_fn: Callable `(model, features) -> dict`, `features` being a 1xN array.
+        name: Operation name.
+        metric_name: Name the value is stored under.
+        unit: Recorded unit.
+        version: Method version.
+        default_model_factory: The subclass's default model. A configured model that
+            differs from it reaches the hash.
     """
 
-    def __init__(self, features, from_run, group_col=None,
-                 min_group_size=MIN_GROUP_SIZE, model_factory=None,
-                 score_fn=None, name=None, metric_name=None, unit="category",
-                 version="1", default_model_factory=None):
+    def __init__(
+        self,
+        features,
+        from_run,
+        group_col=None,
+        min_group_size=MIN_GROUP_SIZE,
+        model_factory=None,
+        score_fn=None,
+        name=None,
+        metric_name=None,
+        unit="category",
+        version="1",
+        default_model_factory=None,
+    ):
         if model_factory is None or score_fn is None:
             raise ValueError(
                 f"{type(self).__name__} needs both a model_factory (zero-arg, "
@@ -270,9 +261,15 @@ class GroupMetric(StoredValueMetric):
         if not features:
             raise ValueError("a group metric needs at least one feature")
 
-        super().__init__(name or type(self).__name__.lower(), self._score,
-                         features, from_run, version=version, unit=unit,
-                         metric_name=metric_name or name or type(self).__name__.lower())
+        super().__init__(
+            name or type(self).__name__.lower(),
+            self._score,
+            features,
+            from_run,
+            version=version,
+            unit=unit,
+            metric_name=metric_name or name or type(self).__name__.lower(),
+        )
 
         self.group_col = group_col
         self.min_group_size = min_group_size
@@ -287,11 +284,7 @@ class GroupMetric(StoredValueMetric):
         self._fit_labels = {}
 
     def spec(self):
-        """
-        Identity includes which features, which reference run, which grouping
-        and how the model is configured. The FITTED MODEL isn't in the hash:
-        it's determined by the reference values, which are recorded beside it.
-        """
+        """Return the operation's spec: features, reference run, grouping and model configuration."""
         spec = super().spec()
         parameters = {
             "features": [feature.spec() for feature in self.features],
@@ -310,17 +303,14 @@ class GroupMetric(StoredValueMetric):
         return spec
 
     def prepare(self, context):
-        """
-        Fit the reference models, once, before the run's per-occurrence loop.
+        """Fit the reference models over every occurrence the run covers.
 
-        Fits against every occurrence this run covers, including ones already
-        scored by an earlier interrupted attempt.
+        Also writes a figure of the reference population through `context.report`.
 
-        Returns the fit record the run stores: which reference run and recipe,
-        which features, which grouping, and each group's reference occurrences
-        as a count and a digest, with the ones too small to fit their own model
-        marked fitted=False. Also writes the reference population as a figure
-        through `context.report`, when the run is visualizing.
+        Returns:
+            The fit record: the reference run and its recipe, the features, the grouping, and
+            each group's reference occurrences as a count and digest, with groups too small for
+            their own model marked `fitted=False`.
         """
         from_recipe_hash = self.check_from_run(context)
 
@@ -355,26 +345,29 @@ class GroupMetric(StoredValueMetric):
                         "group %r has only %d reference occurrences (< "
                         "min_group_size=%d) -- scoring it against the "
                         "population-wide model instead of its own",
-                        group, len(clean), self.min_group_size,
+                        group,
+                        len(clean),
+                        self.min_group_size,
                     )
                 groups[str(group)] = dict(ids_record(clean[ID_COL]), fitted=fitted)
 
         population = reference.dropna(subset=columns)
         if population.empty:
-            raise ValueError(
-                "no reference occurrences have every feature value populated"
-            )
+            raise ValueError("no reference occurrences have every feature value populated")
         self._fit_group(POPULATION, population)
-        self._stored = dict(zip(population[ID_COL],
-                                population[columns].to_numpy(dtype=float)))
+        self._stored = dict(zip(population[ID_COL], population[columns].to_numpy(dtype=float)))
 
-        logger.info("%s fit: %d group model(s) + 1 population-wide fallback, "
-                    "%d reference occurrences", self.metric_name,
-                    len(self.models) - 1, len(population))
+        logger.info(
+            "%s fit: %d group model(s) + 1 population-wide fallback, %d reference occurrences",
+            self.metric_name,
+            len(self.models) - 1,
+            len(population),
+        )
 
         if context.report:
-            context.report.figure(f"{self.metric_name}__reference",
-                                  self._reference_figure(population, columns))
+            context.report.figure(
+                f"{self.metric_name}__reference", self._reference_figure(population, columns)
+            )
 
         return {
             "from_run": self.from_run,
@@ -388,38 +381,44 @@ class GroupMetric(StoredValueMetric):
         }
 
     def _fit_group(self, key, rows):
-        """Fit one group's model on its rows, keeping its own labels where it can't predict."""
+        """Fit one group's model on its rows, keeping its fit labels where it has no `predict()`."""
         model = self._fit(rows[self.columns])
         self.models[key] = model
         if not hasattr(model, "predict") and hasattr(model, "labels_"):
             self._fit_labels[key] = dict(zip(rows[ID_COL], model.labels_))
 
     def _figure_labels(self, population):
-        """A label per reference occurrence to colour the reference figure by, or None."""
+        """Return a label per reference occurrence to color the reference figure by, or None."""
         if not self.group_col:
             return None
-        labels = population[self.group_col].astype(object).where(
-            population[self.group_col].notna(), "(none)").astype(str)
+        labels = (
+            population[self.group_col]
+            .astype(object)
+            .where(population[self.group_col].notna(), "(none)")
+            .astype(str)
+        )
         named = set(labels.value_counts().head(FIGURE_GROUPS).index)
         return labels.where(labels.isin(named), "(other)").tolist()
 
     def _reference_figure(self, population, columns):
-        """
-        The fitted population: two features against each other, one's
-        histogram, or a 2-D PCA projection when a vector feature is involved.
-        """
-        title = (f"{self.metric_name}: reference from '{self.from_run}' "
-                 f"(n={len(population)})")
+        """Return a figure of the fitted population: a scatter, a histogram, or a 2-D PCA projection."""
+        title = f"{self.metric_name}: reference from '{self.from_run}' (n={len(population)})"
         groups = self._figure_labels(population)
 
         if len(columns) > len(self.features) or len(columns) > 2:
             projected = _project_2d(population[columns].to_numpy(dtype=float))
-            return figures.scatter(projected[:, 0], projected[:, 1], groups=groups,
-                                   xlabel="PC1", ylabel="PC2", title=title)
+            return figures.scatter(
+                projected[:, 0], projected[:, 1], groups=groups, xlabel="PC1", ylabel="PC2", title=title
+            )
         if len(columns) == 2:
-            return figures.scatter(population[columns[0]], population[columns[1]],
-                                   groups=groups,
-                                   xlabel=columns[0], ylabel=columns[1], title=title)
+            return figures.scatter(
+                population[columns[0]],
+                population[columns[1]],
+                groups=groups,
+                xlabel=columns[0],
+                ylabel=columns[1],
+                title=title,
+            )
         values = population[columns[0]]
         if groups is not None:
             labels = pd.Series(groups, index=population.index)
@@ -434,21 +433,19 @@ class GroupMetric(StoredValueMetric):
         return model
 
     def _model_for(self, occurrence_id):
-        """This occurrence's group's model, falling back to the population-wide one."""
+        """Return this occurrence's group's model, or the population-wide one."""
         return fitted_for(self.models, self.group_by_id, occurrence_id)
 
     def _score_features(self, model, group, occurrence_id, features):
-        """score_fn's dict for one occurrence's feature row (a 1xN array)."""
+        """Return `score_fn`'s dict for one occurrence's feature row."""
         return self.score_fn(model, features)
 
     def _score(self, target):
-        """
-        Score one occurrence's stored row against its group's model.
+        """Score one occurrence's stored row against its group's model.
 
-        - `target` -- a `StoredValues`; run_metrics builds it.
-
-        Returns score_fn's dict plus a "group" key naming which group actually
-        scored it (None where the population-wide fallback was used).
+        Returns:
+            `score_fn`'s dict plus `group`, the group that scored it, None for the
+            population-wide model.
         """
         occurrence_id = self.require_stored(target)
         if not self.models:
@@ -469,7 +466,7 @@ class GroupMetric(StoredValueMetric):
 
 
 def _project_2d(matrix):
-    """Rows projected onto their first two principal components, zero-padded when fewer exist."""
+    """Return rows projected onto their first two principal components, zero-padded when fewer exist."""
     centered = matrix - matrix.mean(axis=0)
     if len(centered) < 2:
         return np.zeros((len(centered), 2))
@@ -481,11 +478,9 @@ def _project_2d(matrix):
 
 
 def _isolation_forest_score(model, features):
-    """
-    is_outlier is IsolationForest's own -1/1 call (governed by
-    `contamination`); anomaly_score is the continuous decision function beneath
-    it, where LOWER is more anomalous. Both are stored so a stricter or looser
-    cutoff can be applied later at export without refitting anything.
+    """Return `is_outlier` and `anomaly_score` for one feature row.
+
+    `anomaly_score` is IsolationForest's decision function, where lower is more anomalous.
     """
     return {
         "is_outlier": bool(model.predict(features)[0] == -1),
@@ -500,45 +495,55 @@ def _default_isolation_forest(contamination="auto"):
 
 
 class OutlierMetric(GroupMetric):
-    """
-    Flags occurrences that are unusual within their own group's trait
-    distribution.
+    """Group metric: whether an occurrence is unusual within its own group, and by how much.
 
-    Being an outlier WITHIN your own group is the QC-relevant signal; comparing
-    across groups mostly rediscovers real between-group differences. Defaults
-    to IsolationForest, which needs no cluster count; swap in anything else
-    via model_factory.
+    Uses IsolationForest unless `model_factory` is given.
 
-    - `contamination` -- expected fraction of outliers in each group's
-      reference population; passed straight to IsolationForest. `"auto"`
-      lets it decide. Ignored if `model_factory` is given.
-    - `name` -- what this measurement is called: it sets `metric_name` and
-      nothing else. The operation stays `"outlier"`, which is what logs and
-      `quality.WARN_THRESHOLDS` read.
-
-    Everything else is passed through to GroupMetric -- see its docstring.
+    Args:
+        features: As in `GroupMetric`.
+        from_run: As in `GroupMetric`.
+        group_col: As in `GroupMetric`.
+        min_group_size: As in `GroupMetric`.
+        contamination: Expected fraction of outliers per group, passed to IsolationForest.
+            Ignored with `model_factory`.
+        model_factory: As in `GroupMetric`.
+        name: Name the value is stored under. The operation stays `"outlier"`.
+        unit: Recorded unit.
     """
 
-    def __init__(self, features, from_run, group_col=None,
-                 min_group_size=MIN_GROUP_SIZE, contamination="auto",
-                 model_factory=None, name=None, unit="category"):
-        model_factory = model_factory or (
-            lambda: _default_isolation_forest(contamination))
-        super().__init__(features, from_run, group_col=group_col,
-                         min_group_size=min_group_size,
-                         model_factory=model_factory,
-                         score_fn=_isolation_forest_score,
-                         name="outlier", metric_name=name, unit=unit,
-                         default_model_factory=_default_isolation_forest)
+    def __init__(
+        self,
+        features,
+        from_run,
+        group_col=None,
+        min_group_size=MIN_GROUP_SIZE,
+        contamination="auto",
+        model_factory=None,
+        name=None,
+        unit="category",
+    ):
+        model_factory = model_factory or (lambda: _default_isolation_forest(contamination))
+        super().__init__(
+            features,
+            from_run,
+            group_col=group_col,
+            min_group_size=min_group_size,
+            model_factory=model_factory,
+            score_fn=_isolation_forest_score,
+            name="outlier",
+            metric_name=name,
+            unit=unit,
+            default_model_factory=_default_isolation_forest,
+        )
 
 
 def _cluster_score(model, features, probability_threshold=None):
-    """
-    Which cluster this occurrence lands in, plus how firmly where the model can
-    say: distance to that cluster's centre where it has centres, the cluster's
-    probability where it is probabilistic.
+    """Return the cluster a feature row falls in, and how firmly where the model can say.
 
-    - `probability_threshold` -- below this probability the cluster is -1.
+    Args:
+        model: The fitted clusterer.
+        features: The 1xN feature row.
+        probability_threshold: Probability below which the cluster is reported as -1.
     """
     cluster_id = int(model.predict(features)[0])
     result = {"cluster_id": cluster_id}
@@ -559,62 +564,72 @@ def _default_kmeans(n_clusters=3):
 
 
 def _reduced(model, n_components):
-    """`model` behind standardization and a PCA down to `n_components`."""
+    """Return `model` behind standardization and a PCA down to `n_components`."""
     from sklearn.decomposition import PCA
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
 
-    return make_pipeline(StandardScaler(),
-                         PCA(n_components=n_components, random_state=0), model)
+    return make_pipeline(StandardScaler(), PCA(n_components=n_components, random_state=0), model)
 
 
 class ClusterMetric(GroupMetric):
-    """
-    Which cluster an occurrence falls into within its own group's trait
-    distribution, and how firmly.
+    """Group metric: the cluster an occurrence falls in within its own group, and how firmly.
 
-    Cluster ids are only comparable within one group, since each group's model
-    numbers its own. Any sklearn clusterer works through `model_factory`; one
-    without `predict()` (DBSCAN, HDBSCAN) reports its own fit labels, -1 being
-    noise. With the run visualizing,
-    `prepare()` also writes a gallery per group: a row of sampled members per
-    cluster.
+    Cluster ids are comparable only within one group. A clusterer without `predict()`
+    (DBSCAN) reports its own fit labels, with -1 as noise.
 
-    - `n_clusters` -- clusters per group, passed to the default KMeans.
-      Ignored if `model_factory` is given.
-    - `n_components` -- standardize and PCA-reduce the features to this many
-      dimensions before clustering, e.g. for an embedding.
-    - `probability_threshold` -- with a probabilistic model (e.g. a
-      GaussianMixture `model_factory`), a cluster probability below this is
-      reported as cluster -1.
-    - `name` -- what this measurement is called; the operation stays `"cluster"`.
-
-    Everything else is passed through to GroupMetric -- see its docstring.
+    Args:
+        features: As in `GroupMetric`.
+        from_run: As in `GroupMetric`.
+        group_col: As in `GroupMetric`.
+        n_clusters: Clusters per group for the default KMeans. Ignored with `model_factory`.
+        min_group_size: As in `GroupMetric`.
+        model_factory: As in `GroupMetric`.
+        name: Name the value is stored under. The operation stays `"cluster"`.
+        unit: Recorded unit.
+        n_components: Standardize the features and reduce them by PCA to this many
+            dimensions before clustering.
+        probability_threshold: With a probabilistic model, a cluster probability below
+            this is reported as cluster -1.
     """
 
-    def __init__(self, features, from_run, group_col=None, n_clusters=3,
-                 min_group_size=MIN_GROUP_SIZE, model_factory=None, name=None,
-                 unit="category", n_components=None,
-                 probability_threshold=None):
+    def __init__(
+        self,
+        features,
+        from_run,
+        group_col=None,
+        n_clusters=3,
+        min_group_size=MIN_GROUP_SIZE,
+        model_factory=None,
+        name=None,
+        unit="category",
+        n_components=None,
+        probability_threshold=None,
+    ):
         base_factory = model_factory or (lambda: _default_kmeans(n_clusters))
-        factory = (base_factory if n_components is None
-                   else lambda: _reduced(base_factory(), n_components))
-        if (probability_threshold is not None
-                and not hasattr(factory(), "predict_proba")):
+        factory = base_factory if n_components is None else lambda: _reduced(base_factory(), n_components)
+        if probability_threshold is not None and not hasattr(factory(), "predict_proba"):
             raise ValueError(
                 "probability_threshold needs a model with predict_proba(), "
-                "e.g. model_factory=lambda: GaussianMixture(3)")
+                "e.g. model_factory=lambda: GaussianMixture(3)"
+            )
 
-        super().__init__(features, from_run, group_col=group_col,
-                         min_group_size=min_group_size,
-                         model_factory=factory,
-                         score_fn=partial(_cluster_score,
-                                          probability_threshold=probability_threshold),
-                         name="cluster", metric_name=name, unit=unit,
-                         default_model_factory=_default_kmeans)
+        super().__init__(
+            features,
+            from_run,
+            group_col=group_col,
+            min_group_size=min_group_size,
+            model_factory=factory,
+            score_fn=partial(_cluster_score, probability_threshold=probability_threshold),
+            name="cluster",
+            metric_name=name,
+            unit=unit,
+            default_model_factory=_default_kmeans,
+        )
         self.probability_threshold = probability_threshold
 
     def spec(self):
+        """Return the operation's spec, with the PCA step and probability threshold where they are set."""
         spec = super().spec()
         if self.probability_threshold is not None:
             spec["parameters"]["probability_threshold"] = self.probability_threshold
@@ -627,12 +642,11 @@ class ClusterMetric(GroupMetric):
         return super()._score_features(model, group, occurrence_id, features)
 
     def _assignments(self):
-        """{group: {cluster_id: [occurrence ids]}} over the reference population."""
+        """Return `{group: {cluster_id: [occurrence ids]}}` over the reference population."""
         assignments = {}
         for occurrence_id, row in self._stored.items():
             model, group = self._model_for(occurrence_id)
-            cluster_id = self._score_features(model, group, occurrence_id,
-                                              row[None, :])["cluster_id"]
+            cluster_id = self._score_features(model, group, occurrence_id, row[None, :])["cluster_id"]
             assignments.setdefault(group, {}).setdefault(cluster_id, []).append(occurrence_id)
         return assignments
 
@@ -640,48 +654,66 @@ class ClusterMetric(GroupMetric):
         if self.group_col:
             return super()._figure_labels(population)
         labels = []
-        for occurrence_id, row in zip(population[ID_COL],
-                                      population[self.columns].to_numpy(dtype=float)):
+        for occurrence_id, row in zip(population[ID_COL], population[self.columns].to_numpy(dtype=float)):
             model, group = self._model_for(occurrence_id)
-            labels.append(f"cluster {self._score_features(model, group, occurrence_id, row[None, :])['cluster_id']}")
+            labels.append(
+                f"cluster {self._score_features(model, group, occurrence_id, row[None, :])['cluster_id']}"
+            )
         return labels
 
     def prepare(self, context):
+        """Fit the reference models, then draw a gallery of sampled members per cluster."""
         record = super().prepare(context)
         if context.report:
             self._draw_galleries(context)
         return record
 
     def _draw_galleries(self, context):
-        """One grid per group, the largest FIGURE_GROUPS of them: a row of sampled members per cluster."""
+        """Draw one grid per group, for the largest groups: a row of sampled members per cluster."""
         from ..segments import iterate_segments
 
         assignments = self._assignments()
-        largest = sorted(assignments, key=lambda group: -sum(
-            len(ids) for ids in assignments[group].values()))[:FIGURE_GROUPS]
-        shown = {group: {cluster_id: sample_occurrences(ids, GALLERY_MEMBERS)
-                         for cluster_id, ids in assignments[group].items()}
-                 for group in largest}
-        wanted = sorted({occurrence_id for clusters in shown.values()
-                         for ids in clusters.values() for occurrence_id in ids})
+        largest = sorted(
+            assignments, key=lambda group: -sum(len(ids) for ids in assignments[group].values())
+        )[:FIGURE_GROUPS]
+        shown = {
+            group: {
+                cluster_id: sample_occurrences(ids, GALLERY_MEMBERS)
+                for cluster_id, ids in assignments[group].items()
+            }
+            for group in largest
+        }
+        wanted = sorted(
+            {
+                occurrence_id
+                for clusters in shown.values()
+                for ids in clusters.values()
+                for occurrence_id in ids
+            }
+        )
 
         cells = {}
         for occurrence_id, segment in iterate_segments(
-                context.project_path, part=context.part,
-                transforms=context.transforms, reference=context.reference,
-                occurrence_ids=wanted, progress=f"{self.metric_name} gallery"):
+            context.project_path,
+            part=context.part,
+            transforms=context.transforms,
+            reference=context.reference,
+            occurrence_ids=wanted,
+            progress=f"{self.metric_name} gallery",
+        ):
             cells[occurrence_id] = grids.mask_cutout(segment)
         if not cells:
             return
 
         for group in largest:
             clusters = sorted(shown[group])
-            rows = [[cells[occurrence_id] for occurrence_id in shown[group][cluster_id]
-                     if occurrence_id in cells] for cluster_id in clusters]
+            rows = [
+                [cells[occurrence_id] for occurrence_id in shown[group][cluster_id] if occurrence_id in cells]
+                for cluster_id in clusters
+            ]
             if not any(rows):
                 continue
-            labels = [f"{cluster_id} n={len(assignments[group][cluster_id])}"
-                      for cluster_id in clusters]
+            labels = [f"{cluster_id} n={len(assignments[group][cluster_id])}" for cluster_id in clusters]
             title = f"{self.metric_name}: clusters of '{self.from_run}'"
             suffix = ""
             if group is not POPULATION:
@@ -692,10 +724,22 @@ class ClusterMetric(GroupMetric):
 
 
 def outlier(features, from_run, **kwargs):
-    """Operation: OutlierMetric, in the lowercase factory style of every other metric."""
+    """Operation: an `OutlierMetric`.
+
+    Args:
+        features: As in `GroupMetric`.
+        from_run: As in `GroupMetric`.
+        **kwargs: The other `OutlierMetric` arguments.
+    """
     return OutlierMetric(features, from_run, **kwargs)
 
 
 def cluster(features, from_run, **kwargs):
-    """Operation: ClusterMetric, in the lowercase factory style of every other metric."""
+    """Operation: a `ClusterMetric`.
+
+    Args:
+        features: As in `GroupMetric`.
+        from_run: As in `GroupMetric`.
+        **kwargs: The other `ClusterMetric` arguments.
+    """
     return ClusterMetric(features, from_run, **kwargs)

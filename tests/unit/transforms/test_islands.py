@@ -68,8 +68,7 @@ def test_no_pixel_is_invented_and_nothing_moves():
 
 
 def test_the_threshold_is_in_the_hash():
-    assert (cf.remove_islands().spec()
-            != cf.remove_islands(min_area_frac=0.1).spec())
+    assert cf.remove_islands().spec() != cf.remove_islands(min_area_frac=0.1).spec()
 
 
 @pytest.mark.parametrize("bad", [0, -0.1, 1.5])

@@ -38,11 +38,13 @@ from critterframe.selectionhelpers import (
 
 
 def table():
-    return pd.DataFrame({
-        "occurrence_id": ["a", "b", "c", "d"],
-        "determination": ["Noctuidae", "Not Lepidoptera", "Debris", None],
-        "count": [1, 2, 3, 4],
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": ["a", "b", "c", "d"],
+            "determination": ["Noctuidae", "Not Lepidoptera", "Debris", None],
+            "count": [1, 2, 3, 4],
+        }
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -61,8 +63,7 @@ def test_any_rule_matching_is_enough():
     These rule sets name several kinds of a thing ("debris, or
     not-Lepidoptera"), not a conjunction one row would have to satisfy at once.
     """
-    matched = rows_matching(table(), {"determination": ["Debris"],
-                                      "count": [1]})
+    matched = rows_matching(table(), {"determination": ["Debris"], "count": [1]})
     assert matched.tolist() == [True, False, True, False]
 
 
@@ -259,25 +260,27 @@ def species_table():
     Seven "common", two "rare", one with no identification at all -- an
     imbalance in miniature of the sort a GBIF or iNaturalist pull produces.
     """
-    return pd.DataFrame({
-        "occurrence_id": [chr(ord("a") + index) for index in range(10)],
-        "species": ["common"] * 7 + ["rare"] * 2 + [None],
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": [chr(ord("a") + index) for index in range(10)],
+            "species": ["common"] * 7 + ["rare"] * 2 + [None],
+        }
+    )
 
 
 def test_a_group_at_or_under_the_cap_is_untouched():
     capped = cap_per_group(species_table(), "species", 2)
-    assert (capped["species"] == "rare").sum() == 2   # already exactly at the cap
+    assert (capped["species"] == "rare").sum() == 2  # already exactly at the cap
 
     capped = cap_per_group(species_table(), "species", 7)
-    assert (capped["species"] == "common").sum() == 7   # exactly at the cap
-    assert (capped["species"] == "rare").sum() == 2   # well under it
+    assert (capped["species"] == "common").sum() == 7  # exactly at the cap
+    assert (capped["species"] == "rare").sum() == 2  # well under it
 
 
 def test_an_oversized_group_is_thinned_to_exactly_max_count():
     capped = cap_per_group(species_table(), "species", 2)
     assert (capped["species"] == "common").sum() == 2
-    assert (capped["species"] == "rare").sum() == 2   # already at the cap
+    assert (capped["species"] == "rare").sum() == 2  # already at the cap
 
 
 def test_a_missing_group_value_is_never_capped():
@@ -286,10 +289,12 @@ def test_a_missing_group_value_is_never_capped():
     is one of an oversized group's extras -- the same reasoning rows_matching
     applies to a missing value never matching a drop rule.
     """
-    lopsided = pd.DataFrame({
-        "occurrence_id": [f"o{index}" for index in range(20)],
-        "species": [None] * 20,
-    })
+    lopsided = pd.DataFrame(
+        {
+            "occurrence_id": [f"o{index}" for index in range(20)],
+            "species": [None] * 20,
+        }
+    )
     capped = cap_per_group(lopsided, "species", 1)
     assert len(capped) == 20
 
@@ -340,8 +345,7 @@ def test_an_unknown_group_col_raises():
 
 def test_surviving_rows_keep_their_relative_order():
     capped = cap_per_group(species_table(), "species", 2, rule="first")
-    assert capped["occurrence_id"].tolist() == sorted(
-        capped["occurrence_id"].tolist())
+    assert capped["occurrence_id"].tolist() == sorted(capped["occurrence_id"].tolist())
 
 
 def test_capping_logs_an_aggregate_count(caplog):
@@ -362,8 +366,9 @@ def test_capping_nothing_logs_nothing(caplog):
 
 
 def test_keep_ids_survive_over_new_candidates():
-    capped = cap_per_group(species_table(), "species", 2, rule="first",
-                           id_col="occurrence_id", keep_ids={"g"})
+    capped = cap_per_group(
+        species_table(), "species", 2, rule="first", id_col="occurrence_id", keep_ids={"g"}
+    )
     common = capped[capped["species"] == "common"]["occurrence_id"].tolist()
     # "g" survives despite sorting last in file order; rows keep their
     # relative order in the output regardless of why each one was kept.
@@ -380,23 +385,22 @@ def test_raising_the_cap_with_keep_ids_is_additive():
     first = cap_per_group(species_table(), "species", 2)
     kept = set(first["occurrence_id"])
 
-    second = cap_per_group(species_table(), "species", 4,
-                           id_col="occurrence_id", keep_ids=kept)
+    second = cap_per_group(species_table(), "species", 4, id_col="occurrence_id", keep_ids=kept)
     assert kept <= set(second["occurrence_id"])
     assert len(second[second["species"] == "common"]) == 4
 
 
 def test_lowering_the_cap_retrims_the_kept_ids_by_rule():
     previously_kept = {"a", "b", "c", "d"}
-    capped = cap_per_group(species_table(), "species", 2, rule="first",
-                           id_col="occurrence_id", keep_ids=previously_kept)
+    capped = cap_per_group(
+        species_table(), "species", 2, rule="first", id_col="occurrence_id", keep_ids=previously_kept
+    )
     common = capped[capped["species"] == "common"]["occurrence_id"].tolist()
-    assert common == ["a", "b"]   # rule applied among the kept ids themselves
+    assert common == ["a", "b"]  # rule applied among the kept ids themselves
 
 
 def test_a_group_at_or_under_the_cap_ignores_keep_ids():
-    capped = cap_per_group(species_table(), "species", 7,
-                           id_col="occurrence_id", keep_ids={"a"})
+    capped = cap_per_group(species_table(), "species", 7, id_col="occurrence_id", keep_ids={"a"})
     assert (capped["species"] == "common").sum() == 7
 
 
@@ -404,11 +408,11 @@ def test_keep_ids_does_not_apply_to_a_callable_rule():
     def last_alphabetically(group):
         return group.sort_values("occurrence_id").tail(2)
 
-    capped = cap_per_group(species_table(), "species", 2,
-                           rule=last_alphabetically,
-                           id_col="occurrence_id", keep_ids={"a"})
+    capped = cap_per_group(
+        species_table(), "species", 2, rule=last_alphabetically, id_col="occurrence_id", keep_ids={"a"}
+    )
     common = capped[capped["species"] == "common"]["occurrence_id"].tolist()
-    assert sorted(common) == ["f", "g"]   # "a" gets no special treatment
+    assert sorted(common) == ["f", "g"]  # "a" gets no special treatment
 
 
 def test_keep_ids_without_id_col_raises():
@@ -418,8 +422,7 @@ def test_keep_ids_without_id_col_raises():
 
 def test_keep_ids_with_an_unknown_id_col_raises():
     with pytest.raises(KeyError, match="no 'specimen_id' column"):
-        cap_per_group(species_table(), "species", 2,
-                      id_col="specimen_id", keep_ids={"a"})
+        cap_per_group(species_table(), "species", 2, id_col="specimen_id", keep_ids={"a"})
 
 
 # ---------------------------------------------------------------------------
@@ -432,11 +435,13 @@ PREFER_INAT = {"source": ["inat"]}
 
 def sourced_table(sources):
     """species_table()'s seven "common" rows, a..g, tagged with sources."""
-    return pd.DataFrame({
-        "occurrence_id": [chr(ord("a") + index) for index in range(len(sources))],
-        "species": ["common"] * len(sources),
-        "source": sources,
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": [chr(ord("a") + index) for index in range(len(sources))],
+            "species": ["common"] * len(sources),
+            "source": sources,
+        }
+    )
 
 
 def common_ids(capped):
@@ -461,22 +466,25 @@ def test_too_few_preferred_rows_are_topped_up_from_the_rest():
 def test_a_preferred_newcomer_displaces_a_kept_row_that_is_not():
     """Strictly preferred first: a source preference outranks additivity."""
     table = sourced_table(["other", "other", "inat", "inat", "other", "other", "other"])
-    capped = cap_per_group(table, "species", 2, prefer=PREFER_INAT,
-                           id_col="occurrence_id", keep_ids={"a", "b"})
+    capped = cap_per_group(
+        table, "species", 2, prefer=PREFER_INAT, id_col="occurrence_id", keep_ids={"a", "b"}
+    )
     assert common_ids(capped) == {"c", "d"}
 
 
 def test_kept_preferred_rows_win_over_new_preferred_rows():
     table = sourced_table(["inat"] * 7)
-    capped = cap_per_group(table, "species", 2, rule="first", prefer=PREFER_INAT,
-                           id_col="occurrence_id", keep_ids={"f", "g"})
+    capped = cap_per_group(
+        table, "species", 2, rule="first", prefer=PREFER_INAT, id_col="occurrence_id", keep_ids={"f", "g"}
+    )
     assert common_ids(capped) == {"f", "g"}
 
 
 def test_kept_rows_still_come_first_among_the_rest():
     table = sourced_table(["inat", "other", "other", "other", "other", "other", "other"])
-    capped = cap_per_group(table, "species", 2, rule="first", prefer=PREFER_INAT,
-                           id_col="occurrence_id", keep_ids={"g"})
+    capped = cap_per_group(
+        table, "species", 2, rule="first", prefer=PREFER_INAT, id_col="occurrence_id", keep_ids={"g"}
+    )
     assert common_ids(capped) == {"a", "g"}
 
 
@@ -489,8 +497,9 @@ def test_a_missing_prefer_value_is_not_preferred():
 def test_no_prefer_selects_exactly_as_before():
     table = sourced_table(["inat"] * 3 + ["other"] * 4)
     for rule in ("random", "first", "last"):
-        assert (cap_per_group(table, "species", 3, rule=rule, prefer=None)
-                .equals(cap_per_group(table, "species", 3, rule=rule)))
+        assert cap_per_group(table, "species", 3, rule=rule, prefer=None).equals(
+            cap_per_group(table, "species", 3, rule=rule)
+        )
 
 
 def test_an_unknown_prefer_column_raises():
@@ -509,15 +518,14 @@ def sightings_table():
     ("a"/"b" are one sighting, "c"/"d" another), a third sighting published
     once ("e"), and one row with no coordinates at all ("f").
     """
-    return pd.DataFrame({
-        "occurrence_id": ["a", "b", "c", "d", "e", "f"],
-        "decimalLatitude": ["40.123401", "40.123449", "51.5", "51.500049",
-                            "10.0", None],
-        "decimalLongitude": ["-73.987601", "-73.987649", "-0.1", "-0.100049",
-                             "20.0", "20.0"],
-        "eventDate": ["2024-05-01", "2024-05-01", "2024-06-15", "2024-06-15",
-                     "2024-07-04", "2024-07-04"],
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": ["a", "b", "c", "d", "e", "f"],
+            "decimalLatitude": ["40.123401", "40.123449", "51.5", "51.500049", "10.0", None],
+            "decimalLongitude": ["-73.987601", "-73.987649", "-0.1", "-0.100049", "20.0", "20.0"],
+            "eventDate": ["2024-05-01", "2024-05-01", "2024-06-15", "2024-06-15", "2024-07-04", "2024-07-04"],
+        }
+    )
 
 
 DEDUPE_COLS = ["decimalLatitude", "decimalLongitude", "eventDate"]
@@ -527,9 +535,9 @@ DEDUPE_PRECISION = {"decimalLatitude": 4, "decimalLongitude": 4}
 def test_rows_within_precision_are_deduplicated():
     deduped = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION)
     ids = set(deduped["occurrence_id"])
-    assert len(ids & {"a", "b"}) == 1   # one survivor of the first pair
-    assert len(ids & {"c", "d"}) == 1   # one survivor of the second pair
-    assert "e" in ids                  # published once, untouched
+    assert len(ids & {"a", "b"}) == 1  # one survivor of the first pair
+    assert len(ids & {"c", "d"}) == 1  # one survivor of the second pair
+    assert "e" in ids  # published once, untouched
 
 
 def test_a_row_missing_any_key_col_is_exempt():
@@ -543,32 +551,38 @@ def test_a_row_missing_any_key_col_is_exempt():
 
 
 def test_rows_outside_precision_are_not_deduplicated():
-    table = pd.DataFrame({
-        "occurrence_id": ["a", "b"],
-        "decimalLatitude": ["40.1234", "40.1250"],   # ~0.18 km apart
-        "decimalLongitude": ["-73.9876", "-73.9876"],
-        "eventDate": ["2024-05-01", "2024-05-01"],
-    })
+    table = pd.DataFrame(
+        {
+            "occurrence_id": ["a", "b"],
+            "decimalLatitude": ["40.1234", "40.1250"],  # ~0.18 km apart
+            "decimalLongitude": ["-73.9876", "-73.9876"],
+            "eventDate": ["2024-05-01", "2024-05-01"],
+        }
+    )
     deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION)
     assert len(deduped) == 2
 
 
 def test_without_precision_matching_is_exact():
-    table = pd.DataFrame({
-        "occurrence_id": ["a", "b"],
-        "lat": ["40.12340", "40.1234"],   # equal as floats, not as strings
-    })
+    table = pd.DataFrame(
+        {
+            "occurrence_id": ["a", "b"],
+            "lat": ["40.12340", "40.1234"],  # equal as floats, not as strings
+        }
+    )
     assert len(dedupe_by(table, ["lat"])) == 2
     assert len(dedupe_by(table, ["lat"], precision={"lat": 4})) == 1
 
 
 def test_deduping_nothing_is_a_no_op():
-    table = pd.DataFrame({
-        "occurrence_id": ["a", "b"],
-        "decimalLatitude": ["10.0", "20.0"],
-        "decimalLongitude": ["30.0", "40.0"],
-        "eventDate": ["2024-01-01", "2024-01-02"],
-    })
+    table = pd.DataFrame(
+        {
+            "occurrence_id": ["a", "b"],
+            "decimalLatitude": ["10.0", "20.0"],
+            "decimalLongitude": ["30.0", "40.0"],
+            "eventDate": ["2024-01-01", "2024-01-02"],
+        }
+    )
     deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION)
     assert set(deduped["occurrence_id"]) == {"a", "b"}
 
@@ -584,16 +598,21 @@ def test_keep_ids_survive_a_duplicate_resolved_before():
     resolved once, and already carrying downstream work, must not be
     orphaned by a later pull that would otherwise pick differently.
     """
-    first = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                      id_col="occurrence_id")
+    first = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION, id_col="occurrence_id")
     kept_ids = set(first["occurrence_id"])
     kept_from_first_pair = kept_ids & {"a", "b"}
 
     # Different seeds would otherwise be free to pick either survivor --
     # keep_ids overrides that regardless.
     for seed in range(10):
-        again = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                          id_col="occurrence_id", keep_ids=kept_ids, seed=seed)
+        again = dedupe_by(
+            sightings_table(),
+            DEDUPE_COLS,
+            precision=DEDUPE_PRECISION,
+            id_col="occurrence_id",
+            keep_ids=kept_ids,
+            seed=seed,
+        )
         assert kept_from_first_pair <= set(again["occurrence_id"])
 
 
@@ -612,51 +631,50 @@ def test_deduping_logs_an_aggregate_count(caplog):
 def test_the_fingerprint_column_does_not_leak_into_the_result():
     deduped = dedupe_by(sightings_table(), DEDUPE_COLS, precision=DEDUPE_PRECISION)
     assert "_dedupe_fingerprint" not in deduped.columns
-    deduped = dedupe_by(sightings_table().assign(source="inat"), DEDUPE_COLS,
-                        precision=DEDUPE_PRECISION, prefer=PREFER_INAT)
+    deduped = dedupe_by(
+        sightings_table().assign(source="inat"), DEDUPE_COLS, precision=DEDUPE_PRECISION, prefer=PREFER_INAT
+    )
     assert not {"_dedupe_fingerprint", "_dedupe_position"} & set(deduped.columns)
 
 
 def test_a_preferred_row_wins_its_duplicate_group():
-    table = sightings_table().assign(
-        source=["other", "inat", "inat", "other", "other", "other"])
+    table = sightings_table().assign(source=["other", "inat", "inat", "other", "other", "other"])
     for seed in range(5):
-        deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                            prefer=PREFER_INAT, seed=seed)
+        deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION, prefer=PREFER_INAT, seed=seed)
         assert set(deduped["occurrence_id"]) == {"b", "c", "e", "f"}
 
 
 def test_a_preferred_row_wins_even_over_a_kept_one():
-    table = sightings_table().assign(
-        source=["other", "inat", "other", "other", "other", "other"])
-    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                        prefer=PREFER_INAT, id_col="occurrence_id", keep_ids={"a"})
+    table = sightings_table().assign(source=["other", "inat", "other", "other", "other", "other"])
+    deduped = dedupe_by(
+        table,
+        DEDUPE_COLS,
+        precision=DEDUPE_PRECISION,
+        prefer=PREFER_INAT,
+        id_col="occurrence_id",
+        keep_ids={"a"},
+    )
     ids = set(deduped["occurrence_id"])
     assert "b" in ids and "a" not in ids
 
 
 def test_preferred_rows_are_never_deduplicated_among_themselves():
     table = sightings_table().assign(source="inat")
-    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                        prefer=PREFER_INAT)
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION, prefer=PREFER_INAT)
     assert len(deduped) == 6
 
 
 def test_a_group_with_no_preferred_row_still_keeps_one():
-    table = sightings_table().assign(
-        source=["inat", "other", "other", "other", "other", "other"])
-    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                        prefer=PREFER_INAT)
+    table = sightings_table().assign(source=["inat", "other", "other", "other", "other", "other"])
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION, prefer=PREFER_INAT)
     ids = set(deduped["occurrence_id"])
     assert "a" in ids and "b" not in ids
     assert len(ids & {"c", "d"}) == 1
 
 
 def test_preferring_keeps_the_source_order():
-    table = sightings_table().assign(
-        source=["other", "inat", "other", "other", "inat", "other"])
-    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION,
-                        prefer=PREFER_INAT)
+    table = sightings_table().assign(source=["other", "inat", "other", "other", "inat", "other"])
+    deduped = dedupe_by(table, DEDUPE_COLS, precision=DEDUPE_PRECISION, prefer=PREFER_INAT)
     ids = deduped["occurrence_id"].tolist()
     assert ids == sorted(ids)
 
@@ -674,7 +692,7 @@ def test_a_rare_group_is_not_crowded_out_by_a_common_one():
     """
     sampled = sample_per_group(species_table(), "species", 4, id_col="occurrence_id")
     rare_ids = set(species_table().query("species == 'rare'")["occurrence_id"])
-    assert len(rare_ids & set(sampled)) == 2   # both rare specimens included
+    assert len(rare_ids & set(sampled)) == 2  # both rare specimens included
 
 
 def test_a_shortfall_in_one_group_rolls_over_to_the_rest():
@@ -690,10 +708,12 @@ def test_a_shortfall_in_one_group_rolls_over_to_the_rest():
 
 
 def test_an_even_split_is_exact_when_every_group_can_supply_it():
-    table = pd.DataFrame({
-        "occurrence_id": [f"o{i}" for i in range(15)],
-        "species": ["a"] * 5 + ["b"] * 5 + ["c"] * 5,
-    })
+    table = pd.DataFrame(
+        {
+            "occurrence_id": [f"o{i}" for i in range(15)],
+            "species": ["a"] * 5 + ["b"] * 5 + ["c"] * 5,
+        }
+    )
     sampled = sample_per_group(table, "species", 6, id_col="occurrence_id")
     counts = table.set_index("occurrence_id").loc[sampled, "species"].value_counts()
     assert counts.tolist() == [2, 2, 2]
@@ -848,8 +868,14 @@ def test_a_non_positive_total_raises():
 # ---------------------------------------------------------------------------
 
 # a2 sits between a1 and a3, and b1 between b2 and b3: each is its group's medoid
-VECTORS = {"a1": [0.0, 0.0], "a2": [1.0, 0.0], "a3": [2.0, 0.0],
-           "b1": [10.0, 10.0], "b2": [10.0, 13.0], "b3": [10.0, 7.0]}
+VECTORS = {
+    "a1": [0.0, 0.0],
+    "a2": [1.0, 0.0],
+    "a3": [2.0, 0.0],
+    "b1": [10.0, 10.0],
+    "b2": [10.0, 13.0],
+    "b3": [10.0, 7.0],
+}
 GROUPS = {"a1": "a", "a2": "a", "a3": "a", "b1": "b", "b2": "b", "b3": "b"}
 
 
@@ -864,8 +890,16 @@ def test_a_member_is_measured_against_its_own_group_only():
 
 def test_a_medoid_is_in_the_larger_cluster_not_between_the_two():
     """m is the member nearest the mean, and typical of neither cluster."""
-    vectors = {"c1": [0.0, 0.0], "c2": [0.0, 1.0], "c3": [1.0, 0.0], "c4": [1.0, 1.0],
-               "c5": [0.5, 0.5], "d1": [10.0, 0.0], "d2": [10.0, 1.0], "m": [3.4, 0.5]}
+    vectors = {
+        "c1": [0.0, 0.0],
+        "c2": [0.0, 1.0],
+        "c3": [1.0, 0.0],
+        "c4": [1.0, 1.0],
+        "c5": [0.5, 0.5],
+        "d1": [10.0, 0.0],
+        "d2": [10.0, 1.0],
+        "m": [3.4, 0.5],
+    }
     table = pd.DataFrame.from_dict(vectors, orient="index")
     nearest_the_mean = ((table - table.mean()) ** 2).sum(axis=1).idxmin()
 
@@ -884,8 +918,7 @@ def test_a_large_group_is_summed_in_blocks(monkeypatch):
 
 
 def test_a_group_smaller_than_the_count_is_taken_whole():
-    assert group_medoids(VECTORS, {"a1": "a", "b1": "b", "b2": "b"}, count=2) == [
-        "a1", "b1", "b2"]
+    assert group_medoids(VECTORS, {"a1": "a", "b1": "b", "b2": "b"}, count=2) == ["a1", "b1", "b2"]
 
 
 def test_a_tie_goes_to_the_first_id_whatever_the_order_given():

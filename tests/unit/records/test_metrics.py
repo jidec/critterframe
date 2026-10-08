@@ -27,24 +27,40 @@ def a_run(project_path, name="traits"):
     return run_records.start_run(project_path, recipe), recipe.hash
 
 
-def store(project_path, values, run_name="traits", recipe_hash=None,
-          source_mask_hash=None, part="organism", metric_name="body_length"):
+def store(
+    project_path,
+    values,
+    run_name="traits",
+    recipe_hash=None,
+    source_mask_hash=None,
+    part="organism",
+    metric_name="body_length",
+):
     """Append {occurrence_id: value} under one run, returning the run_id."""
     run_id, hash_of_recipe = a_run(project_path, run_name)
     metric_records.append_metrics(
-        project_path, run_id, recipe_hash or hash_of_recipe,
-        [metric_records.make_metric_row(occurrence_id, part, metric_name, value,
-                                        unit="px",
-                                        source_mask_hash=source_mask_hash)
-         for occurrence_id, value in values.items()])
+        project_path,
+        run_id,
+        recipe_hash or hash_of_recipe,
+        [
+            metric_records.make_metric_row(
+                occurrence_id, part, metric_name, value, unit="px", source_mask_hash=source_mask_hash
+            )
+            for occurrence_id, value in values.items()
+        ],
+    )
     return run_id
 
 
-def save_mask(project_path, occurrence_id="a", part="organism",
-              recipe_hash="seg_v1", **kwargs):
-    mask_records.save_masks(project_path, [
-        mask_records.make_mask_row(occurrence_id, blob_mask(), part=part,
-                                   recipe_hash=recipe_hash, **kwargs)])
+def save_mask(project_path, occurrence_id="a", part="organism", recipe_hash="seg_v1", **kwargs):
+    mask_records.save_masks(
+        project_path,
+        [
+            mask_records.make_mask_row(
+                occurrence_id, blob_mask(), part=part, recipe_hash=recipe_hash, **kwargs
+            )
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -64,8 +80,7 @@ def test_a_row_stores_nothing_the_run_already_records():
     to drift and not obviously authoritative when it does.
     """
     row = metric_records.make_metric_row("a", "organism", "body_length", 1.0)
-    assert set(row) == {"occurrence_id", "part", "metric_name", "value", "unit",
-                        "source_mask_hash"}
+    assert set(row) == {"occurrence_id", "part", "metric_name", "value", "unit", "source_mask_hash"}
 
 
 def test_appending_nothing_is_not_an_error(tmp_path):
@@ -73,12 +88,20 @@ def test_appending_nothing_is_not_an_error(tmp_path):
     assert metric_records.append_metrics(tmp_path, run_id, recipe_hash, []) == 0
 
 
-@pytest.mark.parametrize("value", [
-    12.5, 0, -3, True, None, "usable",
-    [1.0, 2.0, 3.0],
-    {"x": 1, "y": 2},
-    {"nested": {"a": [1, 2]}},
-])
+@pytest.mark.parametrize(
+    "value",
+    [
+        12.5,
+        0,
+        -3,
+        True,
+        None,
+        "usable",
+        [1.0, 2.0, 3.0],
+        {"x": 1, "y": 2},
+        {"nested": {"a": [1, 2]}},
+    ],
+)
 def test_any_json_shaped_value_round_trips(tmp_path, value):
     """
     A metric is any derived value: a trait, a QC score, a human label, a
@@ -109,8 +132,18 @@ def test_load_filters_by_run_part_and_metric(tmp_path):
 
     assert len(metric_records.load_metrics(tmp_path, run_names=["qc"])) == 1
     assert len(metric_records.load_metrics(tmp_path, parts=["wing"])) == 1
-    assert len(metric_records.load_metrics(
-        tmp_path, metric_names=["body_length"])) == 2
+    assert len(metric_records.load_metrics(tmp_path, metric_names=["body_length"])) == 2
+
+
+def test_load_filters_by_more_occurrences_than_sqlite_binds(tmp_path):
+    """One bound parameter per occurrence passes SQLite's limit of 32,766."""
+    store(tmp_path, {f"occ{index}": 1.0 for index in range(40_000)})
+    store(tmp_path, {"other": 2.0}, run_name="qc")
+
+    wanted = [f"occ{index}" for index in range(40_000)]
+    loaded = metric_records.load_metrics(tmp_path, occurrence_ids=wanted)
+    assert len(loaded) == 40_000
+    assert "other" not in set(loaded["occurrence_id"])
 
 
 def test_an_empty_log_still_has_the_right_columns(tmp_path):
@@ -121,8 +154,15 @@ def test_an_empty_log_still_has_the_right_columns(tmp_path):
     run_records.start_run(tmp_path, Recipe("metric", "traits", [body_length()]))
     empty = metric_records.load_metrics(tmp_path)
     assert empty.empty
-    assert {"occurrence_id", "part", "metric_name", "value", "unit",
-            "recipe_hash", "source_mask_hash"} <= set(empty.columns)
+    assert {
+        "occurrence_id",
+        "part",
+        "metric_name",
+        "value",
+        "unit",
+        "recipe_hash",
+        "source_mask_hash",
+    } <= set(empty.columns)
 
 
 # ---------------------------------------------------------------------------
@@ -166,7 +206,7 @@ def test_a_value_of_unrecorded_provenance_is_kept(tmp_path):
 
 
 def test_everything_is_kept_when_the_project_has_no_masks(tmp_path):
-    """"No masks" must not mean "no values"."""
+    """ "No masks" must not mean "no values"."""
     store(tmp_path, {"a": 1.0}, source_mask_hash="seg_v1")
     long_df = metric_records.load_metrics(tmp_path)
     assert len(metric_records.current_rows(tmp_path, long_df)) == 1
@@ -178,11 +218,10 @@ def test_staleness_is_judged_per_occurrence_part(tmp_path):
     resegmented part doesn't invalidate the others of the same occurrence.
     """
     store(tmp_path, {"a": 1.0, "b": 2.0}, source_mask_hash="seg_v1")
-    save_mask(tmp_path, "a", recipe_hash="seg_v2")   # a moved
-    save_mask(tmp_path, "b", recipe_hash="seg_v1")   # b did not
+    save_mask(tmp_path, "a", recipe_hash="seg_v2")  # a moved
+    save_mask(tmp_path, "b", recipe_hash="seg_v1")  # b did not
 
-    current = metric_records.current_rows(tmp_path,
-                                          metric_records.load_metrics(tmp_path))
+    current = metric_records.current_rows(tmp_path, metric_records.load_metrics(tmp_path))
     assert current["occurrence_id"].tolist() == ["b"]
 
 
@@ -193,13 +232,12 @@ def test_a_reference_mask_keeps_its_own_values_current(tmp_path):
     failing to match a canonical mask it was never derived from.
     """
     save_mask(tmp_path, recipe_hash="auto_v2")
-    mask_records.save_masks(tmp_path, [
-        mask_records.make_mask_row("a", blob_mask(), recipe_hash="human_v1")],
-        reference=True)
+    mask_records.save_masks(
+        tmp_path, [mask_records.make_mask_row("a", blob_mask(), recipe_hash="human_v1")], reference=True
+    )
     store(tmp_path, {"a": 1.0}, source_mask_hash="human_v1")
 
-    current = metric_records.current_rows(tmp_path,
-                                          metric_records.load_metrics(tmp_path))
+    current = metric_records.current_rows(tmp_path, metric_records.load_metrics(tmp_path))
     assert len(current) == 1
 
 
@@ -214,15 +252,13 @@ def test_current_rows_follows_a_derived_part_upstream(tmp_path):
     the wing was cut from makes it stale without the wing recipe changing at all.
     """
     chained = mask_records.derivation_hash("wing_v1", "organism_v1")
-    save_mask(tmp_path, part="wing", recipe_hash="wing_v1",
-              source_mask_hash="organism_v1")
+    save_mask(tmp_path, part="wing", recipe_hash="wing_v1", source_mask_hash="organism_v1")
     store(tmp_path, {"a": 1.0}, part="wing", source_mask_hash=chained)
 
     long_df = metric_records.load_metrics(tmp_path)
     assert len(metric_records.current_rows(tmp_path, long_df)) == 1
 
-    save_mask(tmp_path, part="wing", recipe_hash="wing_v1",
-              source_mask_hash="organism_v2")
+    save_mask(tmp_path, part="wing", recipe_hash="wing_v1", source_mask_hash="organism_v2")
     assert metric_records.current_rows(tmp_path, long_df).empty
 
 
@@ -233,8 +269,7 @@ def test_current_rows_follows_a_derived_part_upstream(tmp_path):
 
 
 def test_a_value_from_the_pointed_at_recipe_is_current(tmp_path):
-    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
-                                        "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     store(tmp_path, {"a": 1.0}, recipe_hash="hash_a")
 
     long_df = metric_records.load_metrics(tmp_path)
@@ -243,14 +278,11 @@ def test_a_value_from_the_pointed_at_recipe_is_current(tmp_path):
 
 def test_a_value_from_a_recipe_the_name_has_moved_off_of_is_not(tmp_path):
     """The staleness rule, on the recipe axis instead of the mask one."""
-    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
-                                        "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     store(tmp_path, {"a": 1.0}, recipe_hash="hash_a")
 
-    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
-                                        "organism", "hash_b", force=True)
-    run_records.commit_recipe_currency(tmp_path, "metric", "traits",
-                                       "organism", "hash_b")
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_b", force=True)
+    run_records.commit_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_b")
 
     long_df = metric_records.load_metrics(tmp_path)
     assert metric_records.current_rows(tmp_path, long_df).empty
@@ -267,8 +299,7 @@ def test_a_name_with_no_recorded_pointer_is_kept(tmp_path):
 def test_a_value_needs_both_a_current_mask_and_a_current_recipe(tmp_path):
     """The two checks are independent -- a value can fail either on its own."""
     save_mask(tmp_path, recipe_hash="seg_v1")
-    run_records.resolve_recipe_currency(tmp_path, "metric", "traits",
-                                        "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     store(tmp_path, {"a": 1.0}, source_mask_hash="seg_v1", recipe_hash="hash_a")
 
     long_df = metric_records.load_metrics(tmp_path)
@@ -292,8 +323,7 @@ def test_latest_values_takes_the_newest_per_occurrence(tmp_path):
     store(tmp_path, {"a": 1.0, "b": 2.0})
     store(tmp_path, {"a": 9.0})
 
-    values = metric_records.latest_values(tmp_path, "traits",
-                                          metric_name="body_length")
+    values = metric_records.latest_values(tmp_path, "traits", metric_name="body_length")
     assert values["a"] == 9.0
     assert values["b"] == 2.0
     assert values.name == "body_length"
@@ -308,11 +338,11 @@ def test_latest_values_ignores_stale_values_by_default(tmp_path):
     store(tmp_path, {"a": 1.0}, source_mask_hash="seg_v1")
     save_mask(tmp_path, "a", recipe_hash="seg_v2")
 
-    assert metric_records.latest_values(tmp_path, "traits",
-                                        metric_name="body_length").empty
-    assert len(metric_records.latest_values(tmp_path, "traits",
-                                            metric_name="body_length",
-                                            current_only=False)) == 1
+    assert metric_records.latest_values(tmp_path, "traits", metric_name="body_length").empty
+    assert (
+        len(metric_records.latest_values(tmp_path, "traits", metric_name="body_length", current_only=False))
+        == 1
+    )
 
 
 def test_latest_values_can_read_only_some_occurrences(tmp_path, monkeypatch):
@@ -325,8 +355,9 @@ def test_latest_values_can_read_only_some_occurrences(tmp_path, monkeypatch):
     store(tmp_path, {"a": 1.0, "b": 2.0, "c": 3.0})
 
     def some():
-        return metric_records.latest_values(tmp_path, "traits", metric_name="body_length",
-                                            occurrence_ids=["a", "c", "nobody"])
+        return metric_records.latest_values(
+            tmp_path, "traits", metric_name="body_length", occurrence_ids=["a", "c", "nobody"]
+        )
 
     assert some().to_dict() == {"a": 1.0, "c": 3.0}
 
@@ -340,7 +371,6 @@ def test_latest_values_needs_a_metric_name(tmp_path):
 
 
 def test_latest_values_of_nothing_is_an_empty_series(tmp_path):
-    empty = metric_records.latest_values(tmp_path, "traits",
-                                         metric_name="body_length")
+    empty = metric_records.latest_values(tmp_path, "traits", metric_name="body_length")
     assert empty.empty
     assert empty.name == "body_length"

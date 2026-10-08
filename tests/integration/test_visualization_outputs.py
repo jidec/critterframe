@@ -28,19 +28,21 @@ pytestmark = pytest.mark.slow
 
 def grids(project_path):
     directory = paths.pipeline_dir(project_path)
-    return sorted(path.name for path in directory.glob("*.jpg")) \
-        if directory.exists() else []
+    return sorted(path.name for path in directory.glob("*.jpg")) if directory.exists() else []
 
 
 def segment(project_path, **kwargs):
-    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())],
-                           **kwargs)
+    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())], **kwargs)
 
 
 def measure(project_path, **kwargs):
-    return cf.run_metrics(project_path, run_name="traits",
-                          transforms=[cf.remove_appendages(), cf.orient()],
-                          metrics=[cf.body_length()], **kwargs)
+    return cf.run_metrics(
+        project_path,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[cf.body_length()],
+        **kwargs,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -75,8 +77,7 @@ def test_the_grid_is_named_for_the_run_and_its_recipe(image_project):
     segment(image_project, visualize=4)
     first = grids(image_project)[0]
 
-    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel(erode=2))],
-                    visualize=4)
+    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel(erode=2))], visualize=4)
     written = grids(image_project)
 
     assert first.startswith("organism_")
@@ -112,11 +113,10 @@ def test_force_makes_the_work_happen_and_the_grid_with_it(segmented_project):
     first_size = written.stat().st_size
 
     measure(segmented_project, force=True, visualize=6)
-    assert written.stat().st_size != first_size     # same file, more specimens
+    assert written.stat().st_size != first_size  # same file, more specimens
 
 
-def test_visualization_is_off_by_default_for_nothing_and_on_for_true(
-        image_project):
+def test_visualization_is_off_by_default_for_nothing_and_on_for_true(image_project):
     segment(image_project, visualize=False)
     assert grids(image_project) == []
 
@@ -138,12 +138,17 @@ def test_a_multi_part_run_writes_one_grid_per_part(segmented_project):
     And the part is in the filename only when it isn't the default one, so a
     plain whole-organism run keeps the obvious name.
     """
-    cf.run_segments(segmented_project, run_name="parts",
-                    shared_steps=[cf.remove_background()],
-                    from_part="organism",
-                    outputs={"core": [cf.segment(ThresholdModel(cutoff=120))],
-                             "edge": [cf.segment(ThresholdModel(cutoff=90))]},
-                    visualize=3)
+    cf.run_segments(
+        segmented_project,
+        run_name="parts",
+        shared_steps=[cf.remove_background()],
+        from_part="organism",
+        outputs={
+            "core": [cf.segment(ThresholdModel(cutoff=120))],
+            "edge": [cf.segment(ThresholdModel(cutoff=90))],
+        },
+        visualize=3,
+    )
 
     written = grids(segmented_project)
     assert any("__core_" in name for name in written)
@@ -159,8 +164,7 @@ def test_a_run_always_contributes_one_panel_of_its_own(segmented_project):
     visualize() of their own would otherwise put nothing on the sheet at
     exactly the moment you most want to look.
     """
-    cf.run_metrics(segmented_project, run_name="areas",
-                   metrics=[cf.mask_fraction()], visualize=3)
+    cf.run_metrics(segmented_project, run_name="areas", metrics=[cf.mask_fraction()], visualize=3)
     assert len(grids(segmented_project)) == 1
 
 
@@ -186,8 +190,7 @@ def checkpoints(project_path):
     return sorted(name for name in grids(project_path) if "__at" in name)
 
 
-def test_visualize_every_checkpoints_a_segmentation_run_before_it_finishes(
-        image_project):
+def test_visualize_every_checkpoints_a_segmentation_run_before_it_finishes(image_project):
     """
     The whole point: a very long run can be watched as it goes. Each
     checkpoint window writes its own file rather than overwriting the last,
@@ -203,8 +206,7 @@ def test_visualize_every_checkpoints_a_segmentation_run_before_it_finishes(
     assert len(written) - len(checkpoints(image_project)) == 1
 
 
-def test_visualize_every_checkpoints_a_metric_run_before_it_finishes(
-        segmented_project):
+def test_visualize_every_checkpoints_a_metric_run_before_it_finishes(segmented_project):
     measure(segmented_project, visualize=8, visualize_every=3)
 
     written = grids(segmented_project)
@@ -212,8 +214,7 @@ def test_visualize_every_checkpoints_a_metric_run_before_it_finishes(
     assert len(written) - len(checkpoints(segmented_project)) == 1
 
 
-def test_a_checkpoint_window_has_content_even_when_the_whole_run_sample_misses_it(
-        image_project):
+def test_a_checkpoint_window_has_content_even_when_the_whole_run_sample_misses_it(image_project):
     """
     The reported bug: a run's one fixed, whole-population sample is drawn once
     and can go many checkpoints without landing on any of it, especially when
@@ -234,8 +235,7 @@ def test_a_checkpoint_window_has_content_even_when_the_whole_run_sample_misses_i
         assert size > 0
 
 
-def test_visualize_every_without_visualize_warns_and_changes_nothing(
-        image_project, caplog):
+def test_visualize_every_without_visualize_warns_and_changes_nothing(image_project, caplog):
     with caplog.at_level("WARNING"):
         result = segment(image_project, visualize=False, visualize_every=2)["organism"]
 
@@ -244,14 +244,14 @@ def test_visualize_every_without_visualize_warns_and_changes_nothing(
     assert result["processed"] == 8
 
 
-def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(
-        segmented_project):
+def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(segmented_project):
     """
     visualize_every changes WHEN the grid is written, not what it becomes --
     same run_name and recipe (force=True redoes it), same specimens, same
     resulting sheet. The checkpoint files it also writes are a separate
     concern, covered above.
     """
+
     def final_grid():
         return next(name for name in grids(segmented_project) if "__at" not in name)
 
@@ -270,14 +270,13 @@ def test_a_checkpointed_run_ends_with_the_same_grid_as_an_uncheckpointed_one(
 
 
 def test_a_render_writes_one_file_per_occurrence_part(segmented_project):
-    results = cf.render_segments(segmented_project, "plates",
-                                 transforms=[cf.remove_background(),
-                                             cf.crop_to_mask(pad=0.1)])
+    results = cf.render_segments(
+        segmented_project, "plates", transforms=[cf.remove_background(), cf.crop_to_mask(pad=0.1)]
+    )
     written = sorted(results["organism"]["directory"].glob("*.png"))
 
     assert len(written) == 8
-    assert {path.stem for path in written} == {f"specimen{index}"
-                                               for index in range(8)}
+    assert {path.stem for path in written} == {f"specimen{index}" for index in range(8)}
 
 
 def test_products_and_pipeline_sheets_do_not_share_a_folder(segmented_project):
@@ -286,8 +285,7 @@ def test_products_and_pipeline_sheets_do_not_share_a_folder(segmented_project):
     belongs to is decided by where it lands.
     """
     measure(segmented_project, visualize=3)
-    results = cf.render_segments(segmented_project, "plates",
-                                 transforms=[cf.remove_background()])
+    results = cf.render_segments(segmented_project, "plates", transforms=[cf.remove_background()])
 
     assert results["organism"]["directory"].parent == paths.products_dir(segmented_project)
     assert paths.pipeline_dir(segmented_project).exists()

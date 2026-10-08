@@ -51,6 +51,12 @@ plugins:
             show_signature_annotations: true
             merge_init_into_class: true
             docstring_section_style: list
+            docstring_style: google
+            # Args entries carry no types: those belong in the signatures, which
+            # have no hints yet. Without this, every documented argument warns,
+            # and --strict turns each warning into a failed build.
+            docstring_options:
+              warn_missing_types: false
 
 # Ordered to match the package layout in README.md, so the tree a reader sees
 # there and the nav they browse here are the same list in the same order.

@@ -21,8 +21,7 @@ from helpers.synthetic import flat
 
 @pytest.mark.parametrize("value, expected", [(0, 0.0), (255, 1.0)])
 def test_lightness_runs_from_black_to_white(value, expected):
-    assert cf.mean_lightness()(flat((value, value, value))) == pytest.approx(
-        expected, abs=0.02)
+    assert cf.mean_lightness()(flat((value, value, value))) == pytest.approx(expected, abs=0.02)
 
 
 def test_lightness_is_perceptual_rather_than_a_mean_pixel_value():
@@ -33,9 +32,7 @@ def test_lightness_is_perceptual_rather_than_a_mean_pixel_value():
     """
     mid = cf.mean_lightness()(flat((128, 128, 128)))
     assert 0.5 < mid < 0.6
-    assert (cf.mean_lightness()(flat((60, 60, 60)))
-            < mid
-            < cf.mean_lightness()(flat((200, 200, 200))))
+    assert cf.mean_lightness()(flat((60, 60, 60))) < mid < cf.mean_lightness()(flat((200, 200, 200)))
 
 
 def test_mean_colour_reports_three_channels_in_rgb_order():
@@ -43,7 +40,7 @@ def test_mean_colour_reports_three_channels_in_rgb_order():
     RGB rather than the BGR the package works in, because the value is read by
     a person and by R, and "r" meaning blue would be a trap.
     """
-    colour = cf.mean_color()(flat((0, 0, 255)))     # BGR red
+    colour = cf.mean_color()(flat((0, 0, 255)))  # BGR red
     assert colour["r"] > 0.9
     assert colour["g"] < 0.1 and colour["b"] < 0.1
 
@@ -76,10 +73,8 @@ def test_a_grayscale_image_is_measurable():
     one kind of image where its answer is least surprising.
     """
     gray = np.full((40, 40), 200, np.uint8)
-    segment = Segment(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR),
-                      mask=np.ones((40, 40), bool))
-    assert cf.mean_lightness()(segment) == pytest.approx(
-        cf.mean_lightness()(flat((200, 200, 200))))
+    segment = Segment(cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR), mask=np.ones((40, 40), bool))
+    assert cf.mean_lightness()(segment) == pytest.approx(cf.mean_lightness()(flat((200, 200, 200))))
 
 
 # ---------------------------------------------------------------------------
@@ -98,8 +93,7 @@ def organism_on_ground(organism, ground, shape=(60, 60)):
 
 def test_white_balance_leaves_an_already_grey_frame_alone():
     segment = organism_on_ground((90, 90, 90), (170, 170, 170))
-    assert cf.white_balanced_color()(segment) == pytest.approx(
-        cf.mean_color()(segment), abs=0.01)
+    assert cf.white_balanced_color()(segment) == pytest.approx(cf.mean_color()(segment), abs=0.01)
 
 
 def test_white_balance_removes_a_whole_frame_colour_cast():

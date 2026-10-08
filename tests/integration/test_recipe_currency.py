@@ -25,8 +25,7 @@ LENGTH_COLUMN = "traits__organism__body_length"
 
 def measure(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_metrics(project_path, run_name="traits",
-                          metrics=[cf.body_length()], **kwargs)["organism"]
+    return cf.run_metrics(project_path, run_name="traits", metrics=[cf.body_length()], **kwargs)["organism"]
 
 
 def test_a_changed_recipe_under_one_name_is_refused_without_force(segmented_project):
@@ -62,28 +61,25 @@ def test_the_old_recipe_s_values_stop_being_current(segmented_project):
 
     measure(segmented_project, transforms=[cf.orient()], force=True)
     after = cf.export_metrics(segmented_project, path=False, drop_empty=False)
-    after_history = cf.export_metrics(segmented_project, path=False,
-                                      drop_empty=False, current_only=False)
+    after_history = cf.export_metrics(segmented_project, path=False, drop_empty=False, current_only=False)
 
-    assert after[LENGTH_COLUMN].notna().all()   # remeasured for everyone
+    assert after[LENGTH_COLUMN].notna().all()  # remeasured for everyone
     assert not before[LENGTH_COLUMN].equals(after[LENGTH_COLUMN])
-    assert len(after_history) >= len(after)     # the old values are still on record
+    assert len(after_history) >= len(after)  # the old values are still on record
 
 
-def test_a_forced_run_that_processes_nothing_does_not_move_the_pointer(
-        segmented_project, caplog):
+def test_a_forced_run_that_processes_nothing_does_not_move_the_pointer(segmented_project, caplog):
     measure(segmented_project)
     cf.define_subset(segmented_project, "none", occurrence_ids=[])
 
     with caplog.at_level("WARNING"):
-        result = measure(segmented_project, transforms=[cf.orient()],
-                         force=True, subset="none")
+        result = measure(segmented_project, transforms=[cf.orient()], force=True, subset="none")
 
     assert result["processed"] == 0
     assert "still points at the previous recipe" in caplog.text
 
     exported = cf.export_metrics(segmented_project, path=False, drop_empty=False)
-    assert exported[LENGTH_COLUMN].notna().all()   # the original recipe's values
+    assert exported[LENGTH_COLUMN].notna().all()  # the original recipe's values
 
 
 def counted_width(interrupt_at=None):
@@ -107,8 +103,9 @@ def counted_width(interrupt_at=None):
 
 
 def widths(project_path, metric, **kwargs):
-    return cf.run_metrics(project_path, run_name="widths", metrics=[metric],
-                          visualize=False, **kwargs)["organism"]
+    return cf.run_metrics(project_path, run_name="widths", metrics=[metric], visualize=False, **kwargs)[
+        "organism"
+    ]
 
 
 def test_an_interrupted_forced_move_has_already_moved_the_name(segmented_project):
@@ -121,8 +118,7 @@ def test_an_interrupted_forced_move_has_already_moved_the_name(segmented_project
     widths(segmented_project, counted_width())
 
     with pytest.raises(KeyboardInterrupt):
-        widths(segmented_project, counted_width(interrupt_at=4),
-               transforms=[cf.orient()], force=True)
+        widths(segmented_project, counted_width(interrupt_at=4), transforms=[cf.orient()], force=True)
 
     # Resumed the way any interrupted run is: the same call, without force.
     resumed = widths(segmented_project, counted_width(), transforms=[cf.orient()])
@@ -132,15 +128,16 @@ def test_an_interrupted_forced_move_has_already_moved_the_name(segmented_project
 def test_what_an_interrupted_forced_move_stored_is_current(segmented_project):
     """The three values written before the interruption are the export's, not the old recipe's."""
     widths(segmented_project, counted_width())
-    before = cf.export_metrics(segmented_project, path=False, manifest=False,
-                               drop_empty=False)["widths__organism__counted_width"]
+    before = cf.export_metrics(segmented_project, path=False, manifest=False, drop_empty=False)[
+        "widths__organism__counted_width"
+    ]
 
     with pytest.raises(KeyboardInterrupt):
-        widths(segmented_project, counted_width(interrupt_at=4),
-               transforms=[cf.orient()], force=True)
+        widths(segmented_project, counted_width(interrupt_at=4), transforms=[cf.orient()], force=True)
 
-    after = cf.export_metrics(segmented_project, path=False, manifest=False,
-                              drop_empty=False)["widths__organism__counted_width"]
+    after = cf.export_metrics(segmented_project, path=False, manifest=False, drop_empty=False)[
+        "widths__organism__counted_width"
+    ]
     assert before.notna().sum() == SPECIMENS
     assert after.notna().sum() == 3
 
@@ -166,11 +163,13 @@ def label(project_path, monkeypatch, keys, note):
     return cf.run_metrics(
         project_path,
         metrics=[cf.exclusive_label_annotation(["good", "bad"], name="quality", note=note)],
-        visualize=False)["organism"]
+        visualize=False,
+    )["organism"]
 
 
 def test_a_labelling_note_is_recorded_with_the_run_and_rewording_it_reasks_nothing(
-        segmented_project, monkeypatch):
+    segmented_project, monkeypatch
+):
     """
     The note says how the labels were meant to be given, so it belongs with the
     run that gave them. It is not the recipe: a reworded note finds every label
@@ -182,7 +181,7 @@ def test_a_labelling_note_is_recorded_with_the_run_and_rewording_it_reasks_nothi
     again = label(segmented_project, monkeypatch, "", "bad = any part of it missing")
     assert (again["processed"], again["skipped"]) == (0, SPECIMENS)
 
-    runs = load_runs(segmented_project, name="quality")     # newest first
+    runs = load_runs(segmented_project, name="quality")  # newest first
     notes = [run["operations"]["quality"]["note"] for run in runs["context"]]
     assert notes == ["bad = any part of it missing", "bad: any part missing"]
     assert runs["recipe_hash"].nunique() == 1

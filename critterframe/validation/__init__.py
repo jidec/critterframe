@@ -1,2 +1,1 @@
-"""
-Validation: comparing predicted masks and metrics against reference ones, and calibrating filter thresholds against human labels. Comparison only -- nothing here is a separate processing system."""
+"""Validation: compare masks and metrics against reference ones, and calibrate filters against human labels."""

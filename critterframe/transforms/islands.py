@@ -1,6 +1,4 @@
-"""
-Remove islands: disconnected fragments of a mask apart from the organism itself.
-"""
+"""Remove islands: disconnected fragments of a mask."""
 
 import cv2
 import numpy as np
@@ -10,40 +8,33 @@ from ..visualization.panels import annotate
 
 
 def remove_islands(min_area_frac=None):
-    """
-    Operation: drop connected components of the working mask that aren't the organism.
+    """Operation: drop the smallest connected components of the mask.
 
-    Moves no pixels and never grows the mask; holes are left as they are.
-
-    - `min_area_frac` -- None (default) keeps only the largest component. A
-      fraction keeps every component at least that fraction of the largest's
-      area, e.g. `0.1` for a wing that segmented as its own blob.
+    Args:
+        min_area_frac: Keep every component at least this fraction of the largest's area,
+            e.g. `0.1` for a wing segmented as its own blob. None keeps only the largest.
     """
     if min_area_frac is not None and not 0 < min_area_frac <= 1:
         raise ValueError(f"min_area_frac must be in (0, 1], got {min_area_frac!r}")
-    return Transform("remove_islands", _remove_islands,
-                     {"min_area_frac": min_area_frac}, version="1")
+    return Transform("remove_islands", _remove_islands, {"min_area_frac": min_area_frac}, version="1")
 
 
 def _remove_islands(segment, min_area_frac=None):
-    """
-    Keep the largest 8-connected component, plus any at least `min_area_frac`
-    of its area.
-    """
+    """Keep the largest 8-connected component, plus any at least `min_area_frac` of its area."""
     original = segment.require_mask()
     area_before = int(original.sum())
     if area_before == 0:
         raise ValueError("empty mask")
 
     count, labels, stats, _centroids = cv2.connectedComponentsWithStats(
-        original.astype(np.uint8), connectivity=8)
+        original.astype(np.uint8), connectivity=8
+    )
     # Row 0 is the background.
     areas = stats[1:, cv2.CC_STAT_AREA]
     if min_area_frac is None:
         kept_labels = [1 + int(np.argmax(areas))]
     else:
-        kept_labels = [1 + i for i, area in enumerate(areas)
-                       if area >= min_area_frac * areas.max()]
+        kept_labels = [1 + i for i, area in enumerate(areas) if area >= min_area_frac * areas.max()]
     cleaned = np.isin(labels, kept_labels)
 
     area_after = int(cleaned.sum())
@@ -60,7 +51,7 @@ def _remove_islands(segment, min_area_frac=None):
 
 
 def _visualize(segment, cleaned, info):
-    """Retained mask in white, REMOVED islands in red, the same convention as remove_appendages."""
+    """Emit a panel: retained mask white, removed islands red."""
     if segment.panel_sink is None:
         return
 
@@ -69,7 +60,10 @@ def _visualize(segment, cleaned, info):
     panel[cleaned] = (255, 255, 255)
     panel[original & ~cleaned] = (0, 0, 255)
 
-    annotate(panel, f"removed {info['n_removed']}/{info['n_components']} comps, "
-                    f"{info['removed_fraction']:.1%} "
-                    f"({info['area_before']}->{info['area_after']}px)")
+    annotate(
+        panel,
+        f"removed {info['n_removed']}/{info['n_components']} comps, "
+        f"{info['removed_fraction']:.1%} "
+        f"({info['area_before']}->{info['area_after']}px)",
+    )
     segment.emit_panel(panel, "remove_islands")

@@ -1,17 +1,4 @@
-"""
-Download images from the URLs in a project's ingested occurrences.
-
-Only occurrences with no image are fetched, so this is safe to rerun: an
-interrupted download resumes, and a project that gained a hundred occurrences
-downloads a hundred images. A stored image is NEVER replaced -- it is the
-evidence every mask and measurement was derived from, and swapping it would
-leave all of them silently describing pixels that are no longer there.
-
-Individual failures are logged, counted, and recorded in records.failures
-against the URL that failed, so a rerun does not re-fetch a dead URL --
-retry_failed=True asks anyway, and a URL that changes (a corrected re-ingest)
-is retried automatically with no flag needed.
-"""
+"""Download images from the URLs in a project's occurrences into its image store."""
 
 import logging
 import threading
@@ -35,7 +22,7 @@ from .visualization.panels import annotate
 logger = logging.getLogger(__name__)
 
 DEFAULT_BATCH_SIZE = 100
-DEFAULT_TIMEOUT = (10, 60)     # connect timeout, read timeout
+DEFAULT_TIMEOUT = (10, 60)  # connect timeout, read timeout
 USER_AGENT = "critterframe-image-download/1.0"
 
 # A polite number of concurrent connections to one host -- enough to matter
@@ -44,15 +31,14 @@ USER_AGENT = "critterframe-image-download/1.0"
 # max_workers=1 reproduces the old fully-sequential behaviour, for a source
 # with a strict rate limit.
 DEFAULT_MAX_WORKERS = 8
-def make_session(user_agent=USER_AGENT, min_interval=None):
-    """
-    A reusable HTTP session with a user agent and, optionally, a rate limit.
 
-    - `user_agent` -- what to identify as. A source with its own etiquette
-      passes its own.
-    - `min_interval` -- minimum seconds between requests, enforced across
-      THREADS: `download_images` fetches concurrently, so an unsynchronized
-      timestamp would let every worker fire at once and pace nothing.
+
+def make_session(user_agent=USER_AGENT, min_interval=None):
+    """Return a reusable HTTP session with a user agent and an optional rate limit.
+
+    Args:
+        user_agent: What to identify as.
+        min_interval: Minimum seconds between requests, enforced across threads.
     """
     session = requests.Session()
     session.headers.update({"User-Agent": user_agent})
@@ -62,7 +48,7 @@ def make_session(user_agent=USER_AGENT, min_interval=None):
 
 
 def _pace(session, min_interval):
-    """Wrap session.get so no two calls, on any thread, start closer than min_interval."""
+    """Wrap `session.get` so no two calls, on any thread, start closer together than `min_interval`."""
     original_get = session.get
     lock = threading.Lock()
     state = {"next_allowed": 0.0}
@@ -80,16 +66,11 @@ def _pace(session, min_interval):
 
 
 def _check_decodable(content, occurrence_id=None):
-    """
-    Confirm downloaded bytes are a decodable image, and return them unchanged.
+    """Confirm downloaded bytes decode as an image, and return them unchanged.
 
-    Validation only -- the decoded array is thrown away, since what gets stored
-    is the bytes exactly as they arrived. Worth doing because a URL that 200s
-    with an HTML error page is otherwise only discovered much later, by a
-    segmentation run that fails on an image nobody can look at.
-
-    - `content` -- raw image bytes.
-    - `occurrence_id` -- used only for error messages.
+    Args:
+        content: Raw image bytes.
+        occurrence_id: For the error message.
     """
     if not content:
         raise ValueError(f"empty response for {occurrence_id}")
@@ -100,13 +81,13 @@ def _check_decodable(content, occurrence_id=None):
 
 
 def _download_image(url, session, occurrence_id=None, timeout=DEFAULT_TIMEOUT):
-    """
-    Download one image and return its encoded bytes, validated as decodable.
+    """Download one image and return its encoded bytes, checked to be decodable.
 
-    - `url` -- image URL.
-    - `session` -- requests.Session to issue the GET with.
-    - `occurrence_id` -- used only for error messages.
-    - `timeout` -- (connect, read) timeout tuple.
+    Args:
+        url: Image URL.
+        session: The `requests.Session` to use.
+        occurrence_id: For the error message.
+        timeout: `(connect, read)` timeout.
     """
     if not isinstance(url, str) or not url.strip():
         raise ValueError(f"missing image URL for {occurrence_id}")
@@ -117,7 +98,7 @@ def _download_image(url, session, occurrence_id=None, timeout=DEFAULT_TIMEOUT):
 
 
 def _thumbnail(content):
-    """A downloaded image decoded for a grid cell, captioned with its size, or None if it won't decode."""
+    """Return a downloaded image decoded for a grid cell, captioned with its size, or None."""
     image = cv2.imdecode(np.frombuffer(content, dtype=np.uint8), cv2.IMREAD_COLOR)
     if image is None:
         return None
@@ -127,38 +108,37 @@ def _thumbnail(content):
 
 
 def _url_context_hash(url):
-    """The identity of one download attempt: what failed_keys() scopes a
-    recorded failure to, so a corrected URL is retried with no flag needed."""
+    """Return the identity of one download attempt, so a changed URL is retried."""
     return hash_spec({"url": url})
 
 
-def _pending_occurrences(project_path, store, url_col=IMAGE_URL_COL, subset=None,
-                         limit=None, max_new=None, retry_failed=False):
-    """
-    Occurrences with a URL whose image isn't in the store yet and, unless
-    retry_failed, whose URL hasn't already failed.
+def _pending_occurrences(
+    project_path, store, url_col=IMAGE_URL_COL, subset=None, limit=None, max_new=None, retry_failed=False
+):
+    """Return the occurrences with a URL whose image is not in the store.
 
-    Occurrences that already have an image are excluded with no way to ask
-    otherwise -- see the module docstring. A previously-failed URL is skipped
-    the same way, but retry_failed=True or a changed URL both let it through.
+    Excludes URLs that already failed unless `retry_failed`. `limit` narrows the occurrences
+    considered; `max_new` caps what is left.
 
-    `limit` narrows the occurrences considered, before any of that; `max_new`
-    caps what is left after it. See download_images.
-
-    Returns (pending_df, previously_failed_count).
+    Returns:
+        `(pending_df, previously_failed_count)`.
     """
     # A URL column is optional in a project -- one whose images came from a
     # local folder has none at all -- so its absence is a wrong-function
     # mistake rather than a broken table, and deserves saying so. Checked
     # against the parquet's schema rather than by loading the whole table,
     # which on a 500,000-row project is a lot of work to answer one question.
-    require_columns(project_path, url_col,
-                    "nothing to download from -- if the images are local files "
-                    "use critterframe.ingest_images(), and if the column is "
-                    "named something else pass url_col")
+    require_columns(
+        project_path,
+        url_col,
+        "nothing to download from -- if the images are local files "
+        "use critterframe.ingest_images(), and if the column is "
+        "named something else pass url_col",
+    )
 
     occurrences = subset_selection.select_occurrences(
-        project_path, subset=subset, limit=limit, columns=[url_col])
+        project_path, subset=subset, limit=limit, columns=[url_col]
+    )
     occurrences = occurrences.dropna(subset=[url_col])
 
     keep = selectionhelpers.exclude_present(occurrences[ID_COL], stored=store.keys())
@@ -182,49 +162,42 @@ def _pending_occurrences(project_path, store, url_col=IMAGE_URL_COL, subset=None
     return occurrences, previously_failed
 
 
-def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None,
-                    max_new=None, batch_size=DEFAULT_BATCH_SIZE,
-                    timeout=DEFAULT_TIMEOUT, session=None,
-                    max_workers=DEFAULT_MAX_WORKERS, retry_failed=False,
-                    visualize=True, visualize_every=None):
-    """
-    Download images for a project's occurrences into its image store.
+def download_images(
+    project_path,
+    url_col=IMAGE_URL_COL,
+    subset=None,
+    limit=None,
+    max_new=None,
+    batch_size=DEFAULT_BATCH_SIZE,
+    timeout=DEFAULT_TIMEOUT,
+    session=None,
+    max_workers=DEFAULT_MAX_WORKERS,
+    retry_failed=False,
+    visualize=True,
+    visualize_every=None,
+):
+    """Download images for a project's occurrences into its image store.
 
-    Only occurrences with no image are fetched; a stored image is never
-    replaced. Bytes are stored exactly as served, and checked to be decodable on
-    the way past. A URL that has already failed is skipped on a rerun too,
-    unless retry_failed asks for it or the URL itself has changed.
+    Only occurrences with no image are fetched, and a stored image is never replaced.
+    Bytes are stored as served, after checking they decode.
 
-    Fetches run concurrently, but only the fetch: batching and every
-    store.put_many() happen on the calling thread, so nothing new touches the
-    image store concurrently.
+    Args:
+        project_path: Project to download for.
+        url_col: Occurrence column holding the URLs.
+        subset: Named subset to download.
+        limit: Cap on the occurrences considered, before stored or failed ones are excluded.
+        max_new: Cap on how many are fetched in this call.
+        batch_size: Images written per store transaction; an interruption loses at most one batch.
+        timeout: `(connect, read)` timeout.
+        session: A `requests.Session` to reuse.
+        max_workers: Concurrent fetches; 1 downloads one at a time.
+        retry_failed: Attempt URLs that failed on an earlier call. A changed URL is retried
+            regardless.
+        visualize: True, an int, or ids: a pipeline grid of thumbnails of what was saved.
+        visualize_every: Also write a thumbnail grid every N downloads.
 
-    - `project_path` -- project whose occurrences to download for.
-    - `url_col` -- occurrence column holding the URLs.
-    - `subset` -- name of a subset to download, or None for all.
-    - `limit` -- cap on the occurrences CONSIDERED, applied before anything
-      already stored or already failed is excluded -- the same meaning every
-      driver's `limit` has. `limit=10` against ten already-downloaded
-      occurrences therefore downloads nothing.
-    - `max_new` -- cap on what is actually FETCHED, applied after those
-      exclusions. This is the "try this source on ten images" argument, and
-      the one that downloads ten more every time it is run.
-    - `batch_size` -- images written to the store per LMDB transaction, flushed
-      periodically so an interruption costs at most one batch.
-    - `timeout` -- (connect, read) timeout tuple.
-    - `session` -- optional `requests.Session` to reuse.
-    - `max_workers` -- concurrent fetches. 1 downloads strictly one at a time,
-      e.g. for a source with a strict rate limit.
-    - `retry_failed` -- attempt occurrences whose URL already failed on a
-      previous call. False (the default) leaves them recorded as failed.
-    - `visualize` -- True (default), an int, or ids: a pipeline grid of
-      thumbnails of what was saved, with every failure listed in its
-      sidecar. False writes nothing.
-    - `visualize_every` -- also write a thumbnail grid every N downloads,
-      sampled from that stretch only.
-
-    Returns a summary dict (see `drivers.Tally.summary`) plus
-    `previously_failed` (URLs left alone because they failed before) and `elapsed_s`.
+    Returns:
+        The `drivers.Tally.summary` dict plus `previously_failed` and `elapsed_s`.
     """
     paths.require_project(project_path)
 
@@ -237,18 +210,36 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
     try:
         with ImageStore(project_path) as store:
             pending, previously_failed = _pending_occurrences(
-                project_path, store, url_col=url_col, subset=subset,
-                limit=limit, max_new=max_new, retry_failed=retry_failed)
+                project_path,
+                store,
+                url_col=url_col,
+                subset=subset,
+                limit=limit,
+                max_new=max_new,
+                retry_failed=retry_failed,
+            )
             tally.attempted = len(pending)
-            logger.info("%d image(s) pending download (%d previously failed, skipped)",
-                        tally.attempted, previously_failed)
+            logger.info(
+                "%d image(s) pending download (%d previously failed, skipped)",
+                tally.attempted,
+                previously_failed,
+            )
 
             ordered_ids = [str(occurrence_id) for occurrence_id in pending[ID_COL]]
-            identity = {"kind": "download", "url_col": url_col, "subset": subset,
-                        "attempted": ids_record(ordered_ids)}
+            identity = {
+                "kind": "download",
+                "url_col": url_col,
+                "subset": subset,
+                "attempted": ids_record(ordered_ids),
+            }
             report = pipeline_visualization.open_report(
-                project_path, "download", hash_spec(identity), visualize=visualize,
-                visualize_every=visualize_every, identity=identity).begin(ordered_ids)
+                project_path,
+                "download",
+                hash_spec(identity),
+                visualize=visualize,
+                visualize_every=visualize_every,
+                identity=identity,
+            ).begin(ordered_ids)
             planned = report.planned()
 
             # Fetches finish out of order, but checkpoint windows are positional,
@@ -259,7 +250,7 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
 
             def advance():
                 nonlocal next_position
-                while next_position < len(ordered_ids) and                         ordered_ids[next_position] in finished:
+                while next_position < len(ordered_ids) and ordered_ids[next_position] in finished:
                     occurrence_id = ordered_ids[next_position]
                     content = finished.pop(occurrence_id)
                     if content is not None:
@@ -269,14 +260,17 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                     report.done(occurrence_id)
                     next_position += 1
 
-            progress = drivers.Progress(
-                len(ordered_ids), "download_images", tallies=[tally], log=logger.info)
+            progress = drivers.Progress(len(ordered_ids), "download_images", tallies=[tally], log=logger.info)
 
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 future_to_row = {
-                    executor.submit(_download_image, getattr(row, url_col), session,
-                                    occurrence_id=getattr(row, ID_COL), timeout=timeout):
-                        (getattr(row, ID_COL), getattr(row, url_col))
+                    executor.submit(
+                        _download_image,
+                        getattr(row, url_col),
+                        session,
+                        occurrence_id=getattr(row, ID_COL),
+                        timeout=timeout,
+                    ): (getattr(row, ID_COL), getattr(row, url_col))
                     for row in pending.itertuples(index=False)
                 }
 
@@ -291,8 +285,10 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
                         if len(batch) >= batch_size:
                             store.put_many(batch)
                             failure_records.clear_failures(
-                                project_path, "download",
-                                keys=[(oid, failure_records.NO_PART) for oid, _ in batch])
+                                project_path,
+                                "download",
+                                keys=[(oid, failure_records.NO_PART) for oid, _ in batch],
+                            )
                             tally.processed += len(batch)
                             batch.clear()
 
@@ -308,23 +304,33 @@ def download_images(project_path, url_col=IMAGE_URL_COL, subset=None, limit=None
             if batch:
                 store.put_many(batch)
                 failure_records.clear_failures(
-                    project_path, "download",
-                    keys=[(oid, failure_records.NO_PART) for oid, _ in batch])
+                    project_path, "download", keys=[(oid, failure_records.NO_PART) for oid, _ in batch]
+                )
                 tally.processed += len(batch)
 
             if tally.failures:
-                failure_records.record_failures(project_path, "download", [
-                    {"occurrence_id": failure["occurrence_id"],
-                     "context_hash": _url_context_hash(failure["url"]),
-                     "error": failure["error"]}
-                    for failure in tally.failures
-                ])
+                failure_records.record_failures(
+                    project_path,
+                    "download",
+                    [
+                        {
+                            "occurrence_id": failure["occurrence_id"],
+                            "context_hash": _url_context_hash(failure["url"]),
+                            "error": failure["error"],
+                        }
+                        for failure in tally.failures
+                    ],
+                )
             report.close()
             elapsed = progress.finish()
     finally:
         if owns_session:
             session.close()
 
-    logger.info("image download complete: attempted=%d saved=%d failed=%d",
-                tally.attempted, tally.processed, tally.failed)
+    logger.info(
+        "image download complete: attempted=%d saved=%d failed=%d",
+        tally.attempted,
+        tally.processed,
+        tally.failed,
+    )
     return tally.summary(previously_failed=previously_failed, elapsed_s=elapsed)

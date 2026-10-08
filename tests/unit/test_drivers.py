@@ -18,8 +18,14 @@ class Clock:
 
 def progress(total, clock, interval=30, tallies=()):
     lines = []
-    tracker = Progress(total, "run", tallies=tallies, interval=interval,
-                       log=lambda fmt, *args: lines.append(fmt % args), clock=clock)
+    tracker = Progress(
+        total,
+        "run",
+        tallies=tallies,
+        interval=interval,
+        log=lambda fmt, *args: lines.append(fmt % args),
+        clock=clock,
+    )
     return tracker, lines
 
 

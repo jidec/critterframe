@@ -1,10 +1,4 @@
-"""
-The sqlite connection for a project's runs & metrics database.
-
-Mechanics only; the schema belongs to records.runs. sqlite is used here because
-rows are appended one at a time over a long run that must survive a process
-dying halfway through.
-"""
+"""The sqlite connection for a project's runs and metrics database."""
 
 import logging
 import sqlite3
@@ -28,13 +22,10 @@ WAL_SWITCH_RETRY_DELAY_S = 0.05
 
 
 def connect(database_path):
-    """
-    Open a sqlite database, creating its parent directory if needed, with row
-    access by column name.
+    """Open a sqlite database in WAL mode, with row access by column name.
 
-    Callers create their own tables; this only opens the file. WAL mode and
-    busy_timeout are what let several sharded runs write to one project at
-    once (see CLAUDE.md).
+    Args:
+        database_path: Database file; its parent directory is created if missing.
     """
     database_path = Path(database_path)
     database_path.parent.mkdir(parents=True, exist_ok=True)

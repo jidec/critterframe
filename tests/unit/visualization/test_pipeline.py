@@ -36,8 +36,7 @@ def panel(value=200):
 
 
 def a_report(tmp_path, sample=("specimen0", "specimen1"), part="organism", **kwargs):
-    return Report(tmp_path, "segments", "abc123", part=part, visualize=list(sample),
-                  **kwargs).begin(IDS)
+    return Report(tmp_path, "segments", "abc123", part=part, visualize=list(sample), **kwargs).begin(IDS)
 
 
 # ---------------------------------------------------------------------------
@@ -68,8 +67,7 @@ def test_the_sample_is_the_same_two_runs_running():
 
 
 def test_explicit_ids_follow_one_known_difficult_specimen():
-    assert resolve_sample(IDS, ["specimen3", "specimen7"]) == ["specimen3",
-                                                               "specimen7"]
+    assert resolve_sample(IDS, ["specimen3", "specimen7"]) == ["specimen3", "specimen7"]
 
 
 def test_naming_an_occurrence_this_run_is_not_processing_is_ignored_loudly(caplog):
@@ -159,7 +157,7 @@ def test_several_stages_save_as_a_row_per_specimen(tmp_path):
 
 
 def test_a_report_that_collected_nothing_writes_no_file(tmp_path):
-    """"Nothing here draws one" is a normal outcome, and an empty file would be worse than none."""
+    """ "Nothing here draws one" is a normal outcome, and an empty file would be worse than none."""
     report = a_report(tmp_path)
     report.close()
     assert not paths.pipeline_dir(tmp_path).exists()
@@ -223,8 +221,11 @@ def test_visualize_every_writes_a_file_per_window(tmp_path):
     report.close()
 
     names = sorted(path.name for path in paths.pipeline_dir(tmp_path).glob("*__at*.jpg"))
-    assert names == ["segments_abc__at00000002.jpg", "segments_abc__at00000004.jpg",
-                     "segments_abc__at00000006.jpg"]
+    assert names == [
+        "segments_abc__at00000002.jpg",
+        "segments_abc__at00000004.jpg",
+        "segments_abc__at00000006.jpg",
+    ]
 
 
 def test_a_trailing_partial_window_is_written_on_close(tmp_path):
@@ -239,8 +240,7 @@ def test_a_trailing_partial_window_is_written_on_close(tmp_path):
 def test_explicit_ids_follow_their_specimen_into_windows_without_warning(tmp_path, caplog):
     items = IDS[:6]
     with caplog.at_level("WARNING"):
-        report = Report(tmp_path, "segments", "abc", visualize=["specimen3"],
-                        visualize_every=2).begin(items)
+        report = Report(tmp_path, "segments", "abc", visualize=["specimen3"], visualize_every=2).begin(items)
         run_through(report, items)
         report.close()
 
@@ -326,16 +326,16 @@ def test_an_image_array_is_a_figure_too(tmp_path):
 
 def test_the_sidecar_records_identity_sample_counts_and_files(tmp_path):
     items = ["specimen0", "specimen1"]
-    report = Report(tmp_path, "download", "abc", visualize=True,
-                    identity={"url_col": "image_url"}).begin(items)
+    report = Report(tmp_path, "download", "abc", visualize=True, identity={"url_col": "image_url"}).begin(
+        items
+    )
     report.panel("specimen0", "thumbnail", panel())
     report.done("specimen0")
     report.failure("specimen1", ValueError("404"))
     report.done("specimen1")
     report.close()
 
-    record = json.loads(paths.pipeline_report_path(tmp_path, "download", "abc")
-                        .read_text(encoding="utf-8"))
+    record = json.loads(paths.pipeline_report_path(tmp_path, "download", "abc").read_text(encoding="utf-8"))
     assert record["identity"] == {"url_col": "image_url"}
     assert record["counts"] == {"items": 2, "done": 2, "failed": 1}
     assert record["failures"] == [{"item": "specimen1", "error": "404"}]
@@ -421,4 +421,3 @@ def test_a_fanout_gives_every_report_the_shared_steps(tmp_path):
 def test_a_fanout_of_nothing_is_falsey(tmp_path):
     assert not PanelFanout([])
     assert not PanelFanout([NullReport()])
-

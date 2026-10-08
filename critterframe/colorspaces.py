@@ -1,9 +1,4 @@
-"""
-Colour space conversion with no project attached: canonical units, circular channels, and the way back.
-
-Every conversion starts from uint8 BGR, the working view, and returns float32 in the units below rather than OpenCV's
-8-bit encodings (Lab with a/b offset by +128, hue on 0-179).
-"""
+"""Color space conversion with no project attached: canonical units, circular channels, and the way back."""
 
 from dataclasses import dataclass
 
@@ -13,13 +8,13 @@ import numpy as np
 
 @dataclass(frozen=True)
 class ColorSpace:
-    """
-    One colour space: its channels, their nominal ranges, and which ones wrap.
+    """One color space: its channels, their nominal ranges, and which ones wrap.
 
-    - `name` -- the key in `SPACES`.
-    - `channels` -- lowercase channel names, in array order.
-    - `ranges` -- nominal `(low, high)` per channel, in the units `convert` returns.
-    - `circular` -- names of channels that wrap around (hue, in degrees).
+    Attributes:
+        name: The key in `SPACES`.
+        channels: Lowercase channel names, in array order.
+        ranges: Nominal `(low, high)` per channel, in the units `convert` returns.
+        circular: Names of the channels that wrap around (hue, in degrees).
     """
 
     name: str
@@ -29,13 +24,15 @@ class ColorSpace:
 
     @property
     def spans(self):
-        """`high - low` per channel, as a float32 array."""
+        """Return `high - low` per channel, as a float32 array."""
         return np.array([high - low for low, high in self.ranges], dtype=np.float32)
 
     def index(self, channel):
-        """The position of a channel in this space's arrays; unknown names raise `ValueError`."""
+        """Return a channel's position in this space's arrays."""
         if channel not in self.channels:
-            raise ValueError(f"{self.name} has no channel {channel!r} -- expected one of {list(self.channels)}")
+            raise ValueError(
+                f"{self.name} has no channel {channel!r} -- expected one of {list(self.channels)}"
+            )
         return self.channels.index(channel)
 
 
@@ -52,12 +49,13 @@ SPACES = {
 
 
 def get_space(name):
-    """
-    Look up a colour space by name.
+    """Look up a color space by name.
 
-    - `name` -- a key of `SPACES`, or a `ColorSpace`, which is returned as is.
+    Args:
+        name: A key of `SPACES`, or a `ColorSpace`, which is returned as is.
 
-    Returns the `ColorSpace`; raises `ValueError` listing the valid names for an unknown one.
+    Raises:
+        ValueError: If the name is unknown.
     """
     if isinstance(name, ColorSpace):
         return name
@@ -67,15 +65,14 @@ def get_space(name):
 
 
 def convert(pixels, space):
-    """
-    Convert uint8 BGR pixels into a colour space, in that space's canonical units.
+    """Convert uint8 BGR pixels into a color space, in that space's canonical units.
 
-    Goes through a float32 0-1 image, which is what makes OpenCV emit unscaled Lab and hue in degrees.
+    Args:
+        pixels: uint8 array whose last axis is 3: an `(N, 3)` pixel list or an `(H, W, 3)` image.
+        space: A key of `SPACES`.
 
-    - `pixels` -- uint8 array whose last axis is 3: an `(N, 3)` pixel list or an `(H, W, 3)` image.
-    - `space` -- a key of `SPACES`.
-
-    Returns a float32 array of the same shape as `pixels`.
+    Returns:
+        A float32 array shaped like `pixels`.
     """
     target = get_space(space)
     array = _as_bgr(pixels)
@@ -88,13 +85,11 @@ def convert(pixels, space):
 
 
 def to_bgr(values, space):
-    """
-    Convert values in a colour space back to uint8 BGR, clipped to the displayable range.
+    """Convert values in a color space back to uint8 BGR, clipped to the displayable range.
 
-    - `values` -- float array whose last axis is 3, in the units `convert` returns.
-    - `space` -- a key of `SPACES`.
-
-    Returns a uint8 BGR array of the same shape as `values`.
+    Args:
+        values: Float array whose last axis is 3, in the units `convert` returns.
+        space: A key of `SPACES`.
     """
     target = get_space(space)
     array = np.asarray(values, dtype=np.float32)
@@ -108,17 +103,15 @@ def to_bgr(values, space):
 
 
 def in_arc(angles, start, end):
-    """
-    Which angles fall in the half-open arc `[start, end)`, in degrees.
+    """Return which angles fall in the half-open arc `[start, end)`, in degrees.
 
-    An arc with `start > end` wraps through 0, so `(340, 22)` is red. `start == end` is empty and `(0, 360)` is the
-    whole circle.
+    An arc with `start > end` wraps through 0, so `(340, 22)` is red. `start == end` is
+    empty and `(0, 360)` is the whole circle.
 
-    - `angles` -- angles in degrees, in `[0, 360)`.
-    - `start` -- where the arc begins, inclusive.
-    - `end` -- where the arc ends, exclusive.
-
-    Returns a boolean array shaped like `angles`.
+    Args:
+        angles: Angles in degrees, in `[0, 360)`.
+        start: Where the arc begins, inclusive.
+        end: Where the arc ends, exclusive.
     """
     angles = np.asarray(angles)
     if start <= end:
@@ -127,15 +120,11 @@ def in_arc(angles, start, end):
 
 
 def normalize(values, space):
-    """
-    Rescale every channel to 0-1 by its nominal range.
+    """Rescale every channel to 0-1 by its nominal range.
 
-    For distances taken over channels of very different scale, where hue in degrees would otherwise swamp the rest.
-
-    - `values` -- float array whose last axis is 3, in the units `convert` returns.
-    - `space` -- a key of `SPACES`.
-
-    Returns a float32 array of the same shape as `values`.
+    Args:
+        values: Float array whose last axis is 3, in the units `convert` returns.
+        space: A key of `SPACES`.
     """
     target = get_space(space)
     lows = np.array([low for low, _ in target.ranges], dtype=np.float32)

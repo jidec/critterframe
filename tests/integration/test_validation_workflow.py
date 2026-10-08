@@ -37,8 +37,9 @@ SPECIMENS = 8
 
 def screen():
     """The project's own image screen: keys 1, 2, 3 in this order, asked without a mask."""
-    return cf.exclusive_label_annotation(["usable", "not_an_organism", "cut_off"],
-                                         name="usability", requires_mask=False)
+    return cf.exclusive_label_annotation(
+        ["usable", "not_an_organism", "cut_off"], name="usability", requires_mask=False
+    )
 
 
 @pytest.fixture
@@ -48,9 +49,13 @@ def graded(measured_project):
     segmenter's masks in the reference table -- the setup every comparison
     below reads.
     """
-    cf.run_segments(measured_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=2))],
-                    reference=True, visualize=False)
+    cf.run_segments(
+        measured_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=2))],
+        reference=True,
+        visualize=False,
+    )
     return measured_project
 
 
@@ -59,7 +64,7 @@ def test_masks_are_graded_against_the_reference_table(graded):
 
     assert len(scores) == SPECIMENS
     assert scores["iou"].between(0, 1).all()
-    assert scores["iou"].mean() < 1.0        # the two really do disagree
+    assert scores["iou"].mean() < 1.0  # the two really do disagree
 
 
 def test_the_reference_table_is_separate_from_what_the_project_processes(graded):
@@ -81,10 +86,14 @@ def test_traits_can_be_measured_from_the_reference_masks_too(graded):
     over the other table, and the two runs stay distinguishable because the
     mask table is part of the recipe's identity.
     """
-    result = cf.run_metrics(graded, run_name="reference_traits",
-                            transforms=[cf.remove_appendages(), cf.orient()],
-                            metrics=[cf.body_length()],
-                            reference=True, visualize=False)["organism"]
+    result = cf.run_metrics(
+        graded,
+        run_name="reference_traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[cf.body_length()],
+        reference=True,
+        visualize=False,
+    )["organism"]
     assert result["processed"] == SPECIMENS
 
     exported = cf.export_metrics(graded)
@@ -101,11 +110,10 @@ def test_measuring_both_tables_is_two_runs_not_one(graded):
     coexist for comparison, not for one to supersede the other the way
     run_name's recipe pointer would treat them if they shared a name.
     """
-    cf.run_metrics(graded, run_name="both", metrics=[cf.body_length()],
-                   visualize=False)
-    second = cf.run_metrics(graded, run_name="both_reference",
-                            metrics=[cf.body_length()],
-                            reference=True, visualize=False)["organism"]
+    cf.run_metrics(graded, run_name="both", metrics=[cf.body_length()], visualize=False)
+    second = cf.run_metrics(
+        graded, run_name="both_reference", metrics=[cf.body_length()], reference=True, visualize=False
+    )["organism"]
 
     assert second["processed"] == SPECIMENS
     canonical_hash = load_runs(graded, name="both")["recipe_hash"].iloc[0]
@@ -114,21 +122,24 @@ def test_measuring_both_tables_is_two_runs_not_one(graded):
 
 
 def test_predicted_and_reference_values_are_compared_per_metric(graded):
-    cf.run_metrics(graded, run_name="reference_traits",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.mask_area(name="area_px", unit="px2")],
-                   reference=True, visualize=False)
+    cf.run_metrics(
+        graded,
+        run_name="reference_traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[cf.mask_area(name="area_px", unit="px2")],
+        reference=True,
+        visualize=False,
+    )
 
-    comparison = cf.compare_metrics(graded, "traits", "reference_traits",
-                                    metric_names=["area_px"])
+    comparison = cf.compare_metrics(graded, "traits", "reference_traits", metric_names=["area_px"])
     row = comparison.iloc[0]
 
     # Area rather than length, because an eroded mask is unambiguously smaller
     # while "length" on a near-symmetric drawn ellipse depends on which axis
     # orient() picked (see test_pipeline_core).
     assert row["n"] == SPECIMENS
-    assert row["mean_abs_diff"] > 0          # a tighter mask is a smaller one
-    assert row["bias"] > 0                   # and consistently so
+    assert row["mean_abs_diff"] > 0  # a tighter mask is a smaller one
+    assert row["bias"] > 0  # and consistently so
     assert -1 <= row["correlation"] <= 1
 
 
@@ -141,19 +152,18 @@ def test_a_human_measurement_grades_the_pipeline_across_names(graded, monkeypatc
     # Three of each per occurrence: the collecting loop polls once per click,
     # and the cosmetic wait that holds the second marker on screen consumes one
     # more -- which the callback ignores, having its two points already.
-    clicks = [(cv2.EVENT_LBUTTONDOWN, 120, 60),
-              (cv2.EVENT_LBUTTONDOWN, 120, 160),
-              (cv2.EVENT_MOUSEMOVE, 0, 0)] * SPECIMENS
-    monkeypatch.setattr(annotation, "cv2",
-                        FakeCv2(keys=[ord(" ")] * (SPECIMENS * 3),
-                                clicks=clicks))
+    clicks = [
+        (cv2.EVENT_LBUTTONDOWN, 120, 60),
+        (cv2.EVENT_LBUTTONDOWN, 120, 160),
+        (cv2.EVENT_MOUSEMOVE, 0, 0),
+    ] * SPECIMENS
+    monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=[ord(" ")] * (SPECIMENS * 3), clicks=clicks))
 
-    cf.run_metrics(graded, run_name="by_hand",
-                   metrics=[cf.click_two_points()], visualize=False)
+    cf.run_metrics(graded, run_name="by_hand", metrics=[cf.click_two_points()], visualize=False)
 
     comparison = cf.compare_metrics(
-        graded, "traits", "by_hand",
-        metric_names={"body_length": "click_two_points__length_px"})
+        graded, "traits", "by_hand", metric_names={"body_length": "click_two_points__length_px"}
+    )
 
     assert comparison.iloc[0]["reference_metric"] == "click_two_points__length_px"
     assert comparison.iloc[0]["n"] == SPECIMENS
@@ -170,16 +180,20 @@ def test_a_qc_threshold_is_calibrated_against_human_labels(graded, monkeypatch):
 
     # Two of the eight are called unusable; the rest are fine.
     flags = [ord("1")] * SPECIMENS
-    flags[0] = ord("3")            # cut_off
-    flags[1] = ord("2")            # not_an_organism
+    flags[0] = ord("3")  # cut_off
+    flags[1] = ord("2")  # not_an_organism
     monkeypatch.setattr(annotation, "cv2", FakeCv2(keys=flags))
 
     cf.run_metrics(graded, run_name="screening", metrics=[screen()], visualize=False)
 
     wide = metrics_wide(graded)
-    sweep = sweep_thresholds(wide, "traits__organism__blur_variance", "below",
-                             "screening__organism__usability",
-                             bad_labels=["not_an_organism", "cut_off"])
+    sweep = sweep_thresholds(
+        wide,
+        "traits__organism__blur_variance",
+        "below",
+        "screening__organism__usability",
+        bad_labels=["not_an_organism", "cut_off"],
+    )
 
     assert not sweep.empty
     assert set(sweep["n_bad"]) == {2}
@@ -224,8 +238,7 @@ def test_validation_leaves_no_trace_in_the_project(graded):
     assert len(cf.export_metrics(graded).columns) == values_before
 
 
-def test_a_filter_calibrated_this_way_narrows_the_export_and_deletes_nothing(
-        graded):
+def test_a_filter_calibrated_this_way_narrows_the_export_and_deletes_nothing(graded):
     """
     The end of the road: a threshold becomes an export filter, the export gets
     smaller, and the project still holds every occurrence -- so tomorrow's
@@ -242,7 +255,8 @@ def test_a_filter_calibrated_this_way_narrows_the_export_and_deletes_nothing(
 
 # A project's own screening vocabulary; the run takes the label's name, "quality".
 QUALITY = cf.exclusive_label_annotation(
-    ["good", "input_invalid", "wrong_region", "incomplete", "overflow"], name="quality")
+    ["good", "input_invalid", "wrong_region", "incomplete", "overflow"], name="quality"
+)
 QUALITY_BAD = ["input_invalid", "wrong_region", "incomplete", "overflow"]
 
 
@@ -253,17 +267,20 @@ def screened(graded, monkeypatch):
     choose thresholds on, one to score them on. Each holds one bad segment, the
     blurriest of its four, so blur is a score that can find it.
     """
-    blur = cf.export_metrics(graded, path=False, manifest=False).set_index(
-        "occurrence_id")["traits__organism__blur_variance"]
+    blur = cf.export_metrics(graded, path=False, manifest=False).set_index("occurrence_id")[
+        "traits__organism__blur_variance"
+    ]
     ids = sorted(blur.index)
     cf.define_subset(graded, "calibrate", occurrence_ids=ids[:4])
     cf.define_subset(graded, "audit", occurrence_ids=ids[4:])
 
-    for subset, members, bad_key in (("calibrate", ids[:4], ord("3")),
-                                     ("audit", ids[4:], ord("4"))):
+    for subset, members, bad_key in (("calibrate", ids[:4], ord("3")), ("audit", ids[4:], ord("4"))):
         blurriest = blur[members].idxmin()
-        monkeypatch.setattr(annotation, "cv2", FakeCv2(
-            keys=[bad_key if member == blurriest else ord("1") for member in members]))
+        monkeypatch.setattr(
+            annotation,
+            "cv2",
+            FakeCv2(keys=[bad_key if member == blurriest else ord("1") for member in members]),
+        )
         cf.run_metrics(graded, subset=subset, metrics=[QUALITY], visualize=False)
     return graded
 
@@ -276,18 +293,32 @@ def test_filters_are_chosen_on_one_sample_and_scored_on_another(screened):
     scored on the labels that chose it describes those labels.
     """
     filters = cf.get_validated_filters(
-        screened, {"blur_variance": "below"}, "traits", "quality",
-        label_metric="quality", good_labels=["good"],
-        subset="calibrate", audit_subset="audit", max_fpr=0.0, visualize=False)
+        screened,
+        {"blur_variance": "below"},
+        "traits",
+        "quality",
+        label_metric="quality",
+        good_labels=["good"],
+        subset="calibrate",
+        audit_subset="audit",
+        max_fpr=0.0,
+        visualize=False,
+    )
     assert list(filters) == ["traits__organism__blur_variance"]
 
-    audit = cf.audit_filters(screened, filters, "quality", label_metric="quality",
-                             bad_labels=QUALITY_BAD, subset="audit", visualize=False)
+    audit = cf.audit_filters(
+        screened,
+        filters,
+        "quality",
+        label_metric="quality",
+        bad_labels=QUALITY_BAD,
+        subset="audit",
+        visualize=False,
+    )
 
     assert (audit["n"], audit["n_bad"]) == (4, 1)
     assert audit["n_incomplete"] == 1 and audit["n_wrong_region"] == 0
-    exported = cf.export_metrics(screened, subset="audit", filters=filters,
-                                 path=False, manifest=False)
+    exported = cf.export_metrics(screened, subset="audit", filters=filters, path=False, manifest=False)
     assert audit["n_kept"] == len(exported)
 
 
@@ -297,8 +328,11 @@ def test_a_quality_label_describes_the_mask_it_was_given_for(screened):
     describes the image -- would survive it. An audit of masks nobody has
     looked at has nothing to say.
     """
-    cf.run_segments(screened, steps=[cf.segment(ThresholdModel(erode=1))],
-                    visualize=False)
+    cf.run_segments(screened, steps=[cf.segment(ThresholdModel(erode=1))], visualize=False)
 
-    assert cf.audit_filters(screened, {}, "quality", label_metric="quality",
-                            good_labels=["good"], visualize=False) == {}
+    assert (
+        cf.audit_filters(
+            screened, {}, "quality", label_metric="quality", good_labels=["good"], visualize=False
+        )
+        == {}
+    )

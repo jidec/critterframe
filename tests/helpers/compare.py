@@ -39,8 +39,7 @@ def strip_volatile(df, extra=()):
 
     extra -- further columns to drop for one particular comparison.
     """
-    columns = [column for column in tuple(VOLATILE_COLUMNS) + tuple(extra)
-               if column in df.columns]
+    columns = [column for column in tuple(VOLATILE_COLUMNS) + tuple(extra) if column in df.columns]
     return df.drop(columns=columns).reset_index(drop=True)
 
 

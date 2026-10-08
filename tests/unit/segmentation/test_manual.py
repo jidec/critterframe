@@ -30,11 +30,10 @@ CANCEL = 27
 
 def a_segment(with_mask=True, panel_sink=None):
     mask = np.zeros((100, 100), bool)
-    mask[30:70, 30:70] = True                # a 40x40 block, 1600 px
+    mask[30:70, 30:70] = True  # a 40x40 block, 1600 px
     image = np.zeros((100, 100, 3), np.uint8)
     image[mask] = 200
-    return Segment(image, mask=mask if with_mask else None,
-                   occurrence_id="specimen0", panel_sink=panel_sink)
+    return Segment(image, mask=mask if with_mask else None, occurrence_id="specimen0", panel_sink=panel_sink)
 
 
 @pytest.fixture
@@ -42,8 +41,9 @@ def gui(monkeypatch):
     def install(keys=(), clicks=()):
         fake = FakeCv2(keys=keys, clicks=clicks)
         monkeypatch.setattr(manual, "cv2", fake)
-        monkeypatch.setattr(panels, "DISPLAY_MAX", None)   # 1:1 window, so clicks are image pixels
+        monkeypatch.setattr(panels, "DISPLAY_MAX", None)  # 1:1 window, so clicks are image pixels
         return fake
+
     return install
 
 
@@ -138,20 +138,28 @@ def test_a_drag_paints_along_its_path(gui):
     Mouse-move while a button is down keeps painting -- otherwise correcting a
     boundary would be a click per pixel.
     """
-    gui(keys=[SAVE],
-        clicks=[(cv2.EVENT_RBUTTONDOWN, 10, 10),
-                (cv2.EVENT_MOUSEMOVE, 15, 10),
-                (cv2.EVENT_MOUSEMOVE, 20, 10)])
+    gui(
+        keys=[SAVE],
+        clicks=[
+            (cv2.EVENT_RBUTTONDOWN, 10, 10),
+            (cv2.EVENT_MOUSEMOVE, 15, 10),
+            (cv2.EVENT_MOUSEMOVE, 20, 10),
+        ],
+    )
     _corrected, info = cf.correct_mask(brush_radius=3)(a_segment())
     assert info["added_fraction"] > 0
 
 
 def test_releasing_the_button_stops_the_painting(gui):
     """A move with no button down must not draw."""
-    gui(keys=[SAVE],
-        clicks=[(cv2.EVENT_RBUTTONDOWN, 10, 10),
-                (cv2.EVENT_RBUTTONUP, 10, 10),
-                (cv2.EVENT_MOUSEMOVE, 80, 80)])
+    gui(
+        keys=[SAVE],
+        clicks=[
+            (cv2.EVENT_RBUTTONDOWN, 10, 10),
+            (cv2.EVENT_RBUTTONUP, 10, 10),
+            (cv2.EVENT_MOUSEMOVE, 80, 80),
+        ],
+    )
     corrected, _info = cf.correct_mask(brush_radius=3)(a_segment())
     assert not corrected.mask[75:85, 75:85].any()
 
@@ -164,7 +172,7 @@ def test_drawing_from_scratch_starts_from_nothing(gui):
     gui(keys=[SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 10, 10)])
     drawn, _info = cf.draw_mask(brush_radius=6)(a_segment())
 
-    assert drawn.mask.sum() < 200            # just the brush, not the block
+    assert drawn.mask.sum() < 200  # just the brush, not the block
     assert not drawn.mask[50, 50]
 
 
@@ -188,8 +196,7 @@ def test_plus_and_minus_resize_the_brush_mid_session(gui):
     on the waitKey() call that actually follows both '+' presses.
     """
     noop = (cv2.EVENT_MOUSEMOVE, 0, 0)
-    gui(keys=[ord("+"), ord("+"), SAVE],
-        clicks=[noop, noop, (cv2.EVENT_RBUTTONDOWN, 50, 50)])
+    gui(keys=[ord("+"), ord("+"), SAVE], clicks=[noop, noop, (cv2.EVENT_RBUTTONDOWN, 50, 50)])
     grown, _info = cf.correct_mask(brush_radius=2)(a_segment(with_mask=False))
 
     gui(keys=[SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 50, 50)])
@@ -200,8 +207,7 @@ def test_plus_and_minus_resize_the_brush_mid_session(gui):
 
 def test_minus_shrinks_and_will_not_go_below_one(gui):
     noop = (cv2.EVENT_MOUSEMOVE, 0, 0)
-    gui(keys=[ord("-")] * 5 + [SAVE],
-        clicks=[noop] * 5 + [(cv2.EVENT_RBUTTONDOWN, 50, 50)])
+    gui(keys=[ord("-")] * 5 + [SAVE], clicks=[noop] * 5 + [(cv2.EVENT_RBUTTONDOWN, 50, 50)])
     corrected, _info = cf.correct_mask(brush_radius=2)(a_segment(with_mask=False))
 
     # radius floors at 1 rather than 1 - 5 = -4, so some paint still lands.
@@ -285,19 +291,24 @@ def test_a_hand_drawn_mask_lands_in_the_reference_table(gui, segmented_project):
     from critterframe.records import masks as mask_records
 
     gui(keys=[SAVE] * 3)
-    result = cf.run_segments(segmented_project, run_name="by_hand",
-                             steps=[cf.correct_mask()], from_part="organism",
-                             reference=True, limit=3, visualize=False,
-                             force=False)["organism"]
+    result = cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.correct_mask()],
+        from_part="organism",
+        reference=True,
+        limit=3,
+        visualize=False,
+        force=False,
+    )["organism"]
 
     assert result["processed"] == 3
     assert len(mask_records.load_masks(segmented_project, reference=True)) == 3
-    assert len(mask_records.load_masks(segmented_project)) == 8   # untouched
+    assert len(mask_records.load_masks(segmented_project)) == 8  # untouched
 
 
 @pytest.mark.slow
-def test_a_hand_drawn_recipe_will_not_guess_about_completed_work(gui,
-                                                                 segmented_project):
+def test_a_hand_drawn_recipe_will_not_guess_about_completed_work(gui, segmented_project):
     """
     Two people painting one crop produce two different masks under one recipe
     hash, so "already done by this recipe" cannot be read either way. The run
@@ -305,8 +316,14 @@ def test_a_hand_drawn_recipe_will_not_guess_about_completed_work(gui,
     """
     from critterframe.records import masks as mask_records
 
-    drawn = dict(run_name="by_hand", steps=[cf.correct_mask()],
-                 from_part="organism", reference=True, limit=3, visualize=False)
+    drawn = dict(
+        run_name="by_hand",
+        steps=[cf.correct_mask()],
+        from_part="organism",
+        reference=True,
+        limit=3,
+        visualize=False,
+    )
 
     gui(keys=[SAVE] * 3)
     with pytest.raises(ValueError, match="correct_mask is not deterministic"):
@@ -338,10 +355,8 @@ def test_a_model_recipe_still_defaults_to_resuming(segmented_project):
     from helpers.models import ThresholdModel
 
     steps = [cf.segment(ThresholdModel())]
-    cf.run_segments(segmented_project, run_name="again", steps=steps,
-                    visualize=False)
-    second = cf.run_segments(segmented_project, run_name="again", steps=steps,
-                             visualize=False)["organism"]
+    cf.run_segments(segmented_project, run_name="again", steps=steps, visualize=False)
+    second = cf.run_segments(segmented_project, run_name="again", steps=steps, visualize=False)["organism"]
     assert (second["processed"], second["skipped"]) == (0, 8)
 
 
@@ -367,8 +382,7 @@ def test_painting_in_an_enlarged_window_lands_on_the_right_image_pixels(gui, mon
 
 
 def test_a_drag_leaves_no_gaps_between_mouse_events(gui, monkeypatch):
-    gui(keys=[ord(" "), SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 40, 200),
-                                       (cv2.EVENT_MOUSEMOVE, 360, 200)])
+    gui(keys=[ord(" "), SAVE], clicks=[(cv2.EVENT_RBUTTONDOWN, 40, 200), (cv2.EVENT_MOUSEMOVE, 360, 200)])
     monkeypatch.setattr(panels, "DISPLAY_MAX", (400, 400))
     drawn, _info = cf.draw_mask(brush_radius=4)(a_segment(with_mask=False))
 
@@ -378,5 +392,4 @@ def test_a_drag_leaves_no_gaps_between_mouse_events(gui, monkeypatch):
 def test_screen_fitting_did_not_move_the_recipe_hash():
     """Every manual mask already recorded must still count as done."""
     assert cf.correct_mask().spec()["version"] == "1"
-    assert cf.correct_mask().spec()["parameters"] == {"brush_radius": 8,
-                                                      "start_empty": False}
+    assert cf.correct_mask().spec()["parameters"] == {"brush_radius": 8, "start_empty": False}

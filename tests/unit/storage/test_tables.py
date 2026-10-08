@@ -226,8 +226,7 @@ def test_a_missing_table_raises_by_default(tmp_path):
 
 def test_a_missing_table_can_be_legitimately_absent(tmp_path):
     """Masks before any segmentation run: absent is the normal state."""
-    empty = load_table(tmp_path / "absent.parquet", missing_ok=True,
-                       columns=["occurrence_id"])
+    empty = load_table(tmp_path / "absent.parquet", missing_ok=True, columns=["occurrence_id"])
     assert empty.empty
     assert empty.columns.tolist() == ["occurrence_id"]
 

@@ -72,8 +72,11 @@ under `scripts/test_images/`.
 at project paths that don't exist in this repo; read them as documentation of intended usage, and expect to
 change `PROJECT_PATH` before running one.
 
-No format/typecheck tooling is configured. `python -m pyflakes critterframe tests` is clean and worth keeping
-clean.
+`ruff check .` is the lint, configured in `pyproject.toml`, and is clean and worth keeping clean. It runs the
+pyflakes rules everywhere and the docstring rules on the package; `scripts/` and `README.md` are excluded,
+and so are docstring rules for `tests/`. `ruff format .` is the formatter, applied to `critterframe/` and
+`tests/` (line length 110); `ruff format --check .` is clean and worth keeping clean. `scripts/` is never
+formatted, since pipeline scripts are laid out by hand. No type checker is run.
 
 ### The docs site
 
@@ -145,6 +148,16 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
    recipe hash) and no per-row timestamp (the run has one; `metric_id` is the insertion order that "newest
    wins" sorts on). Old databases carrying those columns are migrated on open by `records.runs`, which has to
    happen because the old `created_at` was NOT NULL and would reject every new insert.
+   `current_rows` keeps three kinds of row without judging them, because each is unknown, not known-stale:
+   a row with no `source_mask_hash`, every row of a project with no mask table ("no masks" must not mean "no
+   values"), and a run name with no recorded pointer. Canonical and reference masks are pooled into one
+   currency test, since the long table doesn't record which table a run measured from. Values are appended
+   per occurrence, not buffered to the end of a run, so an interrupted run keeps what it computed; a run's
+   recipe is written at `start_run` for the same reason, and only a finished run reaches `runs.jsonl`, the
+   readable mirror of the runs table. A calibration, by contrast, is upserted: a re-measurement supersedes,
+   and nothing was ever stored in converted units for it to invalidate. A missing calibration resolves to
+   None, never a project-wide average or a neighbouring session's value, because a trait converted with a
+   guessed scale is indistinguishable in a CSV from one converted with a measured scale.
 9. **A calibration is knowledge about the imaging system, keyed by a scope, resolved not copied, applied
    late.** `calibrations.parquet` (`records/calibrations.py`) holds one row per
    `(calibration_type, scope, scope_value)` — `scale` today, `color` when it's written. **The scope and the
@@ -711,8 +724,17 @@ each part, so a `parts=` list is all they need.
 
 ### Package layout
 
-- **`project/`** — `paths` (every project path, returning `pathlib.Path`; creates nothing), `subsets` (named
-  selections, `subsets.toml`, and `select_occurrences`, which every run funnels through), `summarize`, and
+- **`project/`** — `paths` (every project path, returning `pathlib.Path`; creates nothing, so what a project
+  holds is an honest account of what has been done to it; a hash sits in each report and import-manifest
+  filename so two configurations leave two files to compare, not one overwriting the other), `subsets` (named
+  selections, `subsets.toml`, and `select_occurrences`, which every run funnels through. A subset selects
+  rows and never copies them, so an occurrence can be in several and a run over one leaves the others'
+  masks and metrics alone. The file is hand-editable TOML, written by a small serializer of our own and read
+  with `tomllib`. A `column`/`query` subset is live; `from_subset=` and `occurrence_ids=` freeze a
+  membership something else can depend on, and an id-list subset stores its own `{count, ids_hash}`.
+  `grow_subset(from_subset=)` re-resolves its source on every call, which is how an expensive pass is capped
+  to an independently sized part of a cheaper one), `summarize` (returns data, not printed text, so it can
+  back a status line or a test; `describe_run` renders what `start_run` stored), and
   `archive` (`archive_project`: a deposit-ready copy leaving out the image store, raw source data and working
   files, with local paths reduced to file names; Dryad publishes under CC0, which photos and GBIF-mediated raw
   data can't be, so they're cited rather than copied). A path a record stores is relative to the project and
@@ -725,7 +747,15 @@ each part, so a `parts=` list is all they need.
   target of known size: `scale_from_target`, `measure_scales`, `declare_scale`, `scale_for_occurrences`);
   `color` not written yet and, when it is, beside `scale.py` rather than inside it. The detector is generic on
   purpose — target, size, and search region are all arguments — and a weak match is accepted but warned about,
-  since clutter can out-correlate an absent target and a plausible wrong scale is worse than none.
+  since clutter can out-correlate an absent target and a plausible wrong scale is worse than none. An image
+  with no target returns None, not zero and not an error: that is normal in a large collection and the caller
+  decides whether it matters. A search `region` is fractional so one setting survives a change of camera
+  resolution, and is worth setting wherever the rig fixes the target's position. `scale_from_click` and
+  `measure_scale_by_hand` are the by-hand route for a scale object not worth a detector (an irregular ruler,
+  a printed bar on a light-trap sheet): one click-through of a scene image that is not in the image store,
+  applied to many occurrences. The length is typed at the terminal, not in a second window, since nothing
+  else mixes clicking with typing. `make_scale_row` refuses a non-positive px/mm: a failed measurement
+  written by mistake would later divide into infinities nobody notices.
 - **`segments.py`** — `iterate_segments`, the per-occurrence loop most drivers walk (renders, validation,
   dataset export, the pooled-pixel colour metrics), plus `build_segment` for the `from_part` framing, and
   `scalar_info`/`operation_labels` for how an operation's info is stored. `run_segments` and `run_metrics` keep
@@ -739,7 +769,13 @@ each part, so a `parts=` list is all they need.
   to do it. Imports nothing from the package.
 - **`maskops.py`** — mask arithmetic with no project attached: `mask_iou`, `mask_coverage`,
   `pad_to_common_shape`, `mask_bounds`, `largest_component`. One answer to "how much do these two masks agree"
-  for validation, manual correction, mirror symmetry and the trainable segmenter alike.
+  for validation, manual correction, mirror symmetry and the trainable segmenter alike. Comparisons pad to a
+  common shape first: two masks of one occurrence should match, but images re-ingested at another resolution
+  would otherwise crash or, worse, score a truncated comparison. Two empty masks score IoU 1.0, since neither
+  disagrees about where anything is. `mask_coverage` is for a prediction that only has to contain a region,
+  e.g. an organism mask feeding a part segmenter. `edge_distance` counts the frame's edge as outside the mask,
+  or a mask running off the frame would read as thicker on that side; `inscribed_radius` (half the thickness
+  at the thickest point) is what anything acting against thickness is scaled by.
 - **`colorspaces.py`** — colour space conversion with no project attached: `convert` (uint8 BGR to `rgb`, `linrgb`,
   `hsv`, `hls`, `lab`, `lch`), `to_bgr`, `in_arc`, `normalize`, and the `SPACES` registry. **Everything comes out in
   canonical units, never OpenCV's 8-bit encodings**: float32, hue in degrees, Lab with L 0-100 and a/b signed. The
@@ -784,7 +820,15 @@ each part, so a `parts=` list is all they need.
   per project, byte-exact), `tables` (parquet replace/upsert/load), `jsonfiles` (`atomic_write`, `write_json`,
   `append_jsonl`, `read_jsonl` — every manifest, registry and append-only log in the package, UTF-8 and
   all-or-nothing), and `sqlite` (`connect`, with the WAL and busy_timeout pragmas that make concurrent sharded
-  runs safe). `records.runs.open_database` is a context manager that CLOSES: an unclosed read holds a file
+  runs safe). Which backend a thing lands in is a property of the data, not a preference: LMDB for images
+  because one blob read by key is the whole access pattern; parquet for occurrences and masks because they
+  are wide, read whole or by column, and rewritten as a unit (a snapshot or a keyed merge, never an append);
+  sqlite for runs and metric values because they are appended row by row over long interruptible runs and
+  must survive a process dying halfway, which a rewrite-as-a-unit format cannot offer. Logs are JSON Lines
+  rather than one JSON document because they only grow, and appending a line rewrites nothing already there;
+  `read_jsonl` skips a malformed line with a warning, since one line truncated by a killed process shouldn't
+  cost the history either side of it. `ImageStore`'s map size grows on overflow and is resynced when another
+  process grew it. `records.runs.open_database` is a context manager that CLOSES: an unclosed read holds a file
   handle for the life of the process, which on Windows stops the project directory being moved.
 - **`records/`** — `occurrences` (normalize + save/load; ids are strings everywhere, plus `ids_digest` and the
   `ids_record` every record names a set of occurrences with), `masks` (RLE encode/decode,
@@ -813,20 +857,55 @@ each part, so a `parts=` list is all they need.
   multi-gigabyte Darwin Core Archive) hands that parse to core as `read=` (and its raw bytes as `raw=`), which
   core runs only after the skip check, so the decisions are hashed in exactly one place rather than passed
   separately to each check. A CSV is read with every column as a string; only `numeric_cols`/`datetime_cols`
-  are typed. Image ingest archives a *manifest* of its own, not the
-  pixels, and has no import manifest of this kind — see its docstring for why. `export.py` owns the wide view —
+  are typed. `df=` exists so a caller that built its table in memory needn't write a CSV only for it to be
+  read straight back, which would also re-infer types the caller was careful to keep as strings.
+  `trust_source_file_unchanged` skips reading and hashing a source whose path, size and modification time
+  match an import on record, which is what lets a repeat ingest of a multi-gigabyte file finish at once. It
+  is not a content guarantee (a regenerated file of the same size, a touched file, clock skew, or another
+  file copied over the same path would all be trusted), so it is off by default and only for a source
+  written atomically and never replaced in place; every other decision is still checked. Image ingest
+  archives a *manifest* of its own, not the pixels, since copying every image into `raw_imports/` would
+  double a project's largest storage cost. It has no import manifest of this kind, because a folder has no
+  `id_col` or `drop=` to record, and it is deliberately not idempotent: the folder is the source of truth
+  and every file is re-read, which is what makes replacing a file with a corrected one work. Colliding
+  filename stems are reported as the two paths before anything is written, since the downstream
+  duplicate-id error names the id and not which files to rename. A downloaded image is checked to decode
+  because a URL that returns an HTML error page with status 200 would otherwise surface much later, as a
+  segmentation failure on an image nobody can open; and a stored image is never replaced, since it is the
+  evidence every mask and measurement was derived from. `export.py` owns the wide view —
   `column_name`, `metrics_wide`, `metric_units`, all built on one `_current_long` read — which validation and
-  `training/datasets` build on too, plus the export manifest (`load_exports` reads the log back).
+  `training/datasets` build on too, plus the export manifest (`load_exports` reads the log back). A column
+  name carries run, part and metric because all three vary independently and any two can collide. A
+  converted column is renamed with its unit, and an uncalibrated occurrence gets NaN there, never a pixel
+  value under a millimeter heading. `validate_masks` applies `transforms=` to both masks because a
+  transform there is held constant, not tested; `compare_metrics` reports the median beside the mean
+  percent difference because a mean far above the median points at a bad reference value, and `bias`
+  beside `correlation` because a metric uniformly 5% high is correctable where one randomly 5% off is not.
 - **`transforms/`** — `appendages`, `islands` (`remove_islands`), `erode` (inward by a FRACTION OF THE
   MAXIMUM INSCRIBED RADIUS, i.e. of the mask's thickness: erosion acts against thickness, so a share of
   length or of sqrt(area) would take several times more out of a thin part than a round one; in a metric
-  run it tightens the mask for that measurement and leaves stored masks alone), `orient` (PCA, axis chosen by *asymmetry* rather than length), `crop` (crop,
-  crop_to_mask, rotate, resize, remove_background).
+  run it tightens the mask for that measurement and leaves stored masks alone), `orient` (PCA, axis chosen by *asymmetry* rather than length: length alone picks the wingspan
+  on a spread specimen, where a head-to-tail axis is lopsided and a wingtip-to-wingtip one is not;
+  `axis_strategy="longer"` is for a body already elongate with wings swept back, e.g. Odonata, where that
+  premise fails; a near-isotropic mask is flagged `unreliable` under either), `crop` (crop,
+  crop_to_mask, rotate, resize, remove_background). `remove_background` + `crop_to_mask` are the usual
+  framing before a part-specific model: the organism arrives at a consistent size, and with the background
+  gone the model can't key off the substrate or have to rediscover the organism's boundary. None of the
+  mask-only transforms (`remove_appendages`, `remove_islands`, `erode`, `remove_background`) moves a pixel,
+  so they leave the mapping back to original coordinates untouched.
 - **`segmentation/`** — `groundedsam` (SAM2 with optional Grounding DINO; `detect_bounds=False` uses the
   point-prompt path for pre-cropped images), `manual` (draw/correct by hand — an alternative segmentation, not
   a separate system), `mask_import_export` (`import_masks`/`export_masks`: masks in and out as
   `<occurrence_id>__<part>.png` in original image coordinates, with a `masks.export.json` the importing run
-  records as its source), `run` (`segment()` operation + `run_segments`).
+  records as its source), `run` (`segment()` operation + `run_segments`). Shared steps run once per
+  occurrence and the segment forks per part, so a three-part run does one background removal, not three.
+  When detection finds no box the segmentation fails; it never falls back to another prompting strategy,
+  which would store a mask its recipe no longer describes. A run draws its own result panel as well as the
+  model's, because a segmenter with no `visualize()` would otherwise put nothing on the grid. Point
+  `correct_mask` only at crops that have a definable correction: with two organisms, none, or one running
+  off the edge there is no single boundary, so whatever is painted is invented and then lowers the IoU
+  `validate_masks` reports as if the segmenter had erred. A hand correction reports removed and added area
+  separately, since a mask 20% too big and one 20% too small are different failures.
 - **`metrics/`** — `dimensions`, `islands` (`n_islands`, counting what `transforms.islands` removes), `position` (reports in ORIGINAL coordinates), `quality`, `pixels`
   (`masked_pixels`, the one rule every colour metric reads pixels by), `color_means` (plus grey-world
   `white_balanced_color` and `background_color`, for photography whose lighting nothing controls), `color_thresholds`
@@ -840,7 +919,31 @@ each part, so a `parts=` list is all they need.
   from stored ones), `label_score` (a probability fitted on stored features against stored human labels), `outliers` (group metrics, on scalar or vector features, with a per-cluster gallery and a
   PCA projection drawn in `prepare()`), `annotation` (human
   labels), `mask_info` (the diagnostics a segmentation run stored on each mask, as a metric), `run`
-  (`run_metrics` + `RunContext` + `_completed_keys`).
+  (`run_metrics` + `RunContext` + `_completed_keys`). What each metric is for, kept here and out of the
+  docstrings: `body_length` and `max_width` measure image axes, so only an oriented mask makes them the
+  organism's own; `max_width` is a span, not a pixel count, so a row crossing two wings and the gap
+  reports wingtip to wingtip. `mask_area` is the size measure for a part with no clear length, e.g. a
+  wing. `elongation` weighs pixels by squared distance from the center, so run it after
+  `remove_islands`/`remove_appendages` for the body's own shape, or before where a pulled value is the
+  signal of a leaking mask. `blur_variance` reads only masked pixels so a busy or blurred background
+  can't move it. `bilateral_asymmetry` is high mostly for a bad segmentation, since most organisms are
+  symmetric from above. `edge_fraction` matters because a cut-off organism is a correct outline of the
+  visible part with every length underestimated, and unlike blur it does not degrade gradually.
+  `mask_fraction` catches both directions: a speck of dirt, or the substrate. `mean_lightness` uses Lab L
+  because it tracks perceived lightness; `mean_color` says nothing about pattern, so pair it with a
+  fraction or cluster metric; `white_balanced_color` estimates its correction from the whole frame, since
+  normalizing by the organism would define away the signal; `background_color`'s `contrast` is a QC
+  signal, as an organism close in tone to its background is the one whose mask is most likely wrong.
+  `black_fraction` answers a different question from mean lightness (heavy black markings on a pale
+  body against uniform mid-gray). A position metric's failure is being right in the wrong coordinate
+  system, so its panel draws on the original image. The per-group color metrics give every palette
+  color or threshold a key even at zero, so a wide export has no holes that read as "not measured", and
+  their numbered categories mean one color within a group and nothing across groups. An embedding of an
+  unmasked frame encodes the substrate as readily as the organism: put `remove_background()` first.
+  Being an outlier within your own group is the QC signal; across groups it mostly rediscovers real
+  differences. `click_two_points` stores both raw points, since a length and an angle are recoverable
+  from them and not the reverse, and a skipped occurrence stores nulls so "looked at and passed over"
+  stays distinct from "never reached".
 - **`validation/`** — `masks`, `metrics`, `filters`, and `filter_grids` (the image grids a filter calibration
   or audit draws: the labelled items by outcome, the bad ones kept and good ones removed, what each filter
   alone removes, a strip of items ordered along each score with its cutoff marked, and each category's
@@ -855,7 +958,11 @@ each part, so a `parts=` list is all they need.
     the windows keep the data at the image's own resolution and map each click back through the factor.
   - `grids` — many panels as one image: `image_grid`, `comparison_grid`. Pure layout, no project, no I/O.
     Panels must arrive display-ready uint8 — it will not rescale a float array, since two probability maps
-    with different ranges would stretch to look identical.
+    with different ranges would stretch to look identical. A cell scales its image by one factor in both
+    axes and letterboxes it: cells stretched to fill would make a long specimen and a round one look alike.
+    A ragged row of a `comparison_grid` leaves its missing cells empty, so one specimen's crop is never
+    lined up against another's rotation. A report fits each panel to its cell on arrival, which is what
+    keeps memory at sample x stages x one cell whatever the activity's size.
   - `figures` — whole-population charts: `line_chart`, `bar_chart`, `histogram`, `scatter`, `funnel`.
   - `pipeline` — every activity's diagnostics: `open_report`, `Report`/`NullReport` (a bounded grid,
     checkpoints, figures, a sidecar), `resolve_sample`, and `PanelFanout` for a multi-output run's shared steps.
@@ -866,7 +973,15 @@ each part, so a `parts=` list is all they need.
 - **`training/`** — `splits` (`split_ids` returns `{split: ids}`; grouped and stratified, to avoid leakage) and
   `datasets` (`iterate_segments` in memory, `export_training_data` to disk — splits as subsets or ids, optional
   class folders and mask PNGs, a manifest, and a `dataset.json` whose `data_hash` is what a registered model
-  points at). Splitting decides, exporting materializes, and neither does the other's job.
+  points at). Splitting decides, exporting materializes, and neither does the other's job, so one split can
+  back a segmenter's dataset, an encoder's and a validation pass without their disagreeing. `group_col` is
+  the leakage guard (several images of one specimen or trap night are not independent, and splitting them
+  makes a validation score measure memorization); `stratify_col` keeps a rare class from missing a split
+  entirely. Both are occurrence columns; a label that lives in the metric log is exported onto a manifest and
+  split with `split_dataset`. An export is PNG throughout, since a model trained on re-encoded JPEGs learns
+  the artifacts; manifest paths are relative and forward-slashed so the directory survives a move from
+  Windows to a Linux cluster; and `dataset.json` describes what was actually written, not what was asked
+  for, since occurrences drop out for want of a mask or a class.
 - **`tests/`** — `unit/` mirroring the package, `integration/` named per invariant, `helpers/` shared with the
   smoke scripts. Testing conventions: real LMDB/parquet/sqlite in `tmp_path` (three of the invariants above ARE
   storage-format invariants, so a mocked store would assert nothing), fakes only for the network and the GUI,
@@ -886,6 +1001,24 @@ each part, so a `parts=` list is all they need.
   `train()`, unlike `bioencoder`'s scaffold: binary mask segmentation doesn't carry metric-learning's
   dataset-dependent backbone/loss judgment calls, so implementing it doesn't risk a model that trains without
   complaint and performs badly the way guessing at those would). Extensions normalize INTO core, never around it.
+  Notes kept here and out of their docstrings. Antenna: credentials come from the environment, read lazily
+  from `.env` and never stored in a project, since a project directory is data that gets copied and shared.
+  Pagination follows the server's `next` link, so a capped page size or a record inserted mid-walk costs no
+  rows. One scale per event (one trap night): the card is set when a trap is deployed and doesn't move, so
+  per-detection would be thousands of noisier measurements of one number, and per-device would miss a box
+  that was moved. The scope is `event_id` and not a session path parsed from a URL, which split a night at
+  midnight and left unparseable URLs uncalibratable. The captures endpoint silently ignores a filter it
+  doesn't recognize and returns the whole project, so the event of a returned capture is checked.
+  `"Not Lepidoptera"` rows are dropped by default because knowing that this is Antenna's "no moth here" is
+  the source knowledge the extension exists to hold. GBIF: every column is read as a string and only an
+  empty field is missing, since GBIF text is full of values like `NA` and `007`; zip members are streamed
+  into the parser, never read whole; the raw import archived is the two source tables as sent, before one
+  image is chosen per occurrence, because which photo represents an occurrence is a decision for the
+  manifest; an occurrence with no image is excluded at merge as a usability decision of this ingest, not
+  under `drop=`, since GBIF never said it was absent; scale is unrecoverable from citizen-science photos,
+  so traits stay in pixels. BioEncoder: metric learning and not classification, because the useful output
+  is a space where similar organisms sit close, which keeps working for unseen taxa. A checkpoint used
+  standalone is identified by its content, cached per object, so build a new model object after retraining.
 
 ### Conventions to follow when extending
 
@@ -946,28 +1079,35 @@ each part, so a `parts=` list is all they need.
   `odonata_inat_obsorg/5_measure_part_qc_and_colors.py` and `quality_label` in
   `6_annotate_parts_for_filters.py`: it must be crystal clear at a glance and exist to standardize, not to
   save lines. Steps 4-8 of that pipeline are the model to follow.
-- **Docstrings are reference, not essays.** They render as the API site, so keep them scannable:
-  - A **module** docstring is one line — the module's line from README.md's package-layout tree — plus at most
-    one short sentence a reader genuinely can't use the module without. No project-tree diagrams (the README
-    has one), no design essays.
-  - A **function** docstring is a one-line summary, an optional one- or two-sentence caveat, then
-    `param -- what it is`, one line each, and a `Returns ...` line. No rationale inside the param block.
-  - **The param block is a markdown bullet list, one `- `name`` per param**, e.g. `` - `project_path` --
-    project to ingest into``. mkdocstrings renders a docstring's free text as raw Markdown — no docstring
-    parser here recognizes this project's `--` separator as a parameters section (it looks for a colon), so
-    without list markup, adjacent param lines with no blank line between them collapse into one paragraph.
-    A wrapped param's continuation lines must be indented to line up with the bullet's own text (two spaces
-    past the `- `), never visually aligned under the `--` a few columns further right — Markdown reads
-    anything indented 4+ columns past where the list item's content starts as a nested code block, which is
-    how a wrapped description ends up rendered in a copy-button panel instead of as prose.
-  - Write like README.md: present tense, declarative, `&`/`e.g.`/`i.e.`. No rhetorical openers ("Worth
-    knowing", "The reason is", "which is why"), no parenthetical asides longer than a clause, ALL-CAPS
-    emphasis at most once per docstring.
-  - **Why goes here, not there.** A design decision, a rejected alternative, or a silent failure mode a guard
-    exists for belongs in the Architecture section above — one copy, findable — not restated in every module
-    that touches it. The exception is a hazard someone editing *this specific code* would otherwise walk into:
-    that stays as a short `#` comment at the line it guards (see `_wait_for_key`'s duplication note, and the
-    pragma ordering in `storage/sqlite.py`).
+- **Docstrings are Google style, concise, and reference only.** `ruff check` enforces the layout (the `D`
+  rules, `convention = "google"`) and that a documented argument list matches its signature; mkdocstrings
+  renders the sections. `transforms/erode.py` is a typical example.
+  - **Summary**: one line starting on the line of the opening quotes, ending with a period, and starting
+    with an imperative verb ("Return", "Write", "Read"). An operation factory keeps its `Metric:` or
+    `Operation:` tag before it.
+  - **Body**: usually none. Present only for behavior specific to this one function that a caller could
+    not infer from its summary and arguments, and then at most three sentences. Never a statement true of
+    every function of its kind or of the package as a whole (a transform leaving stored masks alone, a run
+    being resumable): that belongs once, in the Architecture section. If a sentence could be pasted
+    unchanged into a sibling function's docstring, it belongs in neither.
+  - **`Args:`** one entry per argument, `name: One sentence on what it means.` No type (types go in
+    signatures, when hints are added; `mkdocs.yml` sets `warn_missing_types: false` until then), no
+    restating the name, no default the signature already shows. Once the section exists every argument is
+    listed, each on its own entry, or the check fails. An argument that only repeats another function's
+    is `As in \`other\`.`
+  - **`Returns:`** only when the summary doesn't already say what comes back; a dict or tuple lists its
+    parts. For a metric factory, it describes the value the metric stores.
+  - **`Raises:`** only for an error a caller is expected to handle, not for plain argument validation.
+  - **Private helpers** (`_name`): one line, unless there is a hazard to state. **Modules**: one line.
+    **Classes**: summary, `Args:` for the constructor, `Attributes:` only for public ones. Every public
+    function, method and module has a docstring, even a one-line one.
+  - **Wording**: present tense, American spelling, no "this function", no history ("used to", "now"), no
+    capitals for emphasis.
+  - **Why goes here, not there.** A design decision, a rejected alternative, usage guidance, or a silent
+    failure mode a guard exists for belongs in the Architecture section above, in one findable copy. The
+    exception is something a person editing that exact code needs: it stays as a `#` comment at the code
+    (the fit steps above `_fit_definition`, the algorithm in `_remove_appendages`, the pragma ordering in
+    `storage/sqlite.py`).
 
 ### Things that are deliberately unfinished
 

@@ -1,6 +1,4 @@
-"""
-What every per-item driver shares: Tally (the summary it returns), Progress (its progress line), NoInput (nothing to work from yet).
-"""
+"""What every per-item driver shares: Tally (its summary), Progress (its progress line), NoInput."""
 
 import logging
 import time
@@ -17,33 +15,27 @@ NO_IMAGE = "no image"
 NO_MASK_INFO = "no recorded mask info"
 
 # What to do about each kind of missing input, for log_no_input's one line per reason.
-_NO_INPUT_HINTS = {NO_IMAGE: "run download_images first",
-                   NO_MASK_INFO: "re-segment to record it"}
+_NO_INPUT_HINTS = {NO_IMAGE: "run download_images first", NO_MASK_INFO: "re-segment to record it"}
 
 # Seconds between a driver's progress lines (see Progress).
 PROGRESS_INTERVAL = 30
 
 
 class NoInput(Exception):
-    """
-    Nothing to work from yet: no image, or no upstream mask.
-
-    Drivers count it as `no_input`, never as a failure, so it is never written to the failures
-    ledger and is attempted again once the input exists.
-    """
+    """Nothing to work from yet: no image, or no upstream mask."""
 
 
 def no_mask(part):
-    """The NoInput reason for an occurrence missing `part`'s mask."""
+    """Return the `NoInput` reason for an occurrence missing `part`'s mask."""
     return f"no '{part}' mask"
 
 
 def log_no_input(counts, where):
-    """
-    One warning per kind of missing input, rather than one per occurrence.
+    """Log one warning per kind of missing input.
 
-    - `counts` -- `{reason: occurrences}`, reasons as `NoInput` carries them.
-    - `where` -- what was running, for the message, e.g. "run_segments part 'organism'".
+    Args:
+        counts: `{reason: number of occurrences}`.
+        where: What was running, for the message, e.g. `"run_segments part 'organism'"`.
     """
     for reason, count in sorted(Counter(counts).items()):
         hint = _NO_INPUT_HINTS.get(reason, "segment that part first")
@@ -51,13 +43,7 @@ def log_no_input(counts, where):
 
 
 class Tally:
-    """
-    What a driver counts while walking occurrences, and the reliability flags it saw.
-
-    One shape across drivers, so a summary dict means the same thing whichever
-    one produced it: `no_input` is "nothing to work from" (no image, no mask),
-    which is neither a failure nor work done.
-    """
+    """What a driver counts while walking occurrences, and the reliability flags it saw."""
 
     def __init__(self, attempted=0):
         self.attempted = attempted
@@ -69,39 +55,45 @@ class Tally:
         self.flags = {}
 
     def record_failure(self, occurrence_id, error, **extra):
-        """
-        Count one failed occurrence and keep it, keyed the way every driver keys it.
+        """Count one failed occurrence and keep it.
 
-        - `occurrence_id` -- the item that failed.
-        - `error` -- the exception or message.
-        - `extra` -- anything else worth chasing it down with, e.g. the `url` a
-          download was given or the `path` a file came from.
+        Args:
+            occurrence_id: The item that failed.
+            error: The exception or message.
+            **extra: Anything else to trace it by, e.g. the `url` a download was given.
         """
         self.failed += 1
-        self.failures.append({"occurrence_id": str(occurrence_id),
-                              "error": str(error), **extra})
+        self.failures.append({"occurrence_id": str(occurrence_id), "error": str(error), **extra})
 
     def record_flags(self, info):
-        """Count an operation's reliability flags (see FLAG_KEYS) off its info dict."""
+        """Count the reliability flags (`FLAG_KEYS`) in an operation's info dict."""
         for key in FLAG_KEYS:
             if (info or {}).get(key):
                 self.flags[key] = self.flags.get(key, 0) + 1
 
     def summary(self, **extra):
-        """
-        The dict a driver returns.
+        """Return the dict a driver returns.
 
-        - `extra` -- driver-specific counts, e.g. a segmentation run's
-          `previously_failed` or a metric run's `copied`.
+        Args:
+            **extra: Driver-specific entries, e.g. `previously_failed` or `copied`.
+
+        Returns:
+            `attempted`, `processed`, `skipped`, `no_input`, `failed`, `failures`, `flags`, plus `extra`.
         """
-        return {"attempted": self.attempted, "processed": self.processed,
-                "skipped": self.skipped, "no_input": self.no_input,
-                "failed": self.failed, "failures": self.failures,
-                "flags": self.flags, **extra}
+        return {
+            "attempted": self.attempted,
+            "processed": self.processed,
+            "skipped": self.skipped,
+            "no_input": self.no_input,
+            "failed": self.failed,
+            "failures": self.failures,
+            "flags": self.flags,
+            **extra,
+        }
 
 
 def _duration(seconds):
-    """`45s`, `12m 5s`, `2h 0m`: coarse enough to read at a glance in a log line."""
+    """Format seconds coarsely: `45s`, `12m 5s`, `2h 0m`."""
     seconds = int(round(seconds))
     if seconds < 60:
         return f"{seconds}s"
@@ -113,20 +105,17 @@ def _duration(seconds):
 
 
 class Progress:
-    """
-    A time-throttled progress line with a rate and an ETA, for a driver's per-item loop.
+    """A time-throttled progress line with a rate and an ETA, for a per-item loop.
 
-    Throttled on wall-clock time rather than item count, since one item costs anything from a
-    millisecond to a minute depending on the driver. The rate is taken over the most recent
-    `WINDOW` items, so the first item's model load doesn't dominate the ETA.
+    The rate is taken over the most recent `WINDOW` items.
 
-    - `total` -- items this loop will step through; the pending work, not everything considered.
-    - `label` -- what's running, e.g. `"run_segments part 'organism'"`.
-    - `tallies` -- `Tally`s whose `failed` counts are reported alongside.
-    - `interval` -- seconds between lines, `PROGRESS_INTERVAL` when None; 0 logs only the
-      closing line.
-    - `log` -- the logging callable, so a line carries its own module's name.
-    - `clock` -- a monotonic clock, for tests; `time.monotonic` when None.
+    Args:
+        total: Items this loop will step through: the pending work, not everything considered.
+        label: What is running, e.g. `"run_segments part 'organism'"`.
+        tallies: `Tally`s whose `failed` counts are reported alongside.
+        interval: Seconds between lines; None uses `PROGRESS_INTERVAL`, 0 logs only the closing line.
+        log: Logging callable, so a line carries the caller's module name.
+        clock: Monotonic clock, for tests.
     """
 
     WINDOW = 50
@@ -144,7 +133,7 @@ class Progress:
         self._recent = deque([self.start], maxlen=self.WINDOW + 1)
 
     def step(self):
-        """Count one finished item, and log a line if `interval` has passed since the last."""
+        """Count one finished item, and log a line if the interval has passed."""
         now = self.clock()
         self.done += 1
         self._recent.append(now)
@@ -153,13 +142,13 @@ class Progress:
             self.log("%s", self.line())
 
     def seconds_per_item(self):
-        """Seconds per item over the recent window, or None before anything has finished."""
+        """Return seconds per item over the recent window, or None before anything has finished."""
         if self.done == 0:
             return None
         return (self._recent[-1] - self._recent[0]) / (len(self._recent) - 1)
 
     def line(self):
-        """The progress line as it stands."""
+        """Return the progress line as it stands."""
         pieces = [f"{self.label}: {self.done:,}/{self.total:,}"]
         if self.total:
             pieces[0] += f" ({100 * self.done / self.total:.1f}%)"
@@ -174,11 +163,7 @@ class Progress:
         return ", ".join(pieces)
 
     def finish(self):
-        """
-        Log a closing line if anything was stepped through, and return the elapsed seconds.
-
-        Returns elapsed wall-clock seconds, rounded to 0.1.
-        """
+        """Log a closing line if anything was stepped through, and return the elapsed seconds."""
         elapsed = self.clock() - self.start
         if self.total:
             self.log("%s, done in %s", self.line(), _duration(elapsed))

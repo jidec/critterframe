@@ -12,16 +12,17 @@ from critterframe.visualization import figures
 
 
 BUILDERS = {
-    "line": lambda: figures.line_chart({"train": [3, 2, 1], "val": ([0, 1, 2], [4, 3, 3])},
-                                       title="loss", xlabel="epoch", marks={"best": 1}),
+    "line": lambda: figures.line_chart(
+        {"train": [3, 2, 1], "val": ([0, 1, 2], [4, 3, 3])}, title="loss", xlabel="epoch", marks={"best": 1}
+    ),
     "bars": lambda: figures.bar_chart({"a": 3, "b": 5}),
     "stacked": lambda: figures.bar_chart({"train": {"x": 3, "y": 1}, "val": {"x": 1}}),
     "side_by_side": lambda: figures.bar_chart({"train": {"x": 3, "y": 1}}, stacked=False),
-    "histogram": lambda: figures.histogram({"clean": [0.1, 0.5, 0.9], "bad": [0.2, None]},
-                                           marks={"cutoff": 0.4}),
+    "histogram": lambda: figures.histogram(
+        {"clean": [0.1, 0.5, 0.9], "bad": [0.2, None]}, marks={"cutoff": 0.4}
+    ),
     "empty_histogram": lambda: figures.histogram([]),
-    "scatter": lambda: figures.scatter([1, 2, 3], [1.1, 2.2, 2.9], diagonal=True,
-                                       groups=["a", "b", "a"]),
+    "scatter": lambda: figures.scatter([1, 2, 3], [1.1, 2.2, 2.9], diagonal=True, groups=["a", "b", "a"]),
     "funnel": lambda: figures.funnel({"read": 100, "dropped": 90, "final": 70}),
 }
 
@@ -41,8 +42,7 @@ def test_a_figure_renders_as_a_display_ready_panel():
 
 def test_a_scatter_can_name_its_points():
     """Text beside a point, for a chart whose points are settings and not specimens."""
-    figure = figures.scatter([1.0, 2.0, 3.0], [3.0, 1.0, 2.0],
-                             annotations=["first", None, "third"])
+    figure = figures.scatter([1.0, 2.0, 3.0], [3.0, 1.0, 2.0], annotations=["first", None, "third"])
     texts = [text.get_text() for text in figure.axes[0].texts]
     assert texts == ["first", "third"]
 

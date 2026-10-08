@@ -31,11 +31,16 @@ def image_bytes(index=0):
 @pytest.fixture
 def url_project(tmp_path):
     """Four occurrences with image URLs and nothing downloaded yet."""
-    save_occurrences(tmp_path, pd.DataFrame({
-        ID_COL: ["a", "b", "c", "d"],
-        "image_url": [f"http://example/{name}.png" for name in "abcd"],
-        "device": ["boxA", "boxA", "boxB", "boxB"],
-    }))
+    save_occurrences(
+        tmp_path,
+        pd.DataFrame(
+            {
+                ID_COL: ["a", "b", "c", "d"],
+                "image_url": [f"http://example/{name}.png" for name in "abcd"],
+                "device": ["boxA", "boxA", "boxB", "boxB"],
+            }
+        ),
+    )
     return tmp_path
 
 
@@ -109,12 +114,12 @@ def test_an_interrupted_download_resumes(url_project):
     Batches are flushed periodically rather than at the end, so an interruption
     costs at most one batch.
     """
-    cf.download_images(url_project, max_new=2,
-                       session=FakeSession({"http://example/":
-                                            FakeResponse(image_bytes())}))
+    cf.download_images(
+        url_project, max_new=2, session=FakeSession({"http://example/": FakeResponse(image_bytes())})
+    )
     summary = cf.download_images(
-        url_project, session=FakeSession({"http://example/":
-                                          FakeResponse(image_bytes())}))
+        url_project, session=FakeSession({"http://example/": FakeResponse(image_bytes())})
+    )
     assert summary["attempted"] == 2
 
 
@@ -123,10 +128,12 @@ def test_a_failure_is_counted_and_the_rest_still_download(url_project):
     One bad URL out of four must not cost the other three -- and the failure
     has to say which occurrence and which url, or it can't be chased down.
     """
-    session = FakeSession({
-        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
-        "http://example/": FakeResponse(image_bytes()),
-    })
+    session = FakeSession(
+        {
+            "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+            "http://example/": FakeResponse(image_bytes()),
+        }
+    )
     summary = cf.download_images(url_project, session=session)
 
     assert (summary["processed"], summary["failed"]) == (3, 1)
@@ -139,24 +146,28 @@ def test_a_failed_download_is_not_retried_until_asked(url_project):
     A failure is recorded, not just logged -- a rerun against the same URL
     makes no HTTP request for it at all, until retry_failed asks anyway.
     """
-    session = FakeSession({
-        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
-        "http://example/": FakeResponse(image_bytes()),
-    })
+    session = FakeSession(
+        {
+            "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+            "http://example/": FakeResponse(image_bytes()),
+        }
+    )
     first = cf.download_images(url_project, session=session)
     assert (first["processed"], first["failed"]) == (3, 1)
 
-    second = FakeSession({
-        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
-        "http://example/": FakeResponse(image_bytes()),
-    })
+    second = FakeSession(
+        {
+            "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+            "http://example/": FakeResponse(image_bytes()),
+        }
+    )
     summary = cf.download_images(url_project, session=second)
     assert (summary["attempted"], summary["previously_failed"]) == (0, 1)
     assert second.calls == []
 
     retried = cf.download_images(
-        url_project, retry_failed=True,
-        session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
+        url_project, retry_failed=True, session=FakeSession({"http://example/": FakeResponse(image_bytes())})
+    )
     assert (retried["attempted"], retried["processed"]) == (1, 1)
 
 
@@ -165,25 +176,33 @@ def test_a_corrected_url_is_retried_without_asking(url_project):
     The failure is scoped to the URL that failed -- a re-ingest that fixes it
     is automatically new work, no retry_failed needed.
     """
-    cf.download_images(url_project, session=FakeSession({
-        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
-        "http://example/": FakeResponse(image_bytes()),
-    }))
+    cf.download_images(
+        url_project,
+        session=FakeSession(
+            {
+                "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+                "http://example/": FakeResponse(image_bytes()),
+            }
+        ),
+    )
 
     table = pd.read_parquet(url_project / "occurrences.parquet")
     table.loc[table[ID_COL] == "b", "image_url"] = "http://example/b-fixed.png"
     save_occurrences(url_project, table)
 
     summary = cf.download_images(
-        url_project, session=FakeSession({"http://example/": FakeResponse(image_bytes())}))
+        url_project, session=FakeSession({"http://example/": FakeResponse(image_bytes())})
+    )
     assert (summary["attempted"], summary["processed"]) == (1, 1)
 
 
 def test_an_http_error_is_a_failure_not_a_crash(url_project):
-    session = FakeSession({
-        "http://example/c.png": FakeResponse(b"", status_code=404),
-        "http://example/": FakeResponse(image_bytes()),
-    })
+    session = FakeSession(
+        {
+            "http://example/c.png": FakeResponse(b"", status_code=404),
+            "http://example/": FakeResponse(image_bytes()),
+        }
+    )
     summary = cf.download_images(url_project, session=session)
     assert summary["failed"] == 1
 
@@ -209,8 +228,7 @@ def test_a_subset_narrows_what_is_fetched(url_project, all_ok):
 
 def test_max_new_caps_the_attempt(url_project, all_ok):
     """For trying a source out before committing to a collection."""
-    assert cf.download_images(url_project, max_new=1,
-                              session=all_ok)["processed"] == 1
+    assert cf.download_images(url_project, max_new=1, session=all_ok)["processed"] == 1
 
 
 def test_limit_caps_candidates_and_max_new_caps_new_work(url_project, all_ok):
@@ -223,10 +241,8 @@ def test_limit_caps_candidates_and_max_new_caps_new_work(url_project, all_ok):
     """
     cf.download_images(url_project, max_new=2, session=all_ok)
 
-    assert cf.download_images(url_project, limit=2,
-                              session=all_ok)["attempted"] == 0
-    assert cf.download_images(url_project, max_new=1,
-                              session=all_ok)["attempted"] == 1
+    assert cf.download_images(url_project, limit=2, session=all_ok)["attempted"] == 0
+    assert cf.download_images(url_project, max_new=1, session=all_ok)["attempted"] == 1
 
 
 def test_max_workers_one_still_downloads_everything(url_project, all_ok):
@@ -266,12 +282,10 @@ def test_a_differently_named_url_column_can_be_named(url_project, all_ok):
     table = pd.read_parquet(url_project / "occurrences.parquet")
     save_occurrences(url_project, table.rename(columns={"image_url": "photo"}))
 
-    assert cf.download_images(url_project, url_col="photo",
-                              session=all_ok)["processed"] == 4
+    assert cf.download_images(url_project, url_col="photo", session=all_ok)["processed"] == 4
 
 
-def test_downloading_into_a_directory_that_is_not_a_project_raises(empty_project,
-                                                                   all_ok):
+def test_downloading_into_a_directory_that_is_not_a_project_raises(empty_project, all_ok):
     with pytest.raises(FileNotFoundError, match="isn't a CritterFrame project"):
         cf.download_images(empty_project, session=all_ok)
 
@@ -284,9 +298,7 @@ def test_a_16_bit_image_survives_the_round_trip(url_project):
     """
     deep = (np.arange(400, dtype=np.uint16) * 160).reshape(20, 20)
     served = cv2.imencode(".png", deep)[1].tobytes()
-    cf.download_images(url_project,
-                       session=FakeSession({"http://example/":
-                                            FakeResponse(served)}))
+    cf.download_images(url_project, session=FakeSession({"http://example/": FakeResponse(served)}))
 
     with ImageStore(url_project, readonly=True) as store:
         assert store.get_bytes("a") == served
@@ -308,10 +320,12 @@ def _download_sidecar(project_path):
 
 
 def test_a_download_leaves_a_thumbnail_grid_and_its_failures(url_project):
-    session = FakeSession({
-        "http://example/b.png": FakeResponse(b"<html>gone</html>"),
-        "http://example/": FakeResponse(image_bytes()),
-    })
+    session = FakeSession(
+        {
+            "http://example/b.png": FakeResponse(b"<html>gone</html>"),
+            "http://example/": FakeResponse(image_bytes()),
+        }
+    )
     cf.download_images(url_project, session=session)
 
     record = _download_sidecar(url_project)
@@ -326,8 +340,7 @@ def test_out_of_order_downloads_still_fill_every_checkpoint(url_project, all_ok)
     Concurrent fetches finish in any order, but checkpoint windows are positional --
     so a window's thumbnails must not be lost to a neighbour finishing first.
     """
-    cf.download_images(url_project, session=all_ok, max_workers=4, visualize=1,
-                       visualize_every=2)
+    cf.download_images(url_project, session=all_ok, max_workers=4, visualize=1, visualize_every=2)
 
     record = _download_sidecar(url_project)
     windows = sorted(name.rsplit("__", 1)[1] for name in record["files"] if "__at" in name)

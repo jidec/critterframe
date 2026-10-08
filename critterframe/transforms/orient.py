@@ -1,16 +1,4 @@
-"""
-PCA orientation, axis chosen by asymmetry or by length depending on strategy.
-
-Length alone picks the wingspan on a spread specimen; asymmetry picks the body,
-since a head-to-tail axis is lopsided and a wingtip-to-wingtip one is not. That
-premise holds for a moth pinned with wings spread wide, but not for a body
-shape that's already elongate on its own (Odonata, say) photographed with
-wings swept back near the body axis rather than spread bilaterally -- there,
-picking the longer axis outright is the better rule. `axis_strategy` picks
-between the two; see AXIS_STRATEGY_SKEW/AXIS_STRATEGY_LONGER. A near-isotropic
-mask has numerically unstable axes regardless of strategy, and is flagged
-unreliable rather than silently rotated.
-"""
+"""Orient: rotate a segment so its body axis is vertical, found by PCA."""
 
 import logging
 
@@ -46,61 +34,60 @@ DEFAULT_AXIS_STRATEGY = AXIS_STRATEGY_SKEW
 ISOTROPY_WARN_RATIO = 0.8
 
 
-def orient(body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
-           isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
-           axis_strategy=DEFAULT_AXIS_STRATEGY):
-    """
-    Operation: rotate the segment so the body axis is vertical.
+def orient(
+    body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
+    isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
+    axis_strategy=DEFAULT_AXIS_STRATEGY,
+):
+    """Operation: rotate the segment so the body axis is vertical.
 
-    - `body_axis_is_higher_skew` -- under `axis_strategy="skew"`, pick the
-      body axis as the more asymmetric principal component (see module
-      constants). Ignored under `axis_strategy="longer"`.
-    - `isotropy_warn_ratio` -- eigenvalue ratio above which the orientation
-      is reported unreliable.
-    - `axis_strategy` -- `"skew"` (default) or `"longer"`; see module
-      constants AXIS_STRATEGY_SKEW/AXIS_STRATEGY_LONGER.
+    Args:
+        body_axis_is_higher_skew: Under `axis_strategy="skew"`, take the more asymmetric
+            principal axis as the body; False takes the less asymmetric one.
+        isotropy_warn_ratio: Minor-to-major eigenvalue ratio above which the orientation is
+            reported `unreliable`.
+        axis_strategy: `"skew"` picks the body axis by asymmetry, right for a spread specimen
+            whose wingspan outmeasures its body. `"longer"` picks the longer axis, right for
+            a body that is elongate on its own.
     """
-    return Transform("orient", _orient, {
-        "body_axis_is_higher_skew": body_axis_is_higher_skew,
-        "isotropy_warn_ratio": isotropy_warn_ratio,
-        "axis_strategy": axis_strategy,
-    }, version="1")
+    return Transform(
+        "orient",
+        _orient,
+        {
+            "body_axis_is_higher_skew": body_axis_is_higher_skew,
+            "isotropy_warn_ratio": isotropy_warn_ratio,
+            "axis_strategy": axis_strategy,
+        },
+        version="1",
+    )
 
 
 def _skew(values):
-    """Fisher skewness of a 1D array; 0 if degenerate."""
+    """Return the Fisher skewness of a 1D array, 0 if it has no spread."""
     sd = values.std()
     if sd == 0:
         return 0.0
     return float((((values - values.mean()) / sd) ** 3).mean())
 
 
-def compute_orientation(mask, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
-                        isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
-                        axis_strategy=DEFAULT_AXIS_STRATEGY):
-    """
-    Find the body axis of a boolean mask via PCA, choosing between the two
-    principal components by strategy.
+def compute_orientation(
+    mask,
+    body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
+    isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
+    axis_strategy=DEFAULT_AXIS_STRATEGY,
+):
+    """Find the body axis of a boolean mask by PCA.
 
-    Under `axis_strategy="skew"` (the default), both PCs are scored by the
-    skewness of the pixel distribution projected onto them, and the body axis
-    is the asymmetric one -- an insect's head end and abdomen end differ,
-    while its left and right wingtips are near mirror images. That makes
-    length the wrong criterion for a spread-wing moth, whose longest axis is
-    its wingspan, not its body. Under `axis_strategy="longer"`, the longer
-    (higher-eigenvalue) axis is chosen outright regardless of skew -- right
-    for a body shape that's already elongate on its own, where the skew
-    premise above doesn't hold (see module docstring). Skew is still
-    computed and reported either way, since it's useful diagnostically even
-    when it isn't what decided the axis.
+    Args:
+        mask: Mask to find the axis of.
+        body_axis_is_higher_skew: As in `orient`.
+        isotropy_warn_ratio: As in `orient`.
+        axis_strategy: As in `orient`.
 
-    Returns (rotation_deg, cx, cy, info):
-      rotation_deg -- rotation to make the body axis vertical (positive = CCW)
-      cx, cy       -- centroid, the rotation center, in (x, y) pixels
-      info         -- diagnostics: the skew of each PC, which strategy and
-                      which PC were chosen, whether the chosen axis was the
-                      longer one, and the eigenvalue ratio (near 1 =
-                      orientation unreliable)
+    Returns:
+        `(rotation_deg, cx, cy, info)`: the rotation that makes the body axis vertical
+        (positive counter-clockwise), the centroid it turns about in (x, y) pixels, and
+        diagnostics: each axis's skew, which axis was chosen, and the eigenvalue ratio.
     """
     ys, xs = np.nonzero(mask)
     if len(xs) == 0:
@@ -110,7 +97,7 @@ def compute_orientation(mask, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
     dx, dy = xs - cx, ys - cy
 
     covariance = np.cov(np.vstack([dx, dy]))
-    eigvals, eigvecs = np.linalg.eigh(covariance)   # ascending
+    eigvals, eigvecs = np.linalg.eigh(covariance)  # ascending
 
     # project the pixel cloud onto each PC and score its asymmetry
     skews = []
@@ -119,11 +106,10 @@ def compute_orientation(mask, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
         skews.append(_skew(axis[0] * dx + axis[1] * dy))
 
     if axis_strategy == AXIS_STRATEGY_LONGER:
-        chosen = 1   # eigvals ascending -- index 1 is the higher-eigenvalue axis
+        chosen = 1  # eigvals ascending -- index 1 is the higher-eigenvalue axis
     elif axis_strategy == AXIS_STRATEGY_SKEW:
         abs_skews = [abs(value) for value in skews]
-        chosen = int(np.argmax(abs_skews)) if body_axis_is_higher_skew \
-            else int(np.argmin(abs_skews))
+        chosen = int(np.argmax(abs_skews)) if body_axis_is_higher_skew else int(np.argmin(abs_skews))
     else:
         raise ValueError(
             f"unknown axis_strategy {axis_strategy!r} -- expected "
@@ -142,7 +128,7 @@ def compute_orientation(mask, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
         "skew_pc0": skews[0],
         "skew_pc1": skews[1],
         "chosen_pc": chosen,
-        "chose_longer_axis": chosen == 1,   # index 1 == largest eigenvalue
+        "chose_longer_axis": chosen == 1,  # index 1 == largest eigenvalue
         "eigval_ratio": ratio,
         "unreliable": ratio > isotropy_warn_ratio,
         "axis_strategy": axis_strategy,
@@ -151,25 +137,26 @@ def compute_orientation(mask, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
 
 
 def rotation_matrix(rotation_deg, cx, cy, shape):
-    """
-    The affine that rotates an array of `shape` by rotation_deg about (cx, cy),
-    EXPANDING the canvas to fit the rotated result rather than keeping the
-    original size, plus that new (width, height).
+    """Return the affine rotating an array about a point, on a canvas expanded to fit.
 
-    An image is only as tall/wide as the specimen needed lying in its ORIGINAL
-    orientation -- a mostly-horizontal insect rotated upright needs a canvas
-    taller than the original height, or the head and tail end up past the old
-    frame edge and warpAffine silently clips them. Sizing the canvas to the
-    rotated bounding box of the original frame guarantees the whole image
-    survives regardless of angle or how off-center (cx, cy) is.
+    Args:
+        rotation_deg: Rotation in degrees, positive counter-clockwise.
+        cx: Center of rotation, x in pixels.
+        cy: Center of rotation, y in pixels.
+        shape: Shape of the array to rotate.
+
+    Returns:
+        `(matrix, (width, height))`: the 2x3 affine and the size of the expanded canvas.
     """
     height, width = shape[:2]
     matrix = cv2.getRotationMatrix2D((cx, cy), -rotation_deg, 1.0)
 
-    # Where the four original corners land after rotation -- size the new canvas
-    # to their bounding box, then shift so nothing falls negative.
-    corners = np.array([[0, 0], [width, 0], [0, height], [width, height]],
-                       dtype=np.float64)
+    # The canvas is sized to the rotated frame, not kept at the original size:
+    # warpAffine clips whatever lands past the old edge, e.g. the head and tail
+    # of a horizontal insect turned upright. So find where the four original
+    # corners land, size the canvas to their bounding box, and shift so nothing
+    # falls negative.
+    corners = np.array([[0, 0], [width, 0], [0, height], [width, height]], dtype=np.float64)
     rotated = corners @ matrix[:, :2].T + matrix[:, 2]
     min_xy = rotated.min(axis=0)
     max_xy = rotated.max(axis=0)
@@ -181,51 +168,45 @@ def rotation_matrix(rotation_deg, cx, cy, shape):
 
 
 def apply_affine(array, matrix, size, flags=cv2.INTER_NEAREST):
-    """
-    Warp an array by a 2x3 affine into a (width, height) canvas, padding with
-    zeros -- harmless for both a mask (False) and an image (black).
+    """Warp an array by a 2x3 affine into a canvas, padding with zeros.
 
-    - `flags` -- interpolation. INTER_NEAREST for masks (no new values, stays
-      binary); INTER_LINEAR for images where smoothing is acceptable.
+    Args:
+        array: Image or mask to warp.
+        matrix: The 2x3 affine.
+        size: Canvas `(width, height)`.
+        flags: Interpolation. `INTER_NEAREST` keeps a mask binary; `INTER_LINEAR` suits an image.
     """
     return cv2.warpAffine(array, matrix, size, flags=flags)
 
 
-def _orient(segment, body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
-            isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
-            axis_strategy=DEFAULT_AXIS_STRATEGY):
-    """
-    Rotate a segment's mask AND image so the body axis is vertical, by the
-    identical rotation and center so the two stay pixel-aligned -- a rotated
-    mask over an unrotated image lines up with nothing, and every metric
-    reading colour under the mask would be reading the wrong pixels.
-    """
+def _orient(
+    segment,
+    body_axis_is_higher_skew=BODY_AXIS_IS_HIGHER_SKEW,
+    isotropy_warn_ratio=ISOTROPY_WARN_RATIO,
+    axis_strategy=DEFAULT_AXIS_STRATEGY,
+):
+    """Rotate mask and image by the same rotation, so they stay aligned."""
     mask = segment.require_mask()
     rotation_deg, cx, cy, info = compute_orientation(
-        mask, body_axis_is_higher_skew=body_axis_is_higher_skew,
-        isotropy_warn_ratio=isotropy_warn_ratio, axis_strategy=axis_strategy,
+        mask,
+        body_axis_is_higher_skew=body_axis_is_higher_skew,
+        isotropy_warn_ratio=isotropy_warn_ratio,
+        axis_strategy=axis_strategy,
     )
 
     matrix, size = rotation_matrix(rotation_deg, cx, cy, mask.shape)
     oriented_mask = apply_affine(mask.astype(np.uint8), matrix, size) > 0
-    oriented_image = apply_affine(segment.image, matrix, size,
-                                  flags=cv2.INTER_LINEAR)
+    oriented_image = apply_affine(segment.image, matrix, size, flags=cv2.INTER_LINEAR)
 
     info["rotation_deg"] = rotation_deg
 
-    oriented = segment.replace(image=oriented_image, mask=oriented_mask,
-                               applied=matrix)
+    oriented = segment.replace(image=oriented_image, mask=oriented_mask, applied=matrix)
     _visualize(segment, oriented, rotation_deg, cx, cy, info)
     return oriented, info
 
 
 def _visualize(segment, oriented, rotation_deg, cx, cy, info):
-    """
-    Side by side: the original with the chosen axis (green) and the REJECTED
-    axis (blue) drawn, next to the oriented result. Seeing both axes is the
-    point -- it shows whether the asymmetry test picked the body over the
-    wingspan, which a single drawn axis wouldn't tell you.
-    """
+    """Emit the original with the chosen axis (green) and the rejected one (blue), beside the result."""
     if segment.panel_sink is None:
         return
 
@@ -236,19 +217,25 @@ def _visualize(segment, oriented, rotation_deg, cx, cy, info):
     def draw_axis(image, theta_deg, color, thickness):
         theta = np.radians(theta_deg)
         ax, ay = np.cos(theta), np.sin(theta)
-        cv2.line(image,
-                 (int(cx - ax * length), int(cy - ay * length)),
-                 (int(cx + ax * length), int(cy + ay * length)),
-                 color, thickness)
+        cv2.line(
+            image,
+            (int(cx - ax * length), int(cy - ay * length)),
+            (int(cx + ax * length), int(cy + ay * length)),
+            color,
+            thickness,
+        )
 
     chosen_angle = 90.0 - rotation_deg
     draw_axis(before, chosen_angle + 90.0, (255, 128, 0), 1)  # rejected: blue
-    draw_axis(before, chosen_angle, (0, 255, 0), 2)           # chosen: green
+    draw_axis(before, chosen_angle, (0, 255, 0), 2)  # chosen: green
     cv2.circle(before, (int(cx), int(cy)), 5, (0, 0, 255), -1)
 
-    annotate(before, f"[{info['axis_strategy']}] pc{info['chosen_pc']} "
-                     f"skew {info['skew_pc0']:+.2f}/{info['skew_pc1']:+.2f} "
-                     f"ratio {info['eigval_ratio']:.2f} rot {rotation_deg:+.1f}")
+    annotate(
+        before,
+        f"[{info['axis_strategy']}] pc{info['chosen_pc']} "
+        f"skew {info['skew_pc0']:+.2f}/{info['skew_pc1']:+.2f} "
+        f"ratio {info['eigval_ratio']:.2f} rot {rotation_deg:+.1f}",
+    )
     if info["unreliable"]:
         annotate(before, "UNRELIABLE", line=1, color=(0, 0, 255))
 

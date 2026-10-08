@@ -1,17 +1,4 @@
-"""
-One picture of one operation's decision about one occurrence-part, plus the
-shared drawing helpers and colour conventions.
-
-The unit everything else in visualization is built from. Helpers are shared so
-a panel from appendage removal and one from mask validation mean the same thing
-by the same colours, and a white pixel never quietly means "agreement" in one
-place and "mask" in another.
-
-Drawing only, no input: the two operations that put a panel on screen and wait
-for a person keep their own `_wait_for_key`, because their tests stub cv2 by
-rebinding it in the operation's own module (see the note on either copy).
-`fit_for_display` sizes what those windows show.
-"""
+"""Panels: one picture of one operation's decision, with the shared drawing helpers and color conventions."""
 
 import logging
 
@@ -44,21 +31,13 @@ DISPLAY_MAX = (1450, 780)
 
 
 def save_panel(project_path, image, name, subdir=""):
-    """
-    Write one panel to project_path/visualizations/<subdir>/<name>.png, and
-    return the path.
+    """Write one panel to `visualizations/<subdir>/<name>.png`, and return the path.
 
-    Outside pipeline/ and products/, which have their own contracts -- this is
-    for a caller who wants a picture on disk and is naming the folder itself.
-
-    - `project_path` -- project whose visualizations directory to write into.
-    - `image` -- BGR, grayscale, or boolean-mask array to write. A boolean mask
-      is converted here rather than refused: emit_panel's contract allows one
-      and grids lay one out happily, so a sink that crashed on it would make an
-      operation's panel work in a run's grid and fail in a file.
-    - `name` -- filename stem; ".png" is appended if absent.
-    - `subdir` -- subfolder, conventionally the operation's name, so one
-      caller's output never mixes with another's.
+    Args:
+        project_path: Project whose visualizations directory to write into.
+        image: BGR, grayscale or boolean array.
+        name: Filename stem; `.png` is appended if absent.
+        subdir: Subfolder, conventionally the operation's name.
     """
     dest_dir = paths.visualizations_dir(project_path, subdir)
     dest_dir.mkdir(parents=True, exist_ok=True)
@@ -71,34 +50,22 @@ def save_panel(project_path, image, name, subdir=""):
     if image.dtype == bool:
         image = mask_to_bgr(image)
 
-    cv2.imwrite(str(dest), image)   # cv2 wants a str, not a Path
+    cv2.imwrite(str(dest), image)  # cv2 wants a str, not a Path
     return dest
 
 
 class PanelFiles:
-    """
-    A panel sink that writes every panel it's given as its own file.
+    """A panel sink that writes every panel as its own file.
 
-    The counterpart to a pipeline Report, and the other thing a Segment's
-    panel_sink can be. A report samples and composes because that's what makes a
-    10,000-occurrence run inspectable; this writes one file per panel because
-    that's what you want when you are looking hard at three specimens -- full
-    resolution, one image per step, no grid cell shrinking the text.
+    For hand-built segments, as `Segment(..., panel_sink=PanelFiles(path))`. Files land in
+    `visualizations/[<prefix>/]<stage>/<occurrence_id>.png`.
 
-    Deliberately NOT reachable through a run's visualize= argument. Per-panel
-    files are right for a handful of segments you constructed yourself, and
-    ruinous for a run over a collection, so getting them takes saying so:
+    Args:
+        project_path: Project whose visualizations directory to write into.
+        prefix: Folder to put every stage under, to keep one batch apart from another.
 
-        segment = Segment(image, mask=mask, occurrence_id="a1",
-                          project_path=path, panel_sink=PanelFiles(path))
-
-    Files land in visualizations/<stage>/<occurrence_id>.png, one folder per
-    stage, so one operation's output never mixes with another's.
-
-    - `prefix` -- optional, namespaces every stage under
-      visualizations/<prefix>/<stage>/ instead, for a caller who runs several
-      batches of hand-built segments and needs each batch's panels kept apart
-      from the others.
+    Attributes:
+        paths: The files written so far.
     """
 
     def __init__(self, project_path, prefix=""):
@@ -107,29 +74,24 @@ class PanelFiles:
         self.paths = []
 
     def wants(self, occurrence_id):
-        """True always -- a file sink has no sample to be in."""
+        """Return True: a file sink takes every occurrence."""
         return True
 
     def collect(self, occurrence_id, stage, image):
-        """Write one panel, recording its path on self.paths."""
+        """Write one panel, and record its path on `paths`."""
         subdir = f"{self.prefix}/{stage}" if self.prefix else stage
-        dest = save_panel(self.project_path, image, str(occurrence_id),
-                          subdir=subdir)
+        dest = save_panel(self.project_path, image, str(occurrence_id), subdir=subdir)
         self.paths.append(dest)
         return dest
 
 
 def segment_panel(image, mask=None, lines=()):
-    """
-    The panel a driver draws for one item: the mask over the image, captioned.
+    """Return the panel a driver draws for one item: the mask over the image, captioned.
 
-    What "here is what this occurrence looked like when it was processed" is
-    everywhere it is drawn -- a metric run's measured values, a dataset
-    export's class, a disagreement's two numbers.
-
-    - `image` -- BGR image to draw on; copied, never modified.
-    - `mask` -- boolean mask to tint, or None to caption the image alone.
-    - `lines` -- text lines, drawn top-left in order.
+    Args:
+        image: BGR image; copied, not modified.
+        mask: Boolean mask to tint, or None.
+        lines: Text lines, drawn top-left in order.
     """
     panel = overlay_mask(image, mask) if mask is not None else np.asarray(image).copy()
     for line, text in enumerate(lines):
@@ -138,15 +100,18 @@ def segment_panel(image, mask=None, lines=()):
 
 
 def mask_to_bgr(mask):
-    """A boolean mask as a white-on-black BGR image, ready to draw on."""
-    return cv2.cvtColor((np.asarray(mask).astype(np.uint8) * 255),
-                        cv2.COLOR_GRAY2BGR)
+    """Return a boolean mask as a white-on-black BGR image."""
+    return cv2.cvtColor((np.asarray(mask).astype(np.uint8) * 255), cv2.COLOR_GRAY2BGR)
 
 
 def overlay_mask(image, mask, color=REMOVED_COLOR, alpha=0.5):
-    """
-    The image with mask pixels tinted -- the standard "is this segmentation
-    right" view, and what every human-annotation window shows.
+    """Return the image with the mask's pixels tinted.
+
+    Args:
+        image: BGR image.
+        mask: Boolean mask.
+        color: BGR tint.
+        alpha: Tint strength, 0 to 1.
     """
     out = np.asarray(image).copy()
     if out.ndim == 2:
@@ -155,20 +120,20 @@ def overlay_mask(image, mask, color=REMOVED_COLOR, alpha=0.5):
     selected = np.asarray(mask) > 0
     if selected.any():
         out[selected] = (
-            (1 - alpha) * out[selected].astype(np.float32)
-            + alpha * np.array(color, dtype=np.float32)
+            (1 - alpha) * out[selected].astype(np.float32) + alpha * np.array(color, dtype=np.float32)
         ).astype(np.uint8)
     return out
 
-def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=ONLY_MASK_COLOR,
-               only_other=REMOVED_COLOR):
-    """
-    Two masks compared as one colored image: agreement in white, each mask's
-    exclusive pixels in its own color.
 
-    Used for every mask-vs-mask question in the package -- automated against
-    a reference, a mask against its own mirror, before against after a
-    transform -- so the colors mean the same thing wherever you see them.
+def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=ONLY_MASK_COLOR, only_other=REMOVED_COLOR):
+    """Return two masks compared as one image: agreement, and each mask's own pixels, by color.
+
+    Args:
+        mask: First boolean mask.
+        other: Second boolean mask.
+        agree: Color where both are set.
+        only_mask: Color where only `mask` is set.
+        only_other: Color where only `other` is set.
     """
     mask = np.asarray(mask) > 0
     other = np.asarray(other) > 0
@@ -181,19 +146,17 @@ def diff_panel(mask, other, agree=AGREE_COLOR, only_mask=ONLY_MASK_COLOR,
 
 
 def fit_for_display(image, max_size="screen", enlarge=True):
-    """
-    An image resized to fit a screen-sized box, and the factor it was resized by.
+    """Return an image resized to fit a screen-sized box, and the factor it was resized by.
 
-    Enlarging uses nearest-neighbour so pixels and mask edges stay crisp to
-    click on; shrinking uses area averaging. Divide a clicked point by the
-    factor to get it back in the image's own pixels.
+    Divide a clicked point by the factor to get it back in the image's own pixels.
 
-    - `image` -- array to show; returned unchanged (not copied) at factor 1.
-    - `max_size` -- `(width, height)` box, `"screen"` for `DISPLAY_MAX`, or
-      None for no resizing.
-    - `enlarge` -- False only ever shrinks.
+    Args:
+        image: Array to show; returned as is at factor 1.
+        max_size: `(width, height)` box, `"screen"` for `DISPLAY_MAX`, or None for no resizing.
+        enlarge: False only ever shrinks.
 
-    Returns `(display_image, scale)`.
+    Returns:
+        `(display_image, scale)`.
     """
     if isinstance(max_size, str):
         max_size = DISPLAY_MAX
@@ -211,23 +174,25 @@ def fit_for_display(image, max_size="screen", enlarge=True):
 
 
 def annotate(image, text, line=0, color=TEXT_COLOR):
-    """
-    Draw one line of small diagnostic text at the top-left, in place.
+    """Draw one line of small text at the top-left of an image, in place.
 
-    - `line` -- 0-based line number, so several calls stack without each caller
-      computing y offsets.
+    Args:
+        image: Image to draw on.
+        text: The text.
+        line: 0-based line number, so several calls stack.
+        color: BGR text color.
     """
-    cv2.putText(image, text, (5, 15 + 17 * line), cv2.FONT_HERSHEY_SIMPLEX,
-                0.4, color, 1)
+    cv2.putText(image, text, (5, 15 + 17 * line), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1)
     return image
 
 
 def bordered(image, color, width=4):
-    """
-    A copy of `image` with a solid frame drawn over its outer `width` pixels.
+    """Return a copy of an image with a solid frame drawn over its outer pixels.
 
-    The frame is drawn inward, so the result is the same size and everything
-    inside the frame is untouched: for marking a cell by category in a grid.
+    Args:
+        image: Image to frame; its size is unchanged.
+        color: BGR frame color.
+        width: Frame width in pixels.
     """
     framed = np.asarray(image).copy()
     width = max(1, min(int(width), min(framed.shape[:2]) // 2))
@@ -239,23 +204,12 @@ def bordered(image, color, width=4):
 
 
 def side_by_side(*images):
-    """
-    Stack images horizontally, bottom-padding the shorter ones with black.
-
-    Needed because panels being compared often differ in height -- a rotated
-    image is taller than the one it came from -- and hstack refuses to join
-    them.
-    """
-    images = [mask_to_bgr(image) if np.asarray(image).dtype == bool else image
-              for image in images]
-    images = [
-        cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image
-        for image in images
-    ]
+    """Return images stacked horizontally, the shorter ones padded with black at the bottom."""
+    images = [mask_to_bgr(image) if np.asarray(image).dtype == bool else image for image in images]
+    images = [cv2.cvtColor(image, cv2.COLOR_GRAY2BGR) if image.ndim == 2 else image for image in images]
     height = max(image.shape[0] for image in images)
     padded = [
-        cv2.copyMakeBorder(image, 0, height - image.shape[0], 0, 0,
-                           cv2.BORDER_CONSTANT, value=(0, 0, 0))
+        cv2.copyMakeBorder(image, 0, height - image.shape[0], 0, 0, cv2.BORDER_CONSTANT, value=(0, 0, 0))
         for image in images
     ]
     return np.hstack(padded)

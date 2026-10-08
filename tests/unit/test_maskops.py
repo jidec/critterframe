@@ -57,8 +57,7 @@ def test_two_empty_masks_agree():
     Vacuously, and 1.0 is the right answer rather than a division by zero:
     neither found anything, and they do not disagree about where it is.
     """
-    score = mask_iou(np.zeros((10, 10), bool),
-                                        np.zeros((10, 10), bool))
+    score = mask_iou(np.zeros((10, 10), bool), np.zeros((10, 10), bool))
     assert score == 1.0
 
 
@@ -142,8 +141,7 @@ def test_bounds_are_inclusive_of_the_last_row_and_column():
 
 
 def test_a_single_pixel_is_one_by_one():
-    assert mask_bounds(a_mask(box=(slice(5, 6), slice(7, 8)))) == {
-        "x": 7, "y": 5, "width": 1, "height": 1}
+    assert mask_bounds(a_mask(box=(slice(5, 6), slice(7, 8)))) == {"x": 7, "y": 5, "width": 1, "height": 1}
 
 
 def test_an_empty_mask_has_no_box_to_report():
@@ -158,7 +156,7 @@ def test_an_empty_mask_has_no_box_to_report():
 
 def test_the_biggest_blob_survives_and_the_rest_do_not():
     mask = a_mask()
-    mask[80:83, 80:83] = True          # a speck, far from the body
+    mask[80:83, 80:83] = True  # a speck, far from the body
 
     kept = largest_component(mask)
     assert kept[20:60, 20:60].all()
@@ -173,10 +171,10 @@ def test_edge_distance_counts_the_frame_as_an_edge():
     from critterframe.maskops import edge_distance, inscribed_radius
 
     mask = np.zeros((20, 40), bool)
-    mask[:, 10:30] = True                       # runs off the top and bottom of the frame
+    mask[:, 10:30] = True  # runs off the top and bottom of the frame
     distance = edge_distance(mask)
 
-    assert distance[0, 20] == pytest.approx(1.0)       # the frame is one pixel away
+    assert distance[0, 20] == pytest.approx(1.0)  # the frame is one pixel away
     assert distance[10, 20] == pytest.approx(10.0, abs=0.5)
     assert (distance[~mask] == 0).all()
     assert inscribed_radius(mask) == pytest.approx(10.0, abs=0.5)

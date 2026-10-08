@@ -30,8 +30,7 @@ from helpers.synthetic import draw_specimen
 
 
 def a_segment(panel_sink=None):
-    return Segment(draw_specimen(0), occurrence_id="test",
-                   panel_sink=panel_sink)
+    return Segment(draw_specimen(0), occurrence_id="test", panel_sink=panel_sink)
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +50,7 @@ def test_the_run_records_what_the_model_reported():
     assert info["score"] == 0.9
     assert info["area"] > 0
     assert 0 < info["area_fraction"] < 1
-    assert info["cutoff"] == 100          # the model's own diagnostics survive
+    assert info["cutoff"] == 100  # the model's own diagnostics survive
 
 
 def test_a_model_without_a_score_reports_none_rather_than_zero():
@@ -99,8 +98,7 @@ def test_the_threshold_reaches_the_model_and_the_hash():
 
 
 def test_the_model_reaches_the_hash_through_its_identity():
-    assert (cf.segment(ThresholdModel(cutoff=100)).spec()
-            != cf.segment(ThresholdModel(cutoff=120)).spec())
+    assert cf.segment(ThresholdModel(cutoff=100)).spec() != cf.segment(ThresholdModel(cutoff=120)).spec()
 
 
 def test_a_segmentation_is_a_segment_kind_operation():
@@ -118,17 +116,21 @@ def test_a_segmentation_is_a_segment_kind_operation():
 
 
 def test_one_part_gets_one_recipe():
-    recipes = _build_recipes("segments", [cf.segment(ThresholdModel())], None,
-                             None, "organism", None, False)
+    recipes = _build_recipes("segments", [cf.segment(ThresholdModel())], None, None, "organism", None, False)
     assert list(recipes) == ["organism"]
     assert isinstance(recipes["organism"], Recipe)
 
 
 def test_several_outputs_get_a_recipe_each():
-    recipes = _build_recipes("parts", None,
-                             {"head": [cf.segment(ThresholdModel())],
-                              "wing": [cf.segment(ThresholdModel(cutoff=120))]},
-                             None, "organism", None, False)
+    recipes = _build_recipes(
+        "parts",
+        None,
+        {"head": [cf.segment(ThresholdModel())], "wing": [cf.segment(ThresholdModel(cutoff=120))]},
+        None,
+        "organism",
+        None,
+        False,
+    )
     assert sorted(recipes) == ["head", "wing"]
     assert recipes["head"].hash != recipes["wing"].hash
 
@@ -138,18 +140,22 @@ def test_no_run_name_defaults_to_the_part_it_produces():
     name isn't part of identity (Recipe.hash), so the common case -- one
     segmentation recipe per part -- needs no name decision at all.
     """
-    recipes = _build_recipes(None, [cf.segment(ThresholdModel())], None,
-                             None, "organism", None, False)
+    recipes = _build_recipes(None, [cf.segment(ThresholdModel())], None, None, "organism", None, False)
     assert recipes["organism"].name == "organism"
 
 
 def test_no_run_name_defaults_each_output_to_its_own_part():
     """outputs= with no name given: each part gets its own label, not one
     generic name shared across all of them."""
-    recipes = _build_recipes(None, None,
-                             {"head": [cf.segment(ThresholdModel())],
-                              "wing": [cf.segment(ThresholdModel(cutoff=120))]},
-                             None, "organism", None, False)
+    recipes = _build_recipes(
+        None,
+        None,
+        {"head": [cf.segment(ThresholdModel())], "wing": [cf.segment(ThresholdModel(cutoff=120))]},
+        None,
+        "organism",
+        None,
+        False,
+    )
     assert recipes["head"].name == "head"
     assert recipes["wing"].name == "wing"
 
@@ -162,22 +168,20 @@ def test_no_run_name_folds_reference_into_the_default():
     silently read as one recipe superseding the other instead of two meant
     to coexist for comparison.
     """
-    recipes = _build_recipes(None, [cf.draw_mask()], None,
-                             None, "organism", None, True)
+    recipes = _build_recipes(None, [cf.draw_mask()], None, None, "organism", None, True)
     assert recipes["organism"].name == "organism_reference"
 
 
 def test_no_run_name_folds_reference_into_each_outputs_own_default():
-    recipes = _build_recipes(None, None,
-                             {"head": [cf.draw_mask()], "wing": [cf.draw_mask()]},
-                             None, "organism", None, True)
+    recipes = _build_recipes(
+        None, None, {"head": [cf.draw_mask()], "wing": [cf.draw_mask()]}, None, "organism", None, True
+    )
     assert recipes["head"].name == "head_reference"
     assert recipes["wing"].name == "wing_reference"
 
 
 def test_an_explicit_run_name_is_used_as_is_even_when_reference():
-    recipes = _build_recipes("chosen_name", [cf.draw_mask()], None,
-                             None, "organism", None, True)
+    recipes = _build_recipes("chosen_name", [cf.draw_mask()], None, None, "organism", None, True)
     assert recipes["organism"].name == "chosen_name"
 
 
@@ -187,11 +191,16 @@ def test_shared_steps_go_in_front_of_every_output_s_own():
     part -- and the shared work is part of each branch's identity, because it
     changed what that branch saw.
     """
-    recipes = _build_recipes("parts", None,
-                             {"head": [cf.segment(ThresholdModel())]},
-                             [cf.remove_background()], "organism", None, False)
-    assert [op.name for op in recipes["head"].operations] == [
-        "remove_background", "segment"]
+    recipes = _build_recipes(
+        "parts",
+        None,
+        {"head": [cf.segment(ThresholdModel())]},
+        [cf.remove_background()],
+        "organism",
+        None,
+        False,
+    )
+    assert [op.name for op in recipes["head"].operations] == ["remove_background", "segment"]
 
 
 def test_the_mask_table_being_read_is_part_of_identity():
@@ -199,21 +208,25 @@ def test_the_mask_table_being_read_is_part_of_identity():
     A recipe measuring reference masks is not the recipe measuring canonical
     ones, even with identical operations.
     """
-    canonical = _build_recipes("segments", [cf.segment(ThresholdModel())], None,
-                               None, "organism", None, False)["organism"]
-    reference = _build_recipes("segments", [cf.segment(ThresholdModel())], None,
-                               None, "organism", None, True)["organism"]
+    canonical = _build_recipes(
+        "segments", [cf.segment(ThresholdModel())], None, None, "organism", None, False
+    )["organism"]
+    reference = _build_recipes(
+        "segments", [cf.segment(ThresholdModel())], None, None, "organism", None, True
+    )["organism"]
     assert canonical.hash != reference.hash
 
 
-@pytest.mark.parametrize("kwargs, message", [
-    ({"steps": [], "outputs": {}}, "either steps="),
-    ({"steps": None, "outputs": None}, "needs steps="),
-])
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({"steps": [], "outputs": {}}, "either steps="),
+        ({"steps": None, "outputs": None}, "needs steps="),
+    ],
+)
 def test_steps_and_outputs_are_mutually_exclusive(kwargs, message):
     with pytest.raises(ValueError, match=message):
-        _build_recipes("segments", kwargs["steps"], kwargs["outputs"], None,
-                       "organism", None, False)
+        _build_recipes("segments", kwargs["steps"], kwargs["outputs"], None, "organism", None, False)
 
 
 # ---------------------------------------------------------------------------
@@ -249,6 +262,7 @@ def test_a_model_may_draw_its_own_panel_instead():
     showing differently -- a detector's boxes, say. Only consulted when there
     is a sink to draw for.
     """
+
     class DrawsItsOwn(ThresholdModel):
         def visualize(self, segment, image, mask, score, info):
             segment.emit_panel(np.zeros_like(image), "custom")
@@ -275,8 +289,7 @@ def test_hand_drawn_and_automatic_masks_are_the_same_kind_of_thing():
     carries.
     """
     drawn = Recipe("segment", "by_hand", [cf.draw_mask()], part="organism")
-    automatic = Recipe("segment", "by_hand", [cf.segment(ThresholdModel())],
-                       part="organism")
+    automatic = Recipe("segment", "by_hand", [cf.segment(ThresholdModel())], part="organism")
     assert drawn.hash != automatic.hash
     assert drawn.kind == automatic.kind == "segment"
 

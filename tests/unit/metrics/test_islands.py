@@ -31,15 +31,15 @@ def test_a_mask_in_one_piece_has_no_islands():
 
 def test_each_fragment_besides_the_organism_is_one_island():
     mask = body()
-    mask[20:50, 20:50] = True          # a blob
-    mask[270:274, 270:274] = True      # a speck
+    mask[20:50, 20:50] = True  # a blob
+    mask[270:274, 270:274] = True  # a speck
     assert cf.n_islands()(a_segment(mask)) == 2
 
 
 def test_size_does_not_matter_only_separation():
     """One stray pixel is an island; a large lobe still attached is not."""
     mask = body()
-    mask[150:160, 150:260] = True      # attached to the body
+    mask[150:160, 150:260] = True  # attached to the body
     assert cf.n_islands()(a_segment(mask)) == 0
 
     mask[5, 5] = True
@@ -50,7 +50,7 @@ def test_touching_at_a_corner_is_attached():
     """8-connected, as remove_islands is: a diagonal neighbour is the same piece."""
     mask = np.zeros((10, 10), bool)
     mask[2:5, 2:5] = True
-    mask[5, 5] = True                  # diagonal to the block's corner
+    mask[5, 5] = True  # diagonal to the block's corner
     assert cf.n_islands()(a_segment(mask)) == 0
 
 

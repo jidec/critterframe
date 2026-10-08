@@ -40,10 +40,15 @@ def store_lengths(project_path, values, run_name="traits"):
     """Give each occurrence a body_length, which the group metrics fit on."""
     recipe = Recipe("metric", run_name, [cf.body_length()], part="organism")
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", "body_length",
-                                    value, unit="px")
-                    for occurrence_id, value in values.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(occurrence_id, "organism", "body_length", value, unit="px")
+            for occurrence_id, value in values.items()
+        ],
+    )
 
 
 def typical_lengths(count=8, odd_one_out=None):
@@ -54,9 +59,9 @@ def typical_lengths(count=8, odd_one_out=None):
 
 
 def a_context(project_path, occurrence_ids=None):
-    return RunContext(project_path, occurrence_ids or
-                      [f"specimen{index}" for index in range(8)],
-                      "organism", "scores")
+    return RunContext(
+        project_path, occurrence_ids or [f"specimen{index}" for index in range(8)], "organism", "scores"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -70,8 +75,7 @@ def test_group_lookup_maps_occurrences_to_their_group(metadata_project):
     assert groups["specimen1"] == "boxB"
 
 
-def test_group_lookup_without_a_group_column_puts_everyone_together(
-        metadata_project):
+def test_group_lookup_without_a_group_column_puts_everyone_together(metadata_project):
     """Which is the population-wide fallback, spelled as an empty mapping."""
     assert group_lookup(metadata_project, None) == {}
 
@@ -103,8 +107,7 @@ def test_the_features_and_the_reference_run_are_in_the_hash():
     base = cf.outlier([cf.body_length()], from_run="traits")
     assert base.spec() != cf.outlier([cf.max_width()], from_run="traits").spec()
     assert base.spec() != cf.outlier([cf.body_length()], from_run="qc").spec()
-    assert base.spec() != cf.outlier([cf.body_length()], from_run="traits",
-                                     group_col="device").spec()
+    assert base.spec() != cf.outlier([cf.body_length()], from_run="traits", group_col="device").spec()
 
 
 def test_the_fitted_model_is_not_in_the_hash():
@@ -120,8 +123,10 @@ def test_the_fitted_model_is_not_in_the_hash():
 
 def test_the_model_class_is_in_the_hash():
     """Swapping IsolationForest for KMeans is different work under one name."""
-    assert (cf.outlier([cf.body_length()], from_run="traits").spec()["parameters"]["model"]
-            != cf.cluster([cf.body_length()], from_run="traits").spec()["parameters"]["model"])
+    assert (
+        cf.outlier([cf.body_length()], from_run="traits").spec()["parameters"]["model"]
+        != cf.cluster([cf.body_length()], from_run="traits").spec()["parameters"]["model"]
+    )
 
 
 def test_scoring_without_fitting_first_says_so():
@@ -172,8 +177,7 @@ def test_a_population_model_is_fit_from_stored_values(metadata_project):
 
 def test_a_group_model_is_fit_per_group_when_asked(metadata_project):
     store_lengths(metadata_project, typical_lengths())
-    metric = cf.outlier([cf.body_length()], from_run="traits",
-                        group_col="device", min_group_size=2)
+    metric = cf.outlier([cf.body_length()], from_run="traits", group_col="device", min_group_size=2)
     metric.prepare(a_context(metadata_project))
 
     assert {"boxA", "boxB", POPULATION} <= set(metric.models)
@@ -185,8 +189,7 @@ def test_a_group_too_small_to_fit_falls_back_and_says_so(metadata_project, caplo
     like every other score in the column.
     """
     store_lengths(metadata_project, typical_lengths())
-    metric = cf.outlier([cf.body_length()], from_run="traits",
-                        group_col="device", min_group_size=100)
+    metric = cf.outlier([cf.body_length()], from_run="traits", group_col="device", min_group_size=100)
 
     with caplog.at_level("WARNING"):
         metric.prepare(a_context(metadata_project))
@@ -203,8 +206,7 @@ def test_the_reference_population_is_the_run_s_own_occurrences(metadata_project)
     """
     store_lengths(metadata_project, typical_lengths())
     metric = cf.outlier([cf.body_length()], from_run="traits")
-    metric.prepare(a_context(metadata_project, ["specimen0", "specimen1",
-                                                "specimen2"]))
+    metric.prepare(a_context(metadata_project, ["specimen0", "specimen1", "specimen2"]))
     assert POPULATION in metric.models
 
 
@@ -220,10 +222,12 @@ def test_an_unusual_specimen_scores_as_more_anomalous(measured_project):
     stricter or looser cutoff can be applied at export without refitting
     anything.
     """
-    cf.run_metrics(measured_project, run_name="scores",
-                   metrics=[cf.outlier([cf.body_length(), cf.max_width()],
-                                       from_run="traits")],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="scores",
+        metrics=[cf.outlier([cf.body_length(), cf.max_width()], from_run="traits")],
+        visualize=False,
+    )
     exported = cf.export_metrics(measured_project, run_names=["scores"])
 
     assert "scores__organism__outlier__anomaly_score" in exported.columns
@@ -258,12 +262,13 @@ def test_a_grouped_score_records_which_group_scored_it(measured_project):
     against: "unusual for boxA" and "unusual for this project" are different
     claims and land in the same column.
     """
-    cf.run_metrics(measured_project, run_name="scores",
-                   metrics=[cf.outlier([cf.body_length()], from_run="traits",
-                                       group_col="device", min_group_size=2)],
-                   visualize=False)
-    groups = cf.export_metrics(measured_project,
-                               run_names=["scores"])["scores__organism__outlier__group"]
+    cf.run_metrics(
+        measured_project,
+        run_name="scores",
+        metrics=[cf.outlier([cf.body_length()], from_run="traits", group_col="device", min_group_size=2)],
+        visualize=False,
+    )
+    groups = cf.export_metrics(measured_project, run_names=["scores"])["scores__organism__outlier__group"]
     assert set(groups) == {"boxA", "boxB"}
 
 
@@ -273,10 +278,12 @@ def test_a_cluster_assignment_is_a_metric_like_any_other(measured_project):
     Which is the point of metrics being "any derived value": a cluster label
     stores, exports, and filters exactly like a body length.
     """
-    cf.run_metrics(measured_project, run_name="groups",
-                   metrics=[cf.cluster([cf.body_length()], from_run="traits",
-                                       n_clusters=2)],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="groups",
+        metrics=[cf.cluster([cf.body_length()], from_run="traits", n_clusters=2)],
+        visualize=False,
+    )
     exported = cf.export_metrics(measured_project, run_names=["groups"])
     labels = exported["groups__organism__cluster__cluster_id"]
 
@@ -290,10 +297,13 @@ def test_a_cluster_assignment_is_a_metric_like_any_other(measured_project):
 @pytest.mark.slow
 def test_a_group_metric_is_repeat_aware_like_any_other(measured_project):
     def score(**kwargs):
-        return cf.run_metrics(measured_project, run_name="scores",
-                              metrics=[cf.outlier([cf.body_length()],
-                                                  from_run="traits")],
-                              visualize=False, **kwargs)["organism"]
+        return cf.run_metrics(
+            measured_project,
+            run_name="scores",
+            metrics=[cf.outlier([cf.body_length()], from_run="traits")],
+            visualize=False,
+            **kwargs,
+        )["organism"]
 
     assert score()["processed"] == 8
     assert score()["skipped"] == 8
@@ -337,8 +347,7 @@ def test_the_reference_population_is_recorded_as_a_digest(metadata_project):
     assert fit["population"] == ids_record(f"specimen{i}" for i in range(8))
 
 
-def test_the_population_is_what_the_run_covers_not_the_whole_project(
-        metadata_project):
+def test_the_population_is_what_the_run_covers_not_the_whole_project(metadata_project):
     """
     A limited run fits against fewer occurrences without its recipe hash moving
     an inch, so the record is the only thing that can tell the two fits apart.
@@ -346,8 +355,7 @@ def test_the_population_is_what_the_run_covers_not_the_whole_project(
     store_lengths(metadata_project, typical_lengths())
     metric = cf.outlier([cf.body_length()], from_run="traits")
 
-    narrowed = metric.prepare(
-        a_context(metadata_project, [f"specimen{i}" for i in range(5)]))
+    narrowed = metric.prepare(a_context(metadata_project, [f"specimen{i}" for i in range(5)]))
 
     assert narrowed["population"]["count"] == 5
 
@@ -359,8 +367,7 @@ def test_a_group_too_small_to_fit_is_recorded_as_such(metadata_project):
     numbers.
     """
     store_lengths(metadata_project, typical_lengths())
-    metric = cf.outlier([cf.body_length()], from_run="traits",
-                        group_col="species", min_group_size=4)
+    metric = cf.outlier([cf.body_length()], from_run="traits", group_col="species", min_group_size=4)
 
     groups = metric.prepare(a_context(metadata_project))["groups"]
 
@@ -371,8 +378,7 @@ def test_a_group_too_small_to_fit_is_recorded_as_such(metadata_project):
     assert groups["Libellula lydia"]["count"] == 3
 
 
-def test_an_occurrence_missing_a_feature_is_out_of_the_population(
-        metadata_project):
+def test_an_occurrence_missing_a_feature_is_out_of_the_population(metadata_project):
     """
     The record has to describe the rows that actually fit the model, not the
     rows the run was pointed at -- dropna decides, and the digest follows it.
@@ -381,8 +387,7 @@ def test_an_occurrence_missing_a_feature_is_out_of_the_population(
     del lengths["specimen7"]
     store_lengths(metadata_project, lengths)
 
-    fit = cf.outlier([cf.body_length()],
-                     from_run="traits").prepare(a_context(metadata_project))
+    fit = cf.outlier([cf.body_length()], from_run="traits").prepare(a_context(metadata_project))
 
     assert fit["population"]["count"] == 7
 
@@ -409,10 +414,12 @@ def test_a_metric_run_stores_the_fit_on_the_run(measured_project):
     """
     from critterframe.records.runs import load_runs
 
-    cf.run_metrics(measured_project, run_name="scores",
-                   metrics=[cf.outlier([cf.body_length()], from_run="traits",
-                                       group_col="species")],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="scores",
+        metrics=[cf.outlier([cf.body_length()], from_run="traits", group_col="species")],
+        visualize=False,
+    )
 
     context = load_runs(measured_project, name="scores")["context"].iloc[0]
     assert context["occurrences"]["count"] == 8
@@ -427,13 +434,15 @@ def test_a_fit_draws_its_reference_population_when_the_run_visualizes(metadata_p
 
     store_lengths(metadata_project, typical_lengths())
     report = open_report(metadata_project, "scores", "abc").begin([])
-    context = RunContext(metadata_project, [f"specimen{index}" for index in range(8)],
-                         "organism", "scores", report=report)
+    context = RunContext(
+        metadata_project, [f"specimen{index}" for index in range(8)], "organism", "scores", report=report
+    )
 
     cf.outlier([cf.body_length()], from_run="traits", group_col="device").prepare(context)
 
-    assert paths.pipeline_file_path(metadata_project, "scores", "abc",
-                                    suffix="outlier__reference", extension="png").exists()
+    assert paths.pipeline_file_path(
+        metadata_project, "scores", "abc", suffix="outlier__reference", extension="png"
+    ).exists()
 
 
 def test_a_fit_without_a_report_draws_nothing(metadata_project):
@@ -464,18 +473,21 @@ class StubEmbedder:
 
 def two_clusters():
     """Four specimens near one point, four near another, as 3-d vectors."""
-    return {f"specimen{index}": ([0.0, 0.0, 1.0] if index < 4 else [1.0, 1.0, 0.0])
-            for index in range(8)}
+    return {f"specimen{index}": ([0.0, 0.0, 1.0] if index < 4 else [1.0, 1.0, 0.0]) for index in range(8)}
 
 
 def store_vectors(project_path, values, model=None, run_name="embed"):
-    recipe = Recipe("metric", run_name, [cf.embedding(model or StubEmbedder())],
-                    part="organism")
+    recipe = Recipe("metric", run_name, [cf.embedding(model or StubEmbedder())], part="organism")
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", "embedding",
-                                    value, unit="embedding")
-                    for occurrence_id, value in values.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(occurrence_id, "organism", "embedding", value, unit="embedding")
+            for occurrence_id, value in values.items()
+        ],
+    )
     return recipe.hash
 
 
@@ -485,8 +497,7 @@ def stored(occurrence_id):
 
 def stored_cluster(**kwargs):
     kwargs.setdefault("n_clusters", 2)
-    return cf.cluster([cf.embedding(StubEmbedder())], from_run="embed",
-                      **kwargs)
+    return cf.cluster([cf.embedding(StubEmbedder())], from_run="embed", **kwargs)
 
 
 def test_a_vector_feature_becomes_one_column_per_element(metadata_project):
@@ -555,8 +566,8 @@ def test_a_probability_below_the_threshold_is_unassigned(metadata_project):
 
     store_vectors(metadata_project, two_clusters())
     metric = stored_cluster(
-        model_factory=lambda: GaussianMixture(2, random_state=0, reg_covar=1e-3),
-        probability_threshold=1.01)
+        model_factory=lambda: GaussianMixture(2, random_state=0, reg_covar=1e-3), probability_threshold=1.01
+    )
     metric.prepare(a_context(metadata_project))
 
     result = metric(stored("specimen0"))
@@ -585,10 +596,17 @@ def test_reducing_dimensions_first_is_a_pipeline_in_the_hash(metadata_project):
 
 def test_the_default_model_adds_nothing_to_the_hash():
     """Every cluster/outlier hash recorded before model settings were hashed holds."""
-    for metric in (cf.cluster([cf.body_length()], from_run="traits"),
-                   cf.outlier([cf.body_length()], from_run="traits")):
+    for metric in (
+        cf.cluster([cf.body_length()], from_run="traits"),
+        cf.outlier([cf.body_length()], from_run="traits"),
+    ):
         assert set(metric.spec()["parameters"]) == {
-            "features", "from_run", "group_col", "min_group_size", "model"}
+            "features",
+            "from_run",
+            "group_col",
+            "min_group_size",
+            "model",
+        }
 
 
 def test_a_different_cluster_count_is_different_work():
@@ -612,8 +630,7 @@ def test_a_different_contamination_is_different_work():
 def test_a_feature_configured_unlike_the_stored_one_is_refused(metadata_project):
     """Otherwise one model's hash would be fit on another model's vectors."""
     store_vectors(metadata_project, two_clusters(), model=StubEmbedder("a"))
-    metric = cf.cluster([cf.embedding(StubEmbedder("b"))], from_run="embed",
-                        n_clusters=2)
+    metric = cf.cluster([cf.embedding(StubEmbedder("b"))], from_run="embed", n_clusters=2)
     with pytest.raises(ValueError, match="configured"):
         metric.prepare(a_context(metadata_project))
 

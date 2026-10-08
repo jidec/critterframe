@@ -1,17 +1,4 @@
-"""
-Draw/correct a mask by hand -- an alternative segmentation, not a separate
-system.
-
-draw_mask() and correct_mask() are Segmentation operations exactly as
-segment(groundedsam2()) is: they compose with transforms the same way and
-record a run and a recipe hash the same way. That is what lets validation
-simply compare a human's mask against a model's.
-
-Both open an OpenCV window and block on a person, so scope them to a subset of
-a few dozen occurrences rather than a whole project. Both are
-deterministic=False, since two people painting one crop produce two different
-masks under one recipe hash -- so run_segments asks for an explicit force=.
-"""
+"""Draw or correct a mask by hand: draw_mask and correct_mask."""
 
 import logging
 
@@ -35,62 +22,46 @@ DEFAULT_BRUSH_RADIUS = 8
 
 
 def correct_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
+    """Operation: show the mask over the image and let a person fix it.
+
+    Left-drag erases, right-drag paints, `+` and `-` resize the brush, `s` saves and Esc
+    cancels. The mask corrected is the one the segment arrives with, so use it with
+    `run_segments(from_part=...)`; with none, it starts empty like `draw_mask`.
+
+    Args:
+        brush_radius: Starting brush size in screen pixels.
     """
-    Operation: show the current mask over the image and let a human fix it.
-
-    Left-drag erases pixels wrongly included, right-drag paints in pixels that
-    were missed; '+'/'-' grow/shrink the brush, 's' saves, Esc cancels.
-    Covering both failure directions is what makes the result usable as a
-    reference either way.
-
-    The mask corrected is whatever the segment arrives with, which in a run means
-    run_segments(from_part=...). With no from_part the segment starts empty and
-    this behaves like draw_mask() -- a silent difference, since the window looks
-    the same.
-
-    Point this at crops that HAVE a definable correction. With two organisms, no
-    organism, or one running off the edge there is no single boundary to paint,
-    so whatever gets painted is invented and then drags down the IoU
-    validate_masks reports as if the segmenter had erred. Screen with
-    exclusive_label_annotation(requires_mask=False) first, then run this over
-    the crops labelled usable.
-
-    - `brush_radius` -- starting brush size in SCREEN pixels, since the window
-      is fitted to `panels.DISPLAY_MAX`; adjustable in-session with '+'/'-'
-      and not itself re-hashed by that adjustment.
-    """
-    return Segmentation("correct_mask", _paint,
-                        {"brush_radius": brush_radius, "start_empty": False},
-                        version="1", deterministic=False)
+    return Segmentation(
+        "correct_mask",
+        _paint,
+        {"brush_radius": brush_radius, "start_empty": False},
+        version="1",
+        deterministic=False,
+    )
 
 
 def draw_mask(brush_radius=DEFAULT_BRUSH_RADIUS):
-    """
-    Operation: have a human paint a mask from scratch, with no model involved.
+    """Operation: have a person paint a mask from scratch.
 
-    For organisms no available model segments acceptably, and for building a
-    first training set where there's nothing to correct yet. Same window and
-    controls as correct_mask(), just starting from an empty mask.
+    Same window and controls as `correct_mask`.
 
-    - `brush_radius` -- starting brush size in SCREEN pixels, as in
-      correct_mask().
+    Args:
+        brush_radius: Starting brush size in screen pixels.
     """
-    return Segmentation("draw_mask", _paint,
-                        {"brush_radius": brush_radius, "start_empty": True},
-                        version="1", deterministic=False)
+    return Segmentation(
+        "draw_mask",
+        _paint,
+        {"brush_radius": brush_radius, "start_empty": True},
+        version="1",
+        deterministic=False,
+    )
 
 
 def _wait_for_key(valid_keys):
-    """
-    Block (no timeout) until one of valid_keys is pressed, ignoring anything else.
+    """Block until one of the valid keys is pressed.
 
-    DELIBERATELY duplicated in metrics.annotation rather than shared: the tests
-    for both interactive operations stub the GUI with
-    monkeypatch.setattr(<this module>, "cv2", FakeCv2(...)), which rebinds `cv2`
-    in THIS module's namespace only. Moved into visualization.panels, the shared
-    copy would keep its own reference to the real cv2, the fake would never
-    reach it, and every interactive test would block on a real waitKey until
-    pytest-timeout killed the run. Four lines is cheaper than that.
+    Duplicated in `metrics.annotation` on purpose: tests replace `cv2` in this module's
+    namespace, and a shared copy elsewhere would keep the real one and hang.
     """
     while True:
         key = cv2.waitKey(20) & 0xFF
@@ -99,15 +70,11 @@ def _wait_for_key(valid_keys):
 
 
 def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
-    """
-    The interactive painting loop behind both correct_mask() and draw_mask().
+    """Run the painting loop behind `correct_mask` and `draw_mask`.
 
-    Returns (segment, info) with info carrying area before/after,
-    removed_fraction, added_fraction, and iou against the starting mask.
-    Removed and added are reported separately rather than as one net figure
-    because they answer different questions about the segmenter being graded --
-    a mask that was 20% too big and one that was 20% too small are not the same
-    failure.
+    Returns:
+        `(segment, info)`, with the area before and after, `removed_fraction`,
+        `added_fraction`, and `iou` against the starting mask.
     """
     image = np.asarray(segment.image)
     if start_empty or segment.mask is None:
@@ -116,7 +83,7 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
         original = segment.mask
 
     edited = (original.astype(np.uint8) * 255).copy()
-    painting = {"mode": None, "last": None}   # mode: "erase", "add", or None
+    painting = {"mode": None, "last": None}  # mode: "erase", "add", or None
     brush = {"radius": brush_radius}
     instructions = "left=erase right=add (+/-=brush, 's'=save, Esc=cancel)"
     window = f"{segment.occurrence_id} {segment.part} - {instructions}"
@@ -130,8 +97,7 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
         cv2.imshow(window, annotate(shown, f"brush radius: {brush['radius']}"))
 
     def to_image(x, y):
-        return (min(width - 1, max(0, round(x / scale))),
-                min(height - 1, max(0, round(y / scale))))
+        return (min(width - 1, max(0, round(x / scale))), min(height - 1, max(0, round(y / scale))))
 
     def paint_at(x, y, value):
         point = to_image(x, y)
@@ -200,13 +166,11 @@ def _paint(segment, brush_radius=DEFAULT_BRUSH_RADIUS, start_empty=False):
 
 
 def _visualize(segment, original, corrected, info):
-    """Kept pixels white, erased red, added green -- the shared comparison colours."""
+    """Emit a panel: kept pixels white, erased red, added green."""
     if segment.panel_sink is None:
         return
 
-    panel = diff_panel(original, corrected, only_mask=REMOVED_COLOR,
-                       only_other=ADDED_COLOR)
-    annotate(panel, f"iou {info['iou']:.2f} "
-                    f"-{info['removed_fraction']:.1%} +{info['added_fraction']:.1%}")
+    panel = diff_panel(original, corrected, only_mask=REMOVED_COLOR, only_other=ADDED_COLOR)
+    annotate(panel, f"iou {info['iou']:.2f} -{info['removed_fraction']:.1%} +{info['added_fraction']:.1%}")
 
     segment.emit_panel(panel, "manual")

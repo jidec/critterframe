@@ -42,8 +42,7 @@ class ThresholdModel:
         self.erode = erode
 
     def identity(self):
-        return {"class": "ThresholdModel", "cutoff": self.cutoff,
-                "erode": self.erode}
+        return {"class": "ThresholdModel", "cutoff": self.cutoff, "erode": self.erode}
 
     def predict(self, image, mask_threshold=0.5):
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)

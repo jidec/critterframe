@@ -29,16 +29,14 @@ SPECIMENS = 8
 
 def segment_run(project_path, model=None, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_segments(project_path,
-                           steps=[cf.segment(model or ThresholdModel())],
-                           **kwargs)["organism"]
+    return cf.run_segments(project_path, steps=[cf.segment(model or ThresholdModel())], **kwargs)["organism"]
 
 
 def metric_run(project_path, metrics=None, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_metrics(project_path, run_name="traits",
-                          metrics=metrics or [cf.body_length()],
-                          **kwargs)["organism"]
+    return cf.run_metrics(project_path, run_name="traits", metrics=metrics or [cf.body_length()], **kwargs)[
+        "organism"
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -50,9 +48,16 @@ def test_the_first_run_processes_everything(image_project):
     result = segment_run(image_project)
     assert result.pop("elapsed_s") >= 0
     assert result == {
-        "attempted": SPECIMENS, "processed": SPECIMENS, "skipped": 0,
-        "no_input": 0, "failed": 0, "failures": [], "flags": {},
-        "previously_failed": 0, "run_id": 1}
+        "attempted": SPECIMENS,
+        "processed": SPECIMENS,
+        "skipped": 0,
+        "no_input": 0,
+        "failed": 0,
+        "failures": [],
+        "flags": {},
+        "previously_failed": 0,
+        "run_id": 1,
+    }
 
 
 def test_an_identical_rerun_does_no_work(segmented_project):
@@ -84,9 +89,9 @@ def test_a_renamed_run_is_not_new_work(segmented_project):
     run is recorded, but nothing is recomputed and the canonical mask stays
     exactly as it was.
     """
-    result = cf.run_segments(segmented_project, run_name="second_pass",
-                             steps=[cf.segment(ThresholdModel())],
-                             visualize=False)["organism"]
+    result = cf.run_segments(
+        segmented_project, run_name="second_pass", steps=[cf.segment(ThresholdModel())], visualize=False
+    )["organism"]
     assert (result["processed"], result["skipped"]) == (0, SPECIMENS)
 
 
@@ -99,11 +104,15 @@ def test_a_default_named_canonical_and_reference_run_do_not_collide(segmented_pr
     one in history.
     """
     canonical = run_records.load_runs(segmented_project, kind="segment").iloc[0]
-    assert canonical["name"] == "organism"   # from the segmented_project template
+    assert canonical["name"] == "organism"  # from the segmented_project template
 
-    reference = cf.run_segments(segmented_project, from_part="organism",
-                                steps=[cf.segment(ThresholdModel())],
-                                reference=True, visualize=False)["organism"]
+    reference = cf.run_segments(
+        segmented_project,
+        from_part="organism",
+        steps=[cf.segment(ThresholdModel())],
+        reference=True,
+        visualize=False,
+    )["organism"]
     assert reference["processed"] == SPECIMENS
 
     runs = run_records.load_runs(segmented_project, kind="segment")
@@ -175,13 +184,12 @@ def test_a_changed_recipe_retries_a_failure_without_being_asked(image_project):
     is -- a retuned recipe is automatically new work, no retry_failed needed.
     """
     model = FailingModel()
-    cf.run_segments(image_project, steps=[cf.segment(model, mask_threshold=0.0)],
-                    visualize=False)
+    cf.run_segments(image_project, steps=[cf.segment(model, mask_threshold=0.0)], visualize=False)
     calls_after_first = model.calls
 
-    result = cf.run_segments(image_project,
-                             steps=[cf.segment(model, mask_threshold=0.1)],
-                             visualize=False)["organism"]
+    result = cf.run_segments(image_project, steps=[cf.segment(model, mask_threshold=0.1)], visualize=False)[
+        "organism"
+    ]
     assert result["failed"] == SPECIMENS
     assert model.calls == calls_after_first * 2
 
@@ -218,9 +226,10 @@ def test_a_renamed_metric_run_is_copied_and_its_own_column_is_populated(segmente
     column empty forever). Instead the existing values are copied onto the
     new run_id: no model call, but the new name gets its own real rows.
     """
-    metric_run(segmented_project)   # run_name="traits"
-    result = cf.run_metrics(segmented_project, run_name="traits_v2",
-                            metrics=[cf.body_length()], visualize=False)["organism"]
+    metric_run(segmented_project)  # run_name="traits"
+    result = cf.run_metrics(
+        segmented_project, run_name="traits_v2", metrics=[cf.body_length()], visualize=False
+    )["organism"]
     assert (result["processed"], result["copied"]) == (0, SPECIMENS)
 
     original = cf.load_metrics(segmented_project, run_names=["traits"])
@@ -238,21 +247,21 @@ def test_a_renamed_metric_run_is_copied_and_its_own_column_is_populated(segmente
 def outlier_run(project_path, run_name="species_qc", **kwargs):
     kwargs.setdefault("visualize", False)
     return cf.run_metrics(
-        project_path, run_name=run_name,
+        project_path,
+        run_name=run_name,
         metrics=[cf.outlier(features=[cf.body_length()], from_run="traits")],
         **kwargs,
     )["organism"]
 
 
-def test_a_group_metric_rerun_after_the_population_grows_rescopes_everything(
-        segmented_project):
+def test_a_group_metric_rerun_after_the_population_grows_rescopes_everything(segmented_project):
     """
     prepare() fits against context.occurrence_ids, which is deliberately not
     part of the hash -- so growing the reference population from 5 to 8 must
     invalidate the first 5's scores, fit against a population that no longer
     describes the project, rather than leaving them silently stale.
     """
-    metric_run(segmented_project)   # 'traits': body_length for all 8
+    metric_run(segmented_project)  # 'traits': body_length for all 8
 
     first = outlier_run(segmented_project, limit=5)
     assert first["processed"] == 5
@@ -262,8 +271,7 @@ def test_a_group_metric_rerun_after_the_population_grows_rescopes_everything(
     assert second["copied"] == 0
 
 
-def test_a_group_metric_run_under_a_new_name_with_the_same_population_is_copied(
-        segmented_project):
+def test_a_group_metric_run_under_a_new_name_with_the_same_population_is_copied(segmented_project):
     metric_run(segmented_project)
     first = outlier_run(segmented_project, run_name="species_qc")
     assert first["processed"] == SPECIMENS
@@ -272,8 +280,7 @@ def test_a_group_metric_run_under_a_new_name_with_the_same_population_is_copied(
     assert (second["processed"], second["copied"]) == (0, SPECIMENS)
 
 
-def test_a_group_metric_run_under_a_new_name_with_a_different_population_recomputes(
-        segmented_project):
+def test_a_group_metric_run_under_a_new_name_with_a_different_population_recomputes(segmented_project):
     """
     A narrower population is a different fit, even at an unchanged recipe_hash
     -- copying the wider run's values here would attribute a score to a model
@@ -295,8 +302,7 @@ def test_adding_a_metric_to_a_recipe_is_new_work(segmented_project):
     records.runs.resolve_recipe_currency.
     """
     metric_run(segmented_project, metrics=[cf.body_length()])
-    result = metric_run(segmented_project,
-                        metrics=[cf.body_length(), cf.max_width()], force=True)
+    result = metric_run(segmented_project, metrics=[cf.body_length(), cf.max_width()], force=True)
     assert result["processed"] == SPECIMENS
 
 
@@ -311,8 +317,7 @@ def test_a_transform_before_the_metrics_is_part_of_the_recipe(segmented_project)
     assert result["processed"] == SPECIMENS
 
 
-def test_occurrences_without_a_mask_are_neither_measured_nor_counted_done(
-        image_project, caplog):
+def test_occurrences_without_a_mask_are_neither_measured_nor_counted_done(image_project, caplog):
     """
     Nothing to measure is not a failure and not a skip -- it is an occurrence
     segmentation hasn't reached, and the run says so out loud.
@@ -330,8 +335,7 @@ def test_occurrences_without_a_mask_are_neither_measured_nor_counted_done(
 # ---------------------------------------------------------------------------
 
 
-def test_a_recipe_that_would_not_reproduce_itself_refuses_the_shortcut(
-        segmented_project):
+def test_a_recipe_that_would_not_reproduce_itself_refuses_the_shortcut(segmented_project):
     """
     Skipping is sound only because an identical hash means identical work. A
     hand-drawn mask breaks that: two people painting one crop hash alike and
@@ -340,8 +344,7 @@ def test_a_recipe_that_would_not_reproduce_itself_refuses_the_shortcut(
     both readings stay reachable.
     """
     with pytest.raises(ValueError, match="not deterministic"):
-        cf.run_segments(segmented_project, run_name="by_hand",
-                        steps=[cf.draw_mask()], visualize=False)
+        cf.run_segments(segmented_project, run_name="by_hand", steps=[cf.draw_mask()], visualize=False)
 
     # Nothing else changes: a recipe of reproducible operations still skips
     # completed work without being asked twice.
@@ -420,13 +423,11 @@ def test_a_reference_failure_is_not_erased_by_a_canonical_success(image_project)
     """
     from critterframe.records import failures as failure_records
 
-    cf.run_segments(image_project, steps=[cf.segment(FailingModel())],
-                    reference=True, visualize=False)
+    cf.run_segments(image_project, steps=[cf.segment(FailingModel())], reference=True, visualize=False)
     reference_failures = failure_records.load_failures(image_project)
     assert set(reference_failures["stage"]) == {"segment_reference"}
 
-    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
-                    visualize=False)
+    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())], visualize=False)
 
     stages = failure_records.load_failures(image_project)["stage"]
     assert "segment_reference" in set(stages)

@@ -39,8 +39,7 @@ def sidecar(path):
     return json.loads(paths.export_sidecar_path(path).read_text(encoding="utf-8"))
 
 
-def test_a_csv_carries_the_whole_chain_that_produced_it(measured_project,
-                                                        tmp_path):
+def test_a_csv_carries_the_whole_chain_that_produced_it(measured_project, tmp_path):
     """
     Ingest through export, then read the provenance back off the file alone:
     which occurrences, which runs, which recipes, which masks, in what units.
@@ -52,18 +51,17 @@ def test_a_csv_carries_the_whole_chain_that_produced_it(measured_project,
     assert record["occurrences"]["count"] == len(exported)
 
     stored = run_records.load_runs(measured_project, name="traits")
-    assert [run["recipe_hash"] for run in record["runs"]] \
-        == [stored["recipe_hash"].iloc[0]]
+    assert [run["recipe_hash"] for run in record["runs"]] == [stored["recipe_hash"].iloc[0]]
 
     assert set(record["source_masks"]["derivations"]) == set(
-        mask_records.current_derivation_hashes(measured_project).values())
+        mask_records.current_derivation_hashes(measured_project).values()
+    )
 
     assert record["columns"][LENGTH]["unit"] == "px"
     assert record["project"].endswith("project")
 
 
-def test_resegmenting_makes_the_next_export_a_different_export(measured_project,
-                                                               tmp_path):
+def test_resegmenting_makes_the_next_export_a_different_export(measured_project, tmp_path):
     """
     The staleness rule, seen from the far end. A resegmentation moves the
     identity of every mask, so the values measured from the new ones are a
@@ -74,29 +72,36 @@ def test_resegmenting_makes_the_next_export_a_different_export(measured_project,
     before = tmp_path / "before.csv"
     cf.export_metrics(measured_project, before)
 
-    cf.run_segments(measured_project, run_name="tighter",
-                    steps=[cf.segment(ThresholdModel(erode=3))], visualize=False)
+    cf.run_segments(
+        measured_project, run_name="tighter", steps=[cf.segment(ThresholdModel(erode=3))], visualize=False
+    )
     # The exact recipe _measured_template used under "traits" (conftest.py) --
     # run_name is pinned to a recipe, so re-measuring after resegmenting has to
     # be this same recipe rather than a narrower stand-in.
-    cf.run_metrics(measured_project, run_name="traits",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.body_length(), cf.max_width(),
-                            cf.mask_area(name="area_px", unit="px2"),
-                            cf.mean_lightness(), cf.blur_variance(),
-                            cf.bilateral_asymmetry(), cf.edge_fraction()],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[
+            cf.body_length(),
+            cf.max_width(),
+            cf.mask_area(name="area_px", unit="px2"),
+            cf.mean_lightness(),
+            cf.blur_variance(),
+            cf.bilateral_asymmetry(),
+            cf.edge_fraction(),
+        ],
+        visualize=False,
+    )
 
     after = tmp_path / "after.csv"
     cf.export_metrics(measured_project, after)
 
-    assert sidecar(before)["source_masks"]["derivations"] \
-        != sidecar(after)["source_masks"]["derivations"]
+    assert sidecar(before)["source_masks"]["derivations"] != sidecar(after)["source_masks"]["derivations"]
     assert sidecar(before)["export_hash"] != sidecar(after)["export_hash"]
 
 
-def test_the_project_keeps_a_history_of_what_it_handed_out(measured_project,
-                                                           tmp_path):
+def test_the_project_keeps_a_history_of_what_it_handed_out(measured_project, tmp_path):
     """
     The log is the half that stays behind. It records the export whose file
     went elsewhere and the one that was never written at all, which is the
@@ -112,8 +117,7 @@ def test_the_project_keeps_a_history_of_what_it_handed_out(measured_project,
     assert log["export_hash"].nunique() == 2
 
 
-def test_a_millimetre_export_records_the_calibration_behind_it(measured_project,
-                                                               tmp_path):
+def test_a_millimetre_export_records_the_calibration_behind_it(measured_project, tmp_path):
     """
     A converted column is only as good as the calibration under it, and the
     px_per_mm riding along in the CSV is one number with no account of where it

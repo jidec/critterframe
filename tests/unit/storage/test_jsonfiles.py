@@ -89,7 +89,7 @@ def test_a_log_grows_by_appending(tmp_path):
     append_jsonl(log, {"import_hash": "b"})
 
     records = read_jsonl(log)
-    assert records["import_hash"].tolist() == ["a", "b"]     # oldest first
+    assert records["import_hash"].tolist() == ["a", "b"]  # oldest first
 
 
 def test_an_absent_log_reads_as_empty(tmp_path):
@@ -104,7 +104,7 @@ def test_one_truncated_line_does_not_cost_the_rest(tmp_path, caplog):
     log = tmp_path / "exports.jsonl"
     append_jsonl(log, {"export_hash": "a"})
     with open(log, "a", encoding="utf-8") as handle:
-        handle.write('{"export_hash": "b"')          # killed here
+        handle.write('{"export_hash": "b"')  # killed here
     append_jsonl(log, {"export_hash": "c"})
 
     with caplog.at_level("WARNING"):

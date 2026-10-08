@@ -1,6 +1,4 @@
-"""
-Island metrics: n_islands, the disconnected fragments of a mask apart from the organism itself.
-"""
+"""Island metrics: n_islands, the disconnected fragments of a mask apart from the organism."""
 
 import cv2
 import numpy as np
@@ -9,12 +7,9 @@ from ..recipes import Metric
 
 
 def n_islands(name=None, unit="count"):
-    """
-    Metric: how many disconnected fragments the mask has besides its largest
-    component. 0 is a mask in one piece.
+    """Metric: how many disconnected fragments the mask has besides its largest component.
 
-    Counted the way `remove_islands` finds them (8-connected), so run it before
-    that transform, not after: afterwards there are none left to count.
+    Run it before `remove_islands()`, which leaves none to count.
     """
     return Metric("n_islands", _n_islands, version="1", unit=unit, metric_name=name)
 

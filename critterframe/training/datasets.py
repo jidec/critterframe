@@ -1,14 +1,4 @@
-"""
-export_training_data(): images, masks, class folders, and a manifest.
-
-Splitting decides which occurrences answer which question; exporting
-materializes them. Training itself happens outside the package -- what comes
-back is registered (records.models), and then segment() runs it like any other
-model.
-
-Export from REFERENCE masks where they exist: training on canonical masks
-teaches a new model the old model's mistakes.
-"""
+"""export_training_data(): images, masks, class folders and a manifest."""
 
 import logging
 import os
@@ -60,16 +50,26 @@ _UNSAFE_IN_NAME = re.compile(r"[^A-Za-z0-9._-]+")
 iterate_segments = segments.iterate_segments
 
 
-def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PART,
-                         transforms=(), reference=False, masks=False,
-                         class_by=None, metadata=None, metrics=None,
-                         require_mask=True, subset=None, limit=None,
-                         from_part=None, visualize=True):
-    """
-    Materialize project data as a directory a trainer can read.
+def export_training_data(
+    project_path,
+    output_dir,
+    splits=None,
+    part=DEFAULT_PART,
+    transforms=(),
+    reference=False,
+    masks=False,
+    class_by=None,
+    metadata=None,
+    metrics=None,
+    require_mask=True,
+    subset=None,
+    limit=None,
+    from_part=None,
+    visualize=True,
+):
+    """Write project data as a directory a trainer can read.
 
-    Layout, with the split level present only when `splits` is given and the
-    class level only when `class_by` is:
+    The split level exists only with `splits`, the class level only with `class_by`:
 
         output_dir/
             manifest.csv
@@ -78,42 +78,29 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
             train/images/<occurrence_id>.png      (no class_by)
             train/masks/<occurrence_id>.png       (masks=True)
 
-    - `project_path` -- project to export from.
-    - `output_dir` -- directory to write into; created if missing. Existing
-      files are left alone unless a new one has the same name.
-    - `splits` -- `{split name: subset name}` or `{split name: occurrence
-      ids}`, mixed freely. None exports everything as one flat dataset. This
-      does NOT decide the split -- pass what `split_ids()` returned. An
-      occurrence in two splits raises, since that is the leakage every
-      other guarantee here exists to prevent.
-    - `part` -- part to export, `"organism"` by default.
-    - `transforms` -- operations applied to each segment before writing. Use
-      the SAME chain the model will get at inference.
-    - `reference` -- read masks from the reference table. Usually True when
-      training a segmenter.
-    - `masks` -- also write each mask as a 0/255 PNG.
-    - `class_by` -- occurrence column to organize images into class folders
-      by, e.g. `"species"`. An occurrence with no value is left out and
-      logged: the class is the training target, so an image without one has
-      nothing to teach.
-    - `metadata` -- occurrence columns to carry into the manifest.
-    - `metrics` -- metric run names whose values to carry into the manifest.
-    - `require_mask` -- False exports occurrences with no mask, for training
-      on whole images.
-    - `subset`, `limit` -- narrow an unsplit export; rejected alongside
-      `splits`.
-    - `from_part` -- build each image from an upstream part's CANONICAL mask
-      instead of `part`'s own; see `iterate_segments()`. Pass the same
-      `from_part` the `run_segments()` call that made `part`'s mask used, so
-      the exported image matches the shared crop the model will see at
-      inference rather than one cropped to `part`'s own, usually much
-      smaller, mask.
-    - `visualize` -- True (default), an int, or ids: a pipeline grid per
-      split of what was written, each image with its mask and class, and
-      with any transform's own panels beside it. Named for the dataset's
-      `data_hash`. False writes nothing.
+    Args:
+        project_path: Project to export from.
+        output_dir: Directory to write into; created if missing.
+        splits: `{split name: subset name or occurrence ids}`, e.g. what `split_ids` returned.
+            None exports one flat dataset. An occurrence in two splits raises.
+        part: Part to export.
+        transforms: Operations applied to each segment before writing; use the chain the
+            model will get at inference.
+        reference: Read masks from the reference table.
+        masks: Also write each mask as a 0/255 PNG.
+        class_by: Occurrence column to sort images into class folders by. An occurrence
+            with no value is left out.
+        metadata: Occurrence columns to carry into the manifest.
+        metrics: Metric run names whose values to carry into the manifest.
+        require_mask: False also exports occurrences with no mask.
+        subset: Named subset, for an unsplit export.
+        limit: Cap on occurrences, for an unsplit export.
+        from_part: Frame each image by this upstream part's mask, as the `run_segments` call
+            that made `part` did.
+        visualize: True, an int, or ids: a pipeline grid per split of what was written.
 
-    Returns the manifest DataFrame, one row per written image.
+    Returns:
+        The manifest DataFrame, one row per written image.
     """
     paths.require_project(project_path)
 
@@ -136,16 +123,21 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
         # The dataset's own hash is only known once it's written, so each
         # report is named for it just before closing (see below).
         report = pipeline_visualization.open_report(
-            project_path, f"dataset__{split_name or UNSPLIT}", "pending", part=part,
-            visualize=visualize)
+            project_path, f"dataset__{split_name or UNSPLIT}", "pending", part=part, visualize=visualize
+        )
         reports.append(report)
 
         for occurrence_id, segment in iterate_segments(
-                project_path, part=part, transforms=transforms,
-                reference=reference, occurrence_ids=occurrence_ids,
-                require_mask=require_mask, from_part=from_part, report=report,
-                progress=f"export_training_data split '{split_name or UNSPLIT}'"):
-
+            project_path,
+            part=part,
+            transforms=transforms,
+            reference=reference,
+            occurrence_ids=occurrence_ids,
+            require_mask=require_mask,
+            from_part=from_part,
+            report=report,
+            progress=f"export_training_data split '{split_name or UNSPLIT}'",
+        ):
             class_value = None
             if class_by is not None:
                 class_value = class_values.get(occurrence_id)
@@ -154,8 +146,7 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
                     continue
 
             leaf = _class_folder(folders, class_value) if class_by else IMAGE_DIR
-            image_path = os.path.join(_directory(output_dir, split_name, leaf),
-                                      f"{occurrence_id}.png")
+            image_path = os.path.join(_directory(output_dir, split_name, leaf), f"{occurrence_id}.png")
             if not _write_image(image_path, segment.image):
                 unwritten += 1
                 continue
@@ -171,8 +162,8 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
                 mask_path = None
                 if segment.mask is not None:
                     mask_path = os.path.join(
-                        _directory(output_dir, split_name, MASK_DIR),
-                        f"{occurrence_id}.png")
+                        _directory(output_dir, split_name, MASK_DIR), f"{occurrence_id}.png"
+                    )
                     # 0/255 PNG: lossless, so a mask boundary survives the
                     # round trip exactly, and readable by anything.
                     _write_image(mask_path, segment.mask.astype("uint8") * 255)
@@ -181,34 +172,38 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
 
             row["height"] = segment.shape[0]
             row["width"] = segment.shape[1]
-            row["mask_area"] = (None if segment.mask is None
-                                else int(segment.mask.sum()))
+            row["mask_area"] = None if segment.mask is None else int(segment.mask.sum())
             rows.append(row)
 
             if segment.panel_sink is not None:
                 segment.emit_panel(
-                    segment_panel(segment.image, segment.mask,
-                                  lines=[class_value] if class_value else []),
-                    "exported")
+                    segment_panel(segment.image, segment.mask, lines=[class_value] if class_value else []),
+                    "exported",
+                )
 
     if unclassed:
-        logger.info("left out %d occurrence(s) with no value in '%s'",
-                    unclassed, class_by)
+        logger.info("left out %d occurrence(s) with no value in '%s'", unclassed, class_by)
     if unwritten:
-        logger.warning("%d image(s) could not be written -- check the "
-                       "occurrence ids for characters the filesystem rejects",
-                       unwritten)
+        logger.warning(
+            "%d image(s) could not be written -- check the "
+            "occurrence ids for characters the filesystem rejects",
+            unwritten,
+        )
 
     manifest = pd.DataFrame(rows)
     if manifest.empty:
-        logger.warning("nothing exported -- does part '%s' have %s masks?",
-                       part, "reference" if reference else "canonical")
+        logger.warning(
+            "nothing exported -- does part '%s' have %s masks?",
+            part,
+            "reference" if reference else "canonical",
+        )
         return manifest
 
     manifest = _attach_labels(project_path, manifest, metadata, metrics, part)
     manifest.to_csv(os.path.join(output_dir, MANIFEST_FILE), index=False)
-    record = _write_dataset_record(output_dir, manifest, splits, part, transforms,
-                                   reference, masks, class_by, from_part)
+    record = _write_dataset_record(
+        output_dir, manifest, splits, part, transforms, reference, masks, class_by, from_part
+    )
 
     identity = {key: value for key, value in record.items() if key != "created_at"}
     for report in reports:
@@ -218,50 +213,54 @@ def export_training_data(project_path, output_dir, splits=None, part=DEFAULT_PAR
     return manifest
 
 
-def write_dataset(project_path, output_dir, part=DEFAULT_PART, transforms=(),
-                  reference=False, subset=None, limit=None, label_columns=None,
-                  label_runs=None, visualize=True):
-    """
-    Write an image/mask pair per occurrence plus a manifest CSV, all in one
-    flat directory:
+def write_dataset(
+    project_path,
+    output_dir,
+    part=DEFAULT_PART,
+    transforms=(),
+    reference=False,
+    subset=None,
+    limit=None,
+    label_columns=None,
+    label_runs=None,
+    visualize=True,
+):
+    """Write an image and mask per occurrence plus a manifest, in one flat directory.
 
-        output_dir/
-            images/<occurrence_id>.png
-            masks/<occurrence_id>.png
-            manifest.csv
+    Args:
+        project_path: Project to export from.
+        output_dir: Directory to write into.
+        part: Part to export.
+        transforms: Operations applied to each segment before writing.
+        reference: Read masks from the reference table.
+        subset: Named subset to restrict to.
+        limit: Cap on occurrences.
+        label_columns: Occurrence columns to carry into the manifest.
+        label_runs: Metric run names whose values to carry into the manifest.
+        visualize: As in `export_training_data`.
 
-    export_training_data() with no splits and no class folders, kept under its
-    own name because "give me every segment as files" is what training code
-    that does its own splitting wants, and because it is what the BioEncoder
-    extension is written against.
-
-    - `label_columns` -- occurrence columns to carry into the manifest
-      (export_training_data's `metadata`).
-    - `label_runs` -- metric run names to carry into the manifest
-      (export_training_data's `metrics`).
-    - `visualize` -- as in export_training_data.
-
-    Everything else is as iterate_segments(). Returns the manifest DataFrame.
+    Returns:
+        The manifest DataFrame.
     """
     return export_training_data(
-        project_path, output_dir, part=part, transforms=transforms,
-        reference=reference, masks=True, metadata=label_columns,
-        metrics=label_runs, subset=subset, limit=limit, visualize=visualize)
+        project_path,
+        output_dir,
+        part=part,
+        transforms=transforms,
+        reference=reference,
+        masks=True,
+        metadata=label_columns,
+        metrics=label_runs,
+        subset=subset,
+        limit=limit,
+        visualize=visualize,
+    )
 
 
 def _resolve_splits(project_path, splits, subset, limit):
-    """
-    Turn the `splits` argument into an ordered [(split name, ids)], checking
-    that no occurrence is in two of them.
-
-    A split value is a subset name or a list of ids, because both are how a
-    project legitimately holds a selection: split_ids() hands back ids, while a
-    selection worth keeping gets frozen as a subset. Resolving both here means
-    the exporter never has to know which one a caller used.
-    """
+    """Return `splits` as an ordered `[(split name, ids)]`, raising if an occurrence is in two."""
     if splits is None:
-        return [(None, subset_selection.select_ids(project_path, subset=subset,
-                                                   limit=limit))]
+        return [(None, subset_selection.select_ids(project_path, subset=subset, limit=limit))]
 
     resolved = []
     for name, selection in splits.items():
@@ -283,22 +282,18 @@ def _resolve_splits(project_path, splits, subset, limit):
                 )
             seen[occurrence_id] = name
 
-    logger.info("exporting %d split(s): %s", len(resolved),
-                ", ".join(f"{name}={len(ids)}" for name, ids in resolved))
+    logger.info(
+        "exporting %d split(s): %s", len(resolved), ", ".join(f"{name}={len(ids)}" for name, ids in resolved)
+    )
     return resolved
 
 
 def _class_values(project_path, class_by):
-    """
-    {occurrence_id: class value} for the class column, or {} when there is no
-    class column. Missing and blank values are simply absent from the mapping,
-    which is what makes "has no class" one check at the call site.
-    """
+    """Return `{occurrence_id: class value}`, leaving out missing and blank values."""
     if class_by is None:
         return {}
 
-    occurrences = subset_selection.select_occurrences(project_path,
-                                                      columns=[class_by])
+    occurrences = subset_selection.select_occurrences(project_path, columns=[class_by])
     if class_by not in occurrences.columns:
         raise KeyError(
             f"occurrence table has no column '{class_by}' to make classes from "
@@ -314,20 +309,16 @@ def _class_values(project_path, class_by):
 
 
 def _class_folder(folders, class_value):
-    """
-    The folder name for a class, remembering the mapping so two classes cannot
-    quietly share a folder.
+    """Return the folder name for a class.
 
-    The collision check is why this is not a bare sanitizer: "Anax junius" and
-    "Anax/junius" both flatten to Anax_junius, and merging two classes into one
-    folder would train a model on a taxonomy nobody wrote, invisibly.
+    Raises if two classes would share one: `Anax junius` and `Anax/junius` both sanitize
+    to `Anax_junius`.
     """
     if class_value in folders:
         return folders[class_value]
 
     folder = _UNSAFE_IN_NAME.sub("_", class_value).strip("_") or "unnamed"
-    clash = next((existing for existing, name in folders.items()
-                  if name == folder), None)
+    clash = next((existing for existing, name in folders.items() if name == folder), None)
     if clash is not None:
         raise ValueError(
             f"classes {clash!r} and {class_value!r} both become folder "
@@ -340,7 +331,7 @@ def _class_folder(folders, class_value):
 
 
 def _directory(output_dir, split_name, leaf):
-    """The directory one image belongs in, created on the way."""
+    """Return the directory one image belongs in, creating it."""
     parts = [output_dir] + ([split_name] if split_name else []) + [leaf]
     directory = os.path.join(*parts)
     os.makedirs(directory, exist_ok=True)
@@ -348,27 +339,17 @@ def _directory(output_dir, split_name, leaf):
 
 
 def _relative(path, output_dir):
-    """
-    A written file as the manifest should name it: relative to the dataset
-    directory, with forward slashes.
+    """Return a written file's path relative to the dataset directory, with forward slashes.
 
-    Relative so the whole directory can be moved or copied to wherever training
-    happens, and posix-separated because that move is very often Windows to a
-    Linux cluster, where a backslash is a legal filename character rather than
-    a separator and the manifest would silently point at nothing.
+    Forward slashes because a dataset is often moved from Windows to a Linux cluster.
     """
     return Path(os.path.relpath(path, output_dir)).as_posix()
 
 
 def _write_image(path, image):
-    """
-    Write one PNG, reporting failure rather than raising.
+    """Write one PNG, returning whether it succeeded.
 
-    PNG throughout: a model trained on re-JPEGed images learns the compression
-    artifacts along with the organism, and a re-encoded mask edge is simply
-    wrong. cv2.imwrite returns False rather than raising on a path the
-    filesystem will not take -- an occurrence id with a colon in it, on Windows
-    -- and one such occurrence should not end an export of thousands.
+    `cv2.imwrite` returns False instead of raising on a path the filesystem refuses.
     """
     if cv2.imwrite(path, image):
         return True
@@ -376,23 +357,14 @@ def _write_image(path, image):
     return False
 
 
-def _write_dataset_record(output_dir, manifest, splits, part, transforms,
-                          reference, masks, class_by, from_part=None):
-    """
-    Write dataset.json: what this export IS, hashed.
-
-    The splits are recorded as counts and id digests taken from the manifest --
-    what was actually written, not what was asked for, since occurrences drop
-    out for want of a mask or a class. `data_hash` covers the whole description
-    except the timestamp, so two exports of the same occurrences through the
-    same transforms hash alike, and a trained model's record can name the
-    training data it saw rather than the directory it happened to sit in.
-    """
+def _write_dataset_record(
+    output_dir, manifest, splits, part, transforms, reference, masks, class_by, from_part=None
+):
+    """Write `dataset.json`: the export described from what was written, with its `data_hash`."""
     if splits is None:
         groups = {UNSPLIT: manifest["occurrence_id"].tolist()}
     else:
-        groups = {name: frame["occurrence_id"].tolist()
-                  for name, frame in manifest.groupby("split")}
+        groups = {name: frame["occurrence_id"].tolist() for name, frame in manifest.groupby("split")}
 
     record = {
         "part": part,
@@ -400,8 +372,7 @@ def _write_dataset_record(output_dir, manifest, splits, part, transforms,
         "reference": bool(reference),
         "masks": bool(masks),
         "class_by": class_by,
-        "classes": (sorted(manifest["class"].unique().tolist())
-                    if class_by is not None else None),
+        "classes": (sorted(manifest["class"].unique().tolist()) if class_by is not None else None),
         "transforms": [operation.spec() for operation in transforms],
         "splits": {name: ids_record(ids) for name, ids in sorted(groups.items())},
     }
@@ -415,13 +386,11 @@ def _write_dataset_record(output_dir, manifest, splits, part, transforms,
 def _attach_labels(project_path, manifest, label_columns, label_runs, part):
     """Join occurrence metadata and stored metric values onto a manifest."""
     if label_columns:
-        occurrences = subset_selection.select_occurrences(
-            project_path, columns=list(label_columns))
+        occurrences = subset_selection.select_occurrences(project_path, columns=list(label_columns))
         manifest = manifest.merge(occurrences, on="occurrence_id", how="left")
 
     if label_runs:
-        values = metrics_wide(project_path, run_names=list(label_runs),
-                              parts=[part])
+        values = metrics_wide(project_path, run_names=list(label_runs), parts=[part])
         if not values.empty:
             manifest = manifest.merge(values, on="occurrence_id", how="left")
 

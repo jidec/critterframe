@@ -1,17 +1,4 @@
-"""
-Normalize + save/load the occurrence table.
-
-One organism per image is the structural decision everything downstream leans
-on: a mask belongs to an occurrence-part, a metric belongs to an
-occurrence-part, and an export has one row per occurrence. Images holding
-several organisms must be separated upstream of ingest. Parts are the thing
-that IS allowed to be plural -- a dragonfly with four wings is one occurrence
-with four parts.
-
-Ids are strings everywhere. Beyond the two canonical columns, whatever the
-source provided is kept as-is: normalization means agreeing on two column
-names, not discarding the rest.
-"""
+"""The occurrence table: normalize, validate ids, save, load, and digest sets of ids."""
 
 import logging
 
@@ -30,28 +17,20 @@ logger = logging.getLogger(__name__)
 ID_COL = "occurrence_id"
 IMAGE_URL_COL = "image_url"
 
+
 def normalize(df, id_col=None, image_col=None, datetime_cols=(), numeric_cols=()):
-    """
-    Rename a source table's identity/image columns to the canonical ones and make
-    sure the ids are usable.
+    """Rename a source table's id and image columns to the canonical ones, with ids as strings.
 
-    Ids are cast to string and stay strings everywhere after. Sources number
-    their occurrences, and the same id read back from parquet, an LMDB key, and a
-    sqlite column would otherwise compare unequal depending on typing -- a bug
-    that shows up as "the pipeline processed nothing".
+    Every other column is kept as it is.
 
-    Everything else the source provided is kept untouched.
-
-    - `df` -- source DataFrame.
-    - `id_col` -- column holding the occurrence identifier. Omit if already
-      called occurrence_id.
-    - `image_col` -- column holding the image URL. Omit if already called
-      image_url, or if the images are local.
-    - `datetime_cols` -- source columns to parse as datetimes.
-    - `numeric_cols` -- source columns to parse as numeric. Naming an absent
-      column is harmless, so a caller can list a superset. Unparseable values
-      become NaT/NaN rather than raising -- one malformed timestamp shouldn't
-      cost the whole ingest.
+    Args:
+        df: Source DataFrame.
+        id_col: Column holding the occurrence id; omit if it is already `occurrence_id`.
+        image_col: Column holding the image URL; omit if it is already `image_url`, or if
+            the images are local.
+        datetime_cols: Columns to parse as datetimes; unparseable values become NaT.
+        numeric_cols: Columns to parse as numbers; unparseable values become NaN. Naming an
+            absent column is harmless.
     """
     df = df.copy()
     renames = {}
@@ -83,18 +62,14 @@ def normalize(df, id_col=None, image_col=None, datetime_cols=(), numeric_cols=()
 
 
 def validate_ids(df, source=None):
-    """
-    Raise unless every row has an occurrence id and no id repeats.
+    """Raise unless every row has an occurrence id and no id repeats.
 
-    Neither is recoverable automatically: a duplicate id means the source
-    disagrees with the rule that one occurrence is one organism in one image, and
-    keeping whichever copy came first picks an arbitrary winner and loses the
-    other. A row with no id can't be segmented, measured, or exported. The fix is
-    a judgement about the data -- one specimen photographed twice, or two
-    specimens given one number? -- so this reports and stops.
+    Args:
+        df: Table with an `occurrence_id` column of strings.
+        source: The source's own name for the id column, for the error message.
 
-    - `df` -- table with an occurrence_id column of strings.
-    - `source` -- the source column name, so the message points at what to fix.
+    Raises:
+        ValueError: If an id is missing or duplicated.
     """
     if ID_COL not in df.columns:
         raise KeyError(f"no '{ID_COL}' column to validate")
@@ -127,60 +102,49 @@ def validate_ids(df, source=None):
 
 
 def save_occurrences(project_path, df):
-    """
-    Replace the working occurrence table with a full snapshot.
+    """Replace the occurrence table with a full snapshot, after validating its ids.
 
-    Replace rather than merge: external exports are full snapshots, not deltas,
-    so the newest one IS the complete desired state. The archived raw import in
-    project_path/raw_imports/ is the recovery path if a replacement is ever wrong.
-
-    Ids are validated here as well as in normalize(), because this is the one
-    place every write passes through -- ingest_images() builds its rows from
-    filenames without going near normalize(), and two files whose stems collide
-    would otherwise reach the table unchallenged.
+    Args:
+        project_path: Project to write to.
+        df: The whole occurrence table.
     """
     validate_ids(df)
     return write_table(df, paths.occurrences_path(project_path))
 
 
 def load_occurrences(project_path, columns=None, missing_ok=False):
-    """
-    Read the occurrence table.
+    """Read the occurrence table.
 
-    - `columns` -- optional list of column names to read off disk; all if None.
-      occurrence_id is always included, since every caller keys on it.
-    - `missing_ok` -- True returns an empty frame when nothing has been
-      ingested yet, instead of raising.
+    Args:
+        project_path: Project to read from.
+        columns: Column names to read; all if None. `occurrence_id` is always included.
+        missing_ok: Return an empty frame when nothing has been ingested, instead of raising.
     """
     if columns is not None:
         columns = list(dict.fromkeys([ID_COL] + list(columns)))
 
-    df = load_table(paths.occurrences_path(project_path), columns=columns,
-                    missing_ok=missing_ok)
+    df = load_table(paths.occurrences_path(project_path), columns=columns, missing_ok=missing_ok)
     if ID_COL in df.columns:
         df[ID_COL] = df[ID_COL].astype(str)
     return df
 
 
 def occurrence_ids(project_path):
-    """Every occurrence id in the project, as strings, in table order."""
+    """Return every occurrence id in the project, as strings, in table order."""
     return load_occurrences(project_path, columns=[ID_COL])[ID_COL].tolist()
 
 
 def require_columns(project_path, columns, purpose):
-    """
-    Raise unless the occurrence table has every named column, listing the ones it
-    does have.
+    """Raise unless the occurrence table has every named column.
 
-    Checked against the parquet SCHEMA rather than by catching a read failure,
-    which reports a pyarrow FieldRef error naming neither the column nor what
-    wanted it. A mistyped column is nearly always a near-miss on one that is
-    there, so listing them is usually the whole fix.
+    Args:
+        project_path: Project to check.
+        columns: One column name or an iterable of them; empty checks nothing.
+        purpose: What the column was wanted for, completing "...so there is <purpose>" in
+            the error message.
 
-    - `columns` -- one column name or an iterable of them. Empty is a no-op.
-    - `purpose` -- what the column would have been for, completing "...so there
-      is <purpose>", e.g. "nothing to key a calibration on". Shared check,
-      per-caller sentence.
+    Raises:
+        KeyError: If a column is missing; the message lists the columns that exist.
     """
     if isinstance(columns, str):
         columns = [columns]
@@ -199,32 +163,26 @@ def require_columns(project_path, columns, purpose):
 
 
 def ids_digest(occurrence_ids):
-    """
-    A short stable digest of a SET of occurrence ids.
+    """Return a short stable digest of a set of occurrence ids.
 
-    For recording which occurrences something covered where listing them would be
-    absurd: the training data behind a registered model, an exported dataset.
-    Order- and duplicate-independent, since the same 4,000 specimens in a
-    different order are the same training data.
+    Independent of order and of duplicates.
 
-    Answers "is this the same set", never "which ones were they" -- keep the
-    manifest for that.
+    Args:
+        occurrence_ids: The ids.
     """
     return hash_spec(sorted({str(occurrence_id) for occurrence_id in occurrence_ids}))
 
 
 def ids_record(occurrence_ids):
-    """
-    A set of occurrence ids as {"count", "ids_hash"} -- how every record in the
-    package names the occurrences something covered.
+    """Return a set of occurrence ids as `{"count", "ids_hash"}`.
 
-    - `occurrence_ids` -- iterable of ids; consumed once, so a generator is
-      fine.
+    Args:
+        occurrence_ids: Iterable of ids, consumed once.
     """
     occurrence_ids = list(occurrence_ids)
     return {"count": len(occurrence_ids), "ids_hash": ids_digest(occurrence_ids)}
 
 
 def occurrence_count(project_path):
-    """How many occurrences the project holds, or 0 if nothing is ingested yet."""
+    """Return how many occurrences the project holds, 0 if nothing is ingested."""
     return len(load_occurrences(project_path, columns=[ID_COL], missing_ok=True))

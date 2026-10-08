@@ -54,8 +54,7 @@ def test_round_trip_of_a_uniform_mask(fill):
     legitimate thing for a segmenter to return.
     """
     mask = np.full((12, 20), fill, bool)
-    assert np.array_equal(mask_records.decode_mask(mask_records._encode_mask(mask)),
-                          mask)
+    assert np.array_equal(mask_records.decode_mask(mask_records._encode_mask(mask)), mask)
 
 
 def test_encode_records_the_area_and_the_shape():
@@ -73,9 +72,7 @@ def test_encode_accepts_a_non_boolean_mask():
     """
     integer = np.zeros((10, 10), np.uint8)
     integer[2:5, 3:8] = 7
-    assert np.array_equal(
-        mask_records.decode_mask(mask_records._encode_mask(integer)),
-        integer > 0)
+    assert np.array_equal(mask_records.decode_mask(mask_records._encode_mask(integer)), integer > 0)
 
 
 def test_decode_accepts_a_bytes_like_view():
@@ -120,8 +117,9 @@ def test_a_different_upstream_gives_a_different_identity():
     THE propagation property. The wing recipe hasn't changed; the organism it
     was cut out of has. Everything downstream must move with it.
     """
-    assert (mask_records.derivation_hash("wing", "organism_v1")
-            != mask_records.derivation_hash("wing", "organism_v2"))
+    assert mask_records.derivation_hash("wing", "organism_v1") != mask_records.derivation_hash(
+        "wing", "organism_v2"
+    )
 
 
 def test_chaining_is_not_symmetric():
@@ -129,13 +127,13 @@ def test_chaining_is_not_symmetric():
     "wing cut from organism" and "organism cut from wing" are different claims,
     so a scheme that hashed the pair as a set would conflate two real cases.
     """
-    assert (mask_records.derivation_hash("a", "b")
-            != mask_records.derivation_hash("b", "a"))
+    assert mask_records.derivation_hash("a", "b") != mask_records.derivation_hash("b", "a")
 
 
 def test_chaining_is_stable_across_calls():
-    assert (mask_records.derivation_hash("wing", "organism")
-            == mask_records.derivation_hash("wing", "organism"))
+    assert mask_records.derivation_hash("wing", "organism") == mask_records.derivation_hash(
+        "wing", "organism"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -162,8 +160,7 @@ def test_keys_are_coerced_to_strings():
     assert row["part"] == "3"
 
 
-@pytest.mark.parametrize("occurrence_id, part",
-                         [(None, "organism"), ("a", None), (None, None)])
+@pytest.mark.parametrize("occurrence_id, part", [(None, "organism"), ("a", None), (None, None)])
 def test_a_row_without_a_key_is_refused(occurrence_id, part):
     with pytest.raises(ValueError, match="needs both an occurrence_id and a part"):
         mask_records.make_mask_row(occurrence_id, blob_mask(), part=part)
@@ -199,10 +196,8 @@ def test_a_second_mask_replaces_the_first(tmp_path):
     nothing accumulates, and nothing about the old mask survives except in
     whatever was derived from it.
     """
-    mask_records.save_masks(tmp_path, [make_row(mask=blob_mask(axes=(30, 18)),
-                                                recipe_hash="v1")])
-    mask_records.save_masks(tmp_path, [make_row(mask=blob_mask(axes=(10, 6)),
-                                                recipe_hash="v2")])
+    mask_records.save_masks(tmp_path, [make_row(mask=blob_mask(axes=(30, 18)), recipe_hash="v1")])
+    mask_records.save_masks(tmp_path, [make_row(mask=blob_mask(axes=(10, 6)), recipe_hash="v2")])
 
     stored = mask_records.load_masks(tmp_path)
     assert len(stored) == 1
@@ -210,21 +205,27 @@ def test_a_second_mask_replaces_the_first(tmp_path):
 
 
 def test_parts_of_one_occurrence_coexist(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="organism"),
-        make_row("a", part="wing"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="organism"),
+            make_row("a", part="wing"),
+        ],
+    )
     assert mask_records.parts_present(tmp_path) == ["organism", "wing"]
     assert len(mask_records.load_masks(tmp_path)) == 2
 
 
 def test_occurrence_ids_with_mask_is_presence_only(tmp_path):
     """The identity-only read behind mask_lookup(), for a caller that just needs the ids."""
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="organism"),
-        make_row("b", part="organism"),
-        make_row("a", part="wing"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="organism"),
+            make_row("b", part="organism"),
+            make_row("a", part="wing"),
+        ],
+    )
     assert mask_records.occurrence_ids_with_mask(tmp_path, part="organism") == {"a", "b"}
     assert mask_records.occurrence_ids_with_mask(tmp_path, part="wing") == {"a"}
     assert mask_records.occurrence_ids_with_mask(tmp_path, part="head") == set()
@@ -246,12 +247,10 @@ def test_the_reference_table_is_a_different_file(tmp_path):
     reference mask must not touch the canonical one.
     """
     mask_records.save_masks(tmp_path, [make_row(recipe_hash="auto")])
-    mask_records.save_masks(tmp_path, [make_row(recipe_hash="human")],
-                            reference=True)
+    mask_records.save_masks(tmp_path, [make_row(recipe_hash="human")], reference=True)
 
     assert mask_records.load_masks(tmp_path)["recipe_hash"].tolist() == ["auto"]
-    assert mask_records.load_masks(tmp_path, reference=True)[
-        "recipe_hash"].tolist() == ["human"]
+    assert mask_records.load_masks(tmp_path, reference=True)["recipe_hash"].tolist() == ["human"]
     assert paths.masks_path(tmp_path).exists()
     assert paths.masks_path(tmp_path, reference=True).exists()
 
@@ -322,8 +321,7 @@ def test_merge_can_leave_shard_files_in_place(tmp_path):
     mask_records.save_mask_shard(tmp_path, [make_row("a")], "organism")
     mask_records.merge_mask_shards(tmp_path, cleanup=False)
 
-    assert len(list(
-        paths.mask_shards_dir(tmp_path, part="organism").glob("*.parquet"))) == 1
+    assert len(list(paths.mask_shards_dir(tmp_path, part="organism").glob("*.parquet"))) == 1
 
 
 def test_merge_only_touches_the_named_part(tmp_path):
@@ -335,8 +333,7 @@ def test_merge_only_touches_the_named_part(tmp_path):
     assert merged == {"organism": 1}
     assert mask_records.parts_present(tmp_path) == ["organism"]
     # The wing shard is untouched, still staged.
-    assert len(list(
-        paths.mask_shards_dir(tmp_path, part="wing").glob("*.parquet"))) == 1
+    assert len(list(paths.mask_shards_dir(tmp_path, part="wing").glob("*.parquet"))) == 1
 
 
 def test_merge_does_not_disturb_the_reference_table(tmp_path):
@@ -344,17 +341,19 @@ def test_merge_does_not_disturb_the_reference_table(tmp_path):
 
     mask_records.merge_mask_shards(tmp_path, reference=True)
 
-    assert mask_records.load_masks(
-        tmp_path, reference=True)["occurrence_id"].tolist() == ["a"]
+    assert mask_records.load_masks(tmp_path, reference=True)["occurrence_id"].tolist() == ["a"]
     assert not mask_records.has_masks(tmp_path)
 
 
 def test_load_filters_by_part_ids_and_recipe(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="organism", recipe_hash="v1"),
-        make_row("b", part="organism", recipe_hash="v2"),
-        make_row("a", part="wing", recipe_hash="v1"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="organism", recipe_hash="v1"),
+            make_row("b", part="organism", recipe_hash="v2"),
+            make_row("a", part="wing", recipe_hash="v1"),
+        ],
+    )
 
     assert len(mask_records.load_masks(tmp_path, parts=["wing"])) == 1
     assert len(mask_records.load_masks(tmp_path, occurrence_ids=["a"])) == 2
@@ -399,10 +398,13 @@ def test_mask_lookup_is_keyed_by_occurrence(tmp_path):
 
 
 def test_completed_keys_covers_only_this_recipe(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", recipe_hash="v1"),
-        make_row("b", recipe_hash="v2"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", recipe_hash="v1"),
+            make_row("b", recipe_hash="v2"),
+        ],
+    )
     assert mask_records.completed_keys(tmp_path, "v1") == {("a", "organism")}
 
 
@@ -419,16 +421,16 @@ def test_a_derived_mask_counts_as_done_only_against_its_own_upstream(tmp_path):
     the organism would skip every occurrence and leave wing masks cut out of an
     organism the project no longer holds.
     """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="wing", recipe_hash="wing_v1",
-                 source_mask_hash="organism_v1"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="wing", recipe_hash="wing_v1", source_mask_hash="organism_v1"),
+        ],
+    )
     key = ("a", "wing")
 
-    same = mask_records.completed_keys(tmp_path, "wing_v1",
-                                       source_mask_hashes={key: "organism_v1"})
-    moved = mask_records.completed_keys(tmp_path, "wing_v1",
-                                        source_mask_hashes={key: "organism_v2"})
+    same = mask_records.completed_keys(tmp_path, "wing_v1", source_mask_hashes={key: "organism_v1"})
+    moved = mask_records.completed_keys(tmp_path, "wing_v1", source_mask_hashes={key: "organism_v2"})
     assert same == {key}
     assert moved == set()
 
@@ -438,12 +440,13 @@ def test_an_upstream_that_is_not_offered_never_counts_as_done(tmp_path):
     "A mask whose upstream isn't in the map never counts as complete -- there's
     nothing left to confirm it against."
     """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="wing", recipe_hash="wing_v1",
-                 source_mask_hash="organism_v1"),
-    ])
-    assert mask_records.completed_keys(tmp_path, "wing_v1",
-                                       source_mask_hashes={}) == set()
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="wing", recipe_hash="wing_v1", source_mask_hash="organism_v1"),
+        ],
+    )
+    assert mask_records.completed_keys(tmp_path, "wing_v1", source_mask_hashes={}) == set()
 
 
 def test_a_mask_with_no_recorded_upstream_never_counts_as_done(tmp_path):
@@ -452,12 +455,16 @@ def test_a_mask_with_no_recorded_upstream_never_counts_as_done(tmp_path):
     nothing to confirm against either, so it redoes the work. One recompute is
     the honest price of not knowing.
     """
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="wing", recipe_hash="wing_v1"),
-    ])
-    assert mask_records.completed_keys(
-        tmp_path, "wing_v1",
-        source_mask_hashes={("a", "wing"): "organism_v1"}) == set()
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="wing", recipe_hash="wing_v1"),
+        ],
+    )
+    assert (
+        mask_records.completed_keys(tmp_path, "wing_v1", source_mask_hashes={("a", "wing"): "organism_v1"})
+        == set()
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -466,16 +473,17 @@ def test_a_mask_with_no_recorded_upstream_never_counts_as_done(tmp_path):
 
 
 def test_current_hashes_chain_the_upstream(tmp_path):
-    mask_records.save_masks(tmp_path, [
-        make_row("a", part="organism", recipe_hash="organism_v1"),
-        make_row("a", part="wing", recipe_hash="wing_v1",
-                 source_mask_hash="organism_v1"),
-    ])
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="organism", recipe_hash="organism_v1"),
+            make_row("a", part="wing", recipe_hash="wing_v1", source_mask_hash="organism_v1"),
+        ],
+    )
     current = mask_records.current_derivation_hashes(tmp_path)
 
     assert current[("a", "organism")] == "organism_v1"
-    assert current[("a", "wing")] == mask_records.derivation_hash("wing_v1",
-                                                                  "organism_v1")
+    assert current[("a", "wing")] == mask_records.derivation_hash("wing_v1", "organism_v1")
 
 
 def test_current_hashes_of_a_project_with_no_masks_is_empty(tmp_path):
@@ -492,16 +500,12 @@ def test_a_table_written_before_upstreams_were_tracked_still_reads(tmp_path):
     identity read asks the footer first. Such masks look upstream-less -- true
     of everything recorded at the time.
     """
-    legacy_columns = [column for column in mask_records.COLUMNS
-                      if column != "source_mask_hash"]
-    row = {key: value for key, value in make_row("a").items()
-           if key in legacy_columns}
-    write_table(pd.DataFrame([row], columns=legacy_columns),
-                paths.masks_path(tmp_path))
+    legacy_columns = [column for column in mask_records.COLUMNS if column != "source_mask_hash"]
+    row = {key: value for key, value in make_row("a").items() if key in legacy_columns}
+    write_table(pd.DataFrame([row], columns=legacy_columns), paths.masks_path(tmp_path))
 
     assert "source_mask_hash" not in mask_records.load_masks(tmp_path).columns
-    assert mask_records.current_derivation_hashes(tmp_path) == {
-        ("a", "organism"): row["recipe_hash"]}
+    assert mask_records.current_derivation_hashes(tmp_path) == {("a", "organism"): row["recipe_hash"]}
 
 
 # ---------------------------------------------------------------------------
@@ -510,8 +514,7 @@ def test_a_table_written_before_upstreams_were_tracked_still_reads(tmp_path):
 
 
 def test_info_round_trips_with_the_mask(tmp_path):
-    info = {"orient": {"unreliable": False, "eigval_ratio": 0.2},
-            "segment": {"score": 0.9, "n_boxes": 1}}
+    info = {"orient": {"unreliable": False, "eigval_ratio": 0.2}, "segment": {"score": 0.9, "n_boxes": 1}}
     mask_records.save_masks(tmp_path, [make_row("a", info=info)])
 
     [row] = mask_records.mask_lookup(tmp_path).values()
@@ -565,8 +568,7 @@ def test_an_upstream_with_no_recorded_identity_still_hashes():
     missing = mask_records.combined_source_hash({"head": None, "thorax": "t1"})
 
     assert isinstance(missing, str)
-    assert missing == mask_records.combined_source_hash(
-        {"head": float("nan"), "thorax": "t1"})
+    assert missing == mask_records.combined_source_hash({"head": float("nan"), "thorax": "t1"})
 
 
 def test_a_mask_digest_is_stable_and_sees_one_pixel():

@@ -43,11 +43,10 @@ def test_the_threshold_is_configurable_and_hashed():
     -- and being a parameter it is in the recipe hash, so changing it is new
     work rather than a silently different number under the same name.
     """
-    grey = flat((100, 100, 100))                # about 0.43 lightness
+    grey = flat((100, 100, 100))  # about 0.43 lightness
     assert cf.black_fraction(threshold=0.2)(grey) == 0.0
     assert cf.black_fraction(threshold=0.8)(grey) == 1.0
-    assert (cf.black_fraction(threshold=0.2).spec()
-            != cf.black_fraction(threshold=0.8).spec())
+    assert cf.black_fraction(threshold=0.2).spec() != cf.black_fraction(threshold=0.8).spec()
 
 
 # ---------------------------------------------------------------------------
@@ -123,7 +122,9 @@ def test_red_is_one_band_across_zero_degrees(degrees):
 
 def test_keywords_and_a_nested_mapping_build_the_same_threshold():
     by_keyword = color_threshold("yellow", hsv_h=(42, 72), hsv_s=(0.25, None), lab_l=(20, None))
-    by_mapping = ColorThreshold("yellow", {"lab": {"l": (20, None)}, "hsv": {"s": (0.25, None), "h": (42, 72)}})
+    by_mapping = ColorThreshold(
+        "yellow", {"lab": {"l": (20, None)}, "hsv": {"s": (0.25, None), "h": (42, 72)}}
+    )
     assert by_keyword == by_mapping
     assert by_keyword.spaces == ("hsv", "lab")
 
@@ -136,25 +137,27 @@ def test_a_spec_round_trips_and_is_plain_json():
 
 
 def test_changing_any_cutoff_changes_the_spec():
-    assert (color_threshold("x", lab_l=(None, 20)).spec()
-            != color_threshold("x", lab_l=(None, 21)).spec())
+    assert color_threshold("x", lab_l=(None, 20)).spec() != color_threshold("x", lab_l=(None, 21)).spec()
 
 
-@pytest.mark.parametrize("build, message", [
-    (lambda: color_threshold("x", cmyk_c=(0, 1)), "unknown colour space"),
-    (lambda: color_threshold("x", hsv_q=(0, 1)), "no channel"),
-    (lambda: color_threshold("x", hsvh=(0, 1)), "<space>_<channel>"),
-    (lambda: color_threshold("x", lab_l=(50, 20)), "not below"),
-    (lambda: color_threshold("x", lab_l=(50, 50)), "not below"),
-    (lambda: color_threshold("x", lab_l=(None, None)), "at least one bound"),
-    (lambda: color_threshold("x", hsv_h=(340, None)), "both ends"),
-    (lambda: color_threshold("x", hsv_h=(90, 90)), "empty arc"),
-    (lambda: color_threshold("x", hsv_h=(-10, 20)), "0-360"),
-    (lambda: color_threshold("x", lab_l=(1, 2, 3)), r"\(low, high\)"),
-    (lambda: color_threshold("x"), "no conditions"),
-    (lambda: color_threshold("", lab_l=(None, 20)), "non-empty"),
-    (lambda: color_threshold("dark__patch", lab_l=(None, 20)), "'__'"),
-])
+@pytest.mark.parametrize(
+    "build, message",
+    [
+        (lambda: color_threshold("x", cmyk_c=(0, 1)), "unknown colour space"),
+        (lambda: color_threshold("x", hsv_q=(0, 1)), "no channel"),
+        (lambda: color_threshold("x", hsvh=(0, 1)), "<space>_<channel>"),
+        (lambda: color_threshold("x", lab_l=(50, 20)), "not below"),
+        (lambda: color_threshold("x", lab_l=(50, 50)), "not below"),
+        (lambda: color_threshold("x", lab_l=(None, None)), "at least one bound"),
+        (lambda: color_threshold("x", hsv_h=(340, None)), "both ends"),
+        (lambda: color_threshold("x", hsv_h=(90, 90)), "empty arc"),
+        (lambda: color_threshold("x", hsv_h=(-10, 20)), "0-360"),
+        (lambda: color_threshold("x", lab_l=(1, 2, 3)), r"\(low, high\)"),
+        (lambda: color_threshold("x"), "no conditions"),
+        (lambda: color_threshold("", lab_l=(None, 20)), "non-empty"),
+        (lambda: color_threshold("dark__patch", lab_l=(None, 20)), "'__'"),
+    ],
+)
 def test_a_malformed_threshold_fails_when_it_is_built(build, message):
     with pytest.raises(ValueError, match=message):
         build()
@@ -196,7 +199,9 @@ def test_each_space_is_converted_once_however_many_thresholds_read_it(monkeypatc
         return real(pixels, space)
 
     monkeypatch.setattr(color_thresholds, "convert", counting)
-    threshold_masks(np.zeros((5, 3), np.uint8), cf.hue_thresholds() + [color_threshold("dark", lab_l=(None, 20))])
+    threshold_masks(
+        np.zeros((5, 3), np.uint8), cf.hue_thresholds() + [color_threshold("dark", lab_l=(None, 20))]
+    )
     assert sorted(calls) == ["hsv", "lab"]
 
 
@@ -215,19 +220,21 @@ def test_masks_work_on_a_whole_image_too():
 
 def test_fractions_are_reported_per_threshold_in_the_order_given():
     image = np.zeros((2, 2, 3), np.uint8)
-    image[1, 1] = 255                                     # 3 dark pixels, 1 light
+    image[1, 1] = 255  # 3 dark pixels, 1 light
     segment = Segment(image, mask=np.ones((2, 2), bool))
 
-    fractions = cf.threshold_fractions([color_threshold("light", lab_l=(50, None)),
-                                        color_threshold("dark", lab_l=(None, 50))])(segment)
+    fractions = cf.threshold_fractions(
+        [color_threshold("light", lab_l=(50, None)), color_threshold("dark", lab_l=(None, 50))]
+    )(segment)
     assert list(fractions) == ["light", "dark"]
     assert fractions == pytest.approx({"light": 0.25, "dark": 0.75})
 
 
 def test_overlapping_thresholds_each_count_every_pixel_they_match():
     """Independent, not a partition: a pixel two thresholds share counts toward both."""
-    fractions = cf.threshold_fractions([color_threshold("not_black", lab_l=(20, None)),
-                                        color_threshold("not_white", lab_l=(None, 90))])(flat((128, 128, 128)))
+    fractions = cf.threshold_fractions(
+        [color_threshold("not_black", lab_l=(20, None)), color_threshold("not_white", lab_l=(None, 90))]
+    )(flat((128, 128, 128)))
     assert fractions == {"not_black": 1.0, "not_white": 1.0}
 
 
@@ -252,11 +259,14 @@ def test_the_hue_palette_is_the_six_hue_bands():
     assert [threshold.name for threshold in cf.hue_thresholds()] == list(HUE_BANDS)
 
 
-@pytest.mark.parametrize("thresholds, unmatched, message", [
-    ([], False, "at least one"),
-    ([color_threshold("a", lab_l=(None, 20)), color_threshold("a", lab_l=(80, None))], False, "unique"),
-    ([color_threshold("unmatched", lab_l=(None, 20))], True, "collides"),
-])
+@pytest.mark.parametrize(
+    "thresholds, unmatched, message",
+    [
+        ([], False, "at least one"),
+        ([color_threshold("a", lab_l=(None, 20)), color_threshold("a", lab_l=(80, None))], False, "unique"),
+        ([color_threshold("unmatched", lab_l=(None, 20))], True, "collides"),
+    ],
+)
 def test_an_ambiguous_set_of_thresholds_raises(thresholds, unmatched, message):
     with pytest.raises(ValueError, match=message):
         cf.threshold_fractions(thresholds, unmatched=unmatched)
@@ -264,26 +274,28 @@ def test_an_ambiguous_set_of_thresholds_raises(thresholds, unmatched, message):
 
 def test_the_thresholds_and_the_unmatched_flag_are_hashed():
     dark = color_threshold("dark", lab_l=(None, 20))
-    assert (cf.threshold_fractions([dark]).spec()
-            != cf.threshold_fractions([dark], unmatched=True).spec())
-    assert (cf.threshold_fractions([dark]).spec()
-            != cf.threshold_fractions([color_threshold("dark", lab_l=(None, 25))]).spec())
+    assert cf.threshold_fractions([dark]).spec() != cf.threshold_fractions([dark], unmatched=True).spec()
+    assert (
+        cf.threshold_fractions([dark]).spec()
+        != cf.threshold_fractions([color_threshold("dark", lab_l=(None, 25))]).spec()
+    )
 
 
 def test_a_visualized_measurement_draws_one_picture_per_threshold():
     """Side by side, one per threshold plus unmatched; matched pixels keep their own colour, the rest go grey."""
-    image = np.zeros((80, 60, 3), np.uint8)       # tall enough that the caption stays clear of the rows sampled
+    image = np.zeros((80, 60, 3), np.uint8)  # tall enough that the caption stays clear of the rows sampled
     image[:40] = (0, 0, 255)
     image[40:] = (200, 200, 200)
     segment = Segment(image, mask=np.ones((80, 60), bool))
     masks, fractions = color_thresholds._measure(
-        segment, [color_threshold("red", hsv_h=(340, 22), hsv_s=(0.25, None))], unmatched=True)
+        segment, [color_threshold("red", hsv_h=(340, 22), hsv_s=(0.25, None))], unmatched=True
+    )
 
     panel = color_thresholds.threshold_panel(segment, masks, fractions)
     assert panel.shape == (80, 120, 3)
     red_picture, unmatched_picture = panel[:, :60], panel[:, 60:]
-    assert (red_picture[30:40] == (0, 0, 255)).all()                                  # matched: own colour
-    assert (red_picture[40:] == red_picture[79, 0]).all() and red_picture[79, 0].max() < 100   # rest: dim grey
+    assert (red_picture[30:40] == (0, 0, 255)).all()  # matched: own colour
+    assert (red_picture[40:] == red_picture[79, 0]).all() and red_picture[79, 0].max() < 100  # rest: dim grey
     assert (unmatched_picture[40:] == (200, 200, 200)).all()
 
 
@@ -328,7 +340,9 @@ def test_nothing_present_ranks_nothing():
 def some_bins(*extra):
     return cf.threshold_fractions(
         [color_threshold("red", lch_h=(345, 50)), color_threshold("blue", lch_h=(195, 305)), *extra],
-        unmatched=True, name="color_bins")
+        unmatched=True,
+        name="color_bins",
+    )
 
 
 def test_the_colours_come_from_the_bins_and_everything_is_hashed():
@@ -338,14 +352,18 @@ def test_the_colours_come_from_the_bins_and_everything_is_hashed():
 
     assert metric.spec() != cf.color_presence(some_bins(), min_fraction=0.2).spec()
     assert metric.spec() != cf.color_presence(some_bins(), n_ranked_colors=3).spec()
-    assert metric.spec() != cf.color_presence(
-        some_bins(color_threshold("green", lch_h=(105, 195)))).spec()
+    assert metric.spec() != cf.color_presence(some_bins(color_threshold("green", lch_h=(105, 195)))).spec()
 
 
-@pytest.mark.parametrize("kwargs, error", [
-    ({"min_fraction": 0}, ValueError), ({"min_fraction": 1.5}, ValueError),
-    ({"n_ranked_colors": -1}, ValueError), ({"n_ranked_colors": 1.5}, ValueError),
-])
+@pytest.mark.parametrize(
+    "kwargs, error",
+    [
+        ({"min_fraction": 0}, ValueError),
+        ({"min_fraction": 1.5}, ValueError),
+        ({"n_ranked_colors": -1}, ValueError),
+        ({"n_ranked_colors": 1.5}, ValueError),
+    ],
+)
 def test_a_meaningless_setting_fails_when_built(kwargs, error):
     with pytest.raises(error):
         cf.color_presence(some_bins(), **kwargs)

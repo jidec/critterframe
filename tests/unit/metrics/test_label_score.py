@@ -36,21 +36,29 @@ IDS = [f"specimen{index}" for index in range(8)]
 
 # Short bodies are good, long ones bad: separable on one feature.
 LENGTHS = dict(zip(IDS, [100.0, 101.0, 102.0, 103.0, 200.0, 201.0, 202.0, 203.0]))
-LABELS = dict(zip(IDS, ["good", "good", "good", "good",
-                        "wrong_region", "incomplete", "overflow", "input_invalid"]))
+LABELS = dict(
+    zip(IDS, ["good", "good", "good", "good", "wrong_region", "incomplete", "overflow", "input_invalid"])
+)
 
 
 # The screening metric the labels are stored under: a vocabulary of the project's own.
 QUALITY = cf.exclusive_label_annotation(
-    ["good", "input_invalid", "wrong_region", "incomplete", "overflow"], name="quality")
+    ["good", "input_invalid", "wrong_region", "incomplete", "overflow"], name="quality"
+)
 
 
 def store(project_path, run_name, operation, values):
     recipe = Recipe("metric", run_name, [operation], part="organism")
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", operation.metric_name, value)
-                    for occurrence_id, value in values.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(occurrence_id, "organism", operation.metric_name, value)
+            for occurrence_id, value in values.items()
+        ],
+    )
 
 
 def labelled(project_path, lengths=LENGTHS, labels=LABELS):
@@ -64,8 +72,7 @@ def a_metric(**kwargs):
     kwargs.setdefault("label_metric", "quality")
     if "bad_labels" not in kwargs:
         kwargs.setdefault("good_labels", ["good"])
-    return cf.label_score([cf.body_length()], from_run="traits",
-                          labels_run="quality", **kwargs)
+    return cf.label_score([cf.body_length()], from_run="traits", labels_run="quality", **kwargs)
 
 
 def a_context(project_path, occurrence_ids=IDS):
@@ -97,11 +104,17 @@ def test_what_the_score_is_fitted_to_is_in_the_hash():
     assert base.spec() != a_metric(bad_labels=["wrong_region"]).spec()
     assert base.spec() != a_metric(n_components=4).spec()
     assert base.spec() != a_metric(label_metric="other_label").spec()
-    assert base.spec() != cf.label_score([cf.max_width()], from_run="traits",
-                                         labels_run="quality",
-                                         labels_subset="calibrate",
-                                         label_metric="quality",
-                                         good_labels=["good"]).spec()
+    assert (
+        base.spec()
+        != cf.label_score(
+            [cf.max_width()],
+            from_run="traits",
+            labels_run="quality",
+            labels_subset="calibrate",
+            label_metric="quality",
+            good_labels=["good"],
+        ).spec()
+    )
 
 
 def test_which_labels_are_bad_has_to_be_said_one_way():
@@ -111,8 +124,14 @@ def test_which_labels_are_bad_has_to_be_said_one_way():
     """
     for flags in ({}, {"bad_labels": ["wrong_region"], "good_labels": ["good"]}):
         with pytest.raises(ValueError, match="exactly one of"):
-            cf.label_score([cf.body_length()], from_run="traits", labels_run="quality",
-                           labels_subset="calibrate", label_metric="quality", **flags)
+            cf.label_score(
+                [cf.body_length()],
+                from_run="traits",
+                labels_run="quality",
+                labels_subset="calibrate",
+                label_metric="quality",
+                **flags,
+            )
 
 
 def test_listing_the_bad_labels_predicts_only_those(metadata_project):
@@ -166,8 +185,11 @@ def test_a_labelled_occurrence_is_scored_by_a_model_that_did_not_see_it(metadata
 
 
 def test_an_unlabelled_occurrence_is_scored_by_the_full_model(metadata_project):
-    labels = {occurrence_id: LABELS[occurrence_id]
-              for occurrence_id in IDS if occurrence_id not in ("specimen3", "specimen7")}
+    labels = {
+        occurrence_id: LABELS[occurrence_id]
+        for occurrence_id in IDS
+        if occurrence_id not in ("specimen3", "specimen7")
+    }
     labelled(metadata_project, labels=labels)
     metric = a_metric()
     metric.prepare(a_context(metadata_project))
@@ -181,9 +203,13 @@ def test_an_unlabelled_occurrence_is_scored_by_the_full_model(metadata_project):
 
 def test_only_the_named_subsets_labels_train_it(metadata_project):
     labelled(metadata_project)
-    cf.define_subset(metadata_project, "calibrate",
-                     occurrence_ids=[occurrence_id for occurrence_id in IDS
-                                     if occurrence_id not in ("specimen0", "specimen4")])
+    cf.define_subset(
+        metadata_project,
+        "calibrate",
+        occurrence_ids=[
+            occurrence_id for occurrence_id in IDS if occurrence_id not in ("specimen0", "specimen4")
+        ],
+    )
     metric = a_metric()
     record = metric.prepare(a_context(metadata_project))
 
@@ -217,8 +243,9 @@ def test_too_few_labels_of_one_kind_is_refused(metadata_project):
 def test_an_occurrence_with_no_feature_value_has_no_score(metadata_project):
     from critterframe.drivers import NoInput
 
-    lengths = {occurrence_id: value for occurrence_id, value in LENGTHS.items()
-               if occurrence_id != "specimen0"}
+    lengths = {
+        occurrence_id: value for occurrence_id, value in LENGTHS.items() if occurrence_id != "specimen0"
+    }
     labelled(metadata_project, lengths=lengths)
     metric = a_metric()
     record = metric.prepare(a_context(metadata_project))
@@ -260,8 +287,7 @@ def test_the_same_occurrences_relabelled_are_a_different_fit(metadata_project):
     labelled(metadata_project)
     before = a_metric().prepare(a_context(metadata_project))
 
-    store(metadata_project, "quality", QUALITY,
-          {"specimen3": "incomplete", "specimen4": "good"})
+    store(metadata_project, "quality", QUALITY, {"specimen3": "incomplete", "specimen4": "good"})
     after = a_metric().prepare(a_context(metadata_project))
 
     assert after["population"] == before["population"]
@@ -273,8 +299,7 @@ def test_one_bad_label_for_another_is_the_same_fit(metadata_project):
     labelled(metadata_project)
     before = a_metric().prepare(a_context(metadata_project))
 
-    store(metadata_project, "quality", QUALITY,
-          {"specimen4": "overflow"})
+    store(metadata_project, "quality", QUALITY, {"specimen4": "overflow"})
     after = a_metric().prepare(a_context(metadata_project))
 
     assert after["fit_hash"] == before["fit_hash"]

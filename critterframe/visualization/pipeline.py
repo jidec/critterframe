@@ -1,10 +1,4 @@
-"""
-Every activity's diagnostics: resolve_sample, Report, NullReport, PanelFanout, open_report.
-
-A report is one flat stem in `visualizations/pipeline/`: a bounded grid of item panels, optional
-checkpoint grids, whole-population figures, and a `.report.json` sidecar. Items are any string key,
-e.g. an occurrence id, a scope value, or an event.
-"""
+"""Pipeline diagnostics: open_report, Report, NullReport, PanelFanout, resolve_sample."""
 
 import glob
 import heapq
@@ -31,17 +25,16 @@ RANKS = ("lowest", "highest")
 
 
 def resolve_sample(occurrence_ids, visualize):
-    """
-    Turn a visualize= argument into the ids to build a grid from, or None if nothing is visualized.
+    """Turn a `visualize=` argument into the ids to build a grid from.
 
-    Pass the ids an activity will actually PROCESS: a grid can only show work that happened.
+    Args:
+        occurrence_ids: The item keys the activity will process, in order.
+        visualize: False or None for none, True for the default sample of 25, an int for
+            that many, or an iterable of ids. Ids not in `occurrence_ids` are ignored with
+            a warning.
 
-    - `occurrence_ids` -- candidate item keys, in processing order.
-    - `visualize` -- False/None for none, True for a default-sized sample (25), an int for that
-      many, or an iterable of exactly these ids (ids not in `occurrence_ids` are ignored with a
-      warning).
-
-    Returns a list of ids, or None.
+    Returns:
+        A list of ids, or None if nothing is visualized.
     """
     if visualize is None or visualize is False:
         return None
@@ -55,17 +48,19 @@ def resolve_sample(occurrence_ids, visualize):
     chosen = [occurrence_id for occurrence_id in ids if occurrence_id in wanted]
     missing = wanted - set(chosen)
     if missing:
-        logger.warning("visualize= named %d occurrence(s) this run isn't "
-                       "processing, ignoring them (e.g. %s)",
-                       len(missing), sorted(missing)[0])
+        logger.warning(
+            "visualize= named %d occurrence(s) this run isn't processing, ignoring them (e.g. %s)",
+            len(missing),
+            sorted(missing)[0],
+        )
     return chosen
 
 
 def sample_count(visualize):
-    """
-    The number of items a visualize= argument asks for, or None when it names explicit ids.
+    """Return how many items a `visualize=` argument asks for, or None when it names ids.
 
-    - `visualize` -- True (the default sample size), an int, or an iterable of ids.
+    Args:
+        visualize: True, an int, or an iterable of ids.
     """
     if visualize is True:
         return DEFAULT_SAMPLE
@@ -78,7 +73,7 @@ class _Sheet:
     """Fitted cells for some items, and whether anything arrived since the last write."""
 
     def __init__(self):
-        self.cells = {}       # item -> {stage: fitted cell}
+        self.cells = {}  # item -> {stage: fitted cell}
         self.dirty = False
 
     def add(self, item, stage, cell):
@@ -91,31 +86,41 @@ class _Sheet:
 
 
 class Report:
+    """The diagnostics of one activity: a bounded grid, checkpoints, figures and a sidecar.
+
+    Open one with `open_report`, call `begin()` with the items to process, route panels in
+    through `sink()` or `collect()`, call `done()` after each item and `close()` at the
+    end. Also a context manager, which closes on exit.
+
+    Args:
+        project_path: Project to write into.
+        name: First part of every filename, e.g. a run name or `validate_masks__head`.
+        identity_hash: Digest of what produced the output, e.g. a recipe hash.
+        part: The part concerned; left out of filenames when None or the default part.
+        visualize: True, an int, or ids, as in `resolve_sample`.
+        visualize_every: Also write a checkpoint grid every N `done()` calls, sampled from
+            that window's items.
+        rank: None samples the grid deterministically. `"lowest"` or `"highest"` keeps the
+            N items with the lowest or highest value passed to `done()`. Every item then
+            draws its panels.
+        identity: The JSON-serializable spec behind `identity_hash`, for the sidecar.
+        cell: `(height, width)` of one grid cell.
+        columns: Images per row, where the grid has no stage columns.
     """
-    The diagnostics of one activity: a bounded grid, checkpoints, figures, and a sidecar.
 
-    Open one with `open_report`, call `begin()` with the items the activity will process, route
-    panels in with `sink()`/`collect()`, call `done()` after each item, and `close()` at the end.
-    Usable as a context manager, which closes on exit. Panels are fitted to their cell on arrival,
-    so memory stays at sample × stages × one cell whatever the activity's size.
-
-    - `project_path` -- project to write into.
-    - `name` -- first part of every filename, e.g. a run name or `validate_masks__head`.
-    - `identity_hash` -- digest of what produced this output (a recipe hash, an import hash, ...).
-    - `part` -- the part concerned, or None. Omitted from filenames when None or the default part.
-    - `visualize` -- True, an int, or explicit ids; see `resolve_sample`.
-    - `visualize_every` -- write a checkpoint grid every N `done()` calls, each resampled from only
-      the items of that window (`__at<N>`), in addition to the main grid.
-    - `rank` -- None samples the main grid deterministically. `"lowest"`/`"highest"` instead keeps
-      the N items with the lowest/highest value passed to `done()`, e.g. the worst IoUs. Every item
-      then draws its panels, so use it where panels are cheap. Ignored for explicit ids.
-    - `identity` -- the JSON-serializable spec behind `identity_hash`, recorded in the sidecar.
-    - `cell`, `columns` -- grid layout, as in `grids.image_grid`.
-    """
-
-    def __init__(self, project_path, name, identity_hash, part=None, visualize=True,
-                 visualize_every=None, rank=None, identity=None,
-                 cell=grids.DEFAULT_CELL, columns=grids.DEFAULT_COLUMNS):
+    def __init__(
+        self,
+        project_path,
+        name,
+        identity_hash,
+        part=None,
+        visualize=True,
+        visualize_every=None,
+        rank=None,
+        identity=None,
+        cell=grids.DEFAULT_CELL,
+        columns=grids.DEFAULT_COLUMNS,
+    ):
         if rank is not None and rank not in RANKS:
             raise ValueError(f"rank must be one of {RANKS} or None, got {rank!r}")
         if sample_count(visualize) is None:
@@ -141,8 +146,8 @@ class Report:
         self._sample_set = set()
         self._final = _Sheet()
 
-        self._pending = {}        # rank mode: item -> cells awaiting done()
-        self._kept = []           # rank mode heap: (key, -seq, item, value)
+        self._pending = {}  # rank mode: item -> cells awaiting done()
+        self._kept = []  # rank mode heap: (key, -seq, item, value)
         self._kept_cells = {}
         self._seq = 0
 
@@ -157,7 +162,7 @@ class Report:
         self._started = None
 
     def __bool__(self):
-        """True -- a Report exists only when visualization is on (see NullReport)."""
+        """Return True: a Report exists only when visualization is on."""
         return True
 
     def __enter__(self):
@@ -168,13 +173,11 @@ class Report:
         return False
 
     def identify(self, identity_hash, identity=None):
-        """
-        Set the identity once it's known, e.g. a hash over what an export actually wrote.
+        """Set the identity once it is known, before anything is saved.
 
-        Call before anything is saved, since every filename carries the hash.
-
-        - `identity_hash` -- the digest to name files with.
-        - `identity` -- the spec behind it, recorded in the sidecar.
+        Args:
+            identity_hash: The digest to name files with.
+            identity: The spec behind it, for the sidecar.
         """
         self.identity_hash = identity_hash
         if identity is not None:
@@ -184,14 +187,15 @@ class Report:
     # -- items ---------------------------------------------------------------
 
     def begin(self, items, eligible=None):
-        """
-        Declare the items this activity will process, which fixes the sample.
+        """Declare the items the activity will process, which fixes the sample.
 
-        - `items` -- item keys in processing order; `done()` is expected once per item.
-        - `eligible` -- optional subset that can appear in grids, e.g. the occurrences one part of
-          a multi-part run still needs. Items outside it still count toward `visualize_every`.
+        Args:
+            items: Item keys in processing order.
+            eligible: The items that may appear in grids. Others still count toward
+                `visualize_every`.
 
-        Returns the report.
+        Returns:
+            The report.
         """
         self._items = [str(item) for item in items]
         self._eligible = None if eligible is None else {str(item) for item in eligible}
@@ -207,25 +211,26 @@ class Report:
         return self
 
     def wants(self, item):
-        """True if a panel for this item would be kept anywhere."""
+        """Return whether a panel for this item would be kept."""
         item = str(item)
         if self.rank is not None:
             return self._is_eligible(item)
         return item in self._sample_set or item in self._window_set
 
     def sink(self, item):
-        """This report as a Segment's panel_sink when it wants the item, else None."""
+        """Return the report as a panel sink when it wants the item, else None."""
         return self if self.wants(item) else None
 
     def collect(self, item, stage, image):
-        """
-        Take one display-ready panel for an item; ignored if the item isn't wanted.
+        """Take one display-ready panel for an item.
 
-        A panel that can't be laid out is dropped with a warning, never raised.
+        A panel for an unwanted item is ignored, and one that can't be laid out is dropped
+        with a warning.
 
-        - `item` -- the item key.
-        - `stage` -- the column it belongs to, usually the operation's name.
-        - `image` -- uint8 or boolean array.
+        Args:
+            item: The item key.
+            stage: The column it belongs to, usually the operation's name.
+            image: uint8 or boolean array.
         """
         item = str(item)
         in_final = item in self._sample_set
@@ -252,12 +257,12 @@ class Report:
     panel = collect
 
     def done(self, item, rank_value=None):
-        """
-        Mark an item finished: keep it if it ranks, and write checkpoints at window boundaries.
+        """Mark an item finished, and write a checkpoint at a window boundary.
 
-        - `item` -- the item key.
-        - `rank_value` -- the value `rank` orders by. An item with none (or a non-finite one) is
-          never kept.
+        Args:
+            item: The item key.
+            rank_value: The value `rank` orders by. An item with none, or a non-finite one,
+                is never kept.
         """
         item = str(item)
         if self.rank is not None:
@@ -272,12 +277,7 @@ class Report:
             self._rotate(self._position)
 
     def planned(self):
-        """
-        Every item this report will want over its whole life, or None if it may want any (rank mode).
-
-        For activities whose items finish out of order, e.g. concurrent downloads: hold on to
-        what's needed for these, and offer panels when each item's turn comes.
-        """
+        """Return every item the report will want, or None if it may want any (rank mode)."""
         if self.rank is not None:
             return None
         wanted = set(self._sample)
@@ -287,11 +287,11 @@ class Report:
         return wanted
 
     def failure(self, item, error):
-        """
-        Record a failed item in the sidecar, e.g. a download with no image to show.
+        """Record a failed item in the sidecar.
 
-        - `item` -- the item key.
-        - `error` -- the exception or message.
+        Args:
+            item: The item key.
+            error: The exception or message.
         """
         self._failed += 1
         if len(self._failures) < MAX_FAILURES:
@@ -300,37 +300,37 @@ class Report:
     # -- output --------------------------------------------------------------
 
     def rows(self):
-        """(row images, row labels) of the main grid as it stands, one row per item."""
+        """Return `(row images, row labels)` of the main grid as it stands."""
         entries = self._final_entries()
-        return ([[cells.get(stage) for stage in self._stages] for _item, _label, cells in entries],
-                [label for _item, label, _cells in entries])
+        return (
+            [[cells.get(stage) for stage in self._stages] for _item, _label, cells in entries],
+            [label for _item, label, _cells in entries],
+        )
 
     def save(self):
-        """
-        Write the main grid if anything new was collected, and return its path (else None).
-
-        Safe to call repeatedly; it always overwrites the same path.
-        """
+        """Write the main grid if anything new was collected, and return its path or None."""
         if not self._final.dirty:
             return None
         self._final.dirty = False
 
         entries = self._final_entries()
         if not entries:
-            logger.info("no pipeline panels collected for '%s' part '%s' -- nothing in it "
-                        "draws one", self.name, self.part)
+            logger.info(
+                "no pipeline panels collected for '%s' part '%s' -- nothing in it draws one",
+                self.name,
+                self.part,
+            )
             return None
         return self._write_grid(entries)
 
     def checkpoint(self, label):
-        """
-        Write what the main grid holds now as `__<label>`, then empty it for the next round.
+        """Write what the main grid holds as `__<label>`, then empty it for the next round.
 
-        For repeated passes over the same sample, e.g. validation predictions once per epoch.
+        Args:
+            label: Filename suffix, e.g. `epoch0005`.
 
-        - `label` -- filename suffix, e.g. `epoch0005`.
-
-        Returns the path written, or None if nothing was collected.
+        Returns:
+            The path written, or None if nothing was collected.
         """
         entries = self._final_entries()
         written = self._write_grid(entries, suffix=str(label)) if entries else None
@@ -341,19 +341,24 @@ class Report:
         return written
 
     def figure(self, name, figure):
-        """
-        Write a whole-population figure as `__<name>.png`.
+        """Write a whole-population figure as `__<name>.png`.
 
-        Build an expensive figure only `if report:`, so a NullReport costs nothing.
+        Args:
+            name: Filename suffix, e.g. `curves`.
+            figure: A matplotlib Figure, or a uint8 or boolean image array.
 
-        - `name` -- filename suffix, e.g. `curves`.
-        - `figure` -- a matplotlib Figure (see `figures`) or a uint8/boolean image array.
-
-        Returns the path written, or None if writing failed.
+        Returns:
+            The path written, or None if writing failed.
         """
         name = re.sub(r"[^A-Za-z0-9_.-]+", "_", str(name))
-        dest = paths.pipeline_file_path(self.project_path, self.name, self.identity_hash,
-                                        part=self._file_part, suffix=name, extension="png")
+        dest = paths.pipeline_file_path(
+            self.project_path,
+            self.name,
+            self.identity_hash,
+            part=self._file_part,
+            suffix=name,
+            extension="png",
+        )
         try:
             dest.parent.mkdir(parents=True, exist_ok=True)
             if isinstance(figure, np.ndarray):
@@ -362,6 +367,7 @@ class Report:
                     raise ValueError("cv2 could not encode the image")
             else:
                 from . import figures
+
                 figures.save_figure(figure, dest)
         except Exception as exc:
             logger.warning("could not write figure '%s' for '%s': %s", name, self.name, exc)
@@ -373,7 +379,7 @@ class Report:
         return dest
 
     def close(self):
-        """Write the main grid, the trailing checkpoint window, and the sidecar."""
+        """Write the main grid, the last checkpoint window and the sidecar."""
         self.save()
         self._save_window()
         if self._wrote or self._failed:
@@ -407,12 +413,15 @@ class Report:
         return sorted(self._kept, key=lambda entry: (-entry[3], -entry[1]))
 
     def _final_entries(self):
-        """(item, label, cells) for the main grid, in display order."""
+        """Return `(item, label, cells)` for the main grid, in display order."""
         if self.rank is None:
-            return [(item, item, self._final.cells[item]) for item in self._sample
-                    if self._final.cells.get(item)]
-        return [(item, f"{item} {value:.3g}", self._kept_cells[item])
-                for _key, _seq, item, value in self._ordered_kept()]
+            return [
+                (item, item, self._final.cells[item]) for item in self._sample if self._final.cells.get(item)
+            ]
+        return [
+            (item, f"{item} {value:.3g}", self._kept_cells[item])
+            for _key, _seq, item, value in self._ordered_kept()
+        ]
 
     def _rotate(self, start):
         self._window = _Sheet()
@@ -428,7 +437,7 @@ class Report:
         self._window_end = end
 
     def _window_sample(self, start):
-        """(sample, end) for the checkpoint window beginning at item position `start`."""
+        """Return `(sample, end)` for the checkpoint window starting at item position `start`."""
         end = min(start + self.visualize_every, len(self._items))
         ids = [item for item in self._items[start:end] if self._is_eligible(item)]
         count = sample_count(self.visualize)
@@ -441,16 +450,21 @@ class Report:
         if not self._window.dirty or self._window_end is None:
             return None
         self._window.dirty = False
-        entries = [(item, item, self._window.cells[item]) for item in self._window_order
-                   if self._window.cells.get(item)]
+        entries = [
+            (item, item, self._window.cells[item])
+            for item in self._window_order
+            if self._window.cells.get(item)
+        ]
         if not entries:
             return None
         return self._write_grid(entries, suffix=f"at{self._window_end:08d}")
 
     def _write_grid(self, entries, suffix=None):
-        heading = " / ".join(str(piece) for piece in
-                             (self.name, self.part, f"n={len(entries)}", self.identity_hash)
-                             if piece is not None)
+        heading = " / ".join(
+            str(piece)
+            for piece in (self.name, self.part, f"n={len(entries)}", self.identity_hash)
+            if piece is not None
+        )
         if suffix:
             heading = f"{heading} / {suffix}"
         if self.rank is not None:
@@ -459,15 +473,21 @@ class Report:
         rows = [[cells.get(stage) for stage in self._stages] for _item, _label, cells in entries]
         labels = [label for _item, label, _cells in entries]
         if len(self._stages) == 1:
-            grid = grids.image_grid([row[0] for row in rows], labels=labels,
-                                    title=f"{heading} / {self._stages[0]}",
-                                    columns=self.columns, cell=self.cell)
+            grid = grids.image_grid(
+                [row[0] for row in rows],
+                labels=labels,
+                title=f"{heading} / {self._stages[0]}",
+                columns=self.columns,
+                cell=self.cell,
+            )
         else:
-            grid = grids.comparison_grid(rows, column_titles=self._stages, row_labels=labels,
-                                         title=heading, cell=self.cell)
+            grid = grids.comparison_grid(
+                rows, column_titles=self._stages, row_labels=labels, title=heading, cell=self.cell
+            )
 
-        dest = paths.pipeline_file_path(self.project_path, self.name, self.identity_hash,
-                                        part=self._file_part, suffix=suffix)
+        dest = paths.pipeline_file_path(
+            self.project_path, self.name, self.identity_hash, part=self._file_part, suffix=suffix
+        )
         dest.parent.mkdir(parents=True, exist_ok=True)
         cv2.imwrite(str(dest), grid, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
         logger.info("pipeline grid -> %s", dest)
@@ -479,19 +499,19 @@ class Report:
     def _write_sidecar(self):
         directory = paths.pipeline_dir(self.project_path)
         stem = paths.pipeline_stem(self.name, self.identity_hash, part=self._file_part)
-        sidecar = paths.pipeline_report_path(self.project_path, self.name, self.identity_hash,
-                                             part=self._file_part)
+        sidecar = paths.pipeline_report_path(
+            self.project_path, self.name, self.identity_hash, part=self._file_part
+        )
         files = sorted(
-            path.name for path in directory.glob(f"{glob.escape(stem)}*")
-            if path != sidecar and (path.name.startswith(f"{stem}.")
-                                    or path.name.startswith(f"{stem}__"))
+            path.name
+            for path in directory.glob(f"{glob.escape(stem)}*")
+            if path != sidecar and (path.name.startswith(f"{stem}.") or path.name.startswith(f"{stem}__"))
         )
 
         if self.rank is None:
             shown = list(self._sample)
         else:
-            shown = [{"item": item, "value": value}
-                     for _key, _seq, item, value in self._ordered_kept()]
+            shown = [{"item": item, "value": value} for _key, _seq, item, value in self._ordered_kept()]
 
         record = {
             "name": self.name,
@@ -502,10 +522,8 @@ class Report:
             "visualize_every": self.visualize_every,
             "rank": self.rank,
             "shown": shown,
-            "counts": {"items": len(self._items), "done": self._position,
-                       "failed": self._failed},
-            "elapsed_s": (None if self._started is None
-                          else round(time.monotonic() - self._started, 1)),
+            "counts": {"items": len(self._items), "done": self._position, "failed": self._failed},
+            "elapsed_s": (None if self._started is None else round(time.monotonic() - self._started, 1)),
             "failures": self._failures,
             "failures_truncated": self._failed > len(self._failures),
             "files": files,
@@ -514,11 +532,7 @@ class Report:
 
 
 class NullReport:
-    """
-    What `open_report` returns when visualization is off: every method is a no-op.
-
-    Lets call sites use a report unconditionally rather than branching on visualize=.
-    """
+    """The report `open_report` returns when visualization is off: every method does nothing."""
 
     def __bool__(self):
         return False
@@ -530,44 +544,57 @@ class NullReport:
         return False
 
     def identify(self, identity_hash, identity=None):
+        """Do nothing, and return the report."""
         return self
 
     def begin(self, items, eligible=None):
+        """Do nothing, and return the report."""
         return self
 
     def wants(self, item):
+        """Return False: nothing is wanted."""
         return False
 
     def sink(self, item):
+        """Return None: no panel sink."""
         return None
 
     def collect(self, item, stage, image):
+        """Discard the panel."""
         return None
 
     panel = collect
 
     def done(self, item, rank_value=None):
+        """Do nothing."""
         return None
 
     def planned(self):
+        """Return an empty set."""
         return set()
 
     def failure(self, item, error):
+        """Do nothing."""
         return None
 
     def rows(self):
+        """Return no rows and no labels."""
         return [], []
 
     def save(self):
+        """Write nothing."""
         return None
 
     def checkpoint(self, label):
+        """Write nothing."""
         return None
 
     def figure(self, name, figure):
+        """Write nothing."""
         return None
 
     def close(self):
+        """Do nothing."""
         return None
 
 
@@ -575,11 +602,10 @@ NULL_REPORT = NullReport()
 
 
 class PanelFanout:
-    """
-    A panel sink that hands each panel to several reports at once.
+    """A panel sink that hands each panel to several reports.
 
-    For a multi-output segmentation run, whose shared steps run once on a segment that then forks
-    per part: those panels belong on every part's grid.
+    Args:
+        reports: The reports to hand panels to.
     """
 
     def __init__(self, reports):
@@ -589,45 +615,61 @@ class PanelFanout:
         return any(bool(report) for report in self.reports)
 
     def wants(self, occurrence_id):
+        """Return whether any of the reports wants the occurrence."""
         return any(report.wants(occurrence_id) for report in self.reports)
 
     def collect(self, occurrence_id, stage, panel):
+        """Hand the panel to every report that wants the occurrence."""
         for report in self.reports:
             if report.wants(occurrence_id):
                 report.collect(occurrence_id, stage, panel)
 
 
-def open_report(project_path, name, identity_hash, part=None, visualize=True,
-                visualize_every=None, rank=None, identity=None):
-    """
-    The report for one activity, or a NullReport when visualize= is off.
+def open_report(
+    project_path,
+    name,
+    identity_hash,
+    part=None,
+    visualize=True,
+    visualize_every=None,
+    rank=None,
+    identity=None,
+):
+    """Return the report for one activity, or a `NullReport` when `visualize` is off.
 
-    Every activity opens its diagnostics here, so `visualize=`/`visualize_every=` mean the same
-    thing across the package.
-
-    - `project_path`, `name`, `identity_hash`, `part`, `visualize`, `visualize_every`, `rank`,
-      `identity` -- as in `Report`.
-
-    Returns a Report or NullReport.
+    Args:
+        project_path: As in `Report`.
+        name: As in `Report`.
+        identity_hash: As in `Report`.
+        part: As in `Report`.
+        visualize: As in `Report`.
+        visualize_every: As in `Report`.
+        rank: As in `Report`.
+        identity: As in `Report`.
     """
     if visualize is None or visualize is False:
         if visualize_every:
             logger.warning(
                 "visualize_every=%d with visualize=%r: there's no report to "
                 "checkpoint without visualize, so visualize_every has no effect",
-                visualize_every, visualize)
+                visualize_every,
+                visualize,
+            )
         return NULL_REPORT
-    return Report(project_path, name, identity_hash, part=part, visualize=visualize,
-                  visualize_every=visualize_every, rank=rank, identity=identity)
+    return Report(
+        project_path,
+        name,
+        identity_hash,
+        part=part,
+        visualize=visualize,
+        visualize_every=visualize_every,
+        rank=rank,
+        identity=identity,
+    )
 
 
 def panel_sink(report, occurrence_id):
-    """
-    What to give one occurrence's Segment as its panel sink: the report when it wants the
-    occurrence, None otherwise.
-
-    None keeps panel building off the path of the occurrences nobody is looking at.
-    """
+    """Return the report as an occurrence's panel sink when it wants the occurrence, else None."""
     if report is None or not report.wants(occurrence_id):
         return None
     return report

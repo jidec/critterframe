@@ -31,8 +31,7 @@ def add_occurrence(project_path, occurrence_id=LATE, with_image=False):
     extra = table.iloc[[0]].copy()
     first = extra[occurrence_records.ID_COL].iloc[0]
     extra[occurrence_records.ID_COL] = occurrence_id
-    occurrence_records.save_occurrences(
-        project_path, pd.concat([table, extra], ignore_index=True))
+    occurrence_records.save_occurrences(project_path, pd.concat([table, extra], ignore_index=True))
     if with_image:
         give_image(project_path, occurrence_id, like=first)
     return first
@@ -44,8 +43,9 @@ def give_image(project_path, occurrence_id, like):
 
 
 def segment_run(project_path, **kwargs):
-    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())],
-                           visualize=False, **kwargs)["organism"]
+    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())], visualize=False, **kwargs)[
+        "organism"
+    ]
 
 
 def test_a_missing_image_is_no_input_and_is_not_recorded(image_project):
@@ -66,22 +66,24 @@ def test_the_image_arriving_later_is_picked_up_without_asking(image_project):
 
 
 def test_a_missing_upstream_mask_is_no_input(segmented_project):
-    add_occurrence(segmented_project, with_image=True)   # an image, but no organism mask
+    add_occurrence(segmented_project, with_image=True)  # an image, but no organism mask
 
-    result = cf.run_segments(segmented_project, part="body", from_part="organism",
-                             steps=[cf.segment(ThresholdModel())],
-                             visualize=False)["body"]
+    result = cf.run_segments(
+        segmented_project,
+        part="body",
+        from_part="organism",
+        steps=[cf.segment(ThresholdModel())],
+        visualize=False,
+    )["body"]
     assert (result["no_input"], result["failed"]) == (1, 0)
     assert result["processed"] == 8
 
 
 def test_a_missing_image_is_no_input_for_a_metric_too(segmented_project):
     add_occurrence(segmented_project)
-    brightness = Metric("brightness", lambda segment: float(segment.image.mean()),
-                        requires_mask=False)
+    brightness = Metric("brightness", lambda segment: float(segment.image.mean()), requires_mask=False)
 
-    result = cf.run_metrics(segmented_project, metrics=[brightness],
-                            visualize=False)["organism"]
+    result = cf.run_metrics(segmented_project, metrics=[brightness], visualize=False)["organism"]
     assert (result["no_input"], result["failed"]) == (1, 0)
     assert failure_records.load_failures(segmented_project, stage="metric").empty
 
@@ -89,12 +91,21 @@ def test_a_missing_image_is_no_input_for_a_metric_too(segmented_project):
 def test_a_missing_image_recorded_as_a_failure_before_is_attempted_again(image_project):
     """Ledger rows from before this rule would otherwise match forever."""
     first = add_occurrence(image_project)
-    [recipe] = _build_recipes(None, [cf.segment(ThresholdModel())], None, None,
-                              "organism", None, False).values()
-    failure_records.record_failures(image_project, "segment", [{
-        "occurrence_id": LATE, "part": "organism",
-        "context_hash": mask_records.derivation_hash(recipe.hash, None),
-        "error": "no image in the image store"}])
+    [recipe] = _build_recipes(
+        None, [cf.segment(ThresholdModel())], None, None, "organism", None, False
+    ).values()
+    failure_records.record_failures(
+        image_project,
+        "segment",
+        [
+            {
+                "occurrence_id": LATE,
+                "part": "organism",
+                "context_hash": mask_records.derivation_hash(recipe.hash, None),
+                "error": "no image in the image store",
+            }
+        ],
+    )
 
     give_image(image_project, LATE, like=first)
     result = segment_run(image_project)

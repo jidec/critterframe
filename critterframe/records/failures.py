@@ -1,14 +1,4 @@
-"""
-A persistent ledger of failed attempts, so a rerun doesn't retry work already
-known not to work.
-
-One small parquet table (failures.parquet) shared by any stage that wants this
-pattern -- download and segmentation today. A failure is scoped by a
-context_hash naming what was attempted, so a change that could plausibly fix
-it (a corrected URL from a re-ingest, a retuned recipe) drops the old failure
-and is retried automatically, the same way records.masks.completed_keys scopes
-a derived mask's completion on its upstream's source_mask_hash.
-"""
+"""The failures ledger: what failed and under which attempt, so an unchanged repeat is not retried."""
 
 import logging
 from datetime import datetime, timezone
@@ -34,16 +24,13 @@ NOT_FAILURES = {"no image in the image store"}
 
 
 def record_failures(project_path, stage, rows):
-    """
-    Persist one failed attempt per row, replacing any prior failure recorded
-    for the same occurrence-part under this stage.
+    """Record one failed attempt per row, replacing any earlier one for the same occurrence-part.
 
-    - `project_path` -- the project.
-    - `stage` -- what kind of attempt failed, e.g. "download" or "segment".
-    - `rows` -- [{"occurrence_id", "part" (optional, NO_PART if omitted),
-      "context_hash", "error"}, ...]. context_hash identifies what was
-      attempted, so failed_keys() can tell a repeat of the same attempt from a
-      changed one.
+    Args:
+        project_path: Project to write to.
+        stage: What kind of attempt failed, e.g. `"download"` or `"segment"`.
+        rows: `{"occurrence_id", "part", "context_hash", "error"}` dicts. `part` is optional;
+            `context_hash` identifies what was attempted.
     """
     if not rows:
         return 0
@@ -60,23 +47,22 @@ def record_failures(project_path, stage, rows):
         }
         for row in rows
     ]
-    upsert_table(pd.DataFrame(records, columns=COLUMNS),
-                paths.failures_path(project_path), key_cols=KEY_COLS)
+    upsert_table(pd.DataFrame(records, columns=COLUMNS), paths.failures_path(project_path), key_cols=KEY_COLS)
     return len(records)
 
 
 def failed_keys(project_path, stage, context_hashes):
-    """
-    The (occurrence_id, part) pairs already recorded as failed for this stage
-    with the SAME context_hash they'd be attempted under now.
+    """Return the occurrence-parts recorded as failed under the attempt about to be made.
 
-    A stored failure whose context_hash no longer matches -- a corrected URL,
-    a retuned recipe -- is not returned, so it is attempted again with no flag
-    needed, the same way a changed source_mask_hash drops a mask from
-    completed_keys.
+    A stored failure whose context hash differs is not returned, so it is attempted again.
 
-    - `context_hashes` -- {(occurrence_id, part): context_hash} of what is
-      about to be attempted.
+    Args:
+        project_path: Project to read from.
+        stage: Stage to look in.
+        context_hashes: `{(occurrence_id, part): context_hash}` of what is about to be attempted.
+
+    Returns:
+        A set of `(occurrence_id, part)`.
     """
     if not context_hashes:
         return set()
@@ -88,26 +74,17 @@ def failed_keys(project_path, stage, context_hashes):
     if df.empty:
         return set()
 
-    stored = {
-        (row.occurrence_id, row.part): row.context_hash
-        for row in df.itertuples(index=False)
-    }
-    return {
-        key for key, context_hash in context_hashes.items()
-        if stored.get(key) == context_hash
-    }
+    stored = {(row.occurrence_id, row.part): row.context_hash for row in df.itertuples(index=False)}
+    return {key for key, context_hash in context_hashes.items() if stored.get(key) == context_hash}
 
 
 def clear_failures(project_path, stage, keys):
-    """
-    Drop recorded failures for keys that just succeeded.
+    """Drop the recorded failures of keys that have since succeeded.
 
-    Hygiene, not correctness -- a stale row's context_hash simply never
-    matches again -- but cheap to do at the point the caller already knows
-    which keys succeeded, so the table doesn't carry rows that can never be
-    read as failed again.
-
-    - `keys` -- iterable of (occurrence_id, part).
+    Args:
+        project_path: Project to write to.
+        stage: Stage the keys belong to.
+        keys: Iterable of `(occurrence_id, part)`.
     """
     keys = {(str(occurrence_id), str(part)) for occurrence_id, part in keys}
     if not keys:
@@ -130,11 +107,12 @@ def clear_failures(project_path, stage, keys):
 
 
 def load_failures(project_path, stage=None, columns=None):
-    """
-    Read failures.parquet, optionally narrowed to one stage -- for an operator
-    to see what's being skipped and why.
+    """Read the failures ledger.
 
-    - `stage` -- restrict to one stage, or None for every stage.
+    Args:
+        project_path: Project to read from.
+        stage: Stage to narrow to; None for every stage.
+        columns: Columns to read; all if None.
     """
     df = load_table(paths.failures_path(project_path), columns=columns, missing_ok=True)
     if stage is not None and not df.empty and "stage" in df.columns:

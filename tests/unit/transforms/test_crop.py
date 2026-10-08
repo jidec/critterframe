@@ -21,14 +21,13 @@ from critterframe.recipes import Segment
 from critterframe.transforms.crop import REGIONS
 from helpers.synthetic import blob_mask
 
-FRAME = (200, 300)          # height, width
+FRAME = (200, 300)  # height, width
 
 
 def a_segment(mask=True):
     image = np.zeros((*FRAME, 3), np.uint8)
     image[60:100, 200:240] = 255
-    return Segment(image, mask=blob_mask(FRAME) if mask else None,
-                   occurrence_id="test")
+    return Segment(image, mask=blob_mask(FRAME) if mask else None, occurrence_id="test")
 
 
 # ---------------------------------------------------------------------------
@@ -69,12 +68,15 @@ def test_a_crop_moves_the_mask_with_the_image():
     assert cropped.mask.shape == cropped.shape
 
 
-@pytest.mark.parametrize("kwargs, message", [
-    ({}, "needs region="),
-    ({"x": 1}, "needs region="),
-    ({"region": "center", "x": 1}, "either region="),
-    ({"region": "centre"}, "unknown region"),
-])
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({}, "needs region="),
+        ({"x": 1}, "needs region="),
+        ({"region": "center", "x": 1}, "either region="),
+        ({"region": "centre"}, "unknown region"),
+    ],
+)
 def test_bad_crop_arguments_fail_at_configuration_time(kwargs, message):
     """
     Not four hours into a run. An operation is configured once and executed
@@ -159,10 +161,13 @@ def test_both_dimensions_given_are_obeyed():
     assert resized.shape == (100, 100)
 
 
-@pytest.mark.parametrize("kwargs, message", [
-    ({}, "needs scale="),
-    ({"scale": 2, "width": 10}, "either scale="),
-])
+@pytest.mark.parametrize(
+    "kwargs, message",
+    [
+        ({}, "needs scale="),
+        ({"scale": 2, "width": 10}, "either scale="),
+    ],
+)
 def test_bad_resize_arguments_fail_at_configuration_time(kwargs, message):
     with pytest.raises(ValueError, match=message):
         cf.resize(**kwargs)
@@ -227,21 +232,22 @@ class RecordingSink:
         assert image.dtype == np.uint8, "panels must arrive display-ready"
 
 
-@pytest.mark.parametrize("operation, stage", [
-    (cf.crop(region="center"), "crop"),
-    (cf.crop_to_mask(), "crop_to_mask"),
-    (cf.rotate(15), "rotate"),
-    (cf.resize(scale=0.5), "resize"),
-    (cf.remove_background(), "remove_background"),
-])
-def test_each_operation_emits_a_display_ready_panel_named_for_the_step(
-        operation, stage):
+@pytest.mark.parametrize(
+    "operation, stage",
+    [
+        (cf.crop(region="center"), "crop"),
+        (cf.crop_to_mask(), "crop_to_mask"),
+        (cf.rotate(15), "rotate"),
+        (cf.resize(scale=0.5), "resize"),
+        (cf.remove_background(), "remove_background"),
+    ],
+)
+def test_each_operation_emits_a_display_ready_panel_named_for_the_step(operation, stage):
     """
     The stage names the column a panel lands in, so it is named for the STEP
     rather than for the occurrence.
     """
     sink = RecordingSink()
     image = np.zeros((*FRAME, 3), np.uint8)
-    operation(Segment(image, mask=blob_mask(FRAME), occurrence_id="test",
-                      panel_sink=sink))
+    operation(Segment(image, mask=blob_mask(FRAME), occurrence_id="test", panel_sink=sink))
     assert sink.stages == [stage]

@@ -24,17 +24,14 @@ def width_ratio(values):
 
 
 def store_traits(project_path, skip=()):
-    recipe = Recipe("metric", "traits", [cf.body_length(), cf.max_width()],
-                    part="organism")
+    recipe = Recipe("metric", "traits", [cf.body_length(), cf.max_width()], part="organism")
     run_id = start_run(project_path, recipe)
     rows = []
     for index, occurrence_id in enumerate(IDS):
         if occurrence_id in skip:
             continue
-        rows.append(make_metric_row(occurrence_id, "organism", "body_length",
-                                    100.0 + index, unit="px"))
-        rows.append(make_metric_row(occurrence_id, "organism", "max_width",
-                                    20.0, unit="px"))
+        rows.append(make_metric_row(occurrence_id, "organism", "body_length", 100.0 + index, unit="px"))
+        rows.append(make_metric_row(occurrence_id, "organism", "max_width", 20.0, unit="px"))
     append_metrics(project_path, run_id, recipe.hash, rows)
     return recipe.hash
 
@@ -44,8 +41,7 @@ def a_context(project_path):
 
 
 def ratio(**kwargs):
-    return cf.derived(width_ratio, [cf.body_length(), cf.max_width()],
-                      from_run="traits", **kwargs)
+    return cf.derived(width_ratio, [cf.body_length(), cf.max_width()], from_run="traits", **kwargs)
 
 
 def test_a_derived_value_is_its_function_of_the_stored_values(metadata_project):
@@ -125,13 +121,14 @@ def scaled(values, factor):
 
 def test_parameters_reach_the_function_and_the_hash(metadata_project):
     store_traits(metadata_project)
-    metric = cf.derived(scaled, [cf.body_length()], from_run="traits",
-                        parameters={"factor": 2})
+    metric = cf.derived(scaled, [cf.body_length()], from_run="traits", parameters={"factor": 2})
     metric.prepare(a_context(metadata_project))
 
     assert metric(StoredValues("specimen1", "organism")) == pytest.approx(202.0)
-    assert metric.spec() != cf.derived(scaled, [cf.body_length()], from_run="traits",
-                                       parameters={"factor": 3}).spec()
+    assert (
+        metric.spec()
+        != cf.derived(scaled, [cf.body_length()], from_run="traits", parameters={"factor": 3}).spec()
+    )
 
 
 def test_no_parameters_leaves_the_spec_as_it_was():

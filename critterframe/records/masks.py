@@ -1,17 +1,4 @@
-"""
-RLE encode/decode, upsert, derivation hashing, sharded writes for parallel runs.
-
-One canonical mask per occurrence-part in masks.parquet, RLE-encoded, always in
-the coordinates of the original analysis image. Writing a mask for a part that
-already has one replaces it; masks are processing state, and a recipe hash says
-how any of them was made.
-
-Reference masks live in an identical table (reference_masks.parquet, via
-reference=True) and are a parallel set, not a replacement -- validation compares
-the two. Called reference rather than ground truth deliberately: it is whatever
-you chose to compare against, which is often a human's correction but equally a
-slower model or an earlier pipeline.
-"""
+"""Mask records: RLE encode and decode, upsert, derivation hashing, sharded writes for parallel runs."""
 
 import hashlib
 import json
@@ -54,13 +41,7 @@ IDENTITY_COLUMNS = ["occurrence_id", "part", "recipe_hash", "source_mask_hash"]
 
 
 def _encode_mask(mask):
-    """
-    RLE-encode a boolean mask into the columns a mask row stores.
-
-    COCO RLE via pycocotools: compact for the contiguous regions organism masks
-    are, and widely readable. Counts are stored as raw bytes, since parquet has
-    a binary column type (see CLAUDE.md).
-    """
+    """RLE-encode a boolean mask (COCO RLE) into the columns a mask row stores."""
     mask = np.asfortranarray((np.asarray(mask) > 0).astype(np.uint8))
     rle = mask_utils.encode(mask)
     height, width = rle["size"]
@@ -73,11 +54,10 @@ def _encode_mask(mask):
 
 
 def decode_mask(row):
-    """
-    Decode one mask row back into a boolean array.
+    """Decode one mask row into a boolean array.
 
-    - `row` -- a mapping with rle_counts/rle_height/rle_width, e.g. a row from
-      load_masks() or a record from make_mask_row().
+    Args:
+        row: A mapping with `rle_counts`, `rle_height` and `rle_width`.
     """
     rle = {
         "counts": bytes(row["rle_counts"]),
@@ -87,14 +67,10 @@ def decode_mask(row):
 
 
 def mask_digest(mask):
-    """
-    A short, stable digest of a mask's pixels and shape.
+    """Return a short, stable digest of a mask's pixels and shape.
 
-    What an imported mask's identity is built from (see
-    `segmentation.mask_import_export`), and what an export lists per file so a
-    receiver can check it got the same pixels.
-
-    - `mask` -- a boolean (or 0/nonzero) array.
+    Args:
+        mask: A boolean or 0/nonzero array.
     """
     mask = np.asarray(mask) > 0
     content = np.packbits(mask).tobytes() + repr(mask.shape).encode("ascii")
@@ -102,26 +78,22 @@ def mask_digest(mask):
 
 
 def mask_info(row):
-    """
-    The `{operation label: scalar info}` a mask row recorded, or {} for none.
+    """Return the `{operation label: scalar info}` a mask row recorded, or `{}`.
 
-    - `row` -- a mask row; one written before the column existed reads as {}.
+    Args:
+        row: A mask row.
     """
     value = row.get("info") if hasattr(row, "get") else None
     return json.loads(value) if isinstance(value, str) else {}
 
 
 def derivation_hash(recipe_hash, source_mask_hash=None):
-    """
-    A mask's identity, as opposed to its recipe's: the recipe hash, chained
-    with the identity of the upstream mask it started from.
+    """Return a mask's identity: its recipe hash, chained with its upstream mask's identity.
 
-    With no upstream this is just the recipe hash. Chaining matters for a part
-    cut from another part, where resegmenting the organism must make the wing
-    stale without the wing's own recipe changing.
-
-    A non-string source_mask_hash -- None, or the NaN an older table reads back
-    as -- means no upstream.
+    Args:
+        recipe_hash: Hash of the recipe that made the mask.
+        source_mask_hash: Derivation hash of the upstream mask. Anything but a string means
+            there is none, and the result is the recipe hash.
     """
     if not isinstance(source_mask_hash, str):
         return recipe_hash
@@ -129,54 +101,49 @@ def derivation_hash(recipe_hash, source_mask_hash=None):
 
 
 def combined_source_hash(hashes):
-    """
-    One `source_mask_hash` for a mask built from one or several upstream masks.
+    """Return one `source_mask_hash` for a mask built from one or several upstream masks.
 
-    A single upstream is its own derivation hash, unchanged. Several are hashed
-    together by part name, so replacing any one of them moves the result.
+    Args:
+        hashes: `{part: derivation hash}` of each upstream mask.
 
-    - `hashes` -- {part: derivation_hash()} of each upstream mask.
-
-    Returns a hash, or None for a single upstream with no recorded identity.
+    Returns:
+        A single upstream's own hash, unchanged, or None if it has none. Several are
+        hashed together by part name.
     """
     if len(hashes) == 1:
         return next(iter(hashes.values()))
     # A non-string is an upstream with no recorded identity (None, or the NaN
     # an older table reads back as), which canonical JSON can't carry as NaN.
-    return hash_spec({str(part): value if isinstance(value, str) else None
-                      for part, value in hashes.items()})
+    return hash_spec({str(part): value if isinstance(value, str) else None for part, value in hashes.items()})
 
 
-def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
-                  run_id=None, score=None, from_part=None,
-                  source_mask_hash=None, info=None):
-    """
-    Build one mask record.
+def make_mask_row(
+    occurrence_id,
+    mask,
+    part=DEFAULT_PART,
+    recipe_hash=None,
+    run_id=None,
+    score=None,
+    from_part=None,
+    source_mask_hash=None,
+    info=None,
+):
+    """Build one mask record, with `occurrence_id` and `part` as strings.
 
-    occurrence_id and part are the table's key, so this is where their type is
-    guaranteed -- both are coerced to str and are strings everywhere after.
-    Storage compares keys by value without coercing (see CLAUDE.md).
-
-    - `mask` -- boolean mask in original analysis image coordinates, e.g. from
-      Segment.mask_in_original_coordinates().
-    - `part` -- named part this mask covers; the whole organism by default.
-    - `recipe_hash` -- identity of the recipe that derived it, which is what
-      lets a rerun recognize its own previous work.
-    - `run_id` -- the run that produced it.
-    - `score` -- the model's own confidence, where it reports one.
-    - `from_part` -- the upstream part this was derived from, if any.
-    - `source_mask_hash` -- derivation_hash() of the upstream MASK, if any,
-      which is what makes a derived mask stale once its source is resegmented.
-      None for a mask found straight in the image.
-    - `info` -- `{operation label: scalar info}` from every step that produced
-      the mask (see `segments.scalar_info`), stored as JSON. Never hashed;
-      replaced with the mask.
+    Args:
+        occurrence_id: The occurrence.
+        mask: Boolean mask in original image coordinates.
+        part: Part the mask covers.
+        recipe_hash: Hash of the recipe that derived it.
+        run_id: The run that produced it.
+        score: The model's own confidence, where it reports one.
+        from_part: The upstream part it was derived from.
+        source_mask_hash: Derivation hash of the upstream mask; None for a mask found in
+            the image itself.
+        info: `{operation label: scalar info}` from the steps that produced it. Not hashed.
     """
     if occurrence_id is None or part is None:
-        raise ValueError(
-            f"a mask needs both an occurrence_id and a part "
-            f"(got {occurrence_id!r}, {part!r})"
-        )
+        raise ValueError(f"a mask needs both an occurrence_id and a part (got {occurrence_id!r}, {part!r})")
 
     row = {
         "occurrence_id": str(occurrence_id),
@@ -194,34 +161,32 @@ def make_mask_row(occurrence_id, mask, part=DEFAULT_PART, recipe_hash=None,
 
 
 def save_masks(project_path, rows, reference=False):
-    """
-    Write mask rows, replacing any existing mask for the same occurrence-part.
+    """Write mask rows, replacing any existing mask for the same occurrence-part.
 
-    - `rows` -- list of records from make_mask_row().
-    - `reference` -- True writes to the reference table instead of the
-      canonical one.
+    Args:
+        project_path: Project to write to.
+        rows: Records from `make_mask_row`.
+        reference: Write to the reference table instead of the canonical one.
     """
     if not rows:
         return 0
 
-    upsert_table(pd.DataFrame(rows, columns=COLUMNS),
-                 paths.masks_path(project_path, reference=reference),
-                 key_cols=KEY_COLS)
+    upsert_table(
+        pd.DataFrame(rows, columns=COLUMNS),
+        paths.masks_path(project_path, reference=reference),
+        key_cols=KEY_COLS,
+    )
     return len(rows)
 
 
 def save_mask_shard(project_path, rows, part, reference=False):
-    """
-    Write one batch of mask rows to a new, uniquely-named staging file rather
-    than upserting into the canonical table.
+    """Write a batch of mask rows to a new staging file, for `merge_mask_shards` to fold in.
 
-    What a sharded run flushes through instead of save_masks(): a new file
-    can't collide with any number of concurrent writers (see CLAUDE.md).
-    merge_mask_shards() reads them back.
-
-    - `rows` -- as save_masks().
-    - `part` -- which output part these rows belong to; shards stage per part.
-    - `reference` -- as save_masks().
+    Args:
+        project_path: Project to write to.
+        rows: Records from `make_mask_row`.
+        part: Part the rows belong to.
+        reference: Stage for the reference table.
     """
     if not rows:
         return 0
@@ -236,27 +201,25 @@ def save_mask_shard(project_path, rows, part, reference=False):
 
 
 def merge_mask_shards(project_path, part=None, reference=False, cleanup=True):
-    """
-    Fold every staged shard file into the canonical mask table.
+    """Fold every staged shard file into the mask table.
 
-    Run once, single-process, after every shard has finished -- a cluster job
-    depending on the array is the natural fit. The one place that performs the
-    upsert, safe because only one process ever does. An occurrence-part staged
-    twice resolves to the newest write.
+    Run from one process, after every shard has finished. An occurrence-part staged twice
+    resolves to the newest write.
 
-    - `part` -- merge only this part's shards, or None for every staged part.
-    - `reference` -- merge the reference-mask shards instead.
-    - `cleanup` -- delete each staged file once merged. False leaves them,
-      e.g. to inspect before trusting the merge.
+    Args:
+        project_path: Project to merge in.
+        part: Part whose shards to merge; None for every staged part.
+        reference: Merge the reference-mask shards.
+        cleanup: Delete each staged file once merged.
 
-    Returns {part: n_rows_merged}, for parts that had anything staged.
+    Returns:
+        `{part: rows merged}` for the parts that had anything staged.
     """
     root = paths.mask_shards_dir(project_path, reference=reference)
     if not root.exists():
         return {}
 
-    parts = [part] if part is not None else sorted(
-        entry.name for entry in root.iterdir() if entry.is_dir())
+    parts = [part] if part is not None else sorted(entry.name for entry in root.iterdir() if entry.is_dir())
 
     merged = {}
     for output_part in parts:
@@ -268,12 +231,10 @@ def merge_mask_shards(project_path, part=None, reference=False, cleanup=True):
         # Filenames sort in write order (see save_mask_shard), so the last
         # occurrence of a key after concatenating in that order is the
         # chronologically newest write for it.
-        combined = pd.concat([pd.read_parquet(path) for path in shard_files],
-                             ignore_index=True)
+        combined = pd.concat([pd.read_parquet(path) for path in shard_files], ignore_index=True)
         combined = combined.drop_duplicates(subset=KEY_COLS, keep="last")
 
-        upsert_table(combined, paths.masks_path(project_path, reference=reference),
-                     key_cols=KEY_COLS)
+        upsert_table(combined, paths.masks_path(project_path, reference=reference), key_cols=KEY_COLS)
         merged[output_part] = len(combined)
 
         if cleanup:
@@ -283,21 +244,21 @@ def merge_mask_shards(project_path, part=None, reference=False, cleanup=True):
     return merged
 
 
-def load_masks(project_path, parts=None, occurrence_ids=None, recipe_hash=None,
-               reference=False, columns=None):
-    """
-    Read mask rows as a DataFrame, still RLE-encoded -- decode_mask() a row to
-    get pixels.
+def load_masks(
+    project_path, parts=None, occurrence_ids=None, recipe_hash=None, reference=False, columns=None
+):
+    """Read mask rows as a DataFrame, still RLE-encoded.
 
-    - `parts` -- parts to include; all if None.
-    - `occurrence_ids` -- occurrence ids to include; all if None.
-    - `recipe_hash` -- exact-recipe filter.
-    - `reference` -- read the reference table instead of the canonical one.
-    - `columns` -- columns to read off disk. Skip when filtering, since the
-      filter columns have to be read too.
+    Args:
+        project_path: Project to read from.
+        parts: Parts to include; all if None.
+        occurrence_ids: Occurrences to include; all if None.
+        recipe_hash: Keep only masks made by this recipe.
+        reference: Read the reference table.
+        columns: Columns to read. Leave None when filtering, since the filter columns
+            must be read too.
     """
-    df = load_table(paths.masks_path(project_path, reference=reference),
-                    columns=columns, missing_ok=True)
+    df = load_table(paths.masks_path(project_path, reference=reference), columns=columns, missing_ok=True)
     if df.empty:
         return df
 
@@ -318,63 +279,54 @@ def load_masks(project_path, parts=None, occurrence_ids=None, recipe_hash=None,
 
 
 def get_mask(project_path, occurrence_id, part=DEFAULT_PART, reference=False):
-    """
-    One decoded mask, or None if this occurrence-part hasn't been segmented.
+    """Return one decoded mask, or None if the occurrence-part has none.
 
-    Reads the whole table per call: fine for a one-off lookup, wasteful in a
-    loop. Use mask_lookup() for a run.
+    Reads the whole table on each call; use `mask_lookup` in a loop.
+
+    Args:
+        project_path: Project to read from.
+        occurrence_id: The occurrence.
+        part: The part.
+        reference: Read the reference table.
     """
-    df = load_masks(project_path, parts=[part], occurrence_ids=[occurrence_id],
-                    reference=reference)
+    df = load_masks(project_path, parts=[part], occurrence_ids=[occurrence_id], reference=reference)
     if df.empty:
         return None
     return decode_mask(df.iloc[0])
 
 
-def mask_lookup(project_path, part=DEFAULT_PART, occurrence_ids=None,
-                reference=False):
-    """
-    {occurrence_id: mask row} for one part, read in a single pass -- what a run
-    loops over, so the table is read once rather than once per occurrence.
+def mask_lookup(project_path, part=DEFAULT_PART, occurrence_ids=None, reference=False):
+    """Return `{occurrence_id: mask row}` for one part, read in a single pass.
 
-    Rows come back encoded; decode_mask() each as you reach it, so a large run
-    doesn't hold every decoded mask in memory.
+    Args:
+        project_path: Project to read from.
+        part: The part.
+        occurrence_ids: Occurrences to include; all if None.
+        reference: Read the reference table.
     """
-    df = load_masks(project_path, parts=[part], occurrence_ids=occurrence_ids,
-                    reference=reference)
+    df = load_masks(project_path, parts=[part], occurrence_ids=occurrence_ids, reference=reference)
     return {row["occurrence_id"]: row for _, row in df.iterrows()}
 
 
 def _load_identities(project_path, reference=False, **filters):
-    """
-    Read the identity columns (see IDENTITY_COLUMNS) of the mask table.
-
-    source_mask_hash is dropped when the stored table predates it, since naming
-    a missing column fails the read. Those rows then look upstream-less, which
-    is what they effectively are.
-    """
-    available = set(table_columns(paths.masks_path(project_path,
-                                                   reference=reference)))
+    """Read the mask table's identity columns, tolerating a table that predates `source_mask_hash`."""
+    available = set(table_columns(paths.masks_path(project_path, reference=reference)))
     columns = [column for column in IDENTITY_COLUMNS if column in available]
-    return load_masks(project_path, reference=reference,
-                      columns=columns or None, **filters)
+    return load_masks(project_path, reference=reference, columns=columns or None, **filters)
 
 
-def completed_keys(project_path, recipe_hash, reference=False,
-                   source_mask_hashes=None):
+def completed_keys(project_path, recipe_hash, reference=False, source_mask_hashes=None):
+    """Return the `(occurrence_id, part)` pairs a segmentation recipe already has masks for.
+
+    Args:
+        project_path: Project to read from.
+        recipe_hash: The recipe.
+        reference: Read the reference table.
+        source_mask_hashes: `{(occurrence_id, part): derivation hash}` of the upstream masks
+            a `from_part` run starts from. A stored mask then counts only if it was derived
+            from that exact upstream.
     """
-    The (occurrence_id, part) pairs a segmentation recipe has already produced
-    masks for -- the repeat-awareness check a run makes before doing any work.
-
-    - `source_mask_hashes` -- {(occurrence_id, part): derivation_hash} of the
-      upstream masks a from_part run is about to start from. When given, a
-      stored mask counts as complete only if derived from that exact upstream,
-      so a wing goes stale when its organism is resegmented. None for a recipe
-      that segments straight from the image. A mask whose upstream isn't in the
-      map never counts.
-    """
-    df = _load_identities(project_path, reference=reference,
-                          recipe_hash=recipe_hash)
+    df = _load_identities(project_path, reference=reference, recipe_hash=recipe_hash)
     if df.empty:
         return set()
 
@@ -382,62 +334,51 @@ def completed_keys(project_path, recipe_hash, reference=False,
     if source_mask_hashes is None:
         return keys
 
-    stored = {} if "source_mask_hash" not in df.columns else {
-        (row.occurrence_id, row.part): row.source_mask_hash
-        for row in df.itertuples(index=False)
-    }
+    stored = (
+        {}
+        if "source_mask_hash" not in df.columns
+        else {(row.occurrence_id, row.part): row.source_mask_hash for row in df.itertuples(index=False)}
+    )
     return {
-        key for key in keys
-        if stored.get(key) is not None
-        and stored.get(key) == source_mask_hashes.get(key)
+        key for key in keys if stored.get(key) is not None and stored.get(key) == source_mask_hashes.get(key)
     }
 
 
-def current_derivation_hashes(project_path, parts=None, occurrence_ids=None,
-                              reference=False):
-    """
-    {(occurrence_id, part): derivation_hash} for the masks currently in the
-    table -- the lookup answering "is this still the mask that was derived
-    from".
+def current_derivation_hashes(project_path, parts=None, occurrence_ids=None, reference=False):
+    """Return `{(occurrence_id, part): derivation hash}` for the masks now in the table.
 
-    Metric rows and derived masks record the derivation hash they were built
-    from. Replacing a mask changes this and not what they recorded, so
-    comparing the two is the only way to spot data left over from a superseded
-    mask.
+    Args:
+        project_path: Project to read from.
+        parts: Parts to include; all if None.
+        occurrence_ids: Occurrences to include; all if None.
+        reference: Read the reference table.
 
-    Empty dict for a project with no mask table, read as "nothing to judge
-    against" rather than "everything is stale" -- the two are
-    indistinguishable here and only one is safe to assume.
+    Returns:
+        The mapping; empty for a project with no mask table.
     """
-    df = _load_identities(project_path, reference=reference, parts=parts,
-                          occurrence_ids=occurrence_ids)
+    df = _load_identities(project_path, reference=reference, parts=parts, occurrence_ids=occurrence_ids)
     if df.empty:
         return {}
     return {
         (row.occurrence_id, row.part): derivation_hash(
-            row.recipe_hash, getattr(row, "source_mask_hash", None))
+            row.recipe_hash, getattr(row, "source_mask_hash", None)
+        )
         for row in df.itertuples(index=False)
     }
 
 
 def parts_present(project_path, reference=False):
-    """Every part name that has at least one mask -- what a project actually holds."""
+    """Return every part name that has at least one mask."""
     df = load_masks(project_path, reference=reference, columns=["part"])
     return sorted(df["part"].unique()) if not df.empty else []
 
 
 def has_masks(project_path, reference=False):
-    """True if the project has a mask table at all."""
+    """Return whether the project has a mask table."""
     return paths.masks_path(project_path, reference=reference).exists()
 
 
 def occurrence_ids_with_mask(project_path, part=DEFAULT_PART, reference=False):
-    """
-    Every occurrence id with a mask for this part -- the identity-only read
-    behind mask_lookup(), for a caller that needs presence, not the row. Feeds
-    `selectionhelpers.require_present`/`exclude_present` for the same job
-    `storage.imagestore.ImageStore.keys()` does on the image side.
-    """
-    df = load_masks(project_path, parts=[part], reference=reference,
-                    columns=["occurrence_id", "part"])
+    """Return every occurrence id with a mask for the part, as a set."""
+    df = load_masks(project_path, parts=[part], reference=reference, columns=["occurrence_id", "part"])
     return set(df["occurrence_id"]) if not df.empty else set()

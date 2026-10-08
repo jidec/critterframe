@@ -1,10 +1,4 @@
-"""
-Whole-population figures: line_chart, bar_chart, histogram, scatter, funnel.
-
-Each builder returns a matplotlib `Figure` drawn on its own Agg canvas. pyplot is never imported,
-so building one needs no display and changes no global backend. matplotlib is imported on first
-use, so importing the package doesn't pay for it.
-"""
+"""Figures: whole-population charts on a bare Agg canvas: line_chart, bar_chart, histogram, scatter, funnel."""
 
 from pathlib import Path
 
@@ -15,7 +9,7 @@ DPI = 100
 
 
 def _new_figure(title=None, xlabel=None, ylabel=None, size=DEFAULT_SIZE):
-    """A blank figure with one axes, on an Agg canvas."""
+    """Return a blank figure with one axes, on an Agg canvas."""
     from matplotlib.backends.backend_agg import FigureCanvasAgg
     from matplotlib.figure import Figure
 
@@ -32,30 +26,33 @@ def _new_figure(title=None, xlabel=None, ylabel=None, size=DEFAULT_SIZE):
 
 
 def _mark(axes, marks, vertical=True):
-    """Dashed reference lines at named positions, e.g. a suggested threshold."""
+    """Draw dashed reference lines at named positions."""
     for label, position in (marks or {}).items():
         if position is None:
             continue
         line = axes.axvline if vertical else axes.axhline
         line(position, linestyle="--", color="gray", linewidth=1)
-        axes.annotate(str(label), xy=(position, 1) if vertical else (1, position),
-                      xycoords=("data", "axes fraction") if vertical
-                      else ("axes fraction", "data"),
-                      xytext=(3, -12) if vertical else (-3, 3),
-                      textcoords="offset points", fontsize=8, color="gray",
-                      ha="left" if vertical else "right")
+        axes.annotate(
+            str(label),
+            xy=(position, 1) if vertical else (1, position),
+            xycoords=("data", "axes fraction") if vertical else ("axes fraction", "data"),
+            xytext=(3, -12) if vertical else (-3, 3),
+            textcoords="offset points",
+            fontsize=8,
+            color="gray",
+            ha="left" if vertical else "right",
+        )
 
 
 def line_chart(series, title=None, xlabel=None, ylabel=None, marks=None):
-    """
-    One or more lines on shared axes, e.g. loss per epoch.
+    """Return a figure of one or more lines on shared axes.
 
-    - `series` -- `{label: ys}` or `{label: (xs, ys)}`. Bare ys are plotted
-      against 0, 1, 2, ...
-    - `title`, `xlabel`, `ylabel` -- text for the axes.
-    - `marks` -- `{label: x}` vertical reference lines, e.g. the best epoch.
-
-    Returns a Figure.
+    Args:
+        series: `{label: ys}` or `{label: (xs, ys)}`; bare ys are plotted against 0, 1, 2, ...
+        title: Figure title.
+        xlabel: X axis label.
+        ylabel: Y axis label.
+        marks: `{label: x}` vertical reference lines.
     """
     figure, axes = _new_figure(title, xlabel, ylabel)
     for label, values in series.items():
@@ -64,8 +61,9 @@ def line_chart(series, title=None, xlabel=None, ylabel=None, marks=None):
         else:
             ys = list(values)
             xs = range(len(ys))
-        axes.plot(list(xs), list(ys), marker="o" if len(list(ys)) < 30 else None,
-                  markersize=3, label=str(label))
+        axes.plot(
+            list(xs), list(ys), marker="o" if len(list(ys)) < 30 else None, markersize=3, label=str(label)
+        )
     if len(series) > 1:
         axes.legend(fontsize=8)
     _mark(axes, marks)
@@ -73,17 +71,14 @@ def line_chart(series, title=None, xlabel=None, ylabel=None, marks=None):
 
 
 def bar_chart(counts, title=None, xlabel=None, ylabel=None, stacked=True):
-    """
-    Bars per category, or per group split by category.
+    """Return a figure of bars per category, or per group split by category.
 
-    - `counts` -- `{category: value}` for one set of bars, or
-      `{group: {category: value}}` for one bar per group, e.g. class counts
-      per split.
-    - `title`, `xlabel`, `ylabel` -- text for the axes.
-    - `stacked` -- stack categories within a group rather than placing them
-      side by side. Ignored for a flat `counts`.
-
-    Returns a Figure.
+    Args:
+        counts: `{category: value}`, or `{group: {category: value}}` for one bar per group.
+        title: Figure title.
+        xlabel: X axis label.
+        ylabel: Y axis label.
+        stacked: Stack a group's categories instead of placing them side by side.
     """
     figure, axes = _new_figure(title, xlabel, ylabel)
     groups = list(counts)
@@ -96,8 +91,7 @@ def bar_chart(counts, title=None, xlabel=None, ylabel=None, stacked=True):
         axes.set_xticklabels([str(group) for group in groups], rotation=30, ha="right")
         return figure
 
-    categories = sorted({category for group in groups for category in counts[group]},
-                        key=str)
+    categories = sorted({category for group in groups for category in counts[group]}, key=str)
     positions = np.arange(len(groups))
     width = 0.8 if stacked else 0.8 / max(1, len(categories))
     bottom = np.zeros(len(groups))
@@ -107,8 +101,7 @@ def bar_chart(counts, title=None, xlabel=None, ylabel=None, stacked=True):
             axes.bar(positions, values, width, bottom=bottom, label=str(category))
             bottom += values
         else:
-            axes.bar(positions - 0.4 + width * (index + 0.5), values, width,
-                     label=str(category))
+            axes.bar(positions - 0.4 + width * (index + 0.5), values, width, label=str(category))
     axes.set_xticks(positions)
     axes.set_xticklabels([str(group) for group in groups], rotation=30, ha="right")
     if len(categories) <= 20:
@@ -117,56 +110,56 @@ def bar_chart(counts, title=None, xlabel=None, ylabel=None, stacked=True):
 
 
 def histogram(values, bins=30, title=None, xlabel=None, ylabel="count", marks=None):
-    """
-    The distribution of one or more sets of values, overlaid.
+    """Return a figure of the distribution of one or more sets of values, overlaid.
 
-    - `values` -- a sequence, or `{label: sequence}` to overlay several, e.g.
-      clean vs flagged specimens.
-    - `bins` -- number of bins, shared across every set.
-    - `title`, `xlabel`, `ylabel` -- text for the axes.
-    - `marks` -- `{label: x}` vertical reference lines, e.g. a threshold.
-
-    Returns a Figure.
+    Args:
+        values: A sequence, or `{label: sequence}` to overlay several.
+        bins: Number of bins, shared by every set.
+        title: Figure title.
+        xlabel: X axis label.
+        ylabel: Y axis label.
+        marks: `{label: x}` vertical reference lines.
     """
     figure, axes = _new_figure(title, xlabel, ylabel)
     sets = values if isinstance(values, dict) else {None: values}
-    finite = {label: np.asarray([v for v in data if v is not None], float)
-              for label, data in sets.items()}
+    finite = {label: np.asarray([v for v in data if v is not None], float) for label, data in sets.items()}
     finite = {label: data[np.isfinite(data)] for label, data in finite.items()}
     pooled = np.concatenate([data for data in finite.values()]) if finite else np.array([])
 
     if pooled.size:
         edges = np.histogram_bin_edges(pooled, bins=bins)
         for label, data in finite.items():
-            axes.hist(data, bins=edges, alpha=0.6 if len(finite) > 1 else 1.0,
-                      label=None if label is None else str(label))
+            axes.hist(
+                data,
+                bins=edges,
+                alpha=0.6 if len(finite) > 1 else 1.0,
+                label=None if label is None else str(label),
+            )
         if len(finite) > 1:
             axes.legend(fontsize=8)
     _mark(axes, marks)
     return figure
 
 
-def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups=None,
-            annotations=None):
-    """
-    One point per pair, e.g. predicted against reference values.
+def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups=None, annotations=None):
+    """Return a figure with one point per pair of values.
 
-    - `xs`, `ys` -- equal-length sequences.
-    - `title`, `xlabel`, `ylabel` -- text for the axes.
-    - `diagonal` -- draw y = x, for comparing two measurements of one thing.
-    - `groups` -- optional label per point, coloured by group.
-    - `annotations` -- optional text per point, drawn beside it; None for a
-      point leaves it bare.
-
-    Returns a Figure.
+    Args:
+        xs: X values.
+        ys: Y values, the same length.
+        title: Figure title.
+        xlabel: X axis label.
+        ylabel: Y axis label.
+        diagonal: Draw the line y = x.
+        groups: Label per point, colored by group.
+        annotations: Text per point, drawn beside it; None leaves a point bare.
     """
     figure, axes = _new_figure(title, xlabel, ylabel)
     xs = np.asarray(xs, float)
     ys = np.asarray(ys, float)
     for x, y, text in zip(xs, ys, annotations or []):
         if text and np.isfinite(x) and np.isfinite(y):
-            axes.annotate(str(text), xy=(x, y), xytext=(4, 4),
-                          textcoords="offset points", fontsize=6)
+            axes.annotate(str(text), xy=(x, y), xytext=(4, 4), textcoords="offset points", fontsize=6)
     if annotations:
         # Room for the text beside a point at the edge of the data.
         axes.margins(x=0.25, y=0.15)
@@ -190,13 +183,12 @@ def scatter(xs, ys, title=None, xlabel=None, ylabel=None, diagonal=False, groups
 
 
 def funnel(stages, title=None, xlabel="rows"):
-    """
-    Counts through an ordered sequence of stages, e.g. rows read, dropped, kept.
+    """Return a figure of counts through an ordered sequence of stages.
 
-    - `stages` -- `{stage: count}` in order, first stage at the top.
-    - `title`, `xlabel` -- text for the axes.
-
-    Returns a Figure.
+    Args:
+        stages: `{stage: count}` in order, the first at the top.
+        title: Figure title.
+        xlabel: X axis label.
     """
     figure, axes = _new_figure(title, xlabel)
     names = [str(stage) for stage in stages]
@@ -206,35 +198,38 @@ def funnel(stages, title=None, xlabel="rows"):
     axes.set_yticks(positions)
     axes.set_yticklabels(names)
     for position, count in zip(positions, counts):
-        axes.annotate(f"{count:,}", xy=(count, position), xytext=(3, 0),
-                      textcoords="offset points", va="center", fontsize=8)
+        axes.annotate(
+            f"{count:,}",
+            xy=(count, position),
+            xytext=(3, 0),
+            textcoords="offset points",
+            va="center",
+            fontsize=8,
+        )
     axes.margins(x=0.15)
     return figure
 
 
 def to_image(figure):
-    """
-    A figure rendered as a display-ready uint8 BGR array, so it can sit in a grid like a panel.
+    """Return a figure rendered as a uint8 BGR array.
 
-    - `figure` -- a Figure from one of the builders above.
-
-    Returns an (h, w, 3) uint8 array.
+    Args:
+        figure: A figure from one of the builders.
     """
     from matplotlib.backends.backend_agg import FigureCanvasAgg
 
-    canvas = figure.canvas if isinstance(figure.canvas, FigureCanvasAgg) \
-        else FigureCanvasAgg(figure)
+    canvas = figure.canvas if isinstance(figure.canvas, FigureCanvasAgg) else FigureCanvasAgg(figure)
     canvas.draw()
     rgba = np.asarray(canvas.buffer_rgba())
     return np.ascontiguousarray(rgba[:, :, [2, 1, 0]])
 
 
 def save_figure(figure, path):
-    """
-    Write a figure as a PNG and return the path.
+    """Write a figure as a PNG, and return the path.
 
-    - `figure` -- a Figure from one of the builders above.
-    - `path` -- destination; its parent directory is created if missing.
+    Args:
+        figure: A figure from one of the builders.
+        path: Destination; its parent directory is created if missing.
     """
     from matplotlib.backends.backend_agg import FigureCanvasAgg
 

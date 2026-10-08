@@ -25,10 +25,10 @@ cf.run_metrics(PROJECT_PATH, run_name="qc", parts=["head", "thorax", "abdomen"],
                         cf.elongation(), cf.jaggedness()])
 
 # embeddings
-cf.run_metrics(PROJECT_PATH, run_name="resnet18_embedding", parts=["head", "thorax", "abdomen"],
-               transforms=[cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(),
-                           cf.orient(axis_strategy="longer"), cf.crop_to_mask()],
-               metrics=[cf.embedding(pretrained("resnet18", resize="pad"), name="resnet18_embedding")])
+# cf.run_metrics(PROJECT_PATH, run_name="resnet18_embedding", parts=["head", "thorax", "abdomen"],
+#                transforms=[cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(),
+#                            cf.orient(axis_strategy="longer"), cf.crop_to_mask()],
+#                metrics=[cf.embedding(pretrained("resnet18", resize="pad"), name="resnet18_embedding")])
 
 # every bin also needs high chroma, so browns, greys and pruinose whites land in "unmatched".
 # light blue gets a lower chroma floor because pale blues are inherently low-chroma (sky blue ~26, brown ~24)

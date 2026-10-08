@@ -28,8 +28,7 @@ SPECIMENS = 8
 HALVES = ["left", "right"]
 
 
-def split_organism(project_path, reference=False, left_hash="left_v1",
-                   right_hash="right_v1", only=None):
+def split_organism(project_path, reference=False, left_hash="left_v1", right_hash="right_v1", only=None):
     """
     Store each organism mask as a 'left' and a 'right' half, whose union is
     the organism mask exactly.
@@ -45,11 +44,11 @@ def split_organism(project_path, reference=False, left_hash="left_v1",
         left[:, middle:] = False
         right[:, :middle] = False
         if only in (None, "left"):
-            rows.append(mask_records.make_mask_row(
-                occurrence_id, left, part="left", recipe_hash=left_hash))
+            rows.append(mask_records.make_mask_row(occurrence_id, left, part="left", recipe_hash=left_hash))
         if only in (None, "right"):
-            rows.append(mask_records.make_mask_row(
-                occurrence_id, right, part="right", recipe_hash=right_hash))
+            rows.append(
+                mask_records.make_mask_row(occurrence_id, right, part="right", recipe_hash=right_hash)
+            )
     mask_records.save_masks(project_path, rows, reference=reference)
 
 
@@ -62,8 +61,9 @@ def drop_mask(project_path, part, occurrence_id):
 
 def merge(project_path, from_part=HALVES, steps=(), **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_segments(project_path, part="body", from_part=from_part,
-                           steps=list(steps), **kwargs)["body"]
+    return cf.run_segments(project_path, part="body", from_part=from_part, steps=list(steps), **kwargs)[
+        "body"
+    ]
 
 
 def test_the_merged_mask_is_the_union_of_its_parts(segmented_project):
@@ -75,8 +75,9 @@ def test_the_merged_mask_is_the_union_of_its_parts(segmented_project):
     body = mask_records.mask_lookup(segmented_project, part="body")
     assert set(body) == set(organism)
     for occurrence_id, row in body.items():
-        assert np.array_equal(mask_records.decode_mask(row),
-                              mask_records.decode_mask(organism[occurrence_id]))
+        assert np.array_equal(
+            mask_records.decode_mask(row), mask_records.decode_mask(organism[occurrence_id])
+        )
 
 
 def test_a_merge_is_a_run_like_any_other(segmented_project):
@@ -110,14 +111,12 @@ def test_resegmenting_one_source_makes_every_merged_mask_pending(segmented_proje
     """
     split_organism(segmented_project)
     merge(segmented_project)
-    before = mask_records.current_derivation_hashes(segmented_project,
-                                                    parts=["body"])
+    before = mask_records.current_derivation_hashes(segmented_project, parts=["body"])
 
     split_organism(segmented_project, only="left", left_hash="left_v2")
 
     assert merge(segmented_project)["processed"] == SPECIMENS
-    after = mask_records.current_derivation_hashes(segmented_project,
-                                                   parts=["body"])
+    after = mask_records.current_derivation_hashes(segmented_project, parts=["body"])
     assert set(before) == set(after)
     assert all(before[key] != after[key] for key in before)
 
@@ -133,8 +132,7 @@ def test_an_occurrence_missing_one_part_has_no_input(segmented_project):
     drop_mask(segmented_project, "right", occurrence_id)
 
     first = merge(segmented_project)
-    assert (first["processed"], first["no_input"], first["failed"]) == (
-        SPECIMENS - 1, 1, 0)
+    assert (first["processed"], first["no_input"], first["failed"]) == (SPECIMENS - 1, 1, 0)
 
     split_organism(segmented_project, only="right")
     assert merge(segmented_project)["processed"] == 1
@@ -167,10 +165,8 @@ def test_upstream_is_read_from_the_canonical_table_unless_told(segmented_project
     canonical = merge(segmented_project, reference=True)
     assert (canonical["processed"], canonical["no_input"]) == (0, SPECIMENS)
 
-    assert merge(segmented_project, reference=True,
-                 from_reference=True)["processed"] == SPECIMENS
-    assert len(mask_records.load_masks(segmented_project, parts=["body"],
-                                       reference=True)) == SPECIMENS
+    assert merge(segmented_project, reference=True, from_reference=True)["processed"] == SPECIMENS
+    assert len(mask_records.load_masks(segmented_project, parts=["body"], reference=True)) == SPECIMENS
     assert mask_records.load_masks(segmented_project, parts=["body"]).empty
 
 
@@ -184,8 +180,9 @@ def test_reading_the_reference_upstream_is_a_different_recipe(segmented_project)
 
 def test_from_reference_needs_something_to_read(segmented_project):
     with pytest.raises(ValueError):
-        cf.run_segments(segmented_project, steps=[cf.segment(ThresholdModel())],
-                        from_reference=True, visualize=False)
+        cf.run_segments(
+            segmented_project, steps=[cf.segment(ThresholdModel())], from_reference=True, visualize=False
+        )
 
 
 def test_an_empty_list_of_parts_is_refused(segmented_project):
@@ -203,16 +200,16 @@ def test_steps_run_on_the_union(segmented_project):
     left = mask_records.get_mask(segmented_project, occurrence_id, part="left")
     assert not left[:4, :4].any()
     left[:4, :4] = True
-    mask_records.save_masks(segmented_project, [mask_records.make_mask_row(
-        occurrence_id, left, part="left", recipe_hash="left_v1")])
+    mask_records.save_masks(
+        segmented_project,
+        [mask_records.make_mask_row(occurrence_id, left, part="left", recipe_hash="left_v1")],
+    )
 
     merge(segmented_project)
-    assert mask_records.get_mask(segmented_project, occurrence_id,
-                                 part="body")[:4, :4].all()
+    assert mask_records.get_mask(segmented_project, occurrence_id, part="body")[:4, :4].all()
 
     merge(segmented_project, steps=[cf.remove_islands()])
-    assert not mask_records.get_mask(segmented_project, occurrence_id,
-                                     part="body")[:4, :4].any()
+    assert not mask_records.get_mask(segmented_project, occurrence_id, part="body")[:4, :4].any()
 
 
 def test_parts_of_different_shapes_fail_rather_than_pad(segmented_project):
@@ -223,8 +220,10 @@ def test_parts_of_different_shapes_fail_rather_than_pad(segmented_project):
     split_organism(segmented_project)
     occurrence_id = sorted(mask_records.mask_lookup(segmented_project))[0]
     right = mask_records.get_mask(segmented_project, occurrence_id, part="right")
-    mask_records.save_masks(segmented_project, [mask_records.make_mask_row(
-        occurrence_id, right[:-1, :-1], part="right", recipe_hash="right_v1")])
+    mask_records.save_masks(
+        segmented_project,
+        [mask_records.make_mask_row(occurrence_id, right[:-1, :-1], part="right", recipe_hash="right_v1")],
+    )
 
     result = merge(segmented_project)
 

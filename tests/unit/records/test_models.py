@@ -46,10 +46,15 @@ def registry_file(project_path):
 
 
 def test_a_registration_records_what_the_weights_are(metadata_project, checkpoint):
-    model = register_model(metadata_project, "blobnet_v1", path=checkpoint,
-                           task="segment", framework="torch",
-                           base_model="sam2_hiera_large",
-                           parameters={"epochs": 40})
+    model = register_model(
+        metadata_project,
+        "blobnet_v1",
+        path=checkpoint,
+        task="segment",
+        framework="torch",
+        base_model="sam2_hiera_large",
+        parameters={"epochs": 40},
+    )
 
     assert model.name == "blobnet_v1"
     assert model.record["task"] == "segment"
@@ -63,8 +68,7 @@ def test_the_registry_is_a_readable_file(metadata_project, checkpoint):
     assert "blobnet_v1" in registry_file(metadata_project)["models"]
 
 
-def test_a_checkpoint_inside_the_project_is_stored_relative(metadata_project,
-                                                            checkpoint):
+def test_a_checkpoint_inside_the_project_is_stored_relative(metadata_project, checkpoint):
     """
     A project is meant to be copyable, and an absolute path baked into its
     registry is the thing that breaks first when it moves to a cluster.
@@ -89,8 +93,7 @@ def test_a_missing_checkpoint_raises(metadata_project):
 
 
 @pytest.mark.parametrize("name", ["bad name", "with/slash", "", ".hidden"])
-def test_a_name_that_cannot_be_a_key_or_a_filename_raises(metadata_project,
-                                                          checkpoint, name):
+def test_a_name_that_cannot_be_a_key_or_a_filename_raises(metadata_project, checkpoint, name):
     with pytest.raises(ValueError, match="model name"):
         register_model(metadata_project, name, path=checkpoint)
 
@@ -112,8 +115,7 @@ def test_a_directory_checkpoint_is_fingerprinted_as_a_whole(metadata_project):
     assert first.record["fingerprint"] != second.record["fingerprint"]
 
 
-def test_a_model_with_no_local_weights_is_allowed_and_warned_about(
-        metadata_project, caplog):
+def test_a_model_with_no_local_weights_is_allowed_and_warned_about(metadata_project, caplog):
     """
     A hosted endpoint. Identity then rests on the name alone, and saying so is
     the difference between a known limitation and a silent one.
@@ -126,11 +128,9 @@ def test_a_model_with_no_local_weights_is_allowed_and_warned_about(
     assert "identity rests on its name alone" in caplog.text
 
 
-def test_fingerprinting_can_be_declined_loudly(metadata_project, checkpoint,
-                                               caplog):
+def test_fingerprinting_can_be_declined_loudly(metadata_project, checkpoint, caplog):
     with caplog.at_level("WARNING"):
-        model = register_model(metadata_project, "big_v1", path=checkpoint,
-                               fingerprint=False)
+        model = register_model(metadata_project, "big_v1", path=checkpoint, fingerprint=False)
     assert model.record["fingerprint"] is None
     assert "will not change any recipe hash" in caplog.text
 
@@ -148,29 +148,25 @@ def test_the_fingerprint_is_the_identity(metadata_project, checkpoint):
     assert "path" not in identity
 
 
-def test_retraining_into_the_same_filename_moves_the_hash(metadata_project,
-                                                          checkpoint, caplog):
+def test_retraining_into_the_same_filename_moves_the_hash(metadata_project, checkpoint, caplog):
     """
     THE failure this exists to prevent. Same name, same path, same class --
     different weights, so every mask and metric derived from it is correctly
     redone rather than silently kept.
     """
     before = register_model(metadata_project, "blobnet_v1", path=checkpoint)
-    before_hash = Recipe("segment", "custom",
-                         [segment(before.attach(ThresholdModel()))]).hash
+    before_hash = Recipe("segment", "custom", [segment(before.attach(ThresholdModel()))]).hash
 
     checkpoint.write_bytes(b"pretend weights, revision 2 -- trained for longer")
     with caplog.at_level("WARNING"):
         after = register_model(metadata_project, "blobnet_v1", path=checkpoint)
-    after_hash = Recipe("segment", "custom",
-                        [segment(after.attach(ThresholdModel()))]).hash
+    after_hash = Recipe("segment", "custom", [segment(after.attach(ThresholdModel()))]).hash
 
     assert before_hash != after_hash
     assert "re-registered with different weights" in caplog.text
 
 
-def test_the_same_weights_under_two_names_are_two_models(metadata_project,
-                                                         checkpoint):
+def test_the_same_weights_under_two_names_are_two_models(metadata_project, checkpoint):
     """
     The name is in identity() as well as the fingerprint: registering the same
     file twice is a deliberate act, and the two names may carry different
@@ -183,8 +179,7 @@ def test_the_same_weights_under_two_names_are_two_models(metadata_project,
     assert first.identity() != second.identity()
 
 
-def test_moving_the_project_does_not_change_the_identity(metadata_project,
-                                                         checkpoint, tmp_path):
+def test_moving_the_project_does_not_change_the_identity(metadata_project, checkpoint, tmp_path):
     """
     Two copies of one checkpoint are the same model. If the path were in the
     identity, copying a project to a cluster would invalidate every mask in it.
@@ -200,8 +195,7 @@ def test_moving_the_project_does_not_change_the_identity(metadata_project,
     assert copied.path.exists()
 
 
-def test_a_registered_model_reaches_a_recipe_hash_like_any_other(metadata_project,
-                                                                  checkpoint):
+def test_a_registered_model_reaches_a_recipe_hash_like_any_other(metadata_project, checkpoint):
     model = register_model(metadata_project, "blobnet_v1", path=checkpoint)
     assert _model_identity(model) == model.identity()
 
@@ -211,29 +205,24 @@ def test_a_registered_model_reaches_a_recipe_hash_like_any_other(metadata_projec
 # ---------------------------------------------------------------------------
 
 
-def test_attaching_binds_a_loaded_network_without_changing_the_record(
-        metadata_project, checkpoint):
+def test_attaching_binds_a_loaded_network_without_changing_the_record(metadata_project, checkpoint):
     model = register_model(metadata_project, "blobnet_v1", path=checkpoint)
     attached = model.attach(ThresholdModel())
 
     assert attached.identity() == model.identity()
     assert attached.runtime is not None
-    assert model.runtime is None            # a new object, not a mutation
+    assert model.runtime is None  # a new object, not a mutation
 
 
-def test_an_attached_model_forwards_the_work_to_the_network(metadata_project,
-                                                            checkpoint,
-                                                            draw_specimen):
+def test_an_attached_model_forwards_the_work_to_the_network(metadata_project, checkpoint, draw_specimen):
     """
     Which is what makes a registered model usable anywhere a model is: the
     registry answers identity(), the network answers predict().
     """
     import cv2
 
-    model = register_model(metadata_project, "blobnet_v1",
-                           path=checkpoint).attach(ThresholdModel())
-    mask, score, _info = model.predict(cv2.cvtColor(draw_specimen(0),
-                                                    cv2.COLOR_BGR2RGB))
+    model = register_model(metadata_project, "blobnet_v1", path=checkpoint).attach(ThresholdModel())
+    mask, score, _info = model.predict(cv2.cvtColor(draw_specimen(0), cv2.COLOR_BGR2RGB))
     assert mask.any() and score == 0.9
 
 
@@ -250,10 +239,8 @@ def test_an_unattached_model_has_no_methods_to_offer(metadata_project, checkpoin
         model.predict(None)
 
 
-def test_hasattr_reflects_what_the_attached_network_actually_has(metadata_project,
-                                                                 checkpoint):
-    model = register_model(metadata_project, "blobnet_v1",
-                           path=checkpoint).attach(ThresholdModel())
+def test_hasattr_reflects_what_the_attached_network_actually_has(metadata_project, checkpoint):
+    model = register_model(metadata_project, "blobnet_v1", path=checkpoint).attach(ThresholdModel())
     assert hasattr(model, "predict") is True
     assert hasattr(model, "visualize") is False
 
@@ -263,17 +250,18 @@ def test_hasattr_reflects_what_the_attached_network_actually_has(metadata_projec
 # ---------------------------------------------------------------------------
 
 
-def test_training_splits_are_recorded_as_counts_and_digests(metadata_project,
-                                                            checkpoint):
+def test_training_splits_are_recorded_as_counts_and_digests(metadata_project, checkpoint):
     """
     The point is to be able to prove which set was used, which a digest does --
     and thousands of ids in a registry file would make it unreadable for no
     gain.
     """
-    model = register_model(metadata_project, "blobnet_v1", path=checkpoint,
-                           training_splits={"train": ["specimen0", "specimen1",
-                                                      "specimen2"],
-                                            "val": ["specimen3"]})
+    model = register_model(
+        metadata_project,
+        "blobnet_v1",
+        path=checkpoint,
+        training_splits={"train": ["specimen0", "specimen1", "specimen2"], "val": ["specimen3"]},
+    )
     splits = model.record["training_data"]["splits"]
 
     assert splits["train"]["count"] == 3
@@ -291,17 +279,18 @@ def test_an_exported_dataset_can_be_pointed_at(segmented_project, tmp_path):
     import critterframe as cf
 
     out = tmp_path / "dataset"
-    cf.export_training_data(segmented_project, out,
-                            splits={"train": [f"specimen{i}" for i in range(6)],
-                                    "val": ["specimen6", "specimen7"]},
-                            masks=True)
+    cf.export_training_data(
+        segmented_project,
+        out,
+        splits={"train": [f"specimen{i}" for i in range(6)], "val": ["specimen6", "specimen7"]},
+        masks=True,
+    )
 
     weights = paths.models_dir(segmented_project) / "seg_v1.pt"
     weights.parent.mkdir(parents=True, exist_ok=True)
     weights.write_bytes(b"weights")
 
-    model = register_model(segmented_project, "seg_v1", path=weights,
-                           training_data=out)
+    model = register_model(segmented_project, "seg_v1", path=weights, training_data=out)
     dataset = model.record["training_data"]["dataset"]
 
     assert dataset["splits"]["train"]["count"] == 6
@@ -309,34 +298,27 @@ def test_an_exported_dataset_can_be_pointed_at(segmented_project, tmp_path):
     assert dataset["data_hash"]
 
 
-def test_a_dataset_json_can_be_named_directly(metadata_project, checkpoint,
-                                              tmp_path):
+def test_a_dataset_json_can_be_named_directly(metadata_project, checkpoint, tmp_path):
     record = {"data_hash": "abc", "splits": {"train": {"count": 2}}}
     dataset_json = tmp_path / "dataset.json"
     dataset_json.write_text(json.dumps(record), encoding="utf-8")
 
-    model = register_model(metadata_project, "blobnet_v1", path=checkpoint,
-                           training_data=dataset_json)
+    model = register_model(metadata_project, "blobnet_v1", path=checkpoint, training_data=dataset_json)
     assert model.record["training_data"]["dataset"]["data_hash"] == "abc"
 
 
-def test_pointing_at_a_dataset_that_is_not_there_raises(metadata_project,
-                                                        checkpoint, tmp_path):
+def test_pointing_at_a_dataset_that_is_not_there_raises(metadata_project, checkpoint, tmp_path):
     with pytest.raises(FileNotFoundError, match="no dataset record"):
-        register_model(metadata_project, "blobnet_v1", path=checkpoint,
-                       training_data=tmp_path / "nowhere")
+        register_model(metadata_project, "blobnet_v1", path=checkpoint, training_data=tmp_path / "nowhere")
 
 
-def test_training_settings_are_stored_and_never_interpreted(metadata_project,
-                                                            checkpoint):
+def test_training_settings_are_stored_and_never_interpreted(metadata_project, checkpoint):
     """
     Exactly as a calibration's parameters are: what matters varies per
     framework, and flattening it would fit one and distort the rest.
     """
-    parameters = {"epochs": 40, "loss": {"name": "arcface", "margin": 0.3},
-                  "augmentations": ["hflip"]}
-    model = register_model(metadata_project, "blobnet_v1", path=checkpoint,
-                           parameters=parameters)
+    parameters = {"epochs": 40, "loss": {"name": "arcface", "margin": 0.3}, "augmentations": ["hflip"]}
+    model = register_model(metadata_project, "blobnet_v1", path=checkpoint, parameters=parameters)
     assert model.record["parameters"] == parameters
 
 
@@ -349,8 +331,7 @@ def test_a_project_with_no_models_is_not_an_error(metadata_project):
     assert model_records.list_models(metadata_project) == {}
 
 
-def test_loading_a_model_nobody_registered_says_what_is_there(metadata_project,
-                                                              checkpoint):
+def test_loading_a_model_nobody_registered_says_what_is_there(metadata_project, checkpoint):
     register_model(metadata_project, "blobnet_v1", path=checkpoint)
     with pytest.raises(KeyError, match="no model named 'blobnet_v2'"):
         model_records.load_model(metadata_project, "blobnet_v2")
@@ -365,8 +346,7 @@ def test_loading_gives_provenance_and_no_runtime(metadata_project, checkpoint):
     assert loaded.record["fingerprint"]
 
 
-def test_unregistering_forgets_the_record_and_nothing_else(metadata_project,
-                                                           checkpoint):
+def test_unregistering_forgets_the_record_and_nothing_else(metadata_project, checkpoint):
     """
     The checkpoint stays on disk, and so do the masks and metrics it produced --
     they remain valid results of a recipe whose hash still names those weights.

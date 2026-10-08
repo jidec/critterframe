@@ -1,25 +1,4 @@
-"""
-Classes jointly implementing the recipes contract: Segment, Recipe, Operation
-(Transform, Segmentation, Metric), plus hashing.
-
-  Segment   -- the working representation an operation reads and writes: an
-               image plus its current mask. Never persisted.
-  Operation -- one configured action, e.g. remove_appendages(),
-               segment(groundedsam2()). Configured is the point: the callable
-               plus the exact parameters it runs with, which is what makes it
-               hashable.
-  Recipe    -- an ordered chain of operations plus the inputs they consume, and
-               the hash identifying the whole thing.
-
-A recipe's hash covers operation order, every operation's parameters, version,
-and model identity, and the upstream inputs it consumes. That is what makes
-processing repeat-aware.
-
-Segment's other job is spatial bookkeeping: persisted masks are always in
-original image coordinates, so a Segment carries the affine mapping original
-coordinates to its current ones, and mask_in_original_coordinates() inverts the
-whole chain in one step before persistence.
-"""
+"""The recipe contract: Segment, Operation (Transform, Segmentation, Metric), Recipe, and hashing."""
 
 import difflib
 import hashlib
@@ -47,12 +26,7 @@ IDENTITY = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
 
 
 def json_default(value):
-    """
-    Convert common NumPy values into JSON-compatible Python values.
-
-    - `value` -- a value json.dumps() couldn't serialize directly (passed via
-      its default= hook); only np.ndarray and np.generic are handled.
-    """
+    """Convert a NumPy array or scalar into a JSON-compatible value, for `json.dumps(default=)`."""
     if isinstance(value, np.ndarray):
         return value.tolist()
     if isinstance(value, np.generic):
@@ -61,32 +35,24 @@ def json_default(value):
 
 
 def canonical_json(value):
-    """
-    Serialize value to a deterministic JSON string (sorted keys, compact
-    separators) so identical specs always dump identically -- which is the
-    whole basis of recipe hashing, and also how metric values are stored.
+    """Serialize a value to deterministic JSON: sorted keys, compact separators.
 
-    - `value` -- Python value (dict/list/etc, possibly containing NumPy values
-      handled via json_default) to serialize.
+    Args:
+        value: A JSON-serializable value, possibly holding NumPy values.
     """
-    return json.dumps(value, default=json_default, sort_keys=True,
-                      separators=(",", ":"))
+    return json.dumps(value, default=json_default, sort_keys=True, separators=(",", ":"))
 
 
 def load_json(value):
-    """Deserialize a JSON string column back to a Python value; None passes through."""
+    """Deserialize a JSON string; None passes through."""
     return json.loads(value) if value is not None else None
 
 
 def recorded_callable(value):
-    """
-    A callable recorded by NAME rather than by behaviour, for a spec that gets hashed.
+    """Return a callable's name, for a spec that gets hashed.
 
-    Two different lambdas both called `first` are indistinguishable here, and a
-    lambda's repr carries a memory address that would make one hash differ
-    every run. A None or a string passes through.
-
-    - `value` -- a callable, a string, or None.
+    Args:
+        value: A callable, a string, or None; the last two pass through.
     """
     if value is None or isinstance(value, str):
         return value
@@ -96,19 +62,14 @@ def recorded_callable(value):
 
 
 def recorded_rules(rules):
-    """
-    A `{column: values}` rule set as something hashable and order-independent.
+    """Return a `{column: values}` rule set in a hashable, order-independent form.
 
-    A set can't be serialized and a reordered list would hash differently, so
-    both become one sorted list -- otherwise the same decision, written two
-    ways, reads as two different ones.
-
-    - `rules` -- `{column: value}` or `{column: values}`, or None.
+    Args:
+        rules: `{column: value}` or `{column: values}`, or None.
     """
     recorded = {}
     for column, values in (rules or {}).items():
-        if isinstance(values, (str, bytes)) or not isinstance(
-                values, (list, tuple, set, frozenset)):
+        if isinstance(values, (str, bytes)) or not isinstance(values, (list, tuple, set, frozenset)):
             recorded[column] = values
             continue
         recorded[column] = sorted(values, key=str)
@@ -116,10 +77,10 @@ def recorded_rules(rules):
 
 
 def hash_spec(spec):
-    """
-    Hash any recipe/operation spec dict to a short, stable hex digest.
+    """Hash a spec to a 16-character hex digest of its canonical JSON.
 
-    - `spec` -- JSON-serializable dict describing the thing being identified.
+    Args:
+        spec: JSON-serializable value describing what is being identified.
     """
     digest = hashlib.sha256(canonical_json(spec).encode("utf-8")).hexdigest()
     return digest[:HASH_LENGTH]
@@ -131,14 +92,12 @@ def hash_spec(spec):
 
 
 def _compose(existing, applied):
-    """
-    Compose two 2x3 affines: `existing` maps original -> current, `applied`
-    maps current -> new, and the result maps original -> new.
+    """Compose two 2x3 affines into one mapping original coordinates to the new frame.
 
-    Named because every spatial transform needs the multiplication in this
-    order; backwards produces masks that look plausible and land in the wrong
-    place once inverted.
+    `existing` maps original to current and `applied` maps current to new. The order
+    matters: reversed, masks look plausible and land in the wrong place once inverted.
     """
+
     def to_3x3(matrix):
         return np.vstack([np.asarray(matrix, dtype=np.float64), [0.0, 0.0, 1.0]])
 
@@ -146,34 +105,36 @@ def _compose(existing, applied):
 
 
 class Segment:
-    """
-    A working masked image: the image, its current mask, and where both sit
-    relative to the original analysis image.
+    """A working masked image: the image, its mask, and where both sit in the original image.
 
-    - `image` -- current working image, BGR or grayscale.
-    - `mask` -- current working mask, a boolean array matching image's
-      height/width, or None before any segmentation.
-    - `occurrence_id` -- the occurrence this segment belongs to.
-    - `part` -- the named biological part being derived or measured.
-    - `project_path` -- project this came from, so operations can save
-      diagnostics without a second argument.
-    - `matrix` -- 2x3 affine mapping original analysis-image coordinates to
-      this segment's. Identity if untransformed.
-    - `original_shape` -- (height, width) of the original image, for sizing the
-      canvas when inverting back to it.
-    - `panel_sink` -- where diagnostic panels go: an object with
-      collect(occurrence_id, stage, image), normally a visualization Report.
-      None makes every emit_panel() a no-op, which is what most segments run
-      with -- panels are for the sampled few.
-    - `original_image` -- the image the segment started from, kept by
-      reference through every transform so an operation can show or consult
-      the untouched photo. The image itself for a segment built without a
-      `matrix`; None where one is given without it.
+    Args:
+        image: Working image, BGR or grayscale.
+        mask: Boolean array matching the image's height and width, or None before any
+            segmentation.
+        occurrence_id: The occurrence this segment belongs to.
+        part: The part being derived or measured.
+        project_path: Project this came from.
+        matrix: 2x3 affine mapping original image coordinates to this segment's; identity
+            if None.
+        original_shape: `(height, width)` of the original image.
+        panel_sink: Where diagnostic panels go, an object with
+            `collect(occurrence_id, stage, image)`; None discards them.
+        original_image: The image the segment started from, kept by reference through
+            every transform. Defaults to `image` when no `matrix` is given.
     """
 
-    def __init__(self, image, mask=None, occurrence_id=None, part=DEFAULT_PART,
-                 project_path=None, matrix=None, original_shape=None,
-                 panel_sink=None, original_image=None):
+    def __init__(
+        self,
+        image,
+        mask=None,
+        occurrence_id=None,
+        part=DEFAULT_PART,
+        project_path=None,
+        matrix=None,
+        original_shape=None,
+        panel_sink=None,
+        original_image=None,
+    ):
         if original_image is None and matrix is None:
             original_image = image
         self.original_image = original_image
@@ -183,31 +144,27 @@ class Segment:
         self.part = part
         self.project_path = project_path
         self.matrix = IDENTITY.copy() if matrix is None else np.asarray(matrix, dtype=np.float64)
-        self.original_shape = original_shape if original_shape is not None \
-            else image.shape[:2]
+        self.original_shape = original_shape if original_shape is not None else image.shape[:2]
         self.panel_sink = panel_sink
 
     @property
     def shape(self):
-        """(height, width) of the segment's current working frame."""
+        """Return `(height, width)` of the working frame."""
         return self.image.shape[:2]
 
     @property
     def rgb(self):
-        """
-        The working image as RGB -- what image models expect, while everything
-        else in this package works in OpenCV's BGR.
-        """
+        """Return the working image as RGB."""
         image = np.asarray(self.image)
         if image.ndim == 2:
             return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
         return cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     def require_mask(self):
-        """
-        The current mask, raising if there isn't one -- for metrics and
-        transforms that are meaningless without a segmentation, so they fail
-        with a useful message instead of a NoneType error three frames down.
+        """Return the mask.
+
+        Raises:
+            ValueError: If the segment has no mask.
         """
         if self.mask is None:
             raise ValueError(
@@ -218,17 +175,13 @@ class Segment:
         return self.mask
 
     def replace(self, image=None, mask=None, applied=None):
-        """
-        Return a new Segment with some parts swapped out, leaving this one
-        untouched, so intermediate states stay inspectable and a failed
-        operation leaves nothing half-modified.
+        """Return a new Segment with some parts swapped out.
 
-        - `image` -- new working image; keeps the current one if omitted.
-        - `mask` -- new working mask; keeps the current one if omitted. False
-          clears it.
-        - `applied` -- 2x3 affine mapping this segment's current coordinates to
-          the new one's, for an operation that moves pixels. Composed onto the
-          running original->current mapping. Omit otherwise.
+        Args:
+            image: New working image; the current one if None.
+            mask: New working mask; the current one if None, and False clears it.
+            applied: 2x3 affine mapping this segment's coordinates to the new one's. Required
+                for any operation that moves pixels.
         """
         if mask is False:
             new_mask = None
@@ -250,24 +203,13 @@ class Segment:
         )
 
     def for_part(self, part):
-        """
-        The same working state relabeled as a different part -- how a
-        multi-output segmentation recipe forks one shared, preprocessed segment
-        into a branch per part without redoing the shared work.
-        """
+        """Return the same working state labeled as a different part."""
         new = self.replace()
         new.part = part
         return new
 
     def mask_in_original_coordinates(self):
-        """
-        This segment's mask warped back into the original analysis image's
-        frame, the only coordinate system masks are persisted in.
-
-        Inverts the accumulated affine in one step, so however many crops,
-        rotations and resizes a recipe applied, a mask found inside a rotated
-        crop still lands on the right pixels of the parent image.
-        """
+        """Return the mask warped back into the original image's frame."""
         mask = self.require_mask()
         height, width = self.original_shape
 
@@ -280,37 +222,27 @@ class Segment:
             return mask
 
         inverse = cv2.invertAffineTransform(self.matrix)
-        warped = cv2.warpAffine(mask.astype(np.uint8), inverse, (width, height),
-                                flags=cv2.INTER_NEAREST)
+        warped = cv2.warpAffine(mask.astype(np.uint8), inverse, (width, height), flags=cv2.INTER_NEAREST)
         return warped > 0
 
     def project_mask(self, mask):
-        """
-        A mask in ORIGINAL image coordinates, warped into this segment's current frame.
+        """Return a mask in original image coordinates, warped into this segment's frame.
 
-        The forward half of `mask_in_original_coordinates`' inversion: what
-        letting an already-derived part's own mask land inside the upstream
-        part's crop/orient frame needs.
-
-        - `mask` -- boolean array in the original image's coordinates.
+        Args:
+            mask: Boolean array in the original image's coordinates.
         """
         height, width = self.shape
-        warped = cv2.warpAffine(np.asarray(mask).astype(np.uint8), self.matrix,
-                                (width, height), flags=cv2.INTER_NEAREST)
+        warped = cv2.warpAffine(
+            np.asarray(mask).astype(np.uint8), self.matrix, (width, height), flags=cv2.INTER_NEAREST
+        )
         return warped > 0
 
     def emit_panel(self, image, stage):
-        """
-        Offer a diagnostic panel, or do nothing when nothing is listening.
-        Operations call this unconditionally rather than guarding on a flag.
+        """Hand a diagnostic panel to the panel sink, if there is one.
 
-        Emit, not save: an operation draws what it decided and hands it over;
-        where it goes is the run's business.
-
-        - `image` -- a display-ready uint8 or boolean panel. Nothing downstream
-          will rescale a float array on the operation's behalf.
-        - `stage` -- what this panel shows, e.g. "orientation". It titles the
-          column, so name it for the step rather than the occurrence.
+        Args:
+            image: A display-ready uint8 or boolean panel.
+            stage: What the panel shows, e.g. `"orientation"`; it titles the grid column.
         """
         if self.panel_sink is None:
             return
@@ -323,27 +255,17 @@ class Segment:
 
 
 class Operation:
-    """
-    One configured processing action.
+    """One configured processing action.
 
-    Subclasses fix what an operation does with a segment; this base fixes what
-    every operation says about itself, so a recipe containing it can be hashed.
-
-    - `name` -- operation identifier, e.g. "remove_appendages". Also the
-      default column/metric name and visualization subfolder.
-    - `function` -- the callable doing the work, called as function(segment,
-      **parameters).
-    - `parameters` -- the exact settings this operation runs with. Must be
-      JSON-serializable, since they go into the recipe hash.
-    - `version` -- method version, bumped by hand when an implementation
-      changes its output for unchanged parameters, so cached work is correctly
-      invalidated.
-    - `model` -- optional model backing this operation; contributes its own
-      identity() to the hash.
-    - `note` -- optional free text on how the operation is meant to be used,
-      e.g. the procedure a human label follows. Recorded with each run and
-      never hashed, so rewording it invalidates nothing; whatever changes the
-      output belongs in `parameters`.
+    Args:
+        name: Operation identifier, e.g. `"remove_appendages"`.
+        function: The callable doing the work, called as `function(segment, **parameters)`.
+        parameters: The settings it runs with; JSON-serializable, since they are hashed.
+        version: Method version, bumped by hand when the output changes for unchanged
+            parameters.
+        model: Model backing the operation; its `identity()` is hashed.
+        note: Free text on how the operation is meant to be used. Recorded with each run,
+            never hashed.
     """
 
     kind = "operation"
@@ -354,8 +276,7 @@ class Operation:
     # recipe hash already stored on disk.
     deterministic = True
 
-    def __init__(self, name, function, parameters=None, version="1", model=None,
-                 note=None):
+    def __init__(self, name, function, parameters=None, version="1", model=None, note=None):
         if note is not None and not isinstance(note, str):
             raise TypeError(f"note must be text, got {type(note).__name__}")
         self.name = name
@@ -366,12 +287,7 @@ class Operation:
         self.note = note
 
     def spec(self):
-        """
-        The hashable description of this configured operation.
-
-        Everything that can change the output belongs here and nothing that
-        can't -- a visualize flag produces debug images but identical results.
-        """
+        """Return the hashable description of this operation: everything that changes its output."""
         spec = {
             "name": self.name,
             "kind": self.kind,
@@ -383,31 +299,20 @@ class Operation:
         return spec
 
     def invoke(self, segment):
-        """
-        Call this operation's function with its configured parameters.
-
-        A model is passed as `model=` rather than through `parameters`, which
-        must stay JSON-serializable; it reaches the hash via its own
-        identity().
-        """
+        """Call the operation's function with its parameters, and its model as `model=`."""
         if self.model is not None:
             return self.function(segment, model=self.model, **self.parameters)
         return self.function(segment, **self.parameters)
 
     def prepare(self, context):
-        """
-        Optional hook run once before a run's per-occurrence loop.
+        """Run once before a run's per-occurrence loop.
 
-        Almost every operation ignores this. Group metrics are the exception:
-        they fit a reference population before any occurrence can be scored.
+        Args:
+            context: A `metrics.run.RunContext`.
 
-        - `context` -- a metrics.run.RunContext: project path, the occurrence
-          ids this run covers, and the part being processed.
-
-        Returns None, or a JSON-serializable record of what it prepared, which
-        the run stores alongside its recipe (see records.runs.start_run). An
-        operation with a `note` returns it here, which is how the note reaches
-        the run record without reaching the hash.
+        Returns:
+            None, or a JSON-serializable record the run stores beside its recipe. The default
+            returns the operation's `note`, if it has one.
         """
         if self.note is None:
             return None
@@ -419,108 +324,103 @@ class Operation:
 
 
 class Transform(Operation):
-    """
-    An operation that changes the working image and/or mask without producing
-    a value.
+    """An operation that changes the working image or mask without producing a value.
 
-    Returns (segment, info): the new segment, plus diagnostics recorded on the
-    run. A transform that moves pixels MUST pass `applied` to Segment.replace(),
-    or the mapping back to original coordinates is wrong.
+    Calling it returns `(segment, info)`, the new segment and a diagnostics dict.
     """
 
     kind = "transform"
 
     def __call__(self, segment):
+        """Run the operation on a segment."""
         return self.invoke(segment)
 
 
 class Segmentation(Operation):
-    """
-    An operation that derives or refines a mask, from an image or an existing
-    mask.
+    """An operation that derives or refines a mask.
 
-    Automatic models and hand-drawn masks are alternative segmentations, not
-    different systems: segment(groundedsam2()) and draw_mask() both return
-    (segment, info) and feed the same mask table.
+    Calling it returns `(segment, info)`.
 
-    - `deterministic` -- False where rerunning this can produce a different
-      mask, as hand-drawing does. run_segments then refuses to decide on its
-      own whether already-covered occurrence-parts are done.
+    Args:
+        name: As in `Operation`.
+        function: As in `Operation`.
+        parameters: As in `Operation`.
+        version: As in `Operation`.
+        model: As in `Operation`.
+        deterministic: False where a rerun can produce a different mask, as hand-drawing does.
     """
 
     kind = "segment"
 
-    def __init__(self, name, function, parameters=None, version="1", model=None,
-                 deterministic=True):
-        super().__init__(name, function, parameters=parameters, version=version,
-                         model=model)
+    def __init__(self, name, function, parameters=None, version="1", model=None, deterministic=True):
+        super().__init__(name, function, parameters=parameters, version=version, model=model)
         self.deterministic = bool(deterministic)
 
     def __call__(self, segment):
+        """Run the operation on a segment."""
         return self.invoke(segment)
 
 
 class Metric(Operation):
-    """
-    An operation producing a terminal value: a trait, a QC value, a human
-    label, an embedding, a cluster assignment, an outlier score. Metrics end a
-    chain.
+    """An operation producing a value: a trait, a QC score, a label, an embedding.
 
-    Returns the value, usually a scalar; a dict reports several related numbers
-    at once and export gives each key its own column. Must be
-    JSON-serializable, since that is how it is stored.
+    Calling it returns the value, a JSON-serializable scalar, list or dict. Each key of a
+    dict becomes its own export column.
 
-    - `unit` -- what the value is expressed in, e.g. "px", "px2", "category".
-      Recorded alongside the value, since a bare number whose unit lives in a
-      variable name is easy to misread later.
-    - `metric_name` -- what to store the value under, defaulting to the
-      operation name. Override so one operation can appear twice in a recipe
-      without the second overwriting the first.
-    - `requires_mask` -- False for a metric that judges the raw image itself
-      rather than a segmented boundary, e.g. a pre-segmentation screening pass.
-      run_metrics then measures every occurrence with an image, not just ones
-      already segmented, and builds a maskless Segment for them. Deliberately
-      NOT in spec(), the same reasoning Segmentation.deterministic isn't: it
-      changes which occurrences a run reaches, not what a given occurrence's
-      value is, so hashing it would move every recipe hash already stored for
-      unrelated reasons.
+    Args:
+        name: As in `Operation`.
+        function: As in `Operation`.
+        parameters: As in `Operation`.
+        version: As in `Operation`.
+        model: As in `Operation`.
+        unit: What the value is expressed in, e.g. `"px"`, `"category"`.
+        metric_name: Name the value is stored under; the operation name if None.
+        requires_mask: False for a metric that judges the image itself and can run before
+            segmentation. Not hashed.
+        note: As in `Operation`.
 
-    `input` says what the metric is computed from: `"segment"` (pixels, the
-    default) or `"stored"` (another run's stored values, see
-    `metrics.stored`). run_metrics hands a stored-input metric a
-    `StoredValues` instead of a Segment. Not in spec(), like `requires_mask`.
+    Attributes:
+        input: `"segment"` for a metric computed from pixels, `"stored"` for one computed
+            from stored values (see `metrics.stored`). Not hashed.
     """
 
     kind = "metric"
     input = "segment"
 
-    def __init__(self, name, function, parameters=None, version="1", model=None,
-                 unit=None, metric_name=None, requires_mask=True, note=None):
-        super().__init__(name, function, parameters=parameters, version=version,
-                         model=model, note=note)
+    def __init__(
+        self,
+        name,
+        function,
+        parameters=None,
+        version="1",
+        model=None,
+        unit=None,
+        metric_name=None,
+        requires_mask=True,
+        note=None,
+    ):
+        super().__init__(name, function, parameters=parameters, version=version, model=model, note=note)
         self.unit = unit
         self.metric_name = metric_name or name
         self.requires_mask = bool(requires_mask)
 
     def spec(self):
+        """Return the operation's spec, with its metric name and unit."""
         spec = super().spec()
         spec["metric_name"] = self.metric_name
         spec["unit"] = self.unit
         return spec
 
     def __call__(self, segment):
+        """Run the operation on a segment."""
         return self.invoke(segment)
 
 
 def _model_identity(model):
-    """
-    A model's contribution to a recipe hash: whatever it reports about which
-    weights it is.
+    """Return a model's contribution to a recipe hash.
 
-    A model may define identity() -> dict to say so precisely. Anything else
-    falls back to its class name, which identifies the architecture but not the
-    checkpoint -- so two fine-tunes of one class hash alike. Give a model an
-    identity() when that matters.
+    Its `identity()` if it has one, else its class name, which does not tell two
+    checkpoints of one class apart.
     """
     if hasattr(model, "identity"):
         return model.identity()
@@ -533,30 +433,19 @@ def _model_identity(model):
 
 
 class Recipe:
-    """
-    An immutable, hashable specification of a configured operation chain and
-    the inputs it consumes.
+    """A hashable specification of an operation chain and the inputs it consumes.
 
-    - `kind` -- what the chain is for. "segment" and "metric" execute as runs
-      and get a run record; "render" identifies a transform chain whose output
-      is images rather than data.
-    - `name` -- the run name, e.g. "traits". Recorded on the run and shown by
-      describe_run(), but NOT part of identity, like `subset` -- a label a
-      human picks doesn't change what running the recipe produces, so renaming
-      must not force every occurrence to be treated as unfinished work. See
-      Recipe.hash.
-    - `operations` -- ordered Operations; for a metric recipe, transforms then
-      metrics.
-    - `part` -- the part this recipe produces or measures.
-    - `from_part` -- the upstream part whose mask this starts from, if any, or
-      a sorted list of parts whose union it starts from. In identity, since
-      refining the organism mask is not the same recipe pointed at a wing.
-    - `inputs` -- any other upstream dependency worth pinning into identity,
-      e.g. {"masks": "reference"}.
+    Args:
+        kind: `"segment"` or `"metric"` for a run, `"render"` for a chain whose output is images.
+        name: The run name. Recorded, but not part of the hash.
+        operations: Ordered operations; for a metric recipe, transforms then metrics.
+        part: The part this recipe produces or measures.
+        from_part: The upstream part whose mask it starts from, or a sorted list of parts
+            whose union it starts from.
+        inputs: Other upstream dependencies to hash, e.g. `{"masks": "reference"}`.
     """
 
-    def __init__(self, kind, name, operations, part=DEFAULT_PART, from_part=None,
-                 inputs=None):
+    def __init__(self, kind, name, operations, part=DEFAULT_PART, from_part=None, inputs=None):
         self.kind = kind
         self.name = name
         self.operations = list(operations)
@@ -565,7 +454,7 @@ class Recipe:
         self.inputs = dict(inputs or {})
 
     def spec(self):
-        """The full, hashable description of this recipe."""
+        """Return the full description of this recipe, including its name."""
         return {
             "kind": self.kind,
             "name": self.name,
@@ -577,40 +466,25 @@ class Recipe:
 
     @property
     def hash(self):
-        """
-        Stable identity of this recipe. Two recipes hash alike exactly when
-        running them would do the same work, which is what lets a run skip
-        occurrence-parts that already carry this hash.
-
-        `name` is excluded from what's hashed, even though spec() carries it:
-        it's a label a human picks for a run, not something that changes what
-        running it produces. Hashing it would mean renaming a run -- with no
-        other change -- forces every occurrence to be treated as unfinished,
-        and for a from_part chain, cascades a full resegmentation through
-        every part and metric below it. `records.masks.completed_keys` relies
-        on that exclusion directly; `metrics.run._completed_keys` deliberately
-        re-adds a name scope of its own, because a metric's run_name is also
-        the export column values are read back by (see its docstring).
-        """
+        """Return the recipe's identity: the hash of its spec without `name`."""
         identity = self.spec()
         del identity["name"]
         return hash_spec(identity)
 
     def operations_of(self, kind):
-        """The operations of one kind, in order -- e.g. the transforms of a metric recipe."""
+        """Return the operations of one kind, in order."""
         return [operation for operation in self.operations if operation.kind == kind]
 
     def nondeterministic_operations(self):
-        """The operations that don't reproduce their output when rerun, in order."""
-        return [operation for operation in self.operations
-                if not operation.deterministic]
+        """Return the operations whose output a rerun would not reproduce, in order."""
+        return [operation for operation in self.operations if not operation.deterministic]
 
     def prepare_all(self, context):
-        """
-        Run every operation's prepare() hook once, before the per-occurrence loop.
+        """Run every operation's `prepare()` once.
 
-        Returns {name: record} for the operations that returned one, keyed by
-        metric name where there is one; empty when nothing prepared anything.
+        Returns:
+            `{name: record}` for the operations that returned one, keyed by metric name where
+            there is one.
         """
         prepared = {}
         for operation in self.operations:
@@ -624,14 +498,10 @@ class Recipe:
 
 
 def describe_spec(spec):
-    """
-    One readable line for a recipe spec: kind, name, part, from_part, and its
-    operation chain in order.
+    """Return one readable line for a recipe spec.
 
-    Takes the plain dict `Recipe.spec()` produces -- the same shape
-    `records.runs.load_runs()` hands back after parsing a stored run's
-    `recipe_json`, since a run's recipe can't be reconstructed into a live
-    Recipe (an operation's spec omits its callable).
+    Args:
+        spec: The dict `Recipe.spec()` produces, or a stored run's recipe.
     """
     names = ", ".join(operation["name"] for operation in spec.get("operations", []))
     from_part = f" from_part={spec['from_part']}" if spec.get("from_part") else ""
@@ -639,26 +509,27 @@ def describe_spec(spec):
 
 
 def _shown(value, limit=70):
-    """A spec value as short text for a one-line description."""
+    """Return a spec value as short text."""
     text = repr(value)
-    return text if len(text) <= limit else text[:limit - 3] + "..."
+    return text if len(text) <= limit else text[: limit - 3] + "..."
 
 
 def _operation_key(operation):
-    """What makes two operations "the same step" when lining two chains up."""
+    """Return what makes two operations the same step when lining two chains up."""
     return (operation.get("name"), operation.get("metric_name"))
 
 
 def _operation_shown(operation):
-    """One operation as `kind name(param=value, ...)`."""
-    parameters = ", ".join(f"{key}={_shown(value, 30)}"
-                           for key, value in (operation.get("parameters") or {}).items())
+    """Return one operation as `kind name(param=value, ...)`."""
+    parameters = ", ".join(
+        f"{key}={_shown(value, 30)}" for key, value in (operation.get("parameters") or {}).items()
+    )
     name = operation.get("metric_name") or operation.get("name")
     return f"{operation.get('kind', 'operation')} {name}({parameters})"
 
 
 def _dict_changes(label, old, new):
-    """One line per key that was added, removed or changed between two dicts."""
+    """Return one line per key added, removed or changed between two dicts."""
     old, new = old or {}, new or {}
     lines = []
     for key in sorted(set(old) | set(new), key=str):
@@ -672,17 +543,16 @@ def _dict_changes(label, old, new):
 
 
 def describe_recipe_change(old_spec, new_spec):
-    """
-    What differs between two recipe specs, one readable line per difference.
+    """Return what differs between two recipe specs, one readable line per difference.
 
-    For telling a person why a recipe hash moved: which operation was added or
-    removed, which parameter changed, which model. `name` is left out, since it
-    is not part of a recipe's identity.
+    `name` is ignored, since it is not part of a recipe's identity.
 
-    - `old_spec`, `new_spec` -- the plain dicts `Recipe.spec()` produces, or
-      `records.runs.load_runs()` hands back.
+    Args:
+        old_spec: The dict `Recipe.spec()` produces, or a stored run's recipe.
+        new_spec: The spec to compare it with.
 
-    Returns a list of lines, never empty.
+    Returns:
+        A list of lines, never empty.
     """
     old = load_json(canonical_json(old_spec))
     new = load_json(canonical_json(new_spec))
@@ -696,42 +566,40 @@ def describe_recipe_change(old_spec, new_spec):
     new_operations = new.get("operations") or []
     matcher = difflib.SequenceMatcher(
         a=[_operation_key(operation) for operation in old_operations],
-        b=[_operation_key(operation) for operation in new_operations], autojunk=False)
+        b=[_operation_key(operation) for operation in new_operations],
+        autojunk=False,
+    )
 
     for tag, old_start, old_end, new_start, new_end in matcher.get_opcodes():
         if tag == "equal":
-            for before, after in zip(old_operations[old_start:old_end],
-                                     new_operations[new_start:new_end]):
+            for before, after in zip(old_operations[old_start:old_end], new_operations[new_start:new_end]):
                 label = (after.get("metric_name") or after.get("name")) + ": "
-                for field in sorted((set(before) | set(after))
-                                    - {"name", "metric_name", "parameters", "model"}, key=str):
+                for field in sorted(
+                    (set(before) | set(after)) - {"name", "metric_name", "parameters", "model"}, key=str
+                ):
                     if before.get(field) != after.get(field):
-                        lines.append(f"{label}{field} {_shown(before.get(field))} -> "
-                                     f"{_shown(after.get(field))}")
+                        lines.append(
+                            f"{label}{field} {_shown(before.get(field))} -> {_shown(after.get(field))}"
+                        )
                 lines += _dict_changes(label, before.get("parameters"), after.get("parameters"))
                 if before.get("model") != after.get("model"):
                     if isinstance(before.get("model"), dict) and isinstance(after.get("model"), dict):
                         lines += _dict_changes(f"{label}model ", before["model"], after["model"])
                     else:
-                        lines.append(f"{label}model {_shown(before.get('model'))} -> "
-                                     f"{_shown(after.get('model'))}")
+                        lines.append(
+                            f"{label}model {_shown(before.get('model'))} -> {_shown(after.get('model'))}"
+                        )
             continue
 
         for operation in old_operations[old_start:old_end]:
             lines.append(f"removed {_operation_shown(operation)}")
         for index in range(new_start, new_end):
-            where = ("at the start" if index == 0
-                     else f"after {new_operations[index - 1].get('name')}")
+            where = "at the start" if index == 0 else f"after {new_operations[index - 1].get('name')}"
             lines.append(f"added {_operation_shown(new_operations[index])} {where}")
 
     return lines or ["nothing this comparison reads -- the two specs are the same"]
 
 
 def _describe(recipe):
-    """
-    A recipe's spec plus its hash, ready to be stored on a run record -- the
-    reproducible half of provenance. Stored in full rather than as a hash alone
-    so a run stays readable years later even if the operation that produced it
-    has since been renamed or deleted from the package.
-    """
+    """Return a recipe's spec with its hash, as stored on a run record."""
     return {"recipe_hash": recipe.hash, "recipe": recipe.spec()}

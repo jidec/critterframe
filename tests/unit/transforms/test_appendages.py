@@ -102,8 +102,7 @@ def test_severed_fragments_are_discarded_not_kept():
 def test_the_report_says_how_much_went(caplog):
     _cleaned, info = cf.remove_appendages()(a_segment(body_with_legs()))
     assert info["area_after"] < info["area_before"]
-    assert info["removed_fraction"] == pytest.approx(
-        1 - info["area_after"] / info["area_before"])
+    assert info["removed_fraction"] == pytest.approx(1 - info["area_after"] / info["area_before"])
     assert info["degenerate"] is False
 
 
@@ -129,10 +128,8 @@ def test_a_bigger_radius_removes_more():
     The radius scales with the mask's area, so one setting works across
     specimen sizes; the parameter tunes how aggressive that is.
     """
-    gentle, gentle_info = cf.remove_appendages(relative_radius=0.02)(
-        a_segment(body_with_legs()))
-    firm, firm_info = cf.remove_appendages(relative_radius=0.12)(
-        a_segment(body_with_legs()))
+    gentle, gentle_info = cf.remove_appendages(relative_radius=0.02)(a_segment(body_with_legs()))
+    firm, firm_info = cf.remove_appendages(relative_radius=0.12)(a_segment(body_with_legs()))
 
     assert firm_info["radius"] > gentle_info["radius"]
     assert firm.mask.sum() <= gentle.mask.sum()

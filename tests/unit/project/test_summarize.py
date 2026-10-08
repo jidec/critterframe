@@ -38,8 +38,8 @@ def test_occurrence_preview_is_a_head_style_table(metadata_project):
     preview = summarize(metadata_project)["occurrence_preview"]
     lines = preview.splitlines()
 
-    assert ID_COL in lines[0]           # header row names the columns
-    assert len(lines) == 1 + 6          # header + 6 previewed rows
+    assert ID_COL in lines[0]  # header row names the columns
+    assert len(lines) == 1 + 6  # header + 6 previewed rows
 
 
 def test_occurrence_preview_respects_a_custom_head_count(metadata_project):
@@ -85,9 +85,14 @@ def test_reference_masks_are_counted_separately(segmented_project):
     Validation is comparison between two tables, so a summary that pooled them
     would hide whether there was anything to compare against.
     """
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(cutoff=120))],
-                    reference=True, limit=3, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(cutoff=120))],
+        reference=True,
+        limit=3,
+        visualize=False,
+    )
 
     summary = summarize(segmented_project)
     assert summary["parts"] == {"organism": 8}
@@ -114,8 +119,7 @@ def test_runs_are_broken_down_by_name(measured_project):
     each gets exactly one by_name row, and its current recipe is its only
     recipe.
     """
-    by_name = {(row["kind"], row["name"]): row
-               for row in summarize(measured_project)["runs"]["by_name"]}
+    by_name = {(row["kind"], row["name"]): row for row in summarize(measured_project)["runs"]["by_name"]}
 
     assert set(by_name) == {("segment", "organism"), ("metric", "traits")}
     for row in by_name.values():
@@ -130,12 +134,16 @@ def test_a_rerun_metric_name_reports_its_history_and_current_pointer(measured_pr
     Rerunning 'traits' under force=True moves the current pointer but keeps
     both runs in history -- by_name has to report both without losing either.
     """
-    cf.run_metrics(measured_project, run_name="traits",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.body_length()], force=True, visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[cf.body_length()],
+        force=True,
+        visualize=False,
+    )
 
-    by_name = {(row["kind"], row["name"]): row
-               for row in summarize(measured_project)["runs"]["by_name"]}
+    by_name = {(row["kind"], row["name"]): row for row in summarize(measured_project)["runs"]["by_name"]}
     traits = by_name[("metric", "traits")]
 
     assert traits["n_runs"] == 2

@@ -27,11 +27,9 @@ def _import_reports(module_names):
     `sys.modules` here reflects the session rather than the package.
     """
     code = (
-        "import sys; import critterframe; "
-        f"print([name for name in {module_names!r} if name in sys.modules])"
+        f"import sys; import critterframe; print([name for name in {module_names!r} if name in sys.modules])"
     )
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True,
-                            text=True, check=True)
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, check=True)
     return result.stdout.strip()
 
 
@@ -63,12 +61,15 @@ def test_import_does_not_read_a_dotenv():
     )
     # A scrubbed copy of the real environment, and the repo root as the working
     # directory -- so if the module did read .env, this would see it.
-    environment = {name: value for name, value in os.environ.items()
-                   if not name.startswith("ANTENNA_")}
-    result = subprocess.run([sys.executable, "-c", code], capture_output=True,
-                            text=True, check=True, env=environment,
-                            cwd=os.path.dirname(os.path.dirname(
-                                os.path.dirname(os.path.abspath(__file__)))))
+    environment = {name: value for name, value in os.environ.items() if not name.startswith("ANTENNA_")}
+    result = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        check=True,
+        env=environment,
+        cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+    )
     assert result.stdout.strip() == "[]"
 
 

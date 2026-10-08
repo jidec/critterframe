@@ -24,7 +24,7 @@ def bar(width=20, length=160, shape=(200, 200)):
     mask = np.zeros(shape, bool)
     top = (shape[0] - length) // 2
     left = (shape[1] - width) // 2
-    mask[top:top + length, left:left + width] = True
+    mask[top : top + length, left : left + width] = True
     return mask
 
 
@@ -67,7 +67,7 @@ def test_a_thin_part_and_a_round_one_lose_the_same_share_of_their_thickness():
     round_share = 1 - thickness(round_after.mask) / thickness(round_before)
     thin_share = 1 - thickness(thin_after.mask) / thickness(thin_before)
     assert round_share == pytest.approx(0.1, abs=0.04)
-    assert thin_share == pytest.approx(0.1, abs=0.1)        # one pixel is 5% of a 20px bar
+    assert thin_share == pytest.approx(0.1, abs=0.1)  # one pixel is 5% of a 20px bar
     assert abs(round_share - thin_share) < 0.12
 
 
@@ -80,8 +80,7 @@ def test_it_only_ever_removes_and_touches_nothing_else():
     assert eroded.image is segment.image
     assert np.array_equal(eroded.matrix, segment.matrix)
     assert info["area_after"] < info["area_before"]
-    assert info["removed_fraction"] == pytest.approx(
-        1 - info["area_after"] / info["area_before"])
+    assert info["removed_fraction"] == pytest.approx(1 - info["area_after"] / info["area_before"])
 
 
 def test_a_fraction_can_never_erase_the_mask():
@@ -97,7 +96,7 @@ def test_a_thin_neck_is_cut_through_and_the_info_says_so():
     entirely. Two lobes joined by a neck come back as two pieces.
     """
     mask = disc(radius=30, centre=(60, 100)) | disc(radius=30, centre=(140, 100))
-    mask[97:103, 60:140] = True                # a neck 6 pixels wide
+    mask[97:103, 60:140] = True  # a neck 6 pixels wide
     eroded, info = cf.erode(px=5)(a_segment(mask))
 
     assert info["n_components"] == 2
@@ -117,7 +116,7 @@ def test_pixels_past_the_thickness_leave_the_mask_alone_and_say_so():
 def test_the_frame_edge_counts_as_an_edge():
     """A mask running off the frame is eroded on that side too, the same as on every other."""
     mask = np.zeros((100, 100), bool)
-    mask[:, 30:70] = True                      # touches the top and bottom of the frame
+    mask[:, 30:70] = True  # touches the top and bottom of the frame
     eroded, _info = cf.erode(px=5)(a_segment(mask))
 
     assert not eroded.mask[:5].any() and not eroded.mask[-5:].any()
@@ -129,8 +128,9 @@ def test_an_empty_mask_is_refused():
         cf.erode()(a_segment(np.zeros((20, 20), bool)))
 
 
-@pytest.mark.parametrize("kwargs", [{"fraction": 0}, {"fraction": 1}, {"fraction": 1.5},
-                                    {"px": 0}, {"px": -2}])
+@pytest.mark.parametrize(
+    "kwargs", [{"fraction": 0}, {"fraction": 1}, {"fraction": 1.5}, {"px": 0}, {"px": -2}]
+)
 def test_an_erosion_that_makes_no_sense_fails_before_it_runs(kwargs):
     with pytest.raises(ValueError, match="must be"):
         cf.erode(**kwargs)
@@ -172,13 +172,13 @@ class Sink:
 
 def test_a_panel_shows_the_rim_that_went():
     segment = a_segment(disc())
-    cf.erode()(segment)                        # no sink: nothing to emit to, and no error
+    cf.erode()(segment)  # no sink: nothing to emit to, and no error
 
     sink = Sink()
     segment.panel_sink = sink
     cf.erode(0.3)(segment)
 
-    (stage, panel), = sink.panels
+    ((stage, panel),) = sink.panels
     assert stage == "erode"
     assert panel.dtype == np.uint8 and panel.shape == (*segment.shape, 3)
-    assert ((panel == (0, 0, 255)).all(axis=2)).any()     # the eroded rim, in red
+    assert ((panel == (0, 0, 255)).all(axis=2)).any()  # the eroded rim, in red

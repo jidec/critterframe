@@ -41,8 +41,9 @@ def test_opening_creates_both_tables(tmp_path):
     records module has to care about ordering.
     """
     with run_records.open_database(tmp_path) as connection:
-        tables = {row["name"] for row in connection.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'")}
+        tables = {
+            row["name"] for row in connection.execute("SELECT name FROM sqlite_master WHERE type='table'")
+        }
     assert {"runs", "metrics"} <= tables
 
 
@@ -60,8 +61,7 @@ def test_opening_twice_is_harmless(tmp_path):
 
 def test_a_new_database_has_no_legacy_columns(tmp_path):
     with run_records.open_database(tmp_path) as connection:
-        columns = {row["name"] for row in
-                   connection.execute("PRAGMA table_info(metrics)")}
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(metrics)")}
     assert columns.isdisjoint(run_records.LEGACY_METRIC_COLUMNS)
 
 
@@ -107,8 +107,7 @@ def test_an_old_database_is_migrated_and_writable(tmp_path):
     legacy.close()
 
     with run_records.open_database(tmp_path) as connection:
-        columns = {row["name"] for row in
-                   connection.execute("PRAGMA table_info(metrics)")}
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(metrics)")}
     assert columns.isdisjoint(run_records.LEGACY_METRIC_COLUMNS)
 
     # The value itself is not what the migration drops.
@@ -118,8 +117,8 @@ def test_an_old_database_is_migrated_and_writable(tmp_path):
     # And the insert the old NOT NULL column would have rejected now works.
     run_id = run_records.start_run(tmp_path, a_recipe())
     metric_records.append_metrics(
-        tmp_path, run_id, "newhash",
-        [metric_records.make_metric_row("b", "organism", "body_length", 3.5)])
+        tmp_path, run_id, "newhash", [metric_records.make_metric_row("b", "organism", "body_length", 3.5)]
+    )
     assert len(metric_records.load_metrics(tmp_path)) == 2
 
 
@@ -280,11 +279,10 @@ def test_a_database_written_before_the_context_column_gains_it(tmp_path):
     connection.commit()
     connection.close()
 
-    run_records.start_run(tmp_path, a_recipe(name="new"),
-                          context={"occurrences": {"count": 1}})
+    run_records.start_run(tmp_path, a_recipe(name="new"), context={"occurrences": {"count": 1}})
 
     runs = run_records.load_runs(tmp_path).set_index("name")
-    assert runs.loc["old", "context"] is None       # nothing to recover
+    assert runs.loc["old", "context"] is None  # nothing to recover
     assert runs.loc["new", "context"] == {"occurrences": {"count": 1}}
 
 
@@ -300,41 +298,40 @@ def test_segment_kind_is_always_a_no_op(tmp_path):
     exactly what resegmenting is, not ambiguity to guard against.
     """
     first = run_records.resolve_recipe_currency(
-        tmp_path, "segment", "segments", "organism", "hash_a", force=False)
+        tmp_path, "segment", "segments", "organism", "hash_a", force=False
+    )
     second = run_records.resolve_recipe_currency(
-        tmp_path, "segment", "segments", "organism", "hash_b", force=False)
+        tmp_path, "segment", "segments", "organism", "hash_b", force=False
+    )
     assert (first, second) == (False, False)
     assert run_records.current_recipe_pointers(tmp_path, kind="segment") == {}
 
 
 def test_first_use_adopts_silently(tmp_path):
     needs_commit = run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+        tmp_path, "metric", "traits", "organism", "hash_a", force=False
+    )
     assert needs_commit is False
-    assert run_records.current_recipe_pointers(tmp_path) == {
-        ("traits", "organism"): "hash_a"}
+    assert run_records.current_recipe_pointers(tmp_path) == {("traits", "organism"): "hash_a"}
 
 
 def test_the_same_hash_again_is_never_a_conflict(tmp_path):
     """An identical rerun -- retrying after an interruption, say -- has
     nothing to acknowledge, whether or not force is passed."""
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     for force in (False, True):
         needs_commit = run_records.resolve_recipe_currency(
-            tmp_path, "metric", "traits", "organism", "hash_a", force=force)
+            tmp_path, "metric", "traits", "organism", "hash_a", force=force
+        )
         assert needs_commit is False
 
 
 def test_a_different_hash_without_force_raises(tmp_path):
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     with pytest.raises(ValueError, match="currently points at a different"):
-        run_records.resolve_recipe_currency(
-            tmp_path, "metric", "traits", "organism", "hash_b", force=False)
+        run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_b", force=False)
     # Refused, so nothing moved.
-    assert run_records.current_recipe_pointers(tmp_path) == {
-        ("traits", "organism"): "hash_a"}
+    assert run_records.current_recipe_pointers(tmp_path) == {("traits", "organism"): "hash_a"}
 
 
 def test_a_different_hash_with_force_does_not_move_the_pointer_by_itself(tmp_path):
@@ -343,39 +340,33 @@ def test_a_different_hash_with_force_does_not_move_the_pointer_by_itself(tmp_pat
     write a forced change itself, because the caller hasn't yet confirmed the
     new recipe produced anything.
     """
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
     needs_commit = run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_b", force=True)
+        tmp_path, "metric", "traits", "organism", "hash_b", force=True
+    )
     assert needs_commit is True
-    assert run_records.current_recipe_pointers(tmp_path) == {
-        ("traits", "organism"): "hash_a"}
+    assert run_records.current_recipe_pointers(tmp_path) == {("traits", "organism"): "hash_a"}
 
 
 def test_commit_recipe_currency_moves_the_pointer(tmp_path):
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_a", force=False)
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", "hash_b", force=True)
-    run_records.commit_recipe_currency(tmp_path, "metric", "traits",
-                                       "organism", "hash_b")
-    assert run_records.current_recipe_pointers(tmp_path) == {
-        ("traits", "organism"): "hash_b"}
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_a", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_b", force=True)
+    run_records.commit_recipe_currency(tmp_path, "metric", "traits", "organism", "hash_b")
+    assert run_records.current_recipe_pointers(tmp_path) == {("traits", "organism"): "hash_b"}
 
 
 def test_commit_recipe_currency_is_a_no_op_for_segment(tmp_path):
-    run_records.commit_recipe_currency(tmp_path, "segment", "segments",
-                                       "organism", "hash_a")
+    run_records.commit_recipe_currency(tmp_path, "segment", "segments", "organism", "hash_a")
     assert run_records.current_recipe_pointers(tmp_path, kind="segment") == {}
 
 
 def test_parts_are_independent(tmp_path):
     """A shared run_name across parts -- run_segments' outputs= pattern, ported
     to metrics -- never conflicts, since each part is its own key."""
-    run_records.resolve_recipe_currency(
-        tmp_path, "metric", "body_parts", "head", "hash_head", force=False)
+    run_records.resolve_recipe_currency(tmp_path, "metric", "body_parts", "head", "hash_head", force=False)
     needs_commit = run_records.resolve_recipe_currency(
-        tmp_path, "metric", "body_parts", "abdomen", "hash_abdomen", force=False)
+        tmp_path, "metric", "body_parts", "abdomen", "hash_abdomen", force=False
+    )
     assert needs_commit is False
     assert run_records.current_recipe_pointers(tmp_path) == {
         ("body_parts", "head"): "hash_head",
@@ -390,20 +381,20 @@ def test_an_existing_project_s_history_seeds_the_pointer(tmp_path):
     it's seeded from the most recent run in history, so a rerun of THAT
     recipe stays silent and only a genuinely different one is caught.
     """
-    run_records.start_run(tmp_path, a_recipe(name="traits"))   # hash from a_recipe()
+    run_records.start_run(tmp_path, a_recipe(name="traits"))  # hash from a_recipe()
     old_hash = a_recipe(name="traits").hash
 
     # No pointer row exists yet -- only run history, as an old database would
     # have. The same hash running again must not raise.
     needs_commit = run_records.resolve_recipe_currency(
-        tmp_path, "metric", "traits", "organism", old_hash, force=False)
+        tmp_path, "metric", "traits", "organism", old_hash, force=False
+    )
     assert needs_commit is False
 
     # A genuinely different hash is still caught, seeded from that history.
     run_records.start_run(tmp_path, a_recipe(name="fresh"))
     with pytest.raises(ValueError, match="currently points at a different"):
-        run_records.resolve_recipe_currency(
-            tmp_path, "metric", "fresh", "organism", "hash_b", force=False)
+        run_records.resolve_recipe_currency(tmp_path, "metric", "fresh", "organism", "hash_b", force=False)
 
 
 # ---------------------------------------------------------------------------
@@ -505,5 +496,5 @@ def test_a_read_does_not_hold_the_database_open(tmp_path):
     run_records.load_runs(tmp_path)
 
     moved = tmp_path.parent / (tmp_path.name + "_moved")
-    os.rename(tmp_path, moved)          # raises if anything still holds it open
+    os.rename(tmp_path, moved)  # raises if anything still holds it open
     assert (moved / "runs_and_metrics.sqlite").exists()

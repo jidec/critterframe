@@ -1,15 +1,4 @@
-"""
-The JSON and JSON Lines files a project keeps: write_json, append_jsonl, read_jsonl.
-
-Manifests (an import's, an export's, a report's), the model registry, and the append-only logs
-beside them. Mechanics only, like every other module here: what goes in a record belongs to
-whoever writes it.
-
-Whole-file writes go through `atomic_write`, for the reason `tables` gives about parquet -- a
-process killed mid-write leaves the previous complete file rather than a truncated one. UTF-8
-everywhere, explicitly: a species name or a note with an accent in it is ordinary, and Windows
-writes cp1252 when asked for nothing.
-"""
+"""The JSON and JSON Lines files a project keeps: atomic_write, write_json, read_json, append_jsonl, read_jsonl."""
 
 import json
 import logging
@@ -27,16 +16,11 @@ logger = logging.getLogger(__name__)
 
 @contextmanager
 def atomic_write(path, mode="w"):
-    """
-    A file handle whose content replaces `path` only once writing finishes.
+    """Open a file handle whose content replaces `path` only once writing finishes.
 
-    Writes to a uniquely-named temp file beside the destination and
-    `os.replace()`s it into place -- atomic on the same volume on POSIX and
-    Windows alike -- so a crash, a full disk or a Ctrl-C leaves the previous
-    complete file rather than half of the new one.
-
-    - `path` -- destination; its parent directory is created if missing.
-    - `mode` -- `"w"` (UTF-8 text, the default) or `"wb"`.
+    Args:
+        path: Destination; its parent directory is created if missing.
+        mode: `"w"` for UTF-8 text, or `"wb"`.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,26 +36,24 @@ def atomic_write(path, mode="w"):
 
 
 def write_json(path, record, indent=2):
-    """
-    Write one record as JSON, atomically, sorted, in UTF-8, and return the path.
+    """Write one record as sorted UTF-8 JSON, atomically, and return the path.
 
-    - `path` -- destination file.
-    - `record` -- JSON-serializable value. NumPy scalars and arrays are
-      converted the way every other spec in the package converts them.
-    - `indent` -- None writes it on one line.
+    Args:
+        path: Destination file.
+        record: JSON-serializable value; NumPy scalars and arrays are converted.
+        indent: Indentation; None writes one line.
     """
     with atomic_write(path) as handle:
-        json.dump(record, handle, indent=indent, sort_keys=True,
-                  default=json_default)
+        json.dump(record, handle, indent=indent, sort_keys=True, default=json_default)
     return Path(path)
 
 
 def read_json(path, default=None):
-    """
-    Read one JSON file back, or return `default` if it isn't there.
+    """Read one JSON file, or return `default` if it isn't there.
 
-    - `path` -- file to read.
-    - `default` -- what to return when the file is missing.
+    Args:
+        path: File to read.
+        default: Value returned when the file is missing.
     """
     path = Path(path)
     if not path.exists():
@@ -81,16 +63,11 @@ def read_json(path, default=None):
 
 
 def append_jsonl(path, record):
-    """
-    Append one record to a JSON Lines log, and return the path.
+    """Append one record to a JSON Lines log, and return the path.
 
-    JSON Lines rather than one JSON document because these logs only ever
-    grow, and a read-merge-rewrite of a growing file is what an appending
-    writer should not be doing. Appending a single line is atomic enough for
-    that: nothing rewrites what is already there.
-
-    - `path` -- log file; its parent directory is created if missing.
-    - `record` -- JSON-serializable value, written as one line.
+    Args:
+        path: Log file; its parent directory is created if missing.
+        record: JSON-serializable value, written as one line.
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -105,22 +82,23 @@ def append_jsonl(path, record):
 
 
 def _ends_with_newline(path):
-    """Whether a file's last byte is a newline -- i.e. its last line is complete."""
+    """Return whether a file's last byte is a newline, i.e. its last line is complete."""
     with open(path, "rb") as handle:
         handle.seek(-1, os.SEEK_END)
         return handle.read(1) == b"\n"
 
 
 def read_jsonl(path, what="record"):
-    """
-    Read a JSON Lines log as a DataFrame, oldest first; empty if it isn't there.
+    """Read a JSON Lines log as a DataFrame, oldest first.
 
-    A malformed line is skipped with a warning rather than failing the read: a
-    log is a record of what happened, and one truncated line (a process killed
-    mid-append) shouldn't cost the history either side of it.
+    A malformed line is skipped with a warning.
 
-    - `path` -- log file.
-    - `what` -- what one line is, for the warning ("import", "export", ...).
+    Args:
+        path: Log file.
+        what: What one line is, for the warning, e.g. `"import"`.
+
+    Returns:
+        One row per record; empty if the file isn't there.
     """
     path = Path(path)
     if not path.exists():
@@ -135,6 +113,5 @@ def read_jsonl(path, what="record"):
             try:
                 records.append(json.loads(line))
             except json.JSONDecodeError:
-                logger.warning("skipping unreadable %s on line %d of %s",
-                               what, number, path)
+                logger.warning("skipping unreadable %s on line %d of %s", what, number, path)
     return pd.DataFrame(records)

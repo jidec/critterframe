@@ -1,8 +1,4 @@
-"""
-Colour thresholds: named cutoffs on colour channels, across colour spaces, and the fraction of an organism past them.
-
-`inductive_color_thresholds` fits the same kind of threshold from the data instead of taking it as given.
-"""
+"""Color thresholds: named cutoffs on color channels, and the fraction of an organism past them."""
 
 from dataclasses import dataclass
 
@@ -47,14 +43,16 @@ _DIMMED = 0.35
 
 @dataclass(frozen=True)
 class ColorThreshold:
-    """
-    A named set of cutoffs on colour channels; a pixel matches when it satisfies every one.
+    """A named set of cutoffs on color channels; a pixel matches when it satisfies all of them.
 
-    Bounds are half-open `[low, high)` in the canonical units of `colorspaces.convert`, with `None` for an open end.
-    A circular channel (hue) takes an arc in degrees, which wraps when `low > high`, so it needs both ends.
+    Bounds are half-open `[low, high)` in the units `colorspaces.convert` returns, with None
+    for an open end. A circular channel (hue) takes an arc in degrees, which wraps when
+    `low > high`, and needs both ends.
 
-    - `name` -- what the matched fraction is stored under; no `"__"`, which export column names are joined with.
-    - `conditions` -- `{space: {channel: (low, high)}}`, e.g. `{"hsv": {"h": (42, 72), "s": (0.25, None)}}`.
+    Attributes:
+        name: Name the matched fraction is stored under; no `"__"`.
+        conditions: `{space: {channel: (low, high)}}`, e.g.
+            `{"hsv": {"h": (42, 72), "s": (0.25, None)}}`.
     """
 
     name: str
@@ -64,12 +62,17 @@ class ColorThreshold:
         if not isinstance(self.name, str) or not self.name:
             raise ValueError(f"a colour threshold needs a non-empty string name, got {self.name!r}")
         if "__" in self.name:
-            raise ValueError(f"colour threshold name {self.name!r} contains '__', which export column names use")
+            raise ValueError(
+                f"colour threshold name {self.name!r} contains '__', which export column names use"
+            )
 
         rows = self.conditions
         if isinstance(rows, dict):
-            rows = [(space, channel, *bounds)
-                    for space, channels in rows.items() for channel, bounds in channels.items()]
+            rows = [
+                (space, channel, *bounds)
+                for space, channels in rows.items()
+                for channel, bounds in channels.items()
+            ]
         rows = [_checked_condition(self.name, *row) for row in rows]
         if not rows:
             raise ValueError(f"colour threshold {self.name!r} has no conditions")
@@ -81,11 +84,11 @@ class ColorThreshold:
 
     @property
     def spaces(self):
-        """The colour spaces this threshold reads, in sorted order."""
+        """Return the color spaces this threshold reads, sorted."""
         return tuple(sorted({space for space, _, _, _ in self.conditions}))
 
     def spec(self):
-        """The JSON description of this threshold, which is what reaches a recipe hash."""
+        """Return the JSON description of this threshold, which is what reaches a recipe hash."""
         conditions = {}
         for space, channel, low, high in self.conditions:
             conditions.setdefault(space, {})[channel] = [low, high]
@@ -93,22 +96,21 @@ class ColorThreshold:
 
     @classmethod
     def from_spec(cls, spec):
-        """
-        Rebuild a threshold from its `spec()`.
+        """Rebuild a threshold from its `spec()`.
 
-        - `spec` -- `{"name": ..., "conditions": {space: {channel: [low, high]}}}`.
-
-        Returns a `ColorThreshold`.
+        Args:
+            spec: `{"name": ..., "conditions": {space: {channel: [low, high]}}}`.
         """
         return cls(spec["name"], spec["conditions"])
 
     def matches(self, converted):
-        """
-        Which pixels satisfy every condition.
+        """Return which pixels satisfy every condition.
 
-        - `converted` -- `{space: values}` from `colorspaces.convert`, holding at least every space in `spaces`.
+        Args:
+            converted: `{space: values}` from `colorspaces.convert`, with every space in `spaces`.
 
-        Returns a boolean array shaped like one space's values minus its channel axis.
+        Returns:
+            A boolean array shaped like one space's values without the channel axis.
         """
         matched = None
         for space, channel, low, high in self.conditions:
@@ -126,15 +128,13 @@ class ColorThreshold:
 
 
 def color_threshold(name, **conditions):
-    """
-    Build a `ColorThreshold` from `<space>_<channel>=(low, high)` keywords.
+    """Build a `ColorThreshold` from `<space>_<channel>=(low, high)` keywords.
 
-    e.g. `color_threshold("yellow", hsv_h=(42, 72), hsv_s=(0.25, None), lab_l=(20, None))`.
+    For example `color_threshold("yellow", hsv_h=(42, 72), hsv_s=(0.25, None))`.
 
-    - `name` -- what the matched fraction is stored under.
-    - `conditions` -- one keyword per channel cutoff, `None` for an open end.
-
-    Returns a `ColorThreshold`.
+    Args:
+        name: Name the matched fraction is stored under.
+        **conditions: One keyword per channel cutoff, with None for an open end.
     """
     nested = {}
     for key, bounds in conditions.items():
@@ -146,25 +146,25 @@ def color_threshold(name, **conditions):
 
 
 def hue_thresholds(min_saturation=MIN_SATURATION, min_value=MIN_VALUE):
-    """
-    The six named hue bands of `HUE_BANDS` as colour thresholds, each floored on saturation and value.
+    """Return the six hue bands of `HUE_BANDS` as color thresholds.
 
-    - `min_saturation` -- pixels greyer than this match no hue, rather than a hue they don't really have.
-    - `min_value` -- pixels darker than this match no hue; hue is meaningless in shadow.
-
-    Returns a list of `ColorThreshold`, in `HUE_BANDS` order.
+    Args:
+        min_saturation: Saturation below which a pixel matches no hue.
+        min_value: Value below which a pixel matches no hue.
     """
     return [_hue_threshold(hue, min_saturation, min_value) for hue in HUE_BANDS]
 
 
 def threshold_fractions(thresholds, unmatched=False, name=None, unit="fraction"):
-    """
-    Metric: the fraction of masked pixels matching each colour threshold, as `{threshold name: fraction}`.
+    """Metric: the fraction of masked pixels matching each threshold, as `{threshold name: fraction}`.
 
-    Thresholds are scored independently, so they may overlap and the fractions need not sum to 1.
+    Thresholds are scored independently, so they may overlap and need not sum to 1.
 
-    - `thresholds` -- `ColorThreshold`s, e.g. from `color_threshold()` or `hue_thresholds()`.
-    - `unmatched` -- also report `"unmatched"`, the fraction matching none of them.
+    Args:
+        thresholds: `ColorThreshold`s, e.g. from `color_threshold()` or `hue_thresholds()`.
+        unmatched: Also report `"unmatched"`, the fraction matching none of them.
+        name: Name to store the value under.
+        unit: Recorded unit.
     """
     thresholds = list(thresholds)
     names = [threshold.name for threshold in thresholds]
@@ -175,30 +175,36 @@ def threshold_fractions(thresholds, unmatched=False, name=None, unit="fraction")
     if unmatched and UNMATCHED in names:
         raise ValueError(f"a threshold named {UNMATCHED!r} collides with unmatched=True")
 
-    return Metric(THRESHOLD_FRACTIONS, _threshold_fractions,
-                  {"thresholds": [threshold.spec() for threshold in thresholds],
-                   "unmatched": bool(unmatched)},
-                  version="1", unit=unit, metric_name=name)
+    return Metric(
+        THRESHOLD_FRACTIONS,
+        _threshold_fractions,
+        {"thresholds": [threshold.spec() for threshold in thresholds], "unmatched": bool(unmatched)},
+        version="1",
+        unit=unit,
+        metric_name=name,
+    )
 
 
-def color_presence(fractions=None, from_run=None, min_fraction=0.10, n_ranked_colors=2,
-                   name="color_presence", unit=None):
-    """
-    Metric: which colours of a `threshold_fractions` result are present, how many, and the largest.
+def color_presence(
+    fractions=None, from_run=None, min_fraction=0.10, n_ranked_colors=2, name="color_presence", unit=None
+):
+    """Metric: which colors of a `threshold_fractions` result are present, how many, and the largest.
 
-    Derived from the stored fractions: list it after a `threshold_fractions`
-    in the same run, or pass that operation and `from_run`. Returns
-    `{<colour>_present, n_colors_present, ranked_color_1 ... ranked_color_<n>}`;
-    `"unmatched"` never counts, a colour with no stored fraction is absent,
-    and ties keep the bins' order.
+    `"unmatched"` never counts, a color with no stored fraction is absent, and ties keep
+    the thresholds' order.
 
-    - `fractions` -- which `threshold_fractions` to read: None for the one
-      listed before this in the same run, its metric name where there are
-      several, or the operation itself, configured as measured.
-    - `from_run` -- the run that stored it, which needs the operation; None
-      for an earlier metric in this run.
-    - `min_fraction` -- the share of the organism a colour must cover to be present.
-    - `n_ranked_colors` -- how many `ranked_color_<i>` to report, largest first; None past those present.
+    Args:
+        fractions: The `threshold_fractions` to read: None for the one listed before this
+            in the same run, its metric name where there are several, or the operation itself.
+        from_run: The run that stored the fractions, which needs the operation; None for an
+            earlier metric in this run.
+        min_fraction: Share of the organism a color must cover to be present.
+        n_ranked_colors: How many `ranked_color_<i>` to report, largest first.
+        name: Name to store the value under.
+        unit: Recorded unit.
+
+    Returns:
+        The metric. Its value is `{<color>_present, n_colors_present, ranked_color_1, ...}`.
     """
     if not 0 < min_fraction <= 1:
         raise ValueError(f"min_fraction must be in (0, 1], got {min_fraction!r}")
@@ -209,23 +215,34 @@ def color_presence(fractions=None, from_run=None, min_fraction=0.10, n_ranked_co
         if from_run is not None:
             raise ValueError(
                 f"color_presence needs the threshold_fractions(...) operation run {from_run!r} "
-                "measured with -- only a metric of this same run can be found by name")
+                "measured with -- only a metric of this same run can be found by name"
+            )
         return _UnboundColorPresence(fractions, min_fraction, n_ranked_colors, name, unit)
 
     if getattr(fractions, "name", None) != THRESHOLD_FRACTIONS:
-        raise TypeError("color_presence reads a threshold_fractions(...) metric, got "
-                        f"{getattr(fractions, 'name', type(fractions).__name__)!r}")
+        raise TypeError(
+            "color_presence reads a threshold_fractions(...) metric, got "
+            f"{getattr(fractions, 'name', type(fractions).__name__)!r}"
+        )
 
     colors = [spec["name"] for spec in fractions.parameters["thresholds"]]
-    return derived(_color_presence, [fractions], from_run, name=name, unit=unit,
-                   parameters={"colors": colors, "min_fraction": min_fraction,
-                               "n_ranked_colors": n_ranked_colors})
+    return derived(
+        _color_presence,
+        [fractions],
+        from_run,
+        name=name,
+        unit=unit,
+        parameters={"colors": colors, "min_fraction": min_fraction, "n_ranked_colors": n_ranked_colors},
+    )
 
 
 def _color_presence(values, colors, min_fraction, n_ranked_colors):
     (stored,) = values.values()
-    present = {color: stored[color] for color in colors
-               if stored.get(color) is not None and stored[color] >= min_fraction}
+    present = {
+        color: stored[color]
+        for color in colors
+        if stored.get(color) is not None and stored[color] >= min_fraction
+    }
     # sorted() is stable, so equal fractions keep the bins' order.
     ranked = sorted(present, key=lambda color: -present[color])
     result = {f"{color}_present": color in present for color in colors}
@@ -236,7 +253,7 @@ def _color_presence(values, colors, min_fraction, n_ranked_colors):
 
 
 class _UnboundColorPresence(DerivedMetric):
-    """A `color_presence` that hasn't been given its `threshold_fractions`; `bind()` finds it in the run."""
+    """A `color_presence` not yet given its `threshold_fractions`; `bind()` finds it in the run."""
 
     def __init__(self, fractions, min_fraction, n_ranked_colors, name, unit):
         # The named feature only marks this unbound; bind() does its own lookup.
@@ -246,45 +263,49 @@ class _UnboundColorPresence(DerivedMetric):
         self.n_ranked_colors = n_ranked_colors
 
     def bind(self, earlier):
-        """
-        The `color_presence` of the `threshold_fractions` listed before this one.
+        """Return the `color_presence` of the `threshold_fractions` listed before this one.
 
-        - `earlier` -- the Metric operations listed before this one in the run.
-
-        Returns the bound metric, the same one passing that operation builds.
+        Args:
+            earlier: The metric operations listed before this one in the run.
         """
-        candidates = [operation for operation in earlier
-                      if getattr(operation, "name", None) == THRESHOLD_FRACTIONS]
+        candidates = [
+            operation for operation in earlier if getattr(operation, "name", None) == THRESHOLD_FRACTIONS
+        ]
         if self.fractions is None:
             if len(candidates) != 1:
                 names = [operation.metric_name for operation in candidates]
                 raise ValueError(
                     f"{self.metric_name} reads the threshold_fractions listed before it in "
                     f"metrics=, and found {names or 'none'} -- "
-                    + ('say which with fractions="<its name>"' if names
-                       else "list one first"))
+                    + ('say which with fractions="<its name>"' if names else "list one first")
+                )
             chosen = candidates[0]
         else:
-            named = [operation for operation in earlier
-                     if operation.metric_name == self.fractions]
+            named = [operation for operation in earlier if operation.metric_name == self.fractions]
             if not named:
                 raise ValueError(
                     f"{self.metric_name} reads {self.fractions!r} from this run, but no "
-                    "metric of that name is listed before it in metrics=")
+                    "metric of that name is listed before it in metrics="
+                )
             chosen = named[0]
-        return color_presence(chosen, min_fraction=self.min_fraction,
-                              n_ranked_colors=self.n_ranked_colors,
-                              name=self.metric_name, unit=self.unit)
+        return color_presence(
+            chosen,
+            min_fraction=self.min_fraction,
+            n_ranked_colors=self.n_ranked_colors,
+            name=self.metric_name,
+            unit=self.unit,
+        )
 
 
 def threshold_masks(pixels, thresholds):
-    """
-    Which pixels match each colour threshold, converting to each colour space once.
+    """Return which pixels match each threshold, converting to each color space once.
 
-    - `pixels` -- uint8 BGR, an `(N, 3)` pixel list or an `(H, W, 3)` image.
-    - `thresholds` -- `ColorThreshold`s.
+    Args:
+        pixels: uint8 BGR, an `(N, 3)` pixel list or an `(H, W, 3)` image.
+        thresholds: `ColorThreshold`s.
 
-    Returns `{threshold name: boolean array}`, in the order given.
+    Returns:
+        `{threshold name: boolean array}`, in the order given.
     """
     spaces = {space for threshold in thresholds for space in threshold.spaces}
     converted = {space: convert(pixels, space) for space in spaces}
@@ -292,14 +313,12 @@ def threshold_masks(pixels, thresholds):
 
 
 def threshold_panel(segment, masks, fractions):
-    """
-    One picture per threshold, side by side: the pixels it matched in their own colour, the rest of the organism grey.
+    """Return one picture per threshold, side by side: its matched pixels in color, the rest gray.
 
-    - `segment` -- the segment measured.
-    - `masks` -- `{name: boolean (N,)}` over the segment's masked pixels, as `threshold_masks` returns.
-    - `fractions` -- `{name: fraction}`, annotated on each picture.
-
-    Returns a uint8 BGR panel.
+    Args:
+        segment: The segment measured.
+        masks: `{name: boolean array}` over the segment's masked pixels.
+        fractions: `{name: fraction}`, written on each picture.
     """
     image = np.asarray(segment.image)
     if image.ndim == 2:
@@ -322,48 +341,66 @@ def threshold_panel(segment, masks, fractions):
 
 
 def black_fraction(threshold=BLACK_THRESHOLD, name=None, unit="fraction"):
-    """
-    Metric: fraction of masked pixels darker than `threshold` lightness.
+    """Metric: the fraction of masked pixels darker than a lightness cutoff.
 
-    Melanisation is the usual reason to want this, and it's a genuinely
-    different question from mean lightness: a mostly-pale organism with heavy
-    black markings and a uniformly mid-grey one can share a mean and differ
-    completely here.
-
-    - `threshold` -- lightness cutoff on a 0-1 scale.
+    Args:
+        threshold: Lightness cutoff on a 0-1 scale.
+        name: Name to store the value under.
+        unit: Recorded unit.
     """
     # Rounded so a 0.2 cutoff is stored as 20.0 rather than 20.000000000000004.
     black = color_threshold("black", lab_l=(None, round(threshold * 100.0, 9)))
-    return Metric("black_fraction", _single_fraction, {"threshold": black.spec()},
-                  version="1", unit=unit, metric_name=name)
+    return Metric(
+        "black_fraction",
+        _single_fraction,
+        {"threshold": black.spec()},
+        version="1",
+        unit=unit,
+        metric_name=name,
+    )
 
 
-def hue_fraction(hue, min_saturation=MIN_SATURATION, min_value=MIN_VALUE,
-                 name=None, unit="fraction"):
-    """
-    Metric: fraction of masked pixels falling in one named hue band.
+def hue_fraction(hue, min_saturation=MIN_SATURATION, min_value=MIN_VALUE, name=None, unit="fraction"):
+    """Metric: the fraction of masked pixels in one named hue band.
 
-    - `hue` -- one of `HUE_BANDS` (`"red"`, `"yellow"`, `"green"`, ...).
-    - `min_saturation` -- pixels greyer than this are excluded rather than
-      assigned a hue they don't really have.
-    - `min_value` -- pixels darker than this are excluded for the same
-      reason; hue is meaningless in shadow.
+    Args:
+        hue: One of `HUE_BANDS`, e.g. `"red"`, `"yellow"`.
+        min_saturation: Saturation below which a pixel matches no hue.
+        min_value: Value below which a pixel matches no hue.
+        name: Name to store the value under.
+        unit: Recorded unit.
     """
     if hue not in HUE_BANDS:
         raise ValueError(f"unknown hue {hue!r} -- expected one of {sorted(HUE_BANDS)}")
 
     threshold = _hue_threshold(hue, min_saturation, min_value)
-    return Metric(f"{hue}_fraction", _single_fraction, {"threshold": threshold.spec()},
-                  version="1", unit=unit, metric_name=name)
+    return Metric(
+        f"{hue}_fraction",
+        _single_fraction,
+        {"threshold": threshold.spec()},
+        version="1",
+        unit=unit,
+        metric_name=name,
+    )
 
 
 def red_fraction(name=None, **kwargs):
-    """Metric: fraction of masked pixels in the red hue band. See hue_fraction()."""
+    """Metric: the fraction of masked pixels in the red hue band.
+
+    Args:
+        name: Name to store the value under.
+        **kwargs: As in `hue_fraction`.
+    """
     return hue_fraction("red", name=name, **kwargs)
 
 
 def yellow_fraction(name=None, **kwargs):
-    """Metric: fraction of masked pixels in the yellow hue band. See hue_fraction()."""
+    """Metric: the fraction of masked pixels in the yellow hue band.
+
+    Args:
+        name: Name to store the value under.
+        **kwargs: As in `hue_fraction`.
+    """
     return hue_fraction("yellow", name=name, **kwargs)
 
 
@@ -372,7 +409,7 @@ def _hue_threshold(hue, min_saturation, min_value):
 
 
 def _checked_condition(name, space, channel, low=None, high=None, *extra):
-    """One `(space, channel, low, high)` row, validated against the colour space and made JSON-plain."""
+    """Return one `(space, channel, low, high)` row, validated against the color space."""
     if extra:
         raise ValueError(f"colour threshold {name!r}: bounds for {space}.{channel} should be (low, high)")
     target = get_space(space)

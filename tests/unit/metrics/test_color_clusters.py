@@ -14,7 +14,7 @@ from critterframe.records.metrics import load_metrics
 from helpers.models import ThresholdModel
 from helpers.synthetic import BACKGROUND, BODY_AXES, BODY_CENTRE, SPECIMEN_SIZE
 
-WARM = (80, 110, 255)     # BGR; both bright enough for ThresholdModel to segment
+WARM = (80, 110, 255)  # BGR; both bright enough for ThresholdModel to segment
 COOL = (255, 150, 70)
 
 

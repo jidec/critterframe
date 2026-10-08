@@ -50,8 +50,7 @@ def test_several_parts_qualify_the_name():
     So the mapping stays one row per file even when an occurrence contributes
     several.
     """
-    assert product_filename("specimen0", "forewing_left") == \
-        "specimen0__forewing_left.png"
+    assert product_filename("specimen0", "forewing_left") == "specimen0__forewing_left.png"
 
 
 def test_the_format_is_part_of_the_name():
@@ -60,16 +59,22 @@ def test_the_format_is_part_of_the_name():
 
 def test_a_label_leads_the_name():
     assert product_filename("specimen0", label="Anax_junius") == "Anax_junius__specimen0.png"
-    assert product_filename("specimen0", "abdomen", label="Anax_junius") == \
-        "Anax_junius__specimen0__abdomen.png"
+    assert (
+        product_filename("specimen0", "abdomen", label="Anax_junius") == "Anax_junius__specimen0__abdomen.png"
+    )
 
 
-@pytest.mark.parametrize("value, label", [
-    ("Anax junius", "Anax_junius"),
-    ("a__b/c: d", "a_b_c_d"),            # a double underscore only ever separates pieces
-    ("sp. nov-1", "sp._nov-1"),
-    (None, "unknown"), (float("nan"), "unknown"), ("", "unknown"),
-])
+@pytest.mark.parametrize(
+    "value, label",
+    [
+        ("Anax junius", "Anax_junius"),
+        ("a__b/c: d", "a_b_c_d"),  # a double underscore only ever separates pieces
+        ("sp. nov-1", "sp._nov-1"),
+        (None, "unknown"),
+        (float("nan"), "unknown"),
+        ("", "unknown"),
+    ],
+)
 def test_a_column_value_is_made_safe_for_a_filename(value, label):
     assert file_label(value) == label
 
@@ -85,7 +90,7 @@ def test_files_can_be_named_by_an_occurrence_column(segmented_project):
 
     assert len(names) == 8
     assert "Libellula_lydia__specimen0.png" in names and "Anax_junius__specimen1.png" in names
-    assert render(segmented_project, name_by="species")["processed"] == 0     # a rerun finds them
+    assert render(segmented_project, name_by="species")["processed"] == 0  # a rerun finds them
 
 
 def test_naming_by_a_column_is_a_folder_of_its_own(segmented_project):
@@ -99,6 +104,7 @@ def test_naming_by_a_column_is_a_folder_of_its_own(segmented_project):
 
 def read_unchanged(path):
     import cv2
+
     return cv2.imread(str(path), cv2.IMREAD_UNCHANGED)
 
 
@@ -221,15 +227,19 @@ def test_rendering_several_parts_qualifies_every_filename(segmented_project):
     folder where some names carry a part and others don't is unreadable by a
     directory listing.
     """
-    cf.run_segments(segmented_project, run_name="core", part="core",
-                    from_part="organism",
-                    shared_steps=[cf.remove_background()],
-                    steps=[cf.segment(ThresholdModel(cutoff=120))],
-                    visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="core",
+        part="core",
+        from_part="organism",
+        shared_steps=[cf.remove_background()],
+        steps=[cf.segment(ThresholdModel(cutoff=120))],
+        visualize=False,
+    )
 
-    results = cf.render_segments(segmented_project, "both",
-                                 transforms=PLATE_CHAIN,
-                                 parts=["organism", "core"])
+    results = cf.render_segments(
+        segmented_project, "both", transforms=PLATE_CHAIN, parts=["organism", "core"]
+    )
     names = {path.name for path in results["organism"]["directory"].glob("*.png")}
     assert "specimen0__organism.png" in names
     assert "specimen0__core.png" in names
@@ -243,9 +253,9 @@ def test_each_part_gets_its_own_summary(segmented_project):
     run per part -- run_segments, run_metrics -- already return per part, and a
     render reads the same masks they wrote.
     """
-    results = cf.render_segments(segmented_project, "per_part",
-                                 transforms=PLATE_CHAIN,
-                                 parts=["organism", "wing"])
+    results = cf.render_segments(
+        segmented_project, "per_part", transforms=PLATE_CHAIN, parts=["organism", "wing"]
+    )
 
     assert set(results) == {"organism", "wing"}
     assert results["organism"]["processed"] == 8
@@ -272,9 +282,7 @@ def test_the_format_is_a_choice_with_a_lossless_default(segmented_project):
     a smaller file with JPEG ringing along the specimen boundary.
     """
     summary = render(segmented_project, name="jpegs", extension="jpg")
-    assert all(path.suffix == ".jpg"
-               for path in summary["directory"].glob("*.*")
-               if path.suffix != ".json")
+    assert all(path.suffix == ".jpg" for path in summary["directory"].glob("*.*") if path.suffix != ".json")
 
 
 def test_rendering_needs_a_project(empty_project):

@@ -1,1 +1,1 @@
-"""BioEncoder-style metric-learning embeddings: an `embedding()` metric over a trained checkpoint, and the dataset preparation for training one."""
+"""BioEncoder embeddings: an `embedding()` metric over a trained checkpoint, and dataset preparation for training one."""

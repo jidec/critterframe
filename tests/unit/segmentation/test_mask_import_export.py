@@ -45,8 +45,7 @@ def add_occurrence(project_path, occurrence_id):
     table = occurrence_records.load_occurrences(project_path)
     extra = table.iloc[[0]].copy()
     extra["occurrence_id"] = occurrence_id
-    occurrence_records.save_occurrences(project_path, pd.concat([table, extra],
-                                                                ignore_index=True))
+    occurrence_records.save_occurrences(project_path, pd.concat([table, extra], ignore_index=True))
 
 
 def unsegmented_copy(project_path, tmp_path):
@@ -69,15 +68,17 @@ def test_masks_round_trip_pixel_for_pixel(segmented_project, tmp_path):
     assert exported["organism"]["processed"] == len(ids_of(segmented_project))
     assert (folder / MANIFEST_NAME).exists()
 
-    result = cf.import_masks(image_project, folder, description="from the template",
-                             visualize=False)["organism"]
+    result = cf.import_masks(image_project, folder, description="from the template", visualize=False)[
+        "organism"
+    ]
     assert result["processed"] == len(ids_of(image_project))
 
     source = mask_records.mask_lookup(segmented_project)
     imported = mask_records.mask_lookup(image_project)
     for occurrence_id, row in source.items():
-        assert np.array_equal(mask_records.decode_mask(row),
-                              mask_records.decode_mask(imported[occurrence_id]))
+        assert np.array_equal(
+            mask_records.decode_mask(row), mask_records.decode_mask(imported[occurrence_id])
+        )
 
 
 def test_reimporting_the_same_folder_changes_nothing(segmented_project, tmp_path):
@@ -113,8 +114,7 @@ def test_a_file_without_a_part_lands_on_part(image_project, tmp_path):
     mask[10:30, 10:30] = True
     write_mask(tmp_path / "masks" / f"{occurrence_id}.png", mask)
 
-    result = cf.import_masks(image_project, tmp_path / "masks", part="wing",
-                             visualize=False)
+    result = cf.import_masks(image_project, tmp_path / "masks", part="wing", visualize=False)
     assert result["wing"]["processed"] == 1
     assert occurrence_id in mask_records.mask_lookup(image_project, part="wing")
 
@@ -156,8 +156,10 @@ def test_a_mask_of_the_wrong_size_is_refused(image_project, tmp_path):
 
 def test_an_empty_mask_is_refused(image_project, tmp_path):
     occurrence_id = ids_of(image_project)[0]
-    write_mask(tmp_path / "masks" / f"{occurrence_id}__organism.png",
-               np.zeros(image_shape(image_project, occurrence_id), bool))
+    write_mask(
+        tmp_path / "masks" / f"{occurrence_id}__organism.png",
+        np.zeros(image_shape(image_project, occurrence_id), bool),
+    )
     result = cf.import_masks(image_project, tmp_path / "masks", visualize=False)["organism"]
     assert result["failures"][0]["error"] == "empty mask"
 
@@ -202,8 +204,9 @@ def test_replace_false_keeps_the_existing_mask(segmented_project, tmp_path):
     original = mask_records.decode_mask(mask_records.mask_lookup(segmented_project)[target])
     write_mask(tmp_path / "masks" / f"{target}__organism.png", ~original)
 
-    result = cf.import_masks(segmented_project, tmp_path / "masks", replace=False,
-                             visualize=False)["organism"]
+    result = cf.import_masks(segmented_project, tmp_path / "masks", replace=False, visualize=False)[
+        "organism"
+    ]
     assert result["skipped"] == 1
     kept = mask_records.decode_mask(mask_records.mask_lookup(segmented_project)[target])
     assert np.array_equal(kept, original)
@@ -225,8 +228,7 @@ def test_a_reference_import_goes_to_the_reference_table(segmented_project, tmp_p
 
 def _mask_for(project_path, occurrence_id):
     add_occurrence(project_path, occurrence_id)
-    mask_records.save_masks(project_path, [mask_records.make_mask_row(
-        occurrence_id, np.ones((5, 5), bool))])
+    mask_records.save_masks(project_path, [mask_records.make_mask_row(occurrence_id, np.ones((5, 5), bool))])
 
 
 def test_an_id_no_file_system_can_carry_is_refused(segmented_project, tmp_path):

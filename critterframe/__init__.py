@@ -1,8 +1,4 @@
-"""
-All public package-level functions (every function used to compose and probe a pipeline) are imported off `cf`.
-
-These are all the functions you'll need unless you are writing something custom - public module-level functions are importable from their modules directly for this.
-"""
+"""CritterFrame: every function used to compose and inspect a pipeline, importable from the package itself."""
 
 __version__ = "0.1.0"
 
@@ -97,8 +93,14 @@ from .records.metrics import load_metrics
 from .records.runs import load_runs
 
 # --- getting data out ------------------------------------------------------
-from .export import (completed_ids, exemplars_per_group, export_metrics, export_units,
-                     load_exports, occurrences_matching)
+from .export import (
+    completed_ids,
+    exemplars_per_group,
+    export_metrics,
+    export_units,
+    load_exports,
+    occurrences_matching,
+)
 from .selectionhelpers import (
     grow_sample,
     sample_occurrences,

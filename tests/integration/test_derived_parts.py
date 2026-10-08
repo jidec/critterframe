@@ -29,30 +29,37 @@ CORE_AREA = "core_traits__core__area_px"
 
 def segment_core(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_segments(project_path, run_name="core", part="core",
-                           from_part="organism",
-                           shared_steps=[cf.remove_background()],
-                           steps=[cf.segment(ThresholdModel(erode=1))],
-                           **kwargs)["core"]
+    return cf.run_segments(
+        project_path,
+        run_name="core",
+        part="core",
+        from_part="organism",
+        shared_steps=[cf.remove_background()],
+        steps=[cf.segment(ThresholdModel(erode=1))],
+        **kwargs,
+    )["core"]
 
 
 def measure_core(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_metrics(project_path, run_name="core_traits", part="core",
-                          metrics=[cf.mask_area(name="area_px", unit="px2")],
-                          **kwargs)["core"]
+    return cf.run_metrics(
+        project_path,
+        run_name="core_traits",
+        part="core",
+        metrics=[cf.mask_area(name="area_px", unit="px2")],
+        **kwargs,
+    )["core"]
 
 
 def resegment_organism(project_path, erode=2):
-    return cf.run_segments(project_path,
-                           steps=[cf.segment(ThresholdModel(erode=erode))],
-                           visualize=False)["organism"]
+    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel(erode=erode))], visualize=False)[
+        "organism"
+    ]
 
 
 def test_a_derived_part_gets_its_own_masks(segmented_project):
     assert segment_core(segmented_project)["processed"] == SPECIMENS
-    assert sorted(mask_records.parts_present(segmented_project)) == ["core",
-                                                                     "organism"]
+    assert sorted(mask_records.parts_present(segmented_project)) == ["core", "organism"]
 
 
 def test_a_derived_mask_records_which_upstream_it_came_from(segmented_project):
@@ -84,8 +91,7 @@ def test_the_derived_part_is_bounded_by_its_upstream(segmented_project):
     """
     segment_core(segmented_project)
     core = mask_records.load_masks(segmented_project, parts=["core"])
-    organism = mask_records.load_masks(segmented_project,
-                                       parts=["organism"]).set_index("occurrence_id")
+    organism = mask_records.load_masks(segmented_project, parts=["organism"]).set_index("occurrence_id")
 
     for row in core.itertuples(index=False):
         assert row.area <= organism.loc[row.occurrence_id, "area"]
@@ -98,19 +104,20 @@ def test_resegmenting_the_upstream_makes_the_derived_masks_pending(segmented_pro
     cut out of is gone.
     """
     segment_core(segmented_project)
-    before = Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
-                       part="core", from_part="organism").hash
+    before = Recipe(
+        "segment", "core", [cf.segment(ThresholdModel(erode=1))], part="core", from_part="organism"
+    ).hash
 
     resegment_organism(segmented_project)
-    after = Recipe("segment", "core", [cf.segment(ThresholdModel(erode=1))],
-                      part="core", from_part="organism").hash
+    after = Recipe(
+        "segment", "core", [cf.segment(ThresholdModel(erode=1))], part="core", from_part="organism"
+    ).hash
 
     assert before == after
     assert segment_core(segmented_project)["processed"] == SPECIMENS
 
 
-def test_a_core_measurement_survives_the_upstream_moving_until_the_core_does(
-        segmented_project):
+def test_a_core_measurement_survives_the_upstream_moving_until_the_core_does(segmented_project):
     """
     The intermediate state, and worth pinning because it is easy to expect
     otherwise: right after the organism is resegmented, the core's stored
@@ -139,16 +146,14 @@ def test_the_change_propagates_to_the_derived_part_s_metrics(segmented_project):
     """
     segment_core(segmented_project)
     measure_core(segmented_project)
-    before = cf.export_metrics(segmented_project, parts=["core"]).set_index(
-        "occurrence_id")
+    before = cf.export_metrics(segmented_project, parts=["core"]).set_index("occurrence_id")
 
     resegment_organism(segmented_project)
     assert segment_core(segmented_project)["processed"] == SPECIMENS
     assert len(cf.export_metrics(segmented_project, parts=["core"])) == 0
 
     assert measure_core(segmented_project)["processed"] == SPECIMENS
-    after = cf.export_metrics(segmented_project, parts=["core"]).set_index(
-        "occurrence_id")
+    after = cf.export_metrics(segmented_project, parts=["core"]).set_index("occurrence_id")
     specimen = before.index[0]
     assert after.loc[specimen, CORE_AREA] != before.loc[specimen, CORE_AREA]
 
@@ -160,25 +165,21 @@ def test_a_derived_mask_s_identity_is_the_chained_hash(segmented_project):
     would see the same thing happen in turn.
     """
     segment_core(segmented_project)
-    first = mask_records.current_derivation_hashes(segmented_project,
-                                                   parts=["core"])
+    first = mask_records.current_derivation_hashes(segmented_project, parts=["core"])
     resegment_organism(segmented_project)
     segment_core(segmented_project)
-    second = mask_records.current_derivation_hashes(segmented_project,
-                                                    parts=["core"])
+    second = mask_records.current_derivation_hashes(segmented_project, parts=["core"])
 
     assert set(first) == set(second)
     assert all(first[key] != second[key] for key in first)
 
 
-def test_an_occurrence_with_no_upstream_mask_is_skipped_with_a_warning(
-        image_project, caplog):
+def test_an_occurrence_with_no_upstream_mask_is_skipped_with_a_warning(image_project, caplog):
     """
     There is nothing to start from. Not a failure and not silent -- the run
     says which occurrences it left alone.
     """
-    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
-                    limit=3, visualize=False)
+    cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())], limit=3, visualize=False)
     with caplog.at_level("WARNING"):
         result = segment_core(image_project)
 
@@ -193,9 +194,12 @@ def test_the_two_parts_measure_independently(segmented_project):
     """
     segment_core(segmented_project)
     measure_core(segmented_project)
-    cf.run_metrics(segmented_project, run_name="traits",
-                   metrics=[cf.mask_area(name="area_px", unit="px2")],
-                   visualize=False)
+    cf.run_metrics(
+        segmented_project,
+        run_name="traits",
+        metrics=[cf.mask_area(name="area_px", unit="px2")],
+        visualize=False,
+    )
 
     exported = cf.export_metrics(segmented_project)
     assert CORE_AREA in exported.columns
@@ -210,17 +214,32 @@ def test_a_derived_part_is_measured_and_rendered_in_its_upstream_frame(segmented
     frame, so measuring or rendering it has to reproduce the same one rather
     than re-deriving a crop from the part's own, much smaller, mask.
     """
-    cf.run_segments(segmented_project, run_name="core", from_part="organism",
-                    shared_steps=[cf.crop_to_mask()],
-                    outputs={"core": [cf.segment(ThresholdModel(cutoff=120))]},
-                    visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="core",
+        from_part="organism",
+        shared_steps=[cf.crop_to_mask()],
+        outputs={"core": [cf.segment(ThresholdModel(cutoff=120))]},
+        visualize=False,
+    )
 
-    framed = cf.run_metrics(segmented_project, run_name="core_framed", part="core",
-                            from_part="organism", transforms=[cf.crop_to_mask()],
-                            metrics=[cf.mask_area()], visualize=False)["core"]
-    own = cf.run_metrics(segmented_project, run_name="core_own", part="core",
-                         transforms=[cf.crop_to_mask()],
-                         metrics=[cf.mask_area()], visualize=False)["core"]
+    framed = cf.run_metrics(
+        segmented_project,
+        run_name="core_framed",
+        part="core",
+        from_part="organism",
+        transforms=[cf.crop_to_mask()],
+        metrics=[cf.mask_area()],
+        visualize=False,
+    )["core"]
+    own = cf.run_metrics(
+        segmented_project,
+        run_name="core_own",
+        part="core",
+        transforms=[cf.crop_to_mask()],
+        metrics=[cf.mask_area()],
+        visualize=False,
+    )["core"]
 
     assert framed["processed"] == own["processed"] == 8
 
@@ -234,9 +253,14 @@ def test_a_derived_part_is_measured_and_rendered_in_its_upstream_frame(segmented
     own_col = column_name("core_own", "core", "mask_area")
     assert (values[framed_col] == values[own_col]).all()
 
-    rendered = cf.render_segments(segmented_project, "core_plates", part="core",
-                                  from_part="organism",
-                                  transforms=[cf.crop_to_mask()], visualize=False)
+    rendered = cf.render_segments(
+        segmented_project,
+        "core_plates",
+        part="core",
+        from_part="organism",
+        transforms=[cf.crop_to_mask()],
+        visualize=False,
+    )
     assert rendered["core"]["processed"] == 8
 
 
@@ -249,13 +273,18 @@ def test_an_unreliable_operation_is_counted_on_the_run(image_project):
     """
     from critterframe.records.runs import load_runs
 
-    summary = cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())],
-                              visualize=False)["organism"]
+    summary = cf.run_segments(image_project, steps=[cf.segment(ThresholdModel())], visualize=False)[
+        "organism"
+    ]
     assert summary["flags"] == {}
 
-    measured = cf.run_metrics(image_project, run_name="shapes",
-                              transforms=[cf.orient()],
-                              metrics=[cf.body_length()], visualize=False)["organism"]
+    measured = cf.run_metrics(
+        image_project,
+        run_name="shapes",
+        transforms=[cf.orient()],
+        metrics=[cf.body_length()],
+        visualize=False,
+    )["organism"]
 
     runs = load_runs(image_project, name="shapes")
     recorded = runs.iloc[0]["context"].get("flags", {})

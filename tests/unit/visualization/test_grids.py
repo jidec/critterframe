@@ -115,15 +115,13 @@ def test_ragged_input_sizes_are_fine():
     Which they always are in practice: every specimen's crop is a different
     shape, and a grid that required uniform input would be unusable.
     """
-    grid = image_grid([panel(20, 300), panel(300, 20), panel(64, 64)],
-                      columns=3, cell=(80, 80))
+    grid = image_grid([panel(20, 300), panel(300, 20), panel(64, 64)], columns=3, cell=(80, 80))
     assert grid.shape[0] >= 80
 
 
 def test_labels_and_a_title_add_space_rather_than_covering_the_image():
     plain = image_grid([panel()], columns=1, cell=(50, 50))
-    labelled = image_grid([panel()], labels=["specimen0"], columns=1,
-                          cell=(50, 50))
+    labelled = image_grid([panel()], labels=["specimen0"], columns=1, cell=(50, 50))
     titled = image_grid([panel()], title="a run", columns=1, cell=(50, 50))
 
     assert labelled.shape[0] > plain.shape[0]
@@ -149,7 +147,7 @@ def test_a_boolean_mask_can_be_laid_out_directly():
     grid = image_grid([np.ones((30, 30), bool)], columns=1, cell=(40, 40))
     assert grid.shape[1] == 40
     assert grid.dtype == np.uint8
-    assert grid.max() == 255           # the mask is there, in white
+    assert grid.max() == 255  # the mask is there, in white
 
 
 # ---------------------------------------------------------------------------
@@ -165,15 +163,14 @@ def test_a_comparison_is_a_row_per_specimen_and_a_column_per_stage():
     rows = [[panel(), panel(), panel()], [panel(), panel(), panel()]]
     grid = comparison_grid(rows, cell=(50, 50))
 
-    assert grid.shape[0] >= 100        # two rows
-    assert grid.shape[1] >= 150        # three columns
+    assert grid.shape[0] >= 100  # two rows
+    assert grid.shape[1] >= 150  # three columns
 
 
 def test_column_titles_and_row_labels_fit_around_it():
     rows = [[panel(), panel()]]
     plain = comparison_grid(rows, cell=(50, 50))
-    titled = comparison_grid(rows, column_titles=["before", "after"],
-                             row_labels=["specimen0"], cell=(50, 50))
+    titled = comparison_grid(rows, column_titles=["before", "after"], row_labels=["specimen0"], cell=(50, 50))
     assert titled.shape[0] > plain.shape[0]
 
 
@@ -197,6 +194,5 @@ def test_rows_of_different_lengths_are_padded_not_misaligned():
     Otherwise a run where one specimen skipped a stage would put its last panel
     under the wrong column heading.
     """
-    grid = comparison_grid([[panel(), panel()], [panel()]],
-                           column_titles=["a", "b"], cell=(50, 50))
+    grid = comparison_grid([[panel(), panel()], [panel()]], column_titles=["a", "b"], cell=(50, 50))
     assert grid.shape[0] >= 100

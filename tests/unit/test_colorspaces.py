@@ -18,7 +18,7 @@ from critterframe.colorspaces import (
     to_bgr,
 )
 
-RED = (0, 0, 255)       # BGR
+RED = (0, 0, 255)  # BGR
 WHITE = (255, 255, 255)
 GREY = (128, 128, 128)
 
@@ -99,7 +99,7 @@ def test_linear_rgb_keeps_the_endpoints_and_the_toe():
     linear = convert(px((0, 0, 0), WHITE, (10, 10, 10)), "linrgb")
     assert linear[0] == pytest.approx([0, 0, 0])
     assert linear[1] == pytest.approx([1, 1, 1])
-    assert linear[2] == pytest.approx([10 / 255 / 12.92] * 3)      # below the 0.04045 knee, the curve is linear
+    assert linear[2] == pytest.approx([10 / 255 / 12.92] * 3)  # below the 0.04045 knee, the curve is linear
 
 
 # ---------------------------------------------------------------------------
@@ -160,7 +160,7 @@ def test_to_bgr_preserves_shape_for_one_colour():
 
 
 def test_a_colour_outside_the_gamut_is_clipped_not_wrapped():
-    bgr = to_bgr(np.array([90.0, 120.0, 40.0]), "lch")       # far more chroma than sRGB can show
+    bgr = to_bgr(np.array([90.0, 120.0, 40.0]), "lch")  # far more chroma than sRGB can show
     assert bgr.dtype == np.uint8 and bgr.max() <= 255
 
 

@@ -56,8 +56,7 @@ def test_constructing_the_model_imports_no_torch():
 
 
 def test_a_recipe_naming_it_can_be_hashed_without_torch():
-    recipe = Recipe("segment", "organisms", [cf.segment(cf.groundedsam2())],
-                    part="organism")
+    recipe = Recipe("segment", "organisms", [cf.segment(cf.groundedsam2())], part="organism")
     assert len(recipe.hash) == 16
 
 
@@ -75,6 +74,7 @@ def _fake_transformers(detector_from_pretrained):
     """A minimal fake `transformers` module: SAM2 always loads; the detector's
     from_pretrained is whatever the caller supplies, so a test can make it
     fail once and succeed the next time."""
+
     class FakeSam2Processor:
         @staticmethod
         def from_pretrained(name):
@@ -94,7 +94,8 @@ def _fake_transformers(detector_from_pretrained):
         from_pretrained = staticmethod(detector_from_pretrained)
 
     return types.SimpleNamespace(
-        Sam2Model=FakeSam2Model, Sam2Processor=FakeSam2Processor,
+        Sam2Model=FakeSam2Model,
+        Sam2Processor=FakeSam2Processor,
         AutoModelForZeroShotObjectDetection=FakeDetector,
         AutoProcessor=FakeAutoProcessor,
     )
@@ -115,17 +116,16 @@ def test_a_failed_detector_load_is_retried_not_skipped_forever(monkeypatch):
             raise RuntimeError("the paging file is too small")
         return _FakeWeights()
 
-    monkeypatch.setitem(sys.modules, "transformers",
-                        _fake_transformers(detector_from_pretrained))
+    monkeypatch.setitem(sys.modules, "transformers", _fake_transformers(detector_from_pretrained))
 
     model = GroundedSAM2(detect_bounds=True, device="cpu")
 
     with pytest.raises(RuntimeError, match="paging file"):
         model._load()
-    assert model.model is not None     # SAM2 itself loaded fine
-    assert model.detector is None      # the failed load left nothing behind
+    assert model.model is not None  # SAM2 itself loaded fine
+    assert model.detector is None  # the failed load left nothing behind
 
-    model._load()                       # retries only the missing piece
+    model._load()  # retries only the missing piece
     assert model.detector is not None
     assert attempts["n"] == 2
 
@@ -140,8 +140,7 @@ def test_the_checkpoint_is_the_important_part():
     Two runs of "sam2" against different weights are not equivalent work and
     must not be mistaken for it.
     """
-    assert (cf.groundedsam2(model_name="a").identity()
-            != cf.groundedsam2(model_name="b").identity())
+    assert cf.groundedsam2(model_name="a").identity() != cf.groundedsam2(model_name="b").identity()
 
 
 def test_the_prompting_strategy_is_in_the_identity_too():
@@ -167,23 +166,29 @@ def test_the_detector_settings_only_appear_when_a_detector_runs():
     assert "text_threshold" not in prompted
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"text_prompt": "moth."},
-    {"detector_name": "another-detector"},
-    {"box_threshold": 0.5},
-    {"text_threshold": 0.5},
-    {"size": 512},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"text_prompt": "moth."},
+        {"detector_name": "another-detector"},
+        {"box_threshold": 0.5},
+        {"text_threshold": 0.5},
+        {"size": 512},
+    ],
+)
 def test_every_setting_that_changes_the_mask_changes_the_identity(kwargs):
     assert cf.groundedsam2(**kwargs).identity() != cf.groundedsam2().identity()
 
 
-@pytest.mark.parametrize("kwargs", [
-    {"use_center_point": True},
-    {"use_corner_points": True},
-    {"retry_without_center": False},
-    {"min_area_frac": 0.5},
-])
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"use_center_point": True},
+        {"use_corner_points": True},
+        {"retry_without_center": False},
+        {"min_area_frac": 0.5},
+    ],
+)
 def test_the_point_prompt_settings_change_it_on_the_other_branch(kwargs):
     assert cf.sam2(**kwargs).identity() != cf.sam2().identity()
 
@@ -193,8 +198,7 @@ def test_the_device_is_not_part_of_the_identity():
     Running the same weights on CPU and on GPU is the same work, and a project
     processed on both must not recompute half of itself.
     """
-    assert cf.groundedsam2(device="cpu").identity() == \
-        cf.groundedsam2(device="cuda").identity()
+    assert cf.groundedsam2(device="cpu").identity() == cf.groundedsam2(device="cuda").identity()
 
 
 def test_the_implementation_version_is_carried_explicitly():
@@ -261,7 +265,8 @@ def test_the_model_segments_a_real_image(draw_specimen):
 
     image = draw_specimen(0)
     mask, score, info = cf.sam2(use_center_point=True).predict(
-        image[..., ::-1])         # RGB, as segment() passes it
+        image[..., ::-1]
+    )  # RGB, as segment() passes it
 
     assert mask.shape == image.shape[:2]
     assert mask.dtype == bool or set(np.unique(mask)) <= {0, 1}
@@ -273,8 +278,9 @@ def test_the_model_segments_a_real_image(draw_specimen):
 def test_the_model_runs_through_a_real_run(image_project):
     pytest.importorskip("torch")
 
-    result = cf.run_segments(image_project, steps=[cf.segment(cf.sam2())],
-                             limit=2, visualize=False)["organism"]
+    result = cf.run_segments(image_project, steps=[cf.segment(cf.sam2())], limit=2, visualize=False)[
+        "organism"
+    ]
     assert result["processed"] + result["failed"] == 2
 
 
@@ -288,7 +294,7 @@ def test_a_prompt_grounding_dino_reads_badly_is_warned_about(prompt, caplog):
     with caplog.at_level("WARNING"):
         model = cf.groundedsam2(text_prompt=prompt)
     assert "lowercase phrase ending in a period" in caplog.text
-    assert model.identity()["text_prompt"] == prompt   # warned about, never rewritten
+    assert model.identity()["text_prompt"] == prompt  # warned about, never rewritten
 
 
 def test_a_well_formed_prompt_is_not_warned_about(caplog):
@@ -308,27 +314,29 @@ def test_no_detector_means_no_prompt_to_warn_about(caplog):
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("a, b, expected", [
-    ([0, 0, 10, 10], [20, 20, 30, 30], 0.0),    # disjoint
-    ([0, 0, 10, 10], [0, 0, 10, 10], 1.0),      # identical
-    ([0, 0, 10, 10], [0, 0, 5, 10], 0.5),       # one inside the other
-])
+@pytest.mark.parametrize(
+    "a, b, expected",
+    [
+        ([0, 0, 10, 10], [20, 20, 30, 30], 0.0),  # disjoint
+        ([0, 0, 10, 10], [0, 0, 10, 10], 1.0),  # identical
+        ([0, 0, 10, 10], [0, 0, 5, 10], 0.5),  # one inside the other
+    ],
+)
 def test_box_iou(a, b, expected):
     from critterframe.segmentation.groundedsam import _box_iou
+
     assert _box_iou(a, b) == pytest.approx(expected)
 
 
 def _detecting_model(monkeypatch, boxes):
     model = cf.groundedsam2(text_prompt="dragonfly.")
     monkeypatch.setattr(model, "detect_boxes", lambda image: boxes)
-    monkeypatch.setattr(model, "_predict", lambda image, **kwargs:
-                        (np.ones((20, 30), bool), 0.9))
+    monkeypatch.setattr(model, "_predict", lambda image, **kwargs: (np.ones((20, 30), bool), 0.9))
     return model
 
 
 def test_a_second_separate_box_is_reported(monkeypatch):
-    model = _detecting_model(monkeypatch, [([0, 0, 10, 10], 0.8),
-                                           ([20, 0, 30, 10], 0.4)])
+    model = _detecting_model(monkeypatch, [([0, 0, 10, 10], 0.8), ([20, 0, 30, 10], 0.4)])
     _mask, _score, info = model.predict(np.zeros((20, 30, 3), np.uint8))
     assert info["n_boxes"] == 2
     assert info["second_box_score"] == pytest.approx(0.4)

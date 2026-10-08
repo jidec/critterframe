@@ -1,22 +1,4 @@
-"""
-The registry of trained models: checkpoint fingerprints, RegisteredModel.
-
-Provenance only -- nothing here loads a network, imports torch, or knows what a
-checkpoint contains. Training happens outside the package; what a project
-records is the join between a checkpoint and the data behind it.
-
-    cf.register_model(project_path, "dragonfly_segmenter_v1",
-                      path="models/segmenter_v1.pt", task="segment",
-                      framework="torch", base_model="sam2_hiera_large")
-
-    model = cf.load_model(project_path, "dragonfly_segmenter_v1").attach(my_net)
-    cf.run_segments(project_path, steps=[cf.segment(model)])
-
-`attach` binds a loaded network to the record and forwards predict/embed/
-visualize to it while answering identity() from the registry. Identity is the
-checkpoint's FINGERPRINT, not its name or path, so retraining into the same
-filename moves the recipe hash and everything below it is correctly redone.
-"""
+"""The registry of trained models: checkpoint fingerprints and RegisteredModel. Provenance only; loads nothing."""
 
 import hashlib
 import json
@@ -41,42 +23,43 @@ _VALID_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _CHUNK = 1024 * 1024
 
 
-def register_model(project_path, name, path=None, task=None, framework=None,
-                   base_model=None, training_data=None, training_splits=None,
-                   parameters=None, notes=None, fingerprint=True):
-    """
-    Record a trained model in the project, and return it as a RegisteredModel.
+def register_model(
+    project_path,
+    name,
+    path=None,
+    task=None,
+    framework=None,
+    base_model=None,
+    training_data=None,
+    training_splits=None,
+    parameters=None,
+    notes=None,
+    fingerprint=True,
+):
+    """Record a trained model in the project.
 
-    Re-registering a name replaces the record. That is logged loudly when the
-    fingerprint moves, since every recipe using it then hashes differently and
-    correctly redoes its work.
+    Registering an existing name replaces its record, with a loud log line when the
+    fingerprint changed.
 
-    - `project_path` -- project the model belongs to; models are registered
-      per project.
-    - `name` -- what this model is called, e.g. `"dragonfly_segmenter_v1"`.
-    - `path` -- checkpoint file or directory, absolute or relative to the
-      project. Stored relative when inside it, so a copied project still
-      resolves. None for weights this package can't see, e.g. a hosted
-      endpoint.
-    - `task` -- what it does: `"segment"`, `"embedding"`, `"classify"`. Free
-      text; nothing dispatches on it.
-    - `framework` -- what it was trained with, e.g. `"torch"`,
-      `"ultralytics"`.
-    - `base_model` -- what it was fine-tuned from, e.g. `"sam2_hiera_large"`.
-    - `training_data` -- directory written by `export_training_data()`, its
-      `dataset.json`, or a dict you assembled yourself.
-    - `training_splits` -- `{split name: occurrence ids}` for a model
-      trained without an export. Stored as counts and id digests, not
-      lists.
-    - `parameters` -- opaque dict of training settings, stored as given and
-      never interpreted.
-    - `notes` -- free text.
-    - `fingerprint` -- False skips hashing the checkpoint, for a large file
-      on slow storage. Costs the guarantee that replacing the file changes
-      the recipe hash, so it warns.
+    Args:
+        project_path: Project the model belongs to.
+        name: The model's name, e.g. `"dragonfly_segmenter_v1"`.
+        path: Checkpoint file or directory, absolute or relative to the project. None for
+            weights the package can't see, e.g. a hosted endpoint.
+        task: What it does, e.g. `"segment"`, `"embedding"`. Free text.
+        framework: What it was trained with, e.g. `"torch"`.
+        base_model: What it was fine-tuned from, e.g. `"sam2_hiera_large"`.
+        training_data: A directory written by `export_training_data`, its `dataset.json`,
+            or a dict of your own.
+        training_splits: `{split name: occurrence ids}` for a model trained without an
+            export; stored as counts and digests.
+        parameters: Dict of training settings, stored as given.
+        notes: Free text.
+        fingerprint: False skips hashing the checkpoint, with a warning: replacing the file
+            then no longer changes the recipe hash.
 
-    Returns a RegisteredModel with no network attached -- call .attach(network)
-    to run it.
+    Returns:
+        A `RegisteredModel` with no network attached.
     """
     if not _VALID_NAME.match(str(name)):
         raise ValueError(
@@ -92,8 +75,7 @@ def register_model(project_path, name, path=None, task=None, framework=None,
         "base_model": base_model,
         "notes": notes,
         "parameters": dict(parameters or {}),
-        "training_data": _training_data_record(project_path, training_data,
-                                               training_splits),
+        "training_data": _training_data_record(project_path, training_data, training_splits),
         "registered_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
     record.update(_checkpoint_record(project_path, path, fingerprint))
@@ -105,21 +87,26 @@ def register_model(project_path, name, path=None, task=None, framework=None,
             "model '%s' re-registered with different weights (%s -> %s): every "
             "recipe using it now hashes differently, so its masks and metrics "
             "will be recomputed on the next run",
-            name, previous.get("fingerprint"), record["fingerprint"])
+            name,
+            previous.get("fingerprint"),
+            record["fingerprint"],
+        )
 
     registry[str(name)] = record
     _save_registry(project_path, registry)
-    logger.info("registered model '%s' (%s%s)", name, record["fingerprint"],
-                f", {task}" if task else "")
+    logger.info("registered model '%s' (%s%s)", name, record["fingerprint"], f", {task}" if task else "")
     return RegisteredModel(record, project_path)
 
 
 def load_model(project_path, name):
-    """
-    The RegisteredModel for `name`, raising if the project has no such model.
+    """Return the `RegisteredModel` for a name, with no network attached.
 
-    Provenance only until something is attached to it: the returned object
-    knows which weights it is and nothing about how to run them.
+    Args:
+        project_path: Project to read from.
+        name: The model's name.
+
+    Raises:
+        KeyError: If the project has no such model.
     """
     registry = _load_registry(project_path)
     if str(name) not in registry:
@@ -132,26 +119,17 @@ def load_model(project_path, name):
 
 
 def load_and_attach(project_path, name, factory, **extra_kwargs):
-    """
-    Load a registered model and bind a freshly built runtime to it, in one call.
+    """Load a registered model and attach a freshly built runtime to it.
 
-    The load-record/pull-parameters/attach sequence every extension's own
-    loader needs is identical regardless of what it's loading; only the
-    construction itself is extension-specific, which is exactly what
-    `factory` supplies. Stays framework-agnostic like the rest of this
-    module: `factory` is the one place a real network gets built.
+    Args:
+        project_path: Project to read from.
+        name: The model's name.
+        factory: Called as `factory(checkpoint_path, **parameters, **extra_kwargs)`, where
+            `parameters` is what `register_model(parameters=)` stored.
+        **extra_kwargs: Passed to `factory` after the stored parameters, e.g. `device=`.
 
-    - `project_path`, `name` -- as `load_model()`.
-    - `factory` -- called as `factory(checkpoint_path, **parameters,
-      **extra_kwargs)` to construct the runtime. `parameters` is whatever
-      `register_model(parameters=...)` stored for this model, so an
-      extension's own construction knobs (encoder name, input size,
-      backbone, ...) round-trip automatically without this function
-      needing to know what they are.
-    - `extra_kwargs` -- passed to `factory` after `parameters`, so a caller
-      can override or add to what was stored (e.g. `device=`).
-
-    Returns a RegisteredModel with `factory`'s result attached.
+    Returns:
+        A `RegisteredModel` with `factory`'s result attached.
     """
     registered = load_model(project_path, name)
     parameters = dict(registered.record.get("parameters") or {})
@@ -160,61 +138,49 @@ def load_and_attach(project_path, name, factory, **extra_kwargs):
 
 
 def list_models(project_path):
-    """Every registered model as {name: record}, empty if none are registered."""
+    """Return every registered model as `{name: record}`."""
     return _load_registry(project_path)
 
 
 def unregister_model(project_path, name):
-    """
-    Forget a registered model, returning its record.
+    """Remove a model's registry entry and return its record.
 
-    Removes the registry entry and nothing else: the checkpoint stays on disk,
-    and so do the masks and metrics it produced, which remain valid results of
-    a recipe whose hash still names those weights. Forgetting the record only
-    means nothing new can be run under that name.
+    The checkpoint, and the masks and metrics it produced, are left as they are.
+
+    Args:
+        project_path: Project to edit.
+        name: The model's name.
     """
     registry = _load_registry(project_path)
     record = registry.pop(str(name), None)
     if record is None:
         raise KeyError(f"no model named '{name}' to unregister")
     _save_registry(project_path, registry)
-    logger.info("unregistered model '%s' (its checkpoint and results are untouched)",
-                name)
+    logger.info("unregistered model '%s' (its checkpoint and results are untouched)", name)
     return record
 
 
 def _load_registry(project_path):
-    """
-    The raw registry as {name: record}. Empty when nothing has been registered
-    -- a project with no models of its own is the normal case, not an error.
-    """
-    return (read_json(paths.models_registry_path(project_path), default={})
-            or {}).get("models", {})
+    """Return the registry as `{name: record}`; empty when nothing is registered."""
+    return (read_json(paths.models_registry_path(project_path), default={}) or {}).get("models", {})
 
 
 def _save_registry(project_path, registry):
-    """
-    Write the whole registry, replacing whatever was there.
-
-    Atomically: this is a full rewrite of every model a project has
-    registered, and a crash partway through it would otherwise leave the
-    provenance of all of them truncated.
-    """
+    """Write the whole registry, atomically."""
     write_json(paths.models_registry_path(project_path), {"models": registry})
     return registry
 
 
 class RegisteredModel:
-    """
-    A model's provenance, optionally bound to a loaded network.
+    """A model's provenance, optionally bound to a loaded network.
 
-    identity() answers from the record, so a recipe hash carries the checkpoint
-    fingerprint; everything else forwards to the attached network, so this is
-    accepted anywhere a model is.
+    `identity()` answers from the record; every other attribute is forwarded to the
+    attached network.
 
-    - `record` -- the registry entry.
-    - `project_path` -- project it was read from, so `path` resolves.
-    - `runtime` -- the loaded network, or None until attach() supplies one.
+    Args:
+        record: The registry entry.
+        project_path: Project it was read from.
+        runtime: The loaded network, or None until `attach` supplies one.
     """
 
     def __init__(self, record, project_path, runtime=None):
@@ -224,25 +190,18 @@ class RegisteredModel:
 
     @property
     def name(self):
+        """Return the name the model is registered under."""
         return self.record["name"]
 
     @property
     def path(self):
-        """
-        The checkpoint as an absolute Path, or None for a model with no local
-        weights. Relative records resolve against the project, which is what
-        makes a copied project still find its own models.
-        """
+        """Return the checkpoint as an absolute Path, or None for a model with no local weights."""
         return paths.resolve_in_project(self.project_path, self.record.get("path"))
 
     def identity(self):
-        """
-        What this model contributes to a recipe hash: the weights' fingerprint,
-        plus the name for readability.
+        """Return what this model contributes to a recipe hash: its fingerprint and name.
 
-        The path is absent on purpose -- two copies of one checkpoint are the
-        same model and must hash alike, or moving a project would invalidate
-        every mask in it. With no fingerprint, only the name is left.
+        The path is left out, so a copied checkpoint is the same model.
         """
         return {
             "class": "RegisteredModel",
@@ -251,25 +210,19 @@ class RegisteredModel:
         }
 
     def attach(self, runtime):
-        """
-        Bind a loaded network to this record, returning a new RegisteredModel.
+        """Return a new `RegisteredModel` bound to a loaded network.
 
-        New rather than mutated, so one record can back several loaded networks
-        -- a CPU copy and a GPU copy, say -- without either changing the other.
-
-        - `runtime` -- whatever meets the contract of the operation it is
-          used in: `predict()` for `segment()`, `embed()` for an embedding
-          metric (`encode()` is the inner network's own method, which
-          `BioEncoderModel` wraps).
+        Args:
+            runtime: An object meeting the contract of the operation it is used in:
+                `predict()` for `segment()`, `embed()` for an embedding metric.
         """
         return RegisteredModel(self.record, self.project_path, runtime)
 
     def __getattr__(self, attribute):
-        """
-        Forward anything this class does not define to the attached network.
+        """Forward an attribute this class does not define to the attached network.
 
-        Raises AttributeError, not something louder, when nothing is attached:
-        hasattr() is how a run asks whether a model has visualize().
+        Raises `AttributeError` when nothing is attached: `hasattr()` is how a run asks whether
+        a model has `visualize()`.
         """
         runtime = self.__dict__.get("runtime")
         if runtime is None:
@@ -283,25 +236,18 @@ class RegisteredModel:
 
     def __repr__(self):
         state = "attached" if self.runtime is not None else "provenance only"
-        return (f"RegisteredModel({self.record['name']}, "
-                f"{self.record.get('fingerprint')}, {state})")
+        return f"RegisteredModel({self.record['name']}, {self.record.get('fingerprint')}, {state})"
 
 
 def _checkpoint_record(project_path, path, fingerprint):
-    """
-    The stored-path and fingerprint half of a record.
-
-    Stored relative to the project when the checkpoint is inside it: a project
-    is meant to be copyable, and an absolute path baked into its registry is
-    the thing that breaks first when it moves to a cluster.
-    """
+    """Return the stored path (relative when inside the project) and fingerprint of a checkpoint."""
     if path is None:
         logger.warning(
             "model registered with no checkpoint path -- its identity rests on "
             "its name alone, so reusing the name for different weights would "
-            "not change any recipe hash")
-        return {"path": None, "fingerprint": None, "fingerprint_method": None,
-                "size_bytes": None}
+            "not change any recipe hash"
+        )
+        return {"path": None, "fingerprint": None, "fingerprint_method": None, "size_bytes": None}
 
     resolved = Path(path)
     if not resolved.is_absolute():
@@ -316,9 +262,10 @@ def _checkpoint_record(project_path, path, fingerprint):
         logger.warning(
             "registering '%s' without a fingerprint -- replacing the file "
             "later will not change any recipe hash, so results measured from "
-            "the old weights would keep counting as current", resolved.name)
-        return {"path": stored, "fingerprint": None,
-                "fingerprint_method": None, "size_bytes": size}
+            "the old weights would keep counting as current",
+            resolved.name,
+        )
+        return {"path": stored, "fingerprint": None, "fingerprint_method": None, "size_bytes": size}
 
     logger.info("fingerprinting %s (%.1f MB)", resolved.name, size / 1e6)
     return {
@@ -330,32 +277,26 @@ def _checkpoint_record(project_path, path, fingerprint):
 
 
 def fingerprint_file(path):
-    """
-    A short digest of the weights themselves.
+    """Return a short digest of a checkpoint's contents.
 
-    A directory is hashed as its sorted (relative path, file digest) pairs, so
-    a checkpoint saved as a folder of shards is identified as precisely as a
-    single file, and a file appearing or moving inside it changes the answer.
-    Truncated to recipe-hash length, which is what it feeds.
+    A directory is hashed from its sorted `(relative path, file digest)` pairs. Slow on a
+    large checkpoint, so a caller should cache the result.
 
-    Public because a model class used STANDALONE needs it too: what belongs in
-    a recipe hash is the checkpoint's content, not its path (see CLAUDE.md's
-    registered-model item). Hundreds of megabytes per call, so a caller
-    hashing its own checkpoint caches the answer.
-
-    - `path` -- checkpoint file or directory.
+    Args:
+        path: Checkpoint file or directory.
     """
     path = Path(path)
     if path.is_file():
         return hash_spec({"file": _sha256(path)})
 
     files = sorted(item for item in path.rglob("*") if item.is_file())
-    return hash_spec({"dir": [[str(item.relative_to(path)).replace("\\", "/"),
-                               _sha256(item)] for item in files]})
+    return hash_spec(
+        {"dir": [[str(item.relative_to(path)).replace("\\", "/"), _sha256(item)] for item in files]}
+    )
 
 
 def _sha256(path):
-    """Stream one file through sha256 -- checkpoints do not fit comfortably in memory."""
+    """Return the sha256 of one file, read in chunks."""
     digest = hashlib.sha256()
     with open(path, "rb") as handle:
         for chunk in iter(lambda: handle.read(_CHUNK), b""):
@@ -364,7 +305,7 @@ def _sha256(path):
 
 
 def _size_of(path):
-    """Bytes on disk, summed over a directory checkpoint's files."""
+    """Return the bytes on disk, summed over a directory's files."""
     path = Path(path)
     if path.is_file():
         return path.stat().st_size
@@ -372,18 +313,7 @@ def _size_of(path):
 
 
 def _training_data_record(project_path, training_data, training_splits):
-    """
-    What the model was trained on, as something small enough to keep and exact
-    enough to check.
-
-    An exported dataset already answers this -- export_training_data() writes
-    dataset.json holding the split id digests, the part, the mask table, and
-    the transform chain -- so pointing at one carries the whole answer. Ids
-    given directly are reduced to counts and digests for the same reason
-    dataset.json does it: the record must be able to prove which set was used,
-    which a digest does, and listing thousands of ids in a registry file would
-    only make it unreadable.
-    """
+    """Return what the model was trained on, as an export's record or as counts and id digests."""
     record = {}
 
     if training_data is not None:
@@ -393,20 +323,13 @@ def _training_data_record(project_path, training_data, training_splits):
             record["dataset"] = _read_dataset_record(project_path, training_data)
 
     if training_splits is not None:
-        record["splits"] = {name: ids_record(ids)
-                            for name, ids in training_splits.items()}
+        record["splits"] = {name: ids_record(ids) for name, ids in training_splits.items()}
 
     return record or None
 
 
 def _read_dataset_record(project_path, training_data):
-    """
-    Read an export's dataset.json, given either it or the directory holding it.
-
-    The directory it came from is recorded alongside, relative to the project
-    where possible: the digests say WHICH data, and the path says where to go
-    looking for it, which are different questions and both worth an answer.
-    """
+    """Read an export's `dataset.json`, given it or its directory, and record where it came from."""
     location = Path(training_data)
     if not location.is_absolute():
         candidate = paths.project_dir(project_path) / location

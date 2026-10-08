@@ -33,16 +33,13 @@ class ColourEmbedder:
 
 def embed(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    return cf.run_metrics(project_path, metrics=[cf.embedding(ColourEmbedder())],
-                          **kwargs)["organism"]
+    return cf.run_metrics(project_path, metrics=[cf.embedding(ColourEmbedder())], **kwargs)["organism"]
 
 
 def clusters(project_path, **kwargs):
     kwargs.setdefault("visualize", False)
-    metric = cf.cluster([cf.embedding(ColourEmbedder())], from_run="embedding",
-                        n_clusters=2)
-    return cf.run_metrics(project_path, run_name="groups", metrics=[metric],
-                          **kwargs)["organism"]
+    metric = cf.cluster([cf.embedding(ColourEmbedder())], from_run="embedding", n_clusters=2)
+    return cf.run_metrics(project_path, run_name="groups", metrics=[metric], **kwargs)["organism"]
 
 
 def test_embeddings_cluster_like_any_stored_trait(segmented_project):
@@ -61,8 +58,7 @@ def test_a_cluster_run_is_repeat_aware(segmented_project):
     assert (again["processed"], again["skipped"]) == (0, SPECIMENS)
 
 
-def test_moving_the_upstream_run_to_a_new_recipe_rescores_the_clusters(
-        segmented_project):
+def test_moving_the_upstream_run_to_a_new_recipe_rescores_the_clusters(segmented_project):
     """
     The cluster metric's own hash doesn't move -- its features are configured
     exactly as before -- and neither does its population. Only the embeddings

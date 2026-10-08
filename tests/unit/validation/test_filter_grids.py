@@ -33,9 +33,15 @@ DEPTH = "qc__organism__depth"
 def store(project_path, run_name, metric_name, values):
     recipe = Recipe("metric", run_name, [cf.body_length()], part="organism")
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", metric_name, value)
-                    for occurrence_id, value in values.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(occurrence_id, "organism", metric_name, value)
+            for occurrence_id, value in values.items()
+        ],
+    )
 
 
 def labelled(project_path):
@@ -50,11 +56,18 @@ def labelled(project_path):
     """
     store(project_path, "qc", "score", dict(zip(IDS, range(1, 9))))
     store(project_path, "qc", "depth", dict(zip(IDS, [8, 7, 3, 6, 5, 4, 2, 1])))
-    store(project_path, "clusters", "cluster",
-          {occurrence_id: {"cluster_id": 0 if index < 2 else 1}
-           for index, occurrence_id in enumerate(IDS)})
-    store(project_path, "quality", "quality",
-          dict(zip(IDS, ["bad", "bad", "good", "bad", "good", "good", "good", "good"])))
+    store(
+        project_path,
+        "clusters",
+        "cluster",
+        {occurrence_id: {"cluster_id": 0 if index < 2 else 1} for index, occurrence_id in enumerate(IDS)},
+    )
+    store(
+        project_path,
+        "quality",
+        "quality",
+        dict(zip(IDS, ["bad", "bad", "good", "bad", "good", "good", "good", "good"])),
+    )
 
 
 def grids_written(project_path, stem):
@@ -71,8 +84,13 @@ def calibrate(project_path, **kwargs):
     return get_validated_filters(
         project_path,
         {"qc": {"score": "below"}, "clusters": {"cluster__cluster_id": "category"}},
-        annotation_run="quality", label_metric="quality", bad_labels=["bad"],
-        max_fpr=0.0, min_labelled=2, **kwargs)
+        annotation_run="quality",
+        label_metric="quality",
+        bad_labels=["bad"],
+        max_fpr=0.0,
+        min_labelled=2,
+        **kwargs,
+    )
 
 
 def test_a_calibration_draws_the_items_it_was_judged_on(segmented_project):
@@ -86,10 +104,9 @@ def test_a_calibration_draws_the_items_it_was_judged_on(segmented_project):
     assert sorted(filters) == ["clusters__organism__cluster__cluster_id", SCORE]
 
     written = grids_written(segmented_project, "filters__qc+clusters__vs__quality")
-    assert {"outcomes", "misses", "qc__score__strip",
-            "clusters__cluster__cluster_id__categories"} <= written
-    assert "cost" not in written           # no good row was removed
-    assert "only_here" not in written      # nothing removed by one filter alone
+    assert {"outcomes", "misses", "qc__score__strip", "clusters__cluster__cluster_id__categories"} <= written
+    assert "cost" not in written  # no good row was removed
+    assert "only_here" not in written  # nothing removed by one filter alone
 
 
 def test_visualize_false_draws_nothing(segmented_project):
@@ -104,12 +121,17 @@ def test_an_audit_draws_outcomes_cost_and_what_each_filter_alone_removes(segment
     is alone in removing specimen3. An audit sweeps nothing, so it has no strip.
     """
     labelled(segmented_project)
-    audit_filters(segmented_project, {SCORE: (">=", 4), DEPTH: ("<=", 5)}, "quality",
-                  label_metric="quality", bad_labels=["bad"])
+    audit_filters(
+        segmented_project,
+        {SCORE: (">=", 4), DEPTH: ("<=", 5)},
+        "quality",
+        label_metric="quality",
+        bad_labels=["bad"],
+    )
 
     written = grids_written(segmented_project, "audit_filters__quality")
     assert {"outcomes", "cost", "only_here"} <= written
-    assert "misses" not in written         # depth catches all three
+    assert "misses" not in written  # depth catches all three
     assert not any(name.endswith("__strip") for name in written)
 
 
@@ -123,8 +145,8 @@ def test_a_grid_is_a_picture_of_the_right_size(segmented_project):
     grid = cv2.imread(str(path))
 
     assert grid is not None and grid.ndim == 3
-    assert grid.shape[0] > 4 * 160         # four rows of cells
-    assert grid.shape[1] >= 2 * 160        # a heading and at least one item
+    assert grid.shape[0] > 4 * 160  # four rows of cells
+    assert grid.shape[1] >= 2 * 160  # a heading and at least one item
 
 
 def test_a_project_with_no_images_still_gets_its_filters_and_charts(metadata_project):
@@ -177,4 +199,4 @@ def test_a_border_frames_a_cell_without_touching_its_middle():
     assert framed.shape == image.shape
     assert (framed[:5] == (0, 0, 255)).all() and (framed[:, -5:] == (0, 0, 255)).all()
     assert np.array_equal(framed[5:-5, 5:-5], image[5:-5, 5:-5])
-    assert (image == 7).all()               # the original is not drawn on
+    assert (image == 7).all()  # the original is not drawn on

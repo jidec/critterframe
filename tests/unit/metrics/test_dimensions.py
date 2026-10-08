@@ -21,7 +21,7 @@ def rectangle_mask(width=40, height=100, shape=(200, 200)):
     mask = np.zeros(shape, bool)
     top = (shape[0] - height) // 2
     left = (shape[1] - width) // 2
-    mask[top:top + height, left:left + width] = True
+    mask[top : top + height, left : left + width] = True
     return mask
 
 
@@ -83,8 +83,7 @@ def test_a_disconnected_speck_still_counts_toward_the_extent():
     assert cf.body_length()(a_segment(mask)) > 100
 
 
-@pytest.mark.parametrize("metric", [cf.body_length(), cf.max_width(),
-                                    cf.mask_area(), cf.bounding_box()])
+@pytest.mark.parametrize("metric", [cf.body_length(), cf.max_width(), cf.mask_area(), cf.bounding_box()])
 def test_every_dimension_refuses_an_empty_mask(metric):
     """
     Zero would be a measurement. An empty mask is a failed segmentation, and
@@ -94,8 +93,7 @@ def test_every_dimension_refuses_an_empty_mask(metric):
         metric(a_segment(np.zeros((50, 50), bool)))
 
 
-@pytest.mark.parametrize("metric", [cf.body_length(), cf.max_width(),
-                                    cf.mask_area(), cf.bounding_box()])
+@pytest.mark.parametrize("metric", [cf.body_length(), cf.max_width(), cf.mask_area(), cf.bounding_box()])
 def test_every_dimension_needs_a_mask_at_all(metric):
     with pytest.raises(ValueError, match="has no mask yet"):
         metric(Segment(np.zeros((50, 50, 3), np.uint8)))
@@ -116,8 +114,7 @@ def test_a_dict_valued_metric_becomes_one_column_per_key(measured_project):
     Which is the reason a metric is allowed to return several numbers at once
     rather than being split into four operations that each re-derive the mask.
     """
-    cf.run_metrics(measured_project, run_name="boxes",
-                   metrics=[cf.bounding_box()], visualize=False)
+    cf.run_metrics(measured_project, run_name="boxes", metrics=[cf.bounding_box()], visualize=False)
     exported = cf.export_metrics(measured_project, run_names=["boxes"])
     assert "boxes__organism__bounding_box__width" in exported.columns
 
@@ -161,11 +158,14 @@ class RecordingSink:
         self.panels.append((stage, image))
 
 
-@pytest.mark.parametrize("metric, stage", [
-    (cf.body_length(), "body_length"),
-    (cf.max_width(), "max_width"),
-    (cf.mask_area(), "mask_area"),
-])
+@pytest.mark.parametrize(
+    "metric, stage",
+    [
+        (cf.body_length(), "body_length"),
+        (cf.max_width(), "max_width"),
+        (cf.mask_area(), "mask_area"),
+    ],
+)
 def test_a_measurement_draws_what_it_measured(metric, stage):
     """
     A number is not checkable by eye; a line drawn across the specimen is. The
@@ -213,8 +213,7 @@ def test_a_drawn_specimen_measures_close_to_what_was_drawn(draw_specimen):
 
 def ellipse_mask(semi_long=60, semi_short=15, angle=0, shape=(240, 240)):
     mask = np.zeros(shape, np.uint8)
-    cv2.ellipse(mask, (shape[1] // 2, shape[0] // 2), (semi_long, semi_short), angle,
-                0, 360, 1, -1)
+    cv2.ellipse(mask, (shape[1] // 2, shape[0] // 2), (semi_long, semi_short), angle, 0, 360, 1, -1)
     return mask.astype(bool)
 
 
@@ -251,11 +250,11 @@ def test_pixels_far_from_the_body_pull_it_toward_round():
     signal where a mask has leaked, and noise where the body's own shape is
     wanted, which is what removing islands and appendages first is for.
     """
-    body = ellipse_mask(60, 15, angle=90)      # long axis vertical
+    body = ellipse_mask(60, 15, angle=90)  # long axis vertical
     leg = body.copy()
-    leg[118:121, 135:215] = True               # 80px sideways, 3px thick
+    leg[118:121, 135:215] = True  # 80px sideways, 3px thick
     speck = body.copy()
-    speck[10:13, 10:13] = True                 # nine pixels, far away
+    speck[10:13, 10:13] = True  # nine pixels, far away
 
     plain = cf.elongation()(a_segment(body))
     assert cf.elongation()(a_segment(leg)) < 0.5 * plain
@@ -296,14 +295,14 @@ def test_the_panel_draws_the_axes_it_measured():
             self.panels.append((stage, image))
 
     segment = a_segment(ellipse_mask(60, 15, angle=30))
-    cf.elongation()(segment)                   # no sink, nothing drawn
+    cf.elongation()(segment)  # no sink, nothing drawn
 
     segment.panel_sink = Sink()
     cf.elongation()(segment)
-    (stage, panel), = segment.panel_sink.panels
+    ((stage, panel),) = segment.panel_sink.panels
     assert stage == "elongation"
-    assert ((panel == (0, 255, 0)).all(axis=2)).any()       # the long axis
-    assert ((panel == (0, 0, 255)).all(axis=2)).any()       # the short axis
+    assert ((panel == (0, 255, 0)).all(axis=2)).any()  # the long axis
+    assert ((panel == (0, 0, 255)).all(axis=2)).any()  # the short axis
 
 
 # ---------------------------------------------------------------------------
@@ -314,18 +313,24 @@ def test_the_panel_draws_the_axes_it_measured():
 def toothed(mask, teeth, depth=3):
     """`mask` with `teeth` notches of radius `depth` bitten out of its edge, evenly spaced."""
     bitten = mask.astype(np.uint8)
-    contours, _hierarchy = cv2.findContours(bitten.copy(), cv2.RETR_EXTERNAL,
-                                            cv2.CHAIN_APPROX_NONE)
+    contours, _hierarchy = cv2.findContours(bitten.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
     outline = contours[0][:, 0, :]
     for index in range(0, len(outline), max(1, len(outline) // teeth)):
         cv2.circle(bitten, tuple(int(v) for v in outline[index]), depth, 0, -1)
     return bitten.astype(bool)
 
 
-@pytest.mark.parametrize("mask", [
-    ellipse_mask(20, 20), ellipse_mask(60, 60), ellipse_mask(100, 25),
-    rectangle_mask(width=40, height=150), ellipse_mask(60, 15, angle=30),
-], ids=["small disc", "large disc", "long ellipse", "rectangle", "rotated ellipse"])
+@pytest.mark.parametrize(
+    "mask",
+    [
+        ellipse_mask(20, 20),
+        ellipse_mask(60, 60),
+        ellipse_mask(100, 25),
+        rectangle_mask(width=40, height=150),
+        ellipse_mask(60, 15, angle=30),
+    ],
+    ids=["small disc", "large disc", "long ellipse", "rectangle", "rotated ellipse"],
+)
 def test_a_smooth_mask_reads_smooth_at_any_size(mask):
     """A raster edge's staircase is on both sides of the ratio and cancels."""
     assert cf.jaggedness()(a_segment(mask)) == pytest.approx(1.0, abs=0.05)
@@ -348,11 +353,13 @@ def test_a_toothed_edge_reads_jagged_and_more_teeth_read_more_jagged():
 
 def test_jaggedness_needs_no_orientation():
     upright = toothed(ellipse_mask(80, 25, shape=(260, 260)), 30)
-    turned = cv2.warpAffine(upright.astype(np.uint8),
-                            cv2.getRotationMatrix2D((130, 130), 40, 1.0), (260, 260),
-                            flags=cv2.INTER_NEAREST).astype(bool)
-    assert cf.jaggedness()(a_segment(turned)) == pytest.approx(
-        cf.jaggedness()(a_segment(upright)), abs=0.08)
+    turned = cv2.warpAffine(
+        upright.astype(np.uint8),
+        cv2.getRotationMatrix2D((130, 130), 40, 1.0),
+        (260, 260),
+        flags=cv2.INTER_NEAREST,
+    ).astype(bool)
+    assert cf.jaggedness()(a_segment(turned)) == pytest.approx(cf.jaggedness()(a_segment(upright)), abs=0.08)
 
 
 def test_a_leg_counts_as_roughness_until_it_is_removed():
@@ -410,10 +417,10 @@ def test_the_jaggedness_panel_draws_the_smoothed_outline():
             self.panels.append((stage, image))
 
     segment = a_segment(toothed(ellipse_mask(100, 30, shape=(300, 300)), 30))
-    cf.jaggedness()(segment)                    # no sink, nothing drawn
+    cf.jaggedness()(segment)  # no sink, nothing drawn
 
     segment.panel_sink = Sink()
     cf.jaggedness()(segment)
-    (stage, panel), = segment.panel_sink.panels
+    ((stage, panel),) = segment.panel_sink.panels
     assert stage == "jaggedness"
     assert ((panel == (0, 0, 255)).all(axis=2)).any()

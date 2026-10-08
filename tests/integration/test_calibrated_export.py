@@ -48,18 +48,18 @@ def test_the_narrowest_calibration_wins(calibrated):
     scale = cf.scale_for_occurrences(calibrated)
 
     assert scale["specimen0"] == 8.0
-    assert scale["specimen2"] == 4.0            # boxA
-    assert np.isnan(scale["specimen1"])         # boxB, uncalibrated
+    assert scale["specimen2"] == 4.0  # boxA
+    assert np.isnan(scale["specimen1"])  # boxB, uncalibrated
 
 
 def test_lengths_and_areas_convert_by_the_right_power(calibrated):
     pixels = cf.export_metrics(calibrated).set_index(ID_COL)
     millimetres = cf.export_metrics(calibrated, units="mm").set_index(ID_COL)
 
-    assert millimetres.loc["specimen2", LENGTH_MM] == \
-        pytest.approx(pixels.loc["specimen2", LENGTH] / 4.0)
-    assert millimetres.loc["specimen2", AREA_MM2] == \
-        pytest.approx(pixels.loc["specimen2", "traits__organism__area_px"] / 16.0)
+    assert millimetres.loc["specimen2", LENGTH_MM] == pytest.approx(pixels.loc["specimen2", LENGTH] / 4.0)
+    assert millimetres.loc["specimen2", AREA_MM2] == pytest.approx(
+        pixels.loc["specimen2", "traits__organism__area_px"] / 16.0
+    )
 
 
 def test_a_fraction_is_left_alone(calibrated):
@@ -76,7 +76,7 @@ def test_an_uncalibrated_occurrence_is_nan_never_raw_pixels(calibrated):
     """
     millimetres = cf.export_metrics(calibrated, units="mm").set_index(ID_COL)
     assert np.isnan(millimetres.loc["specimen1", LENGTH_MM])
-    assert millimetres[LENGTH_MM].notna().sum() == 4       # boxA only
+    assert millimetres[LENGTH_MM].notna().sum() == 4  # boxA only
 
 
 def test_an_uncalibrated_occurrence_is_still_exported(calibrated):
@@ -110,8 +110,7 @@ def test_a_corrected_calibration_changes_only_the_export(calibrated):
 
     assert millimetres.loc["specimen0", "px_per_mm"] == 16.0
     # The measurement it was divided into is untouched.
-    assert cf.export_metrics(calibrated).set_index(ID_COL).loc[
-        "specimen0", LENGTH] > 0
+    assert cf.export_metrics(calibrated).set_index(ID_COL).loc["specimen0", LENGTH] > 0
 
 
 def test_a_filter_can_be_written_against_the_millimetre_column(calibrated):
@@ -119,9 +118,8 @@ def test_a_filter_can_be_written_against_the_millimetre_column(calibrated):
     Converted before filters, so a threshold in real units is expressible --
     which is the point of having real units at all.
     """
-    filtered = cf.export_metrics(calibrated, units="mm",
-                                 filters={LENGTH_MM: (">", 0.0)})
-    assert len(filtered) == 4        # the calibrated ones; NaN never passes
+    filtered = cf.export_metrics(calibrated, units="mm", filters={LENGTH_MM: (">", 0.0)})
+    assert len(filtered) == 4  # the calibrated ones; NaN never passes
 
 
 def test_filtering_narrows_the_export_and_keeps_the_data(calibrated):
@@ -139,8 +137,7 @@ def test_filtering_narrows_the_export_and_keeps_the_data(calibrated):
 
 def test_a_subset_and_a_filter_compose(calibrated):
     cf.define_subset(calibrated, "boxA", column="device", values=["boxA"])
-    filtered = cf.export_metrics(calibrated, subset="boxA",
-                                 filters={LIGHTNESS: (">", 0.0)})
+    filtered = cf.export_metrics(calibrated, subset="boxA", filters={LIGHTNESS: (">", 0.0)})
     assert len(filtered) == 4
 
 

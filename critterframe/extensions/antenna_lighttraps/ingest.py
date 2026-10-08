@@ -1,34 +1,4 @@
-"""
-Normalize and ingest Antenna exports into a CritterFrame project.
-
-Antenna occurrences map onto CritterFrame occurrences almost exactly, which is
-what makes this extension short: Antenna has already detected individual
-insects on a light-trap sheet and cut a crop per detection, so one Antenna
-occurrence is one organism in one image -- the rule CritterFrame requires and
-cannot check for you.
-
-What this adds beyond a plain CSV ingest is the column mapping (Antenna's `id`
-and `best_detection_url` become occurrence_id and image_url) and two derived
-columns recovering where a crop came from: which sheet image it was cut out of,
-and which deployment session that sheet belongs to. Both are lost otherwise --
-the export doesn't carry them as fields, only encoded in the crop's URL -- and
-a crop can then be traced back to the sheet it was cut from.
-
-Classification exports are a separate registered format on the same API (see
-api.CLASSIFICATIONS_FORMAT). They're not ingested here: a classification is a
-determination OF an occurrence rather than an occurrence, so it belongs joined
-onto the occurrence table as metadata columns. Fetch one with api.fetch_export
-and merge it in via the `transform` hook below when that's wanted.
-
-The occurrences export does carry one determination inline, though, and it
-answers a different question: not WHAT the organism is but WHETHER there is one.
-Antenna detects on a light-trap sheet before it classifies, so a detection can
-turn out to be a leaf, a reflection, or a smear, and the export says so with
-determination_name = "Not Lepidoptera". Those rows are dropped on the way in
-(see NON_ORGANISM_DETERMINATIONS) -- a crop with no organism in it is not an
-occurrence, and the occurrence table only means anything if every row in it is
-one.
-"""
+"""Ingest Antenna occurrence exports: the column mapping, the derived sheet and session columns, and what to drop."""
 
 import logging
 import os
@@ -69,19 +39,13 @@ NON_ORGANISM_DETERMINATIONS = {"determination_name": ["Not Lepidoptera"]}
 
 
 def parse_sheet_image_id(url):
-    """
-    Recover the source sheet image a detection crop was cut from, out of its
-    URL.
+    """Return the sheet image a detection crop was cut from, parsed from its URL.
 
-    Example input:
-        https://object-arbutus.cloud.computecanada.ca/ami-media-staging/
-        uploads/detections/199/2026-06-11/
-        bronzeBobcat_2026_06_11__01_15_20_HDR0_detection_2121474.jpg
+    For example `.../detections/199/2026-06-11/bronzeBobcat_2026_06_11__01_15_20_HDR0_detection_2121474.jpg`
+    gives `bronzeBobcat/2026-06-11/bronzeBobcat_2026_06_11__01_15_20_HDR0.jpg`.
 
-    Example output:
-        bronzeBobcat/2026-06-11/bronzeBobcat_2026_06_11__01_15_20_HDR0.jpg
-
-    - `url` -- a best_detection_url value (or NaN).
+    Args:
+        url: A `best_detection_url` value, or NaN.
     """
     if pd.isna(url):
         return pd.NA
@@ -106,14 +70,10 @@ def parse_sheet_image_id(url):
 
 
 def parse_session_path(sheet_image_id):
-    """
-    The device/date portion of a sheet_image_id -- the prefix every image from
-    one deployment session shares, e.g.
-    "bronzeBobcat/2026-06-11/bronzeBobcat_..._HDR0.jpg" ->
-    "bronzeBobcat/2026-06-11".
+    """Return the device and date portion of a sheet image id, e.g. `bronzeBobcat/2026-06-11`.
 
-    A reference card is set up once per session rather than once per image, so
-    this is the key a scale measurement attaches to.
+    Args:
+        sheet_image_id: A value from `parse_sheet_image_id`.
     """
     if pd.isna(sheet_image_id):
         return pd.NA
@@ -126,80 +86,65 @@ def parse_session_path(sheet_image_id):
 
 
 def add_derived_columns(df):
-    """
-    Add sheet_image_id and session_path, derived from the crop URL.
-
-    Runs after normalization, so it reads image_url rather than Antenna's
-    original column name.
-    """
+    """Add `sheet_image_id` and `session_path`, derived from each crop's `image_url`."""
     from ...records.occurrences import IMAGE_URL_COL
 
     if IMAGE_URL_COL not in df.columns:
         raise KeyError(
-            f"can't derive sheet_image_id: no '{IMAGE_URL_COL}' column "
-            f"(columns: {sorted(df.columns)})"
+            f"can't derive sheet_image_id: no '{IMAGE_URL_COL}' column (columns: {sorted(df.columns)})"
         )
 
     df = df.copy()
     df["sheet_image_id"] = df[IMAGE_URL_COL].map(parse_sheet_image_id)
     df["session_path"] = df["sheet_image_id"].map(parse_session_path)
 
-    logger.info("derived sheet_image_id for %d of %d occurrences, "
-                "session_path for %d",
-                int(df["sheet_image_id"].notna().sum()), len(df),
-                int(df["session_path"].notna().sum()))
+    logger.info(
+        "derived sheet_image_id for %d of %d occurrences, session_path for %d",
+        int(df["sheet_image_id"].notna().sum()),
+        len(df),
+        int(df["session_path"].notna().sum()),
+    )
     return df
 
 
-def ingest_occurrences(project_path, import_csv_path=None, session=None,
-                       project=None, filters=None, transform=None,
-                       drop=NON_ORGANISM_DETERMINATIONS, group_col=None,
-                       max_per_group=None, cap_rule="random", visualize=True):
-    """
-    Ingest an Antenna occurrences export into a project, as a full snapshot.
+def ingest_occurrences(
+    project_path,
+    import_csv_path=None,
+    session=None,
+    project=None,
+    filters=None,
+    transform=None,
+    drop=NON_ORGANISM_DETERMINATIONS,
+    group_col=None,
+    max_per_group=None,
+    cap_rule="random",
+    visualize=True,
+):
+    """Ingest an Antenna occurrences export into a project, as a full snapshot.
 
-    Snapshot is exactly right here rather than a simplification: every Antenna
-    export IS a complete statement of the project's occurrences, not a delta,
-    so the newest export is the newest truth. Re-ingesting on a schedule is the
-    intended way to pick up new detections.
+    Args:
+        project_path: Project to ingest into; created if absent.
+        import_csv_path: A downloaded export CSV. None requests and downloads a fresh one,
+            which needs credentials in the environment.
+        session: Authenticated session to reuse.
+        project: Antenna project id; from the environment if None.
+        filters: Server-side export filters.
+        transform: A `callable(df) -> df` run after the Antenna derivations.
+        drop: Rows to exclude as non-organisms; `NON_ORGANISM_DETERMINATIONS` by default.
+            None ingests every detection.
+        group_col: As in `critterframe.ingest.ingest_occurrences`.
+        max_per_group: As in `critterframe.ingest.ingest_occurrences`.
+        cap_rule: As in `critterframe.ingest.ingest_occurrences`.
+        visualize: As in `critterframe.ingest.ingest_occurrences`.
 
-    - `project_path` -- project to ingest into; created lazily by the first
-      writer, so the directory needn't exist yet.
-    - `import_csv_path` -- an already-downloaded export CSV. Omit to
-      request, wait for, and download a fresh one via the API -- which
-      needs credentials in the environment (see `api`).
-    - `session` -- authenticated session to reuse; one is created if
-      omitted and a download is needed.
-    - `project` -- Antenna project id; from the environment if omitted.
-    - `filters` -- optional server-side export filters.
-    - `transform` -- optional `callable(df) -> df` run after the
-      Antenna-specific derivations, for anything project-specific (joining
-      a classification export, say).
-    - `drop` -- rows to exclude as non-organisms, defaulting to
-      `NON_ORGANISM_DETERMINATIONS`. On by default because knowing that
-      `"Not Lepidoptera"` is Antenna's way of saying "no moth here" is
-      exactly the source-specific knowledge this extension exists to hold;
-      a project shouldn't have to rediscover it. Pass None to ingest every
-      detection -- which is what you want if you're auditing the
-      classifier itself rather than measuring moths.
-    - `group_col`, `max_per_group`, `cap_rule` -- cap ingest at
-      `max_per_group` rows per distinct value of `group_col`, e.g.
-      `group_col="determination_name"`, `max_per_group=500` against an
-      export dominated by a few common species. See
-      `critterframe.ingest.ingest_occurrences`. Applied after `drop=`, so a
-      non-organism detection never counts toward its group's cap.
-    - `visualize` -- True (default): pipeline figures of the rows kept at
-      each ingest stage. False writes nothing. See
-      `critterframe.ingest.ingest_occurrences`.
-
-    Returns the resulting occurrence table.
+    Returns:
+        The resulting occurrence table.
     """
     downloaded = None
     if import_csv_path is None:
         session = session or api.get_session()
         downloaded = paths.raw_imports_dir(project_path) / ".antenna_export.csv"
-        import_csv_path = api.fetch_export(session, downloaded, project=project,
-                                           filters=filters)
+        import_csv_path = api.fetch_export(session, downloaded, project=project, filters=filters)
 
     # A sequence, not a closure around both: core records each transform by
     # name, so wrapping them would record only the wrapper's -- two different

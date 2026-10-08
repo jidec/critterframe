@@ -1,8 +1,4 @@
-"""
-Masked pixel access: the organism's pixels, and the panel that shows them.
-
-Every colour metric starts from `masked_pixels`, so the "only the organism counts" rule lives in one place.
-"""
+"""Masked pixel access: the organism's pixels, and the panel that shows them."""
 
 import cv2
 import numpy as np
@@ -11,19 +7,14 @@ from ..visualization.panels import annotate, side_by_side
 
 
 def masked_pixels(segment, cap=None, seed=0, required=True):
-    """
-    The BGR pixel values under the mask, as an (N, 3) uint8 array.
+    """Return the BGR values of the pixels under the mask, as an `(N, 3)` uint8 array.
 
-    Every colour metric starts here, so the "only the organism's pixels count"
-    rule is enforced once rather than re-implemented per metric.
-
-    - `segment` -- the segment to read.
-    - `cap` -- sample at most this many pixels, seeded so the same segment
-      gives the same sample. None takes every masked pixel, which is what
-      scoring wants; a cap is for POOLING many occurrences into one fit.
-    - `seed` -- the sample's seed.
-    - `required` -- False returns None instead of raising where there is no
-      mask, for a caller pooling whatever it can get.
+    Args:
+        segment: The segment to read.
+        cap: Sample at most this many pixels, for pooling many occurrences into one fit.
+            None takes every masked pixel.
+        seed: The sample's seed.
+        required: False returns None where there is no mask, instead of raising.
     """
     mask = segment.mask if not required else segment.require_mask()
     if mask is None or not mask.any():
@@ -43,15 +34,12 @@ def masked_pixels(segment, cap=None, seed=0, required=True):
 
 
 def visualize_mask(segment, text, subdir):
-    """
-    Emit the image beside the same image with everything outside the mask blanked.
+    """Emit the image beside the same image with everything outside the mask blanked.
 
-    That makes it immediately obvious whether a surprising colour value is a real property of the organism or a mask
-    that included the background.
-
-    - `segment` -- the segment being measured.
-    - `text` -- caption drawn on the masked half.
-    - `subdir` -- the stage name the panel is emitted under.
+    Args:
+        segment: The segment being measured.
+        text: Caption drawn on the masked half.
+        subdir: Stage name the panel is emitted under.
     """
     if segment.panel_sink is None:
         return

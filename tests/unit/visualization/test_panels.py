@@ -82,7 +82,7 @@ def test_a_diff_panel_separates_agreement_from_each_side_s_own():
     what makes an IoU number checkable by eye.
     """
     first, second = a_mask(), a_mask()
-    second[10:30, 30:50] = True             # overlaps and extends right
+    second[10:30, 30:50] = True  # overlaps and extends right
 
     panel = diff_panel(first, second)
     colours = {tuple(colour) for colour in panel.reshape(-1, 3)}
@@ -181,9 +181,9 @@ def test_full_resolution_is_the_point(tmp_path):
     assert cv2.imread(str(written)).shape[:2] == (400, 600)
 
 
-@pytest.mark.parametrize("panel", [np.zeros((4, 4), bool),
-                                   np.zeros((4, 4), np.uint8),
-                                   np.zeros((4, 4, 3), np.uint8)])
+@pytest.mark.parametrize(
+    "panel", [np.zeros((4, 4), bool), np.zeros((4, 4), np.uint8), np.zeros((4, 4, 3), np.uint8)]
+)
 def test_any_display_ready_panel_can_be_saved(tmp_path, panel):
     assert save_panel(tmp_path, panel, "specimen0").exists()
 

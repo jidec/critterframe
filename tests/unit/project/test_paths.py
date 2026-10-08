@@ -39,16 +39,14 @@ PATH_FUNCTIONS = [
 ]
 
 
-@pytest.mark.parametrize("function", PATH_FUNCTIONS,
-                         ids=lambda function: function.__name__)
+@pytest.mark.parametrize("function", PATH_FUNCTIONS, ids=lambda function: function.__name__)
 def test_every_path_is_inside_the_project(tmp_path, function):
     result = function(tmp_path)
     assert isinstance(result, Path)
     assert tmp_path in result.parents or result == tmp_path
 
 
-@pytest.mark.parametrize("function", PATH_FUNCTIONS,
-                         ids=lambda function: function.__name__)
+@pytest.mark.parametrize("function", PATH_FUNCTIONS, ids=lambda function: function.__name__)
 def test_naming_a_path_creates_nothing(tmp_path, function):
     """
     A project comes into existence lazily, as its first writer needs it. Asking
@@ -59,8 +57,7 @@ def test_naming_a_path_creates_nothing(tmp_path, function):
     assert not project.exists()
 
 
-@pytest.mark.parametrize("function", PATH_FUNCTIONS,
-                         ids=lambda function: function.__name__)
+@pytest.mark.parametrize("function", PATH_FUNCTIONS, ids=lambda function: function.__name__)
 def test_a_string_and_a_path_agree(tmp_path, function):
     """
     Every public entry point takes project_path first and callers pass whatever

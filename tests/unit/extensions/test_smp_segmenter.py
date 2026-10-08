@@ -38,8 +38,7 @@ def test_constructing_the_model_imports_no_torch():
 
 
 def test_a_recipe_naming_it_can_be_hashed_without_torch():
-    recipe = Recipe("segment", "aux", [segment(segmentation.smp_segmenter())],
-                    part="organism")
+    recipe = Recipe("segment", "aux", [segment(segmentation.smp_segmenter())], part="organism")
     assert len(recipe.hash) == 16
 
 
@@ -87,8 +86,7 @@ def test_the_checkpoint_is_read_once(tmp_path, monkeypatch):
 
     reads = []
     real = model_records.fingerprint_file
-    monkeypatch.setattr(segmentation, "fingerprint_file",
-                        lambda path: reads.append(path) or real(path))
+    monkeypatch.setattr(segmentation, "fingerprint_file", lambda path: reads.append(path) or real(path))
 
     model = segmentation.smp_segmenter(checkpoint=checkpoint)
     assert model.identity() == model.identity()
@@ -103,8 +101,10 @@ def test_the_encoder_and_size_are_part_of_the_identity():
 
 def test_the_device_is_not_part_of_the_identity():
     """Running the same weights on CPU and GPU is the same work."""
-    assert (segmentation.smp_segmenter(device="cpu").identity()
-            == segmentation.smp_segmenter(device="cuda").identity())
+    assert (
+        segmentation.smp_segmenter(device="cpu").identity()
+        == segmentation.smp_segmenter(device="cuda").identity()
+    )
 
 
 def test_no_checkpoint_reads_as_untrained_in_the_identity():
@@ -129,8 +129,8 @@ def test_prepare_dataset_writes_a_split_image_and_mask_dataset(segmented_project
 
     dataset_dir = tmp_path / "dataset"
     manifest = training.prepare_dataset(
-        segmented_project, dataset_dir, reference=False,
-        fractions={"train": 0.75, "val": 0.25})
+        segmented_project, dataset_dir, reference=False, fractions={"train": 0.75, "val": 0.25}
+    )
 
     assert set(manifest["split"].unique()) <= {"train", "val"}
     assert (dataset_dir / "dataset.json").exists()
@@ -160,8 +160,7 @@ def test_prepare_dataset_defaults_to_reference_masks(segmented_project, tmp_path
 # ---------------------------------------------------------------------------
 
 
-def test_register_trained_records_what_loading_it_back_needs(segmented_project,
-                                                             tmp_path):
+def test_register_trained_records_what_loading_it_back_needs(segmented_project, tmp_path):
     """
     load_registered() reads encoder_name/size out of the registry's own
     parameters. Registered by hand without them -- which is what this module's
@@ -172,35 +171,32 @@ def test_register_trained_records_what_loading_it_back_needs(segmented_project,
     from critterframe.extensions.smp_segmenter import training
 
     dataset_dir = tmp_path / "dataset"
-    training.prepare_dataset(segmented_project, dataset_dir, reference=False,
-                             fractions={"train": 1.0})
+    training.prepare_dataset(segmented_project, dataset_dir, reference=False, fractions={"train": 1.0})
     checkpoint = tmp_path / "weights.pt"
     checkpoint.write_bytes(b"not really weights, but bytes to fingerprint")
 
     registered = training.register_trained(
-        segmented_project, "aux_v1", checkpoint, dataset_dir,
-        encoder_name="resnet18", size=256)
+        segmented_project, "aux_v1", checkpoint, dataset_dir, encoder_name="resnet18", size=256
+    )
 
-    assert registered.record["parameters"] == {"encoder_name": "resnet18",
-                                               "size": 256}
+    assert registered.record["parameters"] == {"encoder_name": "resnet18", "size": 256}
     assert registered.record["task"] == "segment"
     assert registered.record["fingerprint"]
     # The dataset is recorded by what it holds, not just where it sat.
     assert registered.record["training_data"]["dataset"]["data_hash"]
 
 
-def test_a_registered_model_loads_back_with_the_architecture_it_was_trained_with(
-        segmented_project, tmp_path):
+def test_a_registered_model_loads_back_with_the_architecture_it_was_trained_with(segmented_project, tmp_path):
     """The round trip: what register_trained wrote is what load_registered builds."""
     from critterframe.extensions.smp_segmenter import training
 
     dataset_dir = tmp_path / "dataset"
-    training.prepare_dataset(segmented_project, dataset_dir, reference=False,
-                             fractions={"train": 1.0})
+    training.prepare_dataset(segmented_project, dataset_dir, reference=False, fractions={"train": 1.0})
     checkpoint = tmp_path / "weights.pt"
     checkpoint.write_bytes(b"bytes")
-    training.register_trained(segmented_project, "aux_v1", checkpoint,
-                              dataset_dir, encoder_name="resnet18", size=256)
+    training.register_trained(
+        segmented_project, "aux_v1", checkpoint, dataset_dir, encoder_name="resnet18", size=256
+    )
 
     loaded = segmentation.load_registered(segmented_project, "aux_v1")
     assert (loaded.runtime.encoder_name, loaded.runtime.size) == ("resnet18", 256)
@@ -214,12 +210,16 @@ def test_training_curves_are_drawn_without_torch(tmp_path):
     from critterframe.extensions.smp_segmenter import training
     from critterframe.visualization.pipeline import open_report
 
-    history = {f"{phase}_{metric}": [0.9, 0.5, 0.4] for phase in ("train", "val")
-               for metric in ("loss", "f1", "auroc", "iou")}
+    history = {
+        f"{phase}_{metric}": [0.9, 0.5, 0.4]
+        for phase in ("train", "val")
+        for metric in ("loss", "f1", "auroc", "iou")
+    }
     report = open_report(tmp_path, "train__smp_resnet18", "abc").begin([])
     training._training_figures(report, history, ("train", "val"), best_epoch=3)
 
     from critterframe.project import paths
+
     written = sorted(path.name for path in paths.pipeline_dir(tmp_path).glob("*.png"))
     assert written == ["train__smp_resnet18_abc__loss.png", "train__smp_resnet18_abc__scores.png"]
     assert "torch" not in sys.modules
@@ -231,8 +231,7 @@ def test_training_curves_are_drawn_without_torch(tmp_path):
 
 
 @pytest.mark.gpu
-def test_a_trained_checkpoint_loads_and_predicts(segmented_project, tmp_path,
-                                                  draw_specimen):
+def test_a_trained_checkpoint_loads_and_predicts(segmented_project, tmp_path, draw_specimen):
     """
     Deselected by default. One epoch over a tiny synthetic dataset, on a small
     encoder -- the point is proving the plumbing (export -> train -> save ->
@@ -245,22 +244,30 @@ def test_a_trained_checkpoint_loads_and_predicts(segmented_project, tmp_path,
 
     dataset_dir = tmp_path / "dataset"
     manifest = training.prepare_dataset(
-        segmented_project, dataset_dir, reference=False,
-        fractions={"train": 0.75, "val": 0.25})
+        segmented_project, dataset_dir, reference=False, fractions={"train": 0.75, "val": 0.25}
+    )
 
-    checkpoint = training.train(manifest, dataset_dir, encoder_name="resnet18",
-                                size=64, num_epochs=1, batch_size=2, num_workers=0,
-                                project_path=segmented_project)
+    checkpoint = training.train(
+        manifest,
+        dataset_dir,
+        encoder_name="resnet18",
+        size=64,
+        num_epochs=1,
+        batch_size=2,
+        num_workers=0,
+        project_path=segmented_project,
+    )
     assert checkpoint.exists()
 
     from critterframe.project import paths
-    written = sorted(path.name for path in
-                     paths.pipeline_dir(segmented_project).glob("train__smp_resnet18_*"))
+
+    written = sorted(
+        path.name for path in paths.pipeline_dir(segmented_project).glob("train__smp_resnet18_*")
+    )
     assert any(name.endswith("__epoch0001.jpg") for name in written)
     assert any(name.endswith("__loss.png") for name in written)
 
-    model = segmentation.smp_segmenter(checkpoint=checkpoint,
-                                       encoder_name="resnet18", size=64)
+    model = segmentation.smp_segmenter(checkpoint=checkpoint, encoder_name="resnet18", size=64)
     image = draw_specimen(0)
     mask, score, info = model.predict(image[..., ::-1])  # RGB, as segment() passes it
 
@@ -271,8 +278,7 @@ def test_a_trained_checkpoint_loads_and_predicts(segmented_project, tmp_path,
 
 
 @pytest.mark.gpu
-def test_training_with_no_val_split_saves_the_final_epoch(segmented_project,
-                                                           tmp_path, caplog):
+def test_training_with_no_val_split_saves_the_final_epoch(segmented_project, tmp_path, caplog):
     """
     val_split=None: a reference set too small to spare a third split still
     trains, with no early stopping -- the tradeoff logged rather than hidden.
@@ -284,22 +290,28 @@ def test_training_with_no_val_split_saves_the_final_epoch(segmented_project,
 
     dataset_dir = tmp_path / "dataset"
     manifest = training.prepare_dataset(
-        segmented_project, dataset_dir, reference=False,
-        fractions={"train": 0.75, "test": 0.25})
+        segmented_project, dataset_dir, reference=False, fractions={"train": 0.75, "test": 0.25}
+    )
     assert set(manifest["split"].unique()) <= {"train", "test"}
 
     with caplog.at_level("WARNING"):
-        checkpoint = training.train(manifest, dataset_dir, encoder_name="resnet18",
-                                    size=64, num_epochs=1, batch_size=2,
-                                    num_workers=0, val_split=None)
+        checkpoint = training.train(
+            manifest,
+            dataset_dir,
+            encoder_name="resnet18",
+            size=64,
+            num_epochs=1,
+            batch_size=2,
+            num_workers=0,
+            val_split=None,
+        )
 
     assert checkpoint.exists()
     assert "no validation split" in caplog.text
 
 
 @pytest.mark.gpu
-def test_a_manifest_missing_the_named_val_split_still_raises(segmented_project,
-                                                              tmp_path):
+def test_a_manifest_missing_the_named_val_split_still_raises(segmented_project, tmp_path):
     """
     val_split=None is the only opt-out -- leaving the default val_split="val"
     against a manifest with no "val" split is still a mistake worth failing
@@ -314,8 +326,8 @@ def test_a_manifest_missing_the_named_val_split_still_raises(segmented_project,
 
     dataset_dir = tmp_path / "dataset"
     manifest = training.prepare_dataset(
-        segmented_project, dataset_dir, reference=False,
-        fractions={"train": 0.75, "test": 0.25})
+        segmented_project, dataset_dir, reference=False, fractions={"train": 0.75, "test": 0.25}
+    )
 
     with pytest.raises(ValueError, match="no usable rows with split=='val'"):
         training.train(manifest, dataset_dir, num_epochs=1)

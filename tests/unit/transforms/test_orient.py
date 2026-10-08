@@ -36,12 +36,16 @@ def tapered_body(angle_deg=0, shape=(300, 300)):
     centre = (shape[1] // 2, shape[0] // 2)
     for offset in range(-70, 71):
         half_width = int(22 - 0.22 * (offset + 70) / 2)
-        cv2.line(mask, (centre[0] - half_width, centre[1] + offset),
-                 (centre[0] + half_width, centre[1] + offset), 1, 1)
+        cv2.line(
+            mask,
+            (centre[0] - half_width, centre[1] + offset),
+            (centre[0] + half_width, centre[1] + offset),
+            1,
+            1,
+        )
     if angle_deg:
         matrix = cv2.getRotationMatrix2D(centre, angle_deg, 1.0)
-        mask = cv2.warpAffine(mask, matrix, (shape[1], shape[0]),
-                              flags=cv2.INTER_NEAREST)
+        mask = cv2.warpAffine(mask, matrix, (shape[1], shape[0]), flags=cv2.INTER_NEAREST)
     return mask.astype(bool)
 
 
@@ -75,8 +79,7 @@ def test_a_tilted_body_is_rotated_back_upright(angle):
     axis is the body.
     """
     rotation_deg, _cx, _cy, _info = compute_orientation(tapered_body(angle))
-    assert min(abs((rotation_deg - angle) % 180),
-               180 - abs((rotation_deg - angle) % 180)) < 6
+    assert min(abs((rotation_deg - angle) % 180), 180 - abs((rotation_deg - angle) % 180)) < 6
 
 
 def test_the_body_wins_over_the_longer_wingspan():
@@ -94,8 +97,7 @@ def test_choosing_by_length_instead_is_available_and_reports_the_wingspan():
     The flag exists so a project whose organisms really are symmetric can say
     so -- and this is what it does.
     """
-    _rotation, _cx, _cy, info = compute_orientation(
-        winged_body(), body_axis_is_higher_skew=False)
+    _rotation, _cx, _cy, info = compute_orientation(winged_body(), body_axis_is_higher_skew=False)
     assert info["chose_longer_axis"] is True
 
 
@@ -107,8 +109,7 @@ def test_axis_strategy_longer_ignores_skew_and_picks_the_longer_axis():
     winged_body() is the wingspan (the wrong answer for THIS shape, but the
     point: this strategy trusts length outright rather than asymmetry).
     """
-    _rotation, _cx, _cy, info = compute_orientation(
-        winged_body(), axis_strategy="longer")
+    _rotation, _cx, _cy, info = compute_orientation(winged_body(), axis_strategy="longer")
     assert info["chose_longer_axis"] is True
     assert info["axis_strategy"] == "longer"
     # skew is still reported for diagnostics even though it didn't decide
@@ -118,8 +119,7 @@ def test_axis_strategy_longer_ignores_skew_and_picks_the_longer_axis():
 def test_axis_strategy_longer_agrees_with_skew_on_a_plain_elongate_body():
     """For a body with no competing wing axis, both strategies land on the same PC."""
     _rotation, _cx, _cy, skew_info = compute_orientation(tapered_body())
-    _rotation, _cx, _cy, longer_info = compute_orientation(
-        tapered_body(), axis_strategy="longer")
+    _rotation, _cx, _cy, longer_info = compute_orientation(tapered_body(), axis_strategy="longer")
     assert skew_info["chosen_pc"] == longer_info["chosen_pc"]
 
 

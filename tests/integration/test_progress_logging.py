@@ -21,8 +21,7 @@ SPECIMENS = 8
 
 
 def segment_run(project_path):
-    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())],
-                           visualize=False)["organism"]
+    return cf.run_segments(project_path, steps=[cf.segment(ThresholdModel())], visualize=False)["organism"]
 
 
 def tick_an_interval_per_reading(monkeypatch):
@@ -31,8 +30,11 @@ def tick_an_interval_per_reading(monkeypatch):
 
 
 def progress_lines(caplog):
-    return [record.getMessage() for record in caplog.records
-            if record.getMessage().startswith("run_segments part(s) organism:")]
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.getMessage().startswith("run_segments part(s) organism:")
+    ]
 
 
 def test_a_run_logs_progress_over_its_pending_work(image_project, monkeypatch, caplog):

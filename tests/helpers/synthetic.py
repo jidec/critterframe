@@ -35,11 +35,11 @@ from critterframe.recipes import Segment
 # number it drew with rather than restating a literal.
 BODY_AXES = (20, 60)
 BODY_CENTRE = (140, 110)
-SPECIMEN_SIZE = (220, 280)          # (height, width)
+SPECIMEN_SIZE = (220, 280)  # (height, width)
 BACKGROUND = 40
 FOREGROUND = (200, 180, 150)
 
-TARGET_MM = 25.4                    # a 1-inch card target, as on a MothBox card
+TARGET_MM = 25.4  # a 1-inch card target, as on a MothBox card
 TARGET_DIAMETER_PX = 120
 
 
@@ -55,12 +55,10 @@ def draw_specimen(index=0, size=SPECIMEN_SIZE, legs=True):
              exact area or a symmetric shape is the subject.
     """
     image = np.full((size[0], size[1], 3), BACKGROUND, np.uint8)
-    cv2.ellipse(image, BODY_CENTRE, BODY_AXES, 15 + index * 12, 0, 360,
-                FOREGROUND, -1)
+    cv2.ellipse(image, BODY_CENTRE, BODY_AXES, 15 + index * 12, 0, 360, FOREGROUND, -1)
     if legs:
         for dx in (-45, 45):
-            cv2.line(image, BODY_CENTRE, (BODY_CENTRE[0] + dx, 145),
-                     FOREGROUND, 1)
+            cv2.line(image, BODY_CENTRE, (BODY_CENTRE[0] + dx, 145), FOREGROUND, 1)
     return image
 
 
@@ -75,8 +73,7 @@ def write_specimens(directory, count=8, legs=True):
     ids = []
     for index in range(count):
         occurrence_id = f"specimen{index}"
-        cv2.imwrite(str(directory / f"{occurrence_id}.png"),
-                    draw_specimen(index, legs=legs))
+        cv2.imwrite(str(directory / f"{occurrence_id}.png"), draw_specimen(index, legs=legs))
         ids.append(occurrence_id)
     return ids
 
@@ -92,17 +89,18 @@ def specimen_metadata(occurrence_ids):
     """
     import pandas as pd
 
-    return pd.DataFrame({
-        "occurrence_id": list(occurrence_ids),
-        "device": ["boxA" if index % 2 == 0 else "boxB"
-                   for index in range(len(occurrence_ids))],
-        "species": ["Anax junius" if index % 3 else "Libellula lydia"
-                    for index in range(len(occurrence_ids))],
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": list(occurrence_ids),
+            "device": ["boxA" if index % 2 == 0 else "boxB" for index in range(len(occurrence_ids))],
+            "species": [
+                "Anax junius" if index % 3 else "Libellula lydia" for index in range(len(occurrence_ids))
+            ],
+        }
+    )
 
 
-def draw_target_sheet(diameter_px=TARGET_DIAMETER_PX, centre=(150, 130),
-                      size=(700, 900), clutter=25):
+def draw_target_sheet(diameter_px=TARGET_DIAMETER_PX, centre=(150, 130), size=(700, 900), clutter=25):
     """
     A dark sheet with a quadrant-filled circular target near the top-left, plus
     specimen-shaped clutter.
@@ -121,8 +119,7 @@ def draw_target_sheet(diameter_px=TARGET_DIAMETER_PX, centre=(150, 130),
     rng = np.random.default_rng(0)
     for _ in range(clutter):
         x, y = rng.integers(200, size[1] - 20), rng.integers(200, size[0] - 20)
-        cv2.ellipse(sheet, (int(x), int(y)), (14, 7), int(rng.integers(0, 180)),
-                    0, 360, (170, 160, 140), -1)
+        cv2.ellipse(sheet, (int(x), int(y)), (14, 7), int(rng.integers(0, 180)), 0, 360, (170, 160, 140), -1)
 
     radius = diameter_px // 2
     cv2.circle(sheet, centre, radius, (255, 255, 255), -1)
@@ -130,8 +127,9 @@ def draw_target_sheet(diameter_px=TARGET_DIAMETER_PX, centre=(150, 130),
     cv2.ellipse(sheet, centre, (radius, radius), 0, 180, 270, (0, 0, 0), -1)
 
     template = cv2.cvtColor(
-        sheet[centre[1] - radius:centre[1] + radius,
-              centre[0] - radius:centre[0] + radius], cv2.COLOR_BGR2GRAY)
+        sheet[centre[1] - radius : centre[1] + radius, centre[0] - radius : centre[0] + radius],
+        cv2.COLOR_BGR2GRAY,
+    )
     return sheet, template, diameter_px / TARGET_MM
 
 
@@ -151,11 +149,11 @@ def blob_mask(shape=(200, 300), centre=(220, 80), axes=(30, 18), angle=0):
 def half_and_half(top=(0, 0, 0), bottom=(255, 255, 255), shape=(100, 100)):
     """An image split top/bottom, with a mask covering only the top half."""
     image = np.zeros((*shape, 3), np.uint8)
-    image[:shape[0] // 2] = top
-    image[shape[0] // 2:] = bottom
+    image[: shape[0] // 2] = top
+    image[shape[0] // 2 :] = bottom
 
     mask = np.zeros(shape, bool)
-    mask[:shape[0] // 2] = True
+    mask[: shape[0] // 2] = True
     return Segment(image, mask=mask, occurrence_id="test")
 
 

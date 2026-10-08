@@ -14,8 +14,7 @@ import cv2
 class FakeResponse:
     """One canned HTTP response: bytes, JSON, and a status."""
 
-    def __init__(self, content=b"", json_data=None, status_code=200,
-                 headers=None):
+    def __init__(self, content=b"", json_data=None, status_code=200, headers=None):
         self.content = content
         self._json = json_data
         self.status_code = status_code
@@ -28,11 +27,12 @@ class FakeResponse:
 
     def iter_content(self, chunk_size=8192):
         for start in range(0, len(self.content), chunk_size):
-            yield self.content[start:start + chunk_size]
+            yield self.content[start : start + chunk_size]
 
     def raise_for_status(self):
         if self.status_code >= 400:
             import requests
+
             raise requests.HTTPError(f"{self.status_code} for this url")
 
     def __enter__(self):
@@ -69,15 +69,12 @@ class FakeSession:
             if pattern in url:
                 if isinstance(response, list):
                     if not response:
-                        raise AssertionError(
-                            f"FakeSession ran out of responses for {pattern!r}")
+                        raise AssertionError(f"FakeSession ran out of responses for {pattern!r}")
                     return response.pop(0)
                 if callable(response):
                     return response(url, kwargs)
                 return response
-        raise AssertionError(
-            f"FakeSession has no route for {url!r} (routes: {sorted(self.routes)})"
-        )
+        raise AssertionError(f"FakeSession has no route for {url!r} (routes: {sorted(self.routes)})")
 
     def get(self, url, **kwargs):
         return self._respond("GET", url, **kwargs)

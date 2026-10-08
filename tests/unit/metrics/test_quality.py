@@ -59,8 +59,7 @@ def test_a_blurred_image_scores_lower_than_a_sharp_one():
     blurred = cv2.GaussianBlur(sharp, (15, 15), 0)
     mask = np.ones(sharp.shape[:2], bool)
 
-    assert (cf.blur_variance()(a_segment(mask, blurred))
-            < cf.blur_variance()(a_segment(mask, sharp)))
+    assert cf.blur_variance()(a_segment(mask, blurred)) < cf.blur_variance()(a_segment(mask, sharp))
 
 
 def test_blur_is_measured_on_the_organism_not_the_background():
@@ -68,10 +67,9 @@ def test_blur_is_measured_on_the_organism_not_the_background():
     A sharp leaf behind an out-of-focus moth must not read as a sharp moth.
     """
     image = textured()
-    image[blob()] = 128                       # flat, featureless organism
+    image[blob()] = 128  # flat, featureless organism
     on_organism = cf.blur_variance()(a_segment(blob(), image))
-    on_everything = cf.blur_variance()(a_segment(np.ones(image.shape[:2], bool),
-                                                 image))
+    on_everything = cf.blur_variance()(a_segment(np.ones(image.shape[:2], bool), image))
     assert on_organism < on_everything
 
 
@@ -90,14 +88,13 @@ def test_an_asymmetric_mask_scores_higher():
     segmentation failure rather than an unusual specimen.
     """
     lopsided = blob().copy()
-    lopsided[:, 100:] = False                 # keep only the left half
+    lopsided[:, 100:] = False  # keep only the left half
 
     # Compared against the symmetric case rather than against an absolute
     # threshold: what the score means is "less like its own mirror image than
     # that one is", and the number a given shape lands on is a property of the
     # shape. Calibrating a cutoff for a project is validation.filters' job.
-    assert (cf.bilateral_asymmetry()(a_segment(lopsided))
-            > cf.bilateral_asymmetry()(a_segment(blob())) + 0.2)
+    assert cf.bilateral_asymmetry()(a_segment(lopsided)) > cf.bilateral_asymmetry()(a_segment(blob())) + 0.2
 
 
 def test_asymmetry_is_measured_about_the_mask_s_own_centre():
@@ -125,7 +122,7 @@ def test_a_specimen_running_off_the_frame_reports_the_touching_fraction():
     trait: a truncated organism measures as a smaller, perfectly plausible one.
     """
     mask = np.zeros((200, 200), bool)
-    mask[80:120, 150:] = True                 # runs off the right edge
+    mask[80:120, 150:] = True  # runs off the right edge
     assert cf.edge_fraction()(a_segment(mask)) > 0.0
 
 
@@ -155,8 +152,7 @@ def test_mask_fraction_is_the_share_of_the_original_frame():
 def test_mask_fraction_ignores_a_crop_for_the_same_reason():
     segment = a_segment(blob())
     cropped, _info = cf.crop_to_mask(pad=0)(segment)
-    assert cf.mask_fraction()(cropped) == pytest.approx(
-        cf.mask_fraction()(segment))
+    assert cf.mask_fraction()(cropped) == pytest.approx(cf.mask_fraction()(segment))
 
 
 # ---------------------------------------------------------------------------
@@ -164,19 +160,23 @@ def test_mask_fraction_ignores_a_crop_for_the_same_reason():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("metric", [cf.blur_variance(), cf.bilateral_asymmetry(),
-                                    cf.edge_fraction(), cf.mask_fraction()])
+@pytest.mark.parametrize(
+    "metric", [cf.blur_variance(), cf.bilateral_asymmetry(), cf.edge_fraction(), cf.mask_fraction()]
+)
 def test_every_quality_metric_refuses_an_empty_mask(metric):
     with pytest.raises(ValueError, match="empty mask"):
         metric(a_segment(np.zeros((50, 50), bool)))
 
 
-@pytest.mark.parametrize("metric, unit", [
-    (cf.blur_variance(), "laplacian_var"),
-    (cf.bilateral_asymmetry(), "fraction"),
-    (cf.edge_fraction(), "fraction"),
-    (cf.mask_fraction(), "fraction"),
-])
+@pytest.mark.parametrize(
+    "metric, unit",
+    [
+        (cf.blur_variance(), "laplacian_var"),
+        (cf.bilateral_asymmetry(), "fraction"),
+        (cf.edge_fraction(), "fraction"),
+        (cf.mask_fraction(), "fraction"),
+    ],
+)
 def test_units_say_what_the_number_is(metric, unit):
     """
     A bare number whose unit lives only in a variable name is the easiest thing
@@ -191,8 +191,7 @@ def test_warn_thresholds_are_stated_rather_than_applied():
     They exist to annotate a panel, not to filter. A judgement about degree
     belongs at export, where it stays revisable.
     """
-    assert set(WARN_THRESHOLDS) >= {"blur_variance", "bilateral_asymmetry",
-                                    "edge_fraction"}
+    assert set(WARN_THRESHOLDS) >= {"blur_variance", "bilateral_asymmetry", "edge_fraction"}
 
 
 class RecordingSink:
@@ -204,11 +203,14 @@ class RecordingSink:
         assert image.dtype == np.uint8
 
 
-@pytest.mark.parametrize("metric, stage", [
-    (cf.blur_variance(), "blur_variance"),
-    (cf.bilateral_asymmetry(), "bilateral_asymmetry"),
-    (cf.edge_fraction(), "edge_fraction"),
-])
+@pytest.mark.parametrize(
+    "metric, stage",
+    [
+        (cf.blur_variance(), "blur_variance"),
+        (cf.bilateral_asymmetry(), "bilateral_asymmetry"),
+        (cf.edge_fraction(), "edge_fraction"),
+    ],
+)
 def test_each_score_draws_the_evidence_for_itself(metric, stage):
     sink = RecordingSink()
     mask = blob()

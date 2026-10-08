@@ -1,8 +1,4 @@
-"""
-label_score(): the probability a human would call an occurrence-part bad, fitted on stored features against stored labels.
-
-The model is fit in `prepare()` on one named subset's labels; score a filter built on it against labels outside that subset.
-"""
+"""label_score(): the probability a person would call an occurrence-part bad, fitted on stored features and labels."""
 
 import logging
 import math
@@ -27,7 +23,7 @@ SEED = 0
 
 
 def _classifier(n_components):
-    """Standardize, optionally PCA-reduce, then a class-balanced logistic regression."""
+    """Return a pipeline: standardize, optionally reduce by PCA, then class-balanced logistic regression."""
     from sklearn.decomposition import PCA
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import make_pipeline
@@ -41,51 +37,58 @@ def _classifier(n_components):
 
 
 class LabelScoreMetric(StoredValueMetric):
-    """
-    Operation: the fitted probability that an occurrence-part's label is a bad one.
+    """Operation: the fitted probability that an occurrence-part's label is a bad one.
 
-    A labelled occurrence is scored by a model that never saw its own label
-    (its out-of-fold prediction); every other occurrence by the model fit on
-    all the labels. The fitted model isn't in the recipe hash; the labels it
-    was fit on are recorded beside it, and a changed label is rescored on
-    the next run.
+    A labelled occurrence gets its out-of-fold prediction; every other gets the prediction
+    of the model fitted on all the labels. The value is `{"bad_probability", "in_training"}`.
 
-    - `features` -- Metric operations whose stored values are the model's
-      inputs, e.g. `[embedding(...)]`. Each must be an operation of
-      `from_run`'s current recipe. A vector feature contributes one column
-      per element.
-    - `from_run` -- the metric run holding those values, for the same part.
-    - `labels_run` -- the metric run holding the human labels, for the same
-      part.
-    - `labels_subset` -- named subset whose labels train the model. Required:
-      labels outside it are what a filter on this score gets audited
-      against. None trains on every label.
-    - `label_metric` -- metric holding the labels.
-    - `bad_labels` -- label values the model predicts. Give this or
-      `good_labels`.
-    - `good_labels` -- the label values that are fine, every other label being
-      what the model predicts.
-    - `n_components` -- PCA dimensions the features are reduced to before the
-      fit, capped by what the labels allow. None fits on the features as
-      they are.
-    - `folds` -- cross-validation folds for the labelled occurrences' own
-      scores, capped by the smaller class.
-    - `name` -- metric name; `"label_score"` by default.
-
-    Stores `{"bad_probability", "in_training"}`.
+    Args:
+        features: Metric operations whose stored values are the model's inputs, e.g.
+            `[embedding(...)]`. Each must be an operation of `from_run`'s current recipe.
+        from_run: The metric run holding those values.
+        labels_run: The metric run holding the human labels.
+        labels_subset: Named subset whose labels train the model. Required; None trains on
+            every label.
+        label_metric: Metric holding the labels.
+        bad_labels: Label values the model predicts. Give this or `good_labels`.
+        good_labels: Label values that are fine, every other being bad.
+        n_components: PCA dimensions the features are reduced to before the fit; None
+            skips the reduction.
+        folds: Cross-validation folds for the labelled occurrences' scores.
+        name: Metric name; `"label_score"` if None.
+        unit: Recorded unit.
     """
 
-    def __init__(self, features, from_run, labels_run, labels_subset,
-                 label_metric, bad_labels=None, good_labels=None,
-                 n_components=16, folds=5, name=None, unit="probability"):
+    def __init__(
+        self,
+        features,
+        from_run,
+        labels_run,
+        labels_subset,
+        label_metric,
+        bad_labels=None,
+        good_labels=None,
+        n_components=16,
+        folds=5,
+        name=None,
+        unit="probability",
+    ):
         if folds < 2:
             raise ValueError(f"label_score needs at least 2 folds, got {folds}")
         if (bad_labels is None) == (good_labels is None):
             raise ValueError(
                 "label_score needs exactly one of bad_labels= and good_labels=, to "
-                "say which labels the score predicts")
-        super().__init__("label_score", self._score, features, from_run,
-                         version="1", unit=unit, metric_name=name or "label_score")
+                "say which labels the score predicts"
+            )
+        super().__init__(
+            "label_score",
+            self._score,
+            features,
+            from_run,
+            version="1",
+            unit=unit,
+            metric_name=name or "label_score",
+        )
         self.labels_run = labels_run
         self.labels_subset = labels_subset
         self.label_metric = label_metric
@@ -97,6 +100,7 @@ class LabelScoreMetric(StoredValueMetric):
         self._scores = {}
 
     def spec(self):
+        """Return the operation's spec, with the features, runs, label vocabulary and model settings."""
         spec = super().spec()
         spec["parameters"] = {
             "features": [feature.spec() for feature in self.features],
@@ -106,17 +110,21 @@ class LabelScoreMetric(StoredValueMetric):
             "label_metric": self.label_metric,
             # The keys keep the arguments' earlier names: they are in the recipe
             # hash, so renaming them would make every stored score stale.
-            **({"bad_flags": self.bad_labels} if self.bad_labels is not None
-               else {"good_flags": self.good_labels}),
+            **(
+                {"bad_flags": self.bad_labels}
+                if self.bad_labels is not None
+                else {"good_flags": self.good_labels}
+            ),
             "n_components": self.n_components,
             "folds": self.folds,
         }
         return spec
 
     def _labels(self, context):
-        """Current labels of the training subset, as a Series of is-bad indexed by occurrence id."""
-        labels = latest_values(context.project_path, self.labels_run,
-                               part=context.part, metric_name=self.label_metric).dropna()
+        """Return the training subset's current labels, as a Series of is-bad indexed by occurrence id."""
+        labels = latest_values(
+            context.project_path, self.labels_run, part=context.part, metric_name=self.label_metric
+        ).dropna()
         if self.labels_subset is not None:
             members = set(select_ids(context.project_path, subset=self.labels_subset))
             labels = labels[labels.index.isin(members)]
@@ -125,13 +133,12 @@ class LabelScoreMetric(StoredValueMetric):
         return ~labels.isin(self.good_labels)
 
     def prepare(self, context):
-        """
-        Fit the model on the training labels and score every occurrence the run covers.
+        """Fit the model on the training labels and score every occurrence the run covers.
 
-        Returns the fit record the run stores: the feature run and its recipe,
-        the labels' run and subset, the labelled occurrences as a count and a
-        digest, the class counts, the cross-validated AUC, and `fit_hash`, a
-        digest of which occurrence carried which label.
+        Returns:
+            The fit record: the feature run and its recipe, the labels' run and subset, the
+            labelled occurrences as a count and digest, the class counts, the cross-validated
+            AUC, and `fit_hash`, a digest of which occurrence carried which label.
         """
         from sklearn.metrics import roc_auc_score
         from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -143,23 +150,26 @@ class LabelScoreMetric(StoredValueMetric):
         table, columns = self.feature_table(context, occurrence_ids=wanted)
         table = table.dropna(subset=columns).set_index(ID_COL)
 
-        train_ids = sorted(occurrence_id for occurrence_id in is_bad.index
-                           if occurrence_id in table.index)
+        train_ids = sorted(occurrence_id for occurrence_id in is_bad.index if occurrence_id in table.index)
         target = is_bad.loc[train_ids].to_numpy(dtype=bool)
         n_bad, n_good = int(target.sum()), int((~target).sum())
         if min(n_bad, n_good) < MIN_PER_CLASS:
-            where = (f"subset '{self.labels_subset}'" if self.labels_subset
-                     else "the project")
+            where = f"subset '{self.labels_subset}'" if self.labels_subset else "the project"
             raise ValueError(
                 f"{self.metric_name}: {n_bad} bad and {n_good} good '{self.label_metric}' "
                 f"label(s) with '{self.from_run}' features in {where} for part "
                 f"'{context.part}' -- at least {MIN_PER_CLASS} of each are needed. "
                 f"Label more under run '{self.labels_run}', and measure "
-                f"'{self.from_run}' over the labelled occurrences.")
+                f"'{self.from_run}' over the labelled occurrences."
+            )
         if min(n_bad, n_good) < WARN_PER_CLASS:
-            logger.warning("%s: fitting on %d bad and %d good label(s) -- few "
-                           "enough that the score will move as labels are added",
-                           self.metric_name, n_bad, n_good)
+            logger.warning(
+                "%s: fitting on %d bad and %d good label(s) -- few "
+                "enough that the score will move as labels are added",
+                self.metric_name,
+                n_bad,
+                n_good,
+            )
 
         folds = min(self.folds, n_bad, n_good)
         # PCA can't keep more components than the smallest fold has rows.
@@ -170,35 +180,50 @@ class LabelScoreMetric(StoredValueMetric):
 
         features = table.loc[train_ids, columns].to_numpy(dtype=float)
         out_of_fold = cross_val_predict(
-            _classifier(n_components), features, target,
+            _classifier(n_components),
+            features,
+            target,
             cv=StratifiedKFold(folds, shuffle=True, random_state=SEED),
-            method="predict_proba")[:, 1]
+            method="predict_proba",
+        )[:, 1]
         self.classifier = model = _classifier(n_components).fit(features, target)
 
         self._scores = {
             occurrence_id: (float(probability), True)
-            for occurrence_id, probability in zip(train_ids, out_of_fold)}
-        others = [occurrence_id for occurrence_id in table.index
-                  if occurrence_id not in self._scores]
+            for occurrence_id, probability in zip(train_ids, out_of_fold)
+        }
+        others = [occurrence_id for occurrence_id in table.index if occurrence_id not in self._scores]
         if others:
-            predicted = model.predict_proba(
-                table.loc[others, columns].to_numpy(dtype=float))[:, 1]
-            self._scores.update({
-                occurrence_id: (float(probability), False)
-                for occurrence_id, probability in zip(others, predicted)})
+            predicted = model.predict_proba(table.loc[others, columns].to_numpy(dtype=float))[:, 1]
+            self._scores.update(
+                {
+                    occurrence_id: (float(probability), False)
+                    for occurrence_id, probability in zip(others, predicted)
+                }
+            )
 
         auc = float(roc_auc_score(target, out_of_fold))
-        logger.info("%s fit: %d bad, %d good label(s), %d-fold AUC %.3f, %d "
-                    "feature column(s)%s", self.metric_name, n_bad, n_good, folds,
-                    auc, len(columns),
-                    "" if n_components is None else f" reduced to {n_components}")
+        logger.info(
+            "%s fit: %d bad, %d good label(s), %d-fold AUC %.3f, %d feature column(s)%s",
+            self.metric_name,
+            n_bad,
+            n_good,
+            folds,
+            auc,
+            len(columns),
+            "" if n_components is None else f" reduced to {n_components}",
+        )
 
         if context.report:
-            context.report.figure(f"{self.metric_name}__fit", figures.histogram(
-                {"good": out_of_fold[~target].tolist(),
-                 "bad": out_of_fold[target].tolist()}, bins=20,
-                xlabel="out-of-fold bad probability",
-                title=f"{self.metric_name}: {n_bad} bad, {n_good} good, AUC {auc:.3f}"))
+            context.report.figure(
+                f"{self.metric_name}__fit",
+                figures.histogram(
+                    {"good": out_of_fold[~target].tolist(), "bad": out_of_fold[target].tolist()},
+                    bins=20,
+                    xlabel="out-of-fold bad probability",
+                    title=f"{self.metric_name}: {n_bad} bad, {n_good} good, AUC {auc:.3f}",
+                ),
+            )
 
         return {
             "from_run": self.from_run,
@@ -213,18 +238,19 @@ class LabelScoreMetric(StoredValueMetric):
             "folds": folds,
             "n_components": n_components,
             "cv_auc": round(auc, 4),
-            "fit_hash": hash_spec({"labels": [[occurrence_id, bool(bad)]
-                                              for occurrence_id, bad
-                                              in zip(train_ids, target)]}),
+            "fit_hash": hash_spec(
+                {"labels": [[occurrence_id, bool(bad)] for occurrence_id, bad in zip(train_ids, target)]}
+            ),
         }
 
     def _score(self, target):
-        """This occurrence's fitted probability; no input yet where it has no current feature value."""
+        """Return this occurrence's fitted probability, raising `NoInput` where it has no feature value."""
         occurrence_id = self.require_stored(target)
         if self.classifier is None:
             raise RuntimeError(
                 f"{self.metric_name} was never fit -- its prepare() hook does "
-                "that, which run_metrics calls for you")
+                "that, which run_metrics calls for you"
+            )
         score = self._scores.get(occurrence_id)
         if score is None:
             raise self.no_value()
@@ -233,6 +259,14 @@ class LabelScoreMetric(StoredValueMetric):
 
 
 def label_score(features, from_run, labels_run, labels_subset, label_metric, **kwargs):
-    """Operation: LabelScoreMetric, in the lowercase factory style of every other metric."""
-    return LabelScoreMetric(features, from_run, labels_run, labels_subset, label_metric,
-                            **kwargs)
+    """Operation: a `LabelScoreMetric`.
+
+    Args:
+        features: As in `LabelScoreMetric`.
+        from_run: As in `LabelScoreMetric`.
+        labels_run: As in `LabelScoreMetric`.
+        labels_subset: As in `LabelScoreMetric`.
+        label_metric: As in `LabelScoreMetric`.
+        **kwargs: The other `LabelScoreMetric` arguments.
+    """
+    return LabelScoreMetric(features, from_run, labels_run, labels_subset, label_metric, **kwargs)

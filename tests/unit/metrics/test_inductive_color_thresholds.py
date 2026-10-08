@@ -84,11 +84,9 @@ def _contains(start, end, angle):
 
 def test_three_separated_clusters_recover_three_ranges():
     rng = np.random.default_rng(1)
-    hues = np.concatenate([rng.normal(centre, 8, 500) % 360
-                           for centre in (30, 150, 270)])
+    hues = np.concatenate([rng.normal(centre, 8, 500) % 360 for centre in (30, 150, 270)])
     grid, density = m._hue_kde(hues, bandwidth=10.0)
-    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5,
-                                  max_ranges=8)
+    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5, max_ranges=8)
     ranges = m._ranges_from_valleys(valleys)
 
     assert len(ranges) == 3
@@ -107,18 +105,15 @@ def test_a_single_cluster_gives_one_range_covering_the_whole_circle():
     rng = np.random.default_rng(1)
     hues = rng.normal(90, 10, 1000) % 360
     grid, density = m._hue_kde(hues, bandwidth=10.0)
-    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5,
-                                  max_ranges=8)
+    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5, max_ranges=8)
     assert m._ranges_from_valleys(valleys) == [(0.0, 360.0)]
 
 
 def test_two_clusters_across_the_wrap_are_still_found():
     rng = np.random.default_rng(1)
-    hues = np.concatenate([rng.normal(0, 8, 500) % 360,
-                           rng.normal(180, 8, 500) % 360])
+    hues = np.concatenate([rng.normal(0, 8, 500) % 360, rng.normal(180, 8, 500) % 360])
     grid, density = m._hue_kde(hues, bandwidth=10.0)
-    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5,
-                                  max_ranges=8)
+    valleys = m._find_hue_valleys(grid, density, valley_relative_height=0.5, max_ranges=8)
     assert len(valleys) == 2
 
 
@@ -168,8 +163,12 @@ def test_the_fit_records_the_thresholds_it_scores_with():
     metric = m.InductiveColorThresholdMetric()
     definition = m._fit_definition(
         np.random.default_rng(1).integers(0, 256, (3000, 3), dtype=np.uint8),
-        n_chroma_bins=20, min_bin_pixels=50, hue_bandwidth=10.0,
-        valley_relative_height=0.5, max_hue_ranges=8)
+        n_chroma_bins=20,
+        min_bin_pixels=50,
+        hue_bandwidth=10.0,
+        valley_relative_height=0.5,
+        max_hue_ranges=8,
+    )
     metric.fits = {m.POPULATION: definition}
 
     specs = metric._describe_fit(m.POPULATION)["thresholds"]
@@ -181,8 +180,8 @@ def test_the_fit_records_the_thresholds_it_scores_with():
 # The metric, end to end
 # ---------------------------------------------------------------------------
 
-WARM = (80, 110, 255)     # BGR; grayscale ~118, hue ~39 degrees -- segments
-COOL = (255, 150, 70)     # BGR; grayscale ~172, hue ~280 degrees -- segments
+WARM = (80, 110, 255)  # BGR; grayscale ~118, hue ~39 degrees -- segments
+COOL = (255, 150, 70)  # BGR; grayscale ~172, hue ~280 degrees -- segments
 # both above ThresholdModel's default cutoff=100, and well over 90 degrees
 # apart in hue.
 
@@ -203,8 +202,7 @@ def colour_grouped_project(tmp_path):
     directory = tmp_path / "specimens"
     directory.mkdir()
     ids, groups = [], []
-    for group, color, count in [("warm", WARM, 5), ("cool", COOL, 5),
-                                ("tiny", WARM, 2)]:
+    for group, color, count in [("warm", WARM, 5), ("cool", COOL, 5), ("tiny", WARM, 2)]:
         for index in range(count):
             occurrence_id = f"{group}{index}"
             cv2.imwrite(str(directory / f"{occurrence_id}.png"), _draw(color))
@@ -221,9 +219,9 @@ def colour_grouped_project(tmp_path):
 def _run(project_path):
     return cf.run_metrics(
         project_path,
-        metrics=[m.inductive_color_thresholds(group_col="color_group",
-                                              min_group_size=3, sample_pixels=500)],
-        visualize=False)["organism"]
+        metrics=[m.inductive_color_thresholds(group_col="color_group", min_group_size=3, sample_pixels=500)],
+        visualize=False,
+    )["organism"]
 
 
 @pytest.mark.slow
@@ -235,8 +233,7 @@ def test_fits_and_scores_every_occurrence(colour_grouped_project):
 @pytest.mark.slow
 def test_each_group_gets_its_own_definition(colour_grouped_project):
     _run(colour_grouped_project)
-    values = load_metrics(colour_grouped_project,
-                          metric_names=["inductive_color_thresholds"])
+    values = load_metrics(colour_grouped_project, metric_names=["inductive_color_thresholds"])
     by_occurrence = dict(zip(values["occurrence_id"], values["value"]))
 
     for occurrence_id in ("warm0", "warm1"):
@@ -258,8 +255,7 @@ def test_each_group_gets_its_own_definition(colour_grouped_project):
 @pytest.mark.slow
 def test_an_undersized_group_falls_back_to_the_population_definition(colour_grouped_project):
     _run(colour_grouped_project)
-    values = load_metrics(colour_grouped_project,
-                          metric_names=["inductive_color_thresholds"])
+    values = load_metrics(colour_grouped_project, metric_names=["inductive_color_thresholds"])
     by_occurrence = dict(zip(values["occurrence_id"], values["value"]))
 
     # "tiny" has only 2 occurrences, below min_group_size=3 -- both must be
@@ -273,8 +269,7 @@ def test_an_undersized_group_falls_back_to_the_population_definition(colour_grou
     # (genuinely bimodal, unlike warm/cool's own single-colour fits) -- a
     # solid-coloured occurrence scored against it should still land entirely
     # in exactly one of the population's ranges, not split across both.
-    hue_values = [value for key, value in by_occurrence["tiny0"].items()
-                 if key.startswith("hue_")]
+    hue_values = [value for key, value in by_occurrence["tiny0"].items() if key.startswith("hue_")]
     assert sum(hue_values) == pytest.approx(1.0)
     assert sum(value == pytest.approx(1.0) for value in hue_values) == 1
 
@@ -293,15 +288,14 @@ def test_a_visualized_run_draws_each_fit_and_recolours_the_sample(colour_grouped
 
     from critterframe.project import paths
 
-    cf.run_metrics(colour_grouped_project,
-                   metrics=[m.inductive_color_thresholds(group_col="color_group",
-                                                         min_group_size=3, sample_pixels=500)],
-                   visualize=4)
+    cf.run_metrics(
+        colour_grouped_project,
+        metrics=[m.inductive_color_thresholds(group_col="color_group", min_group_size=3, sample_pixels=500)],
+        visualize=4,
+    )
 
-    [sidecar] = paths.pipeline_dir(colour_grouped_project).glob(
-        "inductive_color_thresholds_*.report.json")
+    [sidecar] = paths.pipeline_dir(colour_grouped_project).glob("inductive_color_thresholds_*.report.json")
     files = json.loads(sidecar.read_text(encoding="utf-8"))["files"]
-    assert any(name.endswith("__inductive_color_thresholds__population__gate.png")
-               for name in files)
+    assert any(name.endswith("__inductive_color_thresholds__population__gate.png") for name in files)
     assert any(name.endswith("__inductive_color_thresholds__warm__gate.png") for name in files)
     assert any(name.endswith(".jpg") for name in files)

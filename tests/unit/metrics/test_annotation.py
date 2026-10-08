@@ -54,11 +54,13 @@ def gui(monkeypatch):
     functions share cv2 with visualization.panels, whose output is being
     asserted on, and a global patch would leak into every other test.
     """
+
     def install(keys=(), clicks=()):
         fake = FakeCv2(keys=keys, clicks=clicks)
         monkeypatch.setattr(annotation, "cv2", fake)
-        monkeypatch.setattr(panels, "DISPLAY_MAX", None)   # 1:1 window, so clicks are image pixels
+        monkeypatch.setattr(panels, "DISPLAY_MAX", None)  # 1:1 window, so clicks are image pixels
         return fake
+
     return install
 
 
@@ -102,7 +104,11 @@ def test_a_skipped_occurrence_keeps_the_shape_with_nothing_in_it():
     only the first is recoverable from a stored value.
     """
     assert _skipped_pair(["head", "tail"]) == {
-        "head": None, "tail": None, "length_px": None, "angle_deg": None}
+        "head": None,
+        "tail": None,
+        "length_px": None,
+        "angle_deg": None,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -144,8 +150,7 @@ def test_the_labels_are_part_of_the_recipe():
     They name what was clicked, so two projects clicking different things are
     not doing the same work under one name.
     """
-    assert (cf.click_two_points(["head", "tail"]).spec()
-            != cf.click_two_points(["base", "tip"]).spec())
+    assert cf.click_two_points(["head", "tail"]).spec() != cf.click_two_points(["base", "tip"]).spec()
 
 
 def test_a_label_metric_is_a_category_not_a_measurement():
@@ -172,7 +177,7 @@ def test_click_units_do_not_convert_to_millimetres():
 def test_it_works_end_to_end_on_a_segment_with_no_mask(gui):
     """The real point of requires_mask=False: this has to be usable on a
     fresh, unsegmented occurrence, not just tolerate one in theory."""
-    fake = gui(keys=[ord("3")])   # 3 = dead
+    fake = gui(keys=[ord("3")])  # 3 = dead
     image = np.zeros((10, 10, 3), np.uint8)
     assert screen()(Segment(image, occurrence_id="x")) == "dead"
     assert fake.shown
@@ -196,7 +201,7 @@ def test_the_legend_is_the_callers_vocabulary(gui):
     shown = " ".join(_legend_lines(_keys_for(QUALITY))).split()
     assert [entry.split("=", 1)[1] for entry in shown] == QUALITY
 
-    gui(keys=[ord("9"), ord("c"), ord("4")])     # two keys of a longer vocabulary, then a real one
+    gui(keys=[ord("9"), ord("c"), ord("4")])  # two keys of a longer vocabulary, then a real one
     assert cf.exclusive_label_annotation(QUALITY)(a_segment()) == "incomplete"
 
 
@@ -238,11 +243,14 @@ def test_whether_a_label_needs_a_mask_is_the_callers_and_not_in_the_recipe(gui):
     assert of_the_image(maskless) == "good"
 
 
-@pytest.mark.parametrize("labels, message", [
-    ([], "at least one label"),
-    (["good", "bad", "good"], "distinct labels"),
-    ([f"label{index}" for index in range(len(LABEL_KEYS) + 1)], "keys to hand out"),
-])
+@pytest.mark.parametrize(
+    "labels, message",
+    [
+        ([], "at least one label"),
+        (["good", "bad", "good"], "distinct labels"),
+        ([f"label{index}" for index in range(len(LABEL_KEYS) + 1)], "keys to hand out"),
+    ],
+)
 def test_a_vocabulary_that_cannot_be_asked_fails_before_any_window_opens(labels, message):
     with pytest.raises(ValueError, match=message):
         cf.exclusive_label_annotation(labels)
@@ -275,8 +283,7 @@ def test_two_clicks_become_a_measurement(gui):
     """
     # Three keys for two clicks: the loop polls once per click, and there is a
     # third, cosmetic wait that holds the second marker on screen briefly.
-    gui(keys=[ord(" ")] * 3,
-        clicks=[(cv2.EVENT_LBUTTONDOWN, 10, 20), (cv2.EVENT_LBUTTONDOWN, 40, 60)])
+    gui(keys=[ord(" ")] * 3, clicks=[(cv2.EVENT_LBUTTONDOWN, 10, 20), (cv2.EVENT_LBUTTONDOWN, 40, 60)])
 
     value = cf.click_two_points()(a_segment())
     assert value["head"] == [10, 20]
@@ -291,8 +298,7 @@ def test_escape_skips_the_occurrence(gui):
     """
     gui(keys=[27])
     value = cf.click_two_points()(a_segment())
-    assert value == {"head": None, "tail": None, "length_px": None,
-                     "angle_deg": None}
+    assert value == {"head": None, "tail": None, "length_px": None, "angle_deg": None}
 
 
 def test_clicking_needs_a_mask_to_show(gui):
@@ -320,15 +326,15 @@ def test_labels_run_and_store_like_any_other_metric(gui, segmented_project):
     resumes where the person stopped rather than asking them again.
     """
     gui(keys=[ord("1")] * 8)
-    first = cf.run_metrics(segmented_project, run_name="screening",
-                           metrics=[screen()],
-                           visualize=False)["organism"]
+    first = cf.run_metrics(segmented_project, run_name="screening", metrics=[screen()], visualize=False)[
+        "organism"
+    ]
     assert first["processed"] == 8
 
-    gui(keys=[])            # a second pass must ask nobody anything
-    second = cf.run_metrics(segmented_project, run_name="screening",
-                            metrics=[screen()],
-                            visualize=False)["organism"]
+    gui(keys=[])  # a second pass must ask nobody anything
+    second = cf.run_metrics(segmented_project, run_name="screening", metrics=[screen()], visualize=False)[
+        "organism"
+    ]
     assert second["skipped"] == 8
 
     exported = cf.export_metrics(segmented_project, run_names=["screening"])
@@ -341,9 +347,8 @@ def test_labels_run_and_store_like_any_other_metric(gui, segmented_project):
 
 
 def test_clicked_points_come_back_in_segment_pixels_not_window_pixels(gui, monkeypatch):
-    gui(keys=[ord(" ")] * 3,
-        clicks=[(cv2.EVENT_LBUTTONDOWN, 20, 40), (cv2.EVENT_LBUTTONDOWN, 80, 120)])
-    monkeypatch.setattr(panels, "DISPLAY_MAX", (200, 200))   # 100px shown 2x
+    gui(keys=[ord(" ")] * 3, clicks=[(cv2.EVENT_LBUTTONDOWN, 20, 40), (cv2.EVENT_LBUTTONDOWN, 80, 120)])
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (200, 200))  # 100px shown 2x
     value = cf.click_two_points()(a_segment())
 
     assert value["head"] == [10, 20]
@@ -352,7 +357,7 @@ def test_clicked_points_come_back_in_segment_pixels_not_window_pixels(gui, monke
 
 def test_the_label_panel_fits_the_screen_box(gui, monkeypatch):
     fake = gui(keys=[ord("1")])
-    monkeypatch.setattr(panels, "DISPLAY_MAX", (150, 150))   # three 100px panels, 300 wide
+    monkeypatch.setattr(panels, "DISPLAY_MAX", (150, 150))  # three 100px panels, 300 wide
     segment = a_segment()
     before = segment.image.copy()
     screen()(segment)
@@ -419,8 +424,7 @@ def test_the_original_image_can_come_first(gui):
     working = _panel(segment)
     original_width = int(image.shape[1] * shown.shape[0] / image.shape[0])
     working_width = shown.shape[1] - original_width
-    assert working_width / shown.shape[0] == pytest.approx(
-        working.shape[1] / working.shape[0], rel=0.02)
+    assert working_width / shown.shape[0] == pytest.approx(working.shape[1] / working.shape[0], rel=0.02)
 
 
 def test_the_original_is_not_shrunk_to_the_crop_before_it_is_shown(gui):
@@ -430,7 +434,7 @@ def test_the_original_is_not_shrunk_to_the_crop_before_it_is_shown(gui):
     """
     image = np.full((1200, 1600, 3), 40, np.uint8)
     for start in range(0, 1600, 32):
-        image[:, start:start + 8] = 220                   # lines a thumbnail would average away
+        image[:, start : start + 8] = 220  # lines a thumbnail would average away
     mask = np.zeros((1200, 1600), bool)
     mask[500:560, 700:820] = True
     segment, _info = cf.crop_to_mask()(Segment(image, mask=mask, occurrence_id="specimen0"))
@@ -457,7 +461,9 @@ def test_the_part_is_outlined_on_the_original():
     assert outlined.any()
     # the outline is on the part's edge, and nowhere near the far side of the photo
     assert not outlined[:, :150].any()
-    assert (image == 40).any() and not (image == OUTLINE_COLOR).all(axis=2).any()   # the original is not drawn on
+    assert (image == 40).any() and not (image == OUTLINE_COLOR).all(
+        axis=2
+    ).any()  # the original is not drawn on
 
 
 def test_an_untransformed_segment_has_nothing_to_add(gui):
@@ -476,5 +482,7 @@ def test_showing_the_original_is_not_part_of_the_recipe():
     not make labels already given look like answers to a different question.
     """
     labels = ["good", "poor"]
-    assert (cf.exclusive_label_annotation(labels).spec()
-            == cf.exclusive_label_annotation(labels, show_original=True).spec())
+    assert (
+        cf.exclusive_label_annotation(labels).spec()
+        == cf.exclusive_label_annotation(labels, show_original=True).spec()
+    )

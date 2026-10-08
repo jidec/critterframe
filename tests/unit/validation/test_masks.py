@@ -39,9 +39,13 @@ def with_reference(segmented_project):
     masks came from a stricter one -- the ordinary validation setup, where the
     two genuinely disagree.
     """
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=2))],
-                    reference=True, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=2))],
+        reference=True,
+        visualize=False,
+    )
     return segmented_project
 
 
@@ -55,7 +59,7 @@ def test_validation_compares_the_two_tables(with_reference):
     assert scores.index.name == "occurrence_id"
     assert scores.columns.tolist() == ["iou"]
     assert (scores["iou"] > 0).all()
-    assert (scores["iou"] < 1).all()       # a stricter segmenter really differs
+    assert (scores["iou"] < 1).all()  # a stricter segmenter really differs
 
 
 @pytest.mark.slow
@@ -65,9 +69,14 @@ def test_an_occurrence_with_no_reference_is_left_out(segmented_project):
     them for a handful of occurrences, and validation reports on that handful
     rather than on the whole project.
     """
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=2))],
-                    reference=True, limit=3, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=2))],
+        reference=True,
+        limit=3,
+        visualize=False,
+    )
 
     assert len(cf.validate_masks(segmented_project, visualize=False)) == 3
 
@@ -98,15 +107,12 @@ def test_transforms_are_applied_to_both_sides(with_reference):
     disagreement -- which is why the chain is applied to the reference too.
     """
     plain = cf.validate_masks(with_reference, visualize=False)
-    cleaned = cf.validate_masks(with_reference,
-                                transforms=[cf.remove_appendages()],
-                                visualize=False)
+    cleaned = cf.validate_masks(with_reference, transforms=[cf.remove_appendages()], visualize=False)
     assert len(plain) == len(cleaned)
 
 
 @pytest.mark.slow
-def test_a_project_with_no_reference_masks_has_nothing_to_validate(
-        segmented_project, caplog):
+def test_a_project_with_no_reference_masks_has_nothing_to_validate(segmented_project, caplog):
     with caplog.at_level("WARNING"):
         scores = cf.validate_masks(segmented_project, visualize=False)
     assert len(scores) == 0
@@ -123,34 +129,39 @@ def test_steps_computes_predictions_live(segmented_project):
     A candidate recipe checked against the reference set with no prior
     run_segments() pass -- the whole point of `steps=`.
     """
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=2))],
-                    reference=True, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=2))],
+        reference=True,
+        visualize=False,
+    )
 
-    scores = cf.validate_masks(segmented_project,
-                               steps=[cf.segment(ThresholdModel())],
-                               visualize=False)
+    scores = cf.validate_masks(segmented_project, steps=[cf.segment(ThresholdModel())], visualize=False)
 
     assert len(scores) == 8
     assert scores.index.name == "occurrence_id"
     assert scores.columns.tolist() == ["iou"]
     assert (scores["iou"] > 0).all()
-    assert (scores["iou"] < 1).all()       # erode=2 reference genuinely differs
+    assert (scores["iou"] < 1).all()  # erode=2 reference genuinely differs
 
 
 @pytest.mark.slow
 def test_steps_persists_nothing(segmented_project):
     from critterframe.records.runs import load_runs
 
-    cf.run_segments(segmented_project, run_name="by_hand",
-                    steps=[cf.segment(ThresholdModel(erode=2))],
-                    reference=True, visualize=False)
+    cf.run_segments(
+        segmented_project,
+        run_name="by_hand",
+        steps=[cf.segment(ThresholdModel(erode=2))],
+        reference=True,
+        visualize=False,
+    )
 
     before_runs = len(load_runs(segmented_project))
     before_masks = len(mask_records.load_masks(segmented_project))
 
-    cf.validate_masks(segmented_project, steps=[cf.segment(ThresholdModel())],
-                      visualize=False)
+    cf.validate_masks(segmented_project, steps=[cf.segment(ThresholdModel())], visualize=False)
 
     assert len(load_runs(segmented_project)) == before_runs
     assert len(mask_records.load_masks(segmented_project)) == before_masks
@@ -172,9 +183,7 @@ def test_steps_includes_occurrences_with_no_canonical_mask(with_reference):
     write_table(canonical[canonical["occurrence_id"] != orphan_id], canonical_path)
 
     default_scores = cf.validate_masks(with_reference, visualize=False)
-    live_scores = cf.validate_masks(with_reference,
-                                    steps=[cf.segment(ThresholdModel())],
-                                    visualize=False)
+    live_scores = cf.validate_masks(with_reference, steps=[cf.segment(ThresholdModel())], visualize=False)
 
     assert orphan_id not in default_scores.index
     assert orphan_id in live_scores.index
@@ -198,8 +207,10 @@ def _sidecars(project_path, prefix):
 
     from critterframe.project import paths
 
-    return [json.loads(path.read_text(encoding="utf-8"))
-            for path in paths.pipeline_dir(project_path).glob(f"{prefix}_*.report.json")]
+    return [
+        json.loads(path.read_text(encoding="utf-8"))
+        for path in paths.pipeline_dir(project_path).glob(f"{prefix}_*.report.json")
+    ]
 
 
 @pytest.mark.slow
@@ -224,13 +235,12 @@ def test_visualize_surfaces_a_steps_operation_own_diagnostic_panel(with_referenc
 
     from critterframe.project import paths
 
-    cf.validate_masks(with_reference, steps=[cf.segment(DrawsItsOwn())],
-                      visualize=1, limit=1)
+    cf.validate_masks(with_reference, steps=[cf.segment(DrawsItsOwn())], visualize=1, limit=1)
 
     [record] = _sidecars(with_reference, "validate_masks")
     [grid] = [name for name in record["files"] if name.endswith(".jpg")]
     height, width = cv2.imread(str(paths.pipeline_dir(with_reference) / grid)).shape[:2]
-    assert width > height   # "custom" and "compare" side by side, not one lone cell
+    assert width > height  # "custom" and "compare" side by side, not one lone cell
 
 
 @pytest.mark.slow
@@ -265,13 +275,12 @@ def _set_masks(project_path, occurrence_id, organism=None, body=None):
     """
     if organism is not None:
         mask_records.save_masks(
-            project_path, [mask_records.make_mask_row(occurrence_id, organism,
-                                                       part="organism")])
+            project_path, [mask_records.make_mask_row(occurrence_id, organism, part="organism")]
+        )
     if body is not None:
         mask_records.save_masks(
-            project_path, [mask_records.make_mask_row(occurrence_id, body,
-                                                       part="body")],
-            reference=True)
+            project_path, [mask_records.make_mask_row(occurrence_id, body, part="body")], reference=True
+        )
 
 
 def test_metric_defaults_to_iou(with_reference):
@@ -292,14 +301,17 @@ def test_reference_part_compares_against_a_different_named_part(segmented_projec
     new function needed.
     """
     occurrence_id = mask_records.load_masks(segmented_project).iloc[0]["occurrence_id"]
-    _set_masks(segmented_project, occurrence_id,
-              organism=a_mask(box=(slice(0, 100), slice(0, 100))),
-              body=a_mask(box=(slice(20, 60), slice(20, 60))))
+    _set_masks(
+        segmented_project,
+        occurrence_id,
+        organism=a_mask(box=(slice(0, 100), slice(0, 100))),
+        body=a_mask(box=(slice(20, 60), slice(20, 60))),
+    )
 
-    default_scores = cf.validate_masks(segmented_project, part="organism",
-                                       visualize=False)
-    body_scores = cf.validate_masks(segmented_project, part="organism",
-                                    reference_part="body", visualize=False)
+    default_scores = cf.validate_masks(segmented_project, part="organism", visualize=False)
+    body_scores = cf.validate_masks(
+        segmented_project, part="organism", reference_part="body", visualize=False
+    )
 
     assert occurrence_id not in default_scores.index  # no "organism" reference
     assert occurrence_id in body_scores.index
@@ -313,15 +325,17 @@ def test_coverage_metric_ignores_predicted_area_outside_the_reference(segmented_
     1.0 under the default IoU.
     """
     occurrence_id = mask_records.load_masks(segmented_project).iloc[0]["occurrence_id"]
-    _set_masks(segmented_project, occurrence_id,
-              organism=a_mask(box=(slice(0, 100), slice(0, 100))),
-              body=a_mask(box=(slice(20, 60), slice(20, 60))))
+    _set_masks(
+        segmented_project,
+        occurrence_id,
+        organism=a_mask(box=(slice(0, 100), slice(0, 100))),
+        body=a_mask(box=(slice(20, 60), slice(20, 60))),
+    )
 
-    iou_scores = cf.validate_masks(segmented_project, part="organism",
-                                   reference_part="body", visualize=False)
-    coverage_scores = cf.validate_masks(segmented_project, part="organism",
-                                        reference_part="body", metric="coverage",
-                                        visualize=False)
+    iou_scores = cf.validate_masks(segmented_project, part="organism", reference_part="body", visualize=False)
+    coverage_scores = cf.validate_masks(
+        segmented_project, part="organism", reference_part="body", metric="coverage", visualize=False
+    )
 
     assert coverage_scores.columns.tolist() == ["coverage"]
     assert coverage_scores.loc[occurrence_id, "coverage"] == 1.0
@@ -342,18 +356,23 @@ def test_parts_returns_one_frame_per_part(segmented_project):
     for part in ("organism", "body"):
         mask_records.save_masks(
             segmented_project,
-            [mask_records.make_mask_row(occurrence_id,
-                                        a_mask(box=(slice(0, 100), slice(0, 100))),
-                                        part=part)])
+            [
+                mask_records.make_mask_row(
+                    occurrence_id, a_mask(box=(slice(0, 100), slice(0, 100))), part=part
+                )
+            ],
+        )
         mask_records.save_masks(
             segmented_project,
-            [mask_records.make_mask_row(occurrence_id,
-                                        a_mask(box=(slice(0, 100), slice(0, 100))),
-                                        part=part)],
-            reference=True)
+            [
+                mask_records.make_mask_row(
+                    occurrence_id, a_mask(box=(slice(0, 100), slice(0, 100))), part=part
+                )
+            ],
+            reference=True,
+        )
 
-    results = cf.validate_masks(segmented_project, parts=["organism", "body"],
-                                visualize=False)
+    results = cf.validate_masks(segmented_project, parts=["organism", "body"], visualize=False)
 
     assert set(results) == {"organism", "body"}
     assert results["organism"].loc[occurrence_id, "iou"] == 1.0
@@ -365,8 +384,7 @@ def test_one_part_still_returns_a_bare_frame(with_reference):
     `parts=` is what asks for the map. The single-part call is the common one
     and keeps handing back the frame a caller means to read straight away.
     """
-    assert isinstance(cf.validate_masks(with_reference, visualize=False),
-                      pd.DataFrame)
+    assert isinstance(cf.validate_masks(with_reference, visualize=False), pd.DataFrame)
 
 
 def test_parts_and_reference_part_together_are_refused(segmented_project):
@@ -377,8 +395,9 @@ def test_parts_and_reference_part_together_are_refused(segmented_project):
     unsupported.
     """
     with pytest.raises(ValueError):
-        cf.validate_masks(segmented_project, parts=["organism", "body"],
-                          reference_part="body", visualize=False)
+        cf.validate_masks(
+            segmented_project, parts=["organism", "body"], reference_part="body", visualize=False
+        )
 
 
 @pytest.mark.slow
@@ -394,8 +413,6 @@ def test_a_moving_transform_still_compares_the_same_pixels(with_reference):
     against misaligned pixels.
     """
     plain = cf.validate_masks(with_reference, visualize=False)
-    moved = cf.validate_masks(with_reference,
-                              transforms=[cf.crop_to_mask(), cf.orient()],
-                              visualize=False)
+    moved = cf.validate_masks(with_reference, transforms=[cf.crop_to_mask(), cf.orient()], visualize=False)
 
     assert moved["iou"].tolist() == pytest.approx(plain["iou"].tolist(), abs=0.02)

@@ -43,8 +43,13 @@ os.environ.setdefault("LOKY_MAX_CPU_COUNT", str(max(1, (os.cpu_count() or 2) - 1
 # export, of unit conversion, and of staleness all have something of the right
 # shape to work on without each building its own run.
 TEMPLATE_METRICS = [
-    "body_length", "max_width", "area_px",
-    "mean_lightness", "blur_variance", "bilateral_asymmetry", "edge_fraction",
+    "body_length",
+    "max_width",
+    "area_px",
+    "mean_lightness",
+    "blur_variance",
+    "bilateral_asymmetry",
+    "edge_fraction",
 ]
 
 SPECIMEN_COUNT = 8
@@ -57,7 +62,7 @@ SPECIMEN_COUNT = 8
 
 # Big enough for eight drawn specimens with room to spare, and small enough
 # that a few hundred copied projects don't fill a disk. See _small_image_store.
-TEST_MAP_SIZE = 4 * 1024 ** 2
+TEST_MAP_SIZE = 4 * 1024**2
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -91,10 +96,15 @@ def _no_ambient_credentials():
     machine and fails on theirs -- the worst kind of test, since the failure
     says nothing about the code.
     """
+    from critterframe.extensions.antenna_lighttraps import api as antenna_api
+
     patcher = pytest.MonkeyPatch()
     for name in list(os.environ):
         if name.startswith(("ANTENNA_", "INAT_")):
             patcher.delenv(name, raising=False)
+    # The extension reads .env lazily, on the first call that needs a value --
+    # after the removal above -- which would put the developer's values back.
+    patcher.setattr(antenna_api, "_environment_loaded", True)
     yield
     patcher.undo()
 
@@ -191,8 +201,7 @@ def _segmented_template(tmp_path_factory, _image_template):
     """The image project with one canonical organism mask per occurrence."""
     project = tmp_path_factory.mktemp("segmented_template") / "project"
     shutil.copytree(_image_template, project)
-    cf.run_segments(project, steps=[cf.segment(ThresholdModel())],
-                    visualize=False)
+    cf.run_segments(project, steps=[cf.segment(ThresholdModel())], visualize=False)
     return project
 
 
@@ -201,13 +210,21 @@ def _measured_template(tmp_path_factory, _segmented_template):
     """The segmented project with a seven-metric 'traits' run recorded."""
     project = tmp_path_factory.mktemp("measured_template") / "project"
     shutil.copytree(_segmented_template, project)
-    cf.run_metrics(project, run_name="traits",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.body_length(), cf.max_width(),
-                            cf.mask_area(name="area_px", unit="px2"),
-                            cf.mean_lightness(), cf.blur_variance(),
-                            cf.bilateral_asymmetry(), cf.edge_fraction()],
-                   visualize=False)
+    cf.run_metrics(
+        project,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[
+            cf.body_length(),
+            cf.max_width(),
+            cf.mask_area(name="area_px", unit="px2"),
+            cf.mean_lightness(),
+            cf.blur_variance(),
+            cf.bilateral_asymmetry(),
+            cf.edge_fraction(),
+        ],
+        visualize=False,
+    )
     return project
 
 

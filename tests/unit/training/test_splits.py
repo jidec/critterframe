@@ -41,13 +41,14 @@ def specimens(tmp_path):
     rows = []
     for specimen in range(15):
         for shot in range(2):
-            rows.append({
-                ID_COL: f"spec{specimen:02d}_{shot}",
-                "specimen": f"spec{specimen:02d}",
-                "species": ["Anax junius", "Anax junius",
-                            "Libellula lydia"][specimen % 3],
-                "device": "boxA" if specimen % 2 else "boxB",
-            })
+            rows.append(
+                {
+                    ID_COL: f"spec{specimen:02d}_{shot}",
+                    "specimen": f"spec{specimen:02d}",
+                    "species": ["Anax junius", "Anax junius", "Libellula lydia"][specimen % 3],
+                    "device": "boxA" if specimen % 2 else "boxB",
+                }
+            )
     save_occurrences(tmp_path, pd.DataFrame(rows))
     return tmp_path
 
@@ -88,8 +89,7 @@ def test_every_requested_name_is_a_key_even_when_empty(specimens, caplog):
     steps later.
     """
     with caplog.at_level("WARNING"):
-        splits = cf.split_ids(specimens, fractions={"train": 0.999,
-                                                      "tiny": 0.001})
+        splits = cf.split_ids(specimens, fractions={"train": 0.999, "tiny": 0.001})
     assert set(splits) == {"train", "tiny"}
     assert splits["tiny"] == []
     assert "came out empty" in caplog.text
@@ -118,11 +118,8 @@ def test_grouping_is_exact(specimens):
     is worth keeping exact, because breaking it doesn't produce a worse score
     -- it produces a BETTER one, for the wrong reason.
     """
-    splits = cf.split_ids(specimens, fractions=FRACTIONS,
-                          group_col="specimen")
-    straddling = [value for value, names in sides_of(specimens, splits,
-                                                     "specimen").items()
-                  if len(names) > 1]
+    splits = cf.split_ids(specimens, fractions=FRACTIONS, group_col="specimen")
+    straddling = [value for value, names in sides_of(specimens, splits, "specimen").items() if len(names) > 1]
     assert straddling == []
 
 
@@ -132,9 +129,7 @@ def test_without_grouping_near_duplicates_do_straddle(specimens):
     shots of a specimen are independent rows and land wherever they fall.
     """
     splits = cf.split_ids(specimens, fractions=FRACTIONS)
-    straddling = [value for value, names in sides_of(specimens, splits,
-                                                     "specimen").items()
-                  if len(names) > 1]
+    straddling = [value for value, names in sides_of(specimens, splits, "specimen").items() if len(names) > 1]
     assert straddling
 
 
@@ -143,13 +138,11 @@ def test_stratifying_keeps_the_rare_species_present(specimens):
     A random split of a long-tailed table can leave a rare class out of
     validation entirely, and then the score says nothing about it.
     """
-    splits = cf.split_ids(specimens, fractions=FRACTIONS,
-                          stratify_col="species")
+    splits = cf.split_ids(specimens, fractions=FRACTIONS, stratify_col="species")
     table = pd.read_parquet(specimens / "occurrences.parquet").set_index(ID_COL)
 
     for name, ids in splits.items():
-        assert set(table.loc[sorted(ids), "species"]) == {"Anax junius",
-                                                          "Libellula lydia"}
+        assert set(table.loc[sorted(ids), "species"]) == {"Anax junius", "Libellula lydia"}
 
 
 def test_both_at_once_keeps_the_grouping_exact(specimens):
@@ -157,11 +150,8 @@ def test_both_at_once_keeps_the_grouping_exact(specimens):
     The tension stated in the module docstring: a group can't be divided to
     balance a stratum, so grouping wins and stratification is approximate.
     """
-    splits = cf.split_ids(specimens, fractions=FRACTIONS,
-                          stratify_col="species", group_col="specimen")
-    straddling = [value for value, names in sides_of(specimens, splits,
-                                                     "specimen").items()
-                  if len(names) > 1]
+    splits = cf.split_ids(specimens, fractions=FRACTIONS, stratify_col="species", group_col="specimen")
+    straddling = [value for value, names in sides_of(specimens, splits, "specimen").items() if len(names) > 1]
     assert straddling == []
 
 
@@ -214,8 +204,7 @@ def test_an_id_that_is_not_in_the_project_raises(specimens):
         cf.split_ids(specimens, occurrence_ids=["spec00_0", "ghost"])
 
 
-def test_a_column_the_project_does_not_have_raises_and_lists_the_ones_it_does(
-        specimens):
+def test_a_column_the_project_does_not_have_raises_and_lists_the_ones_it_does(specimens):
     with pytest.raises(KeyError, match="no column"):
         cf.split_ids(specimens, stratify_col="genus")
 
@@ -243,6 +232,7 @@ def test_a_split_can_be_frozen_as_a_subset(specimens):
     cf.define_subset(specimens, "train", occurrence_ids=splits["train"])
 
     from critterframe.project.subsets import select_ids
+
     assert sorted(select_ids(specimens, subset="train")) == sorted(splits["train"])
 
 
@@ -252,11 +242,13 @@ def test_a_split_can_be_frozen_as_a_subset(specimens):
 
 
 def manifest(rows=20):
-    return pd.DataFrame({
-        "occurrence_id": [f"occ{index:02d}" for index in range(rows)],
-        "label": ["a", "b"] * (rows // 2),
-        "group": [f"g{index // 2}" for index in range(rows)],
-    })
+    return pd.DataFrame(
+        {
+            "occurrence_id": [f"occ{index:02d}" for index in range(rows)],
+            "label": ["a", "b"] * (rows // 2),
+            "group": [f"g{index // 2}" for index in range(rows)],
+        }
+    )
 
 
 def test_split_dataset_adds_a_column_rather_than_splitting_the_frame():
@@ -299,8 +291,7 @@ def test_a_split_draws_its_class_counts(specimens):
     from critterframe.project import paths
 
     cf.split_ids(specimens, fractions=FRACTIONS, stratify_col="species")
-    assert len(list(paths.pipeline_dir(specimens)
-                    .glob("split_ids_*__counts.png"))) == 1
+    assert len(list(paths.pipeline_dir(specimens).glob("split_ids_*__counts.png"))) == 1
 
 
 def test_a_split_with_visualize_false_draws_nothing(specimens):

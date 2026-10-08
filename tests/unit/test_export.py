@@ -40,15 +40,21 @@ from critterframe.recipes import Recipe
 from critterframe.metrics.dimensions import body_length
 
 
-def store_values(project_path, values, run_name="traits", part="organism",
-                 metric_name="body_length", unit="px"):
+def store_values(
+    project_path, values, run_name="traits", part="organism", metric_name="body_length", unit="px"
+):
     """Append {occurrence_id: value} under a fresh run of `run_name`."""
     recipe = Recipe("metric", run_name, [body_length()], part=part)
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, part, metric_name, value,
-                                    unit=unit)
-                    for occurrence_id, value in values.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(occurrence_id, part, metric_name, value, unit=unit)
+            for occurrence_id, value in values.items()
+        ],
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -61,18 +67,15 @@ def test_a_column_carries_run_part_and_metric():
     All three vary independently and any two can collide -- the same metric on
     head and thorax, or under two differently configured runs.
     """
-    assert column_name("traits", "organism", "body_length") == \
-        "traits__organism__body_length"
+    assert column_name("traits", "organism", "body_length") == "traits__organism__body_length"
 
 
 def test_a_dict_valued_metric_gets_one_column_per_key():
-    assert column_name("traits", "organism", "centroid", "x") == \
-        "traits__organism__centroid__x"
+    assert column_name("traits", "organism", "centroid", "x") == "traits__organism__centroid__x"
 
 
 def test_the_same_metric_on_two_parts_does_not_collide():
-    assert (column_name("traits", "head", "length")
-            != column_name("traits", "thorax", "length"))
+    assert column_name("traits", "head", "length") != column_name("traits", "thorax", "length")
 
 
 # ---------------------------------------------------------------------------
@@ -104,8 +107,7 @@ def test_the_newest_value_wins(metadata_project):
 
 
 def test_a_dict_value_becomes_several_columns(metadata_project):
-    store_values(metadata_project, {"specimen0": {"x": 1.0, "y": 2.0}},
-                 metric_name="centroid")
+    store_values(metadata_project, {"specimen0": {"x": 1.0, "y": 2.0}}, metric_name="centroid")
     wide = metrics_wide(metadata_project)
     assert wide["traits__organism__centroid__x"].iloc[0] == 1.0
     assert wide["traits__organism__centroid__y"].iloc[0] == 2.0
@@ -126,11 +128,12 @@ def test_two_runs_of_the_same_metric_stay_apart(metadata_project):
 
 def test_wide_can_be_narrowed_by_run_part_and_metric(metadata_project):
     store_values(metadata_project, {"specimen0": 10.0}, run_name="traits")
-    store_values(metadata_project, {"specimen0": 0.5}, run_name="qc",
-                 metric_name="blur_variance")
+    store_values(metadata_project, {"specimen0": 0.5}, run_name="qc", metric_name="blur_variance")
 
     assert metrics_wide(metadata_project, run_names=["qc"]).columns.tolist() == [
-        ID_COL, "qc__organism__blur_variance"]
+        ID_COL,
+        "qc__organism__blur_variance",
+    ]
     assert metrics_wide(metadata_project, metric_names=["body_length"]).shape[1] == 2
     assert metrics_wide(metadata_project, parts=["wing"]).columns.tolist() == [ID_COL]
 
@@ -151,8 +154,9 @@ def test_an_unmeasured_project_gives_back_just_the_id_column(metadata_project):
 
 def test_units_are_reported_per_column(metadata_project):
     store_values(metadata_project, {"specimen0": 10.0}, unit="px")
-    store_values(metadata_project, {"specimen0": 0.5}, run_name="qc",
-                 metric_name="mask_fraction", unit="fraction")
+    store_values(
+        metadata_project, {"specimen0": 0.5}, run_name="qc", metric_name="mask_fraction", unit="fraction"
+    )
 
     assert metric_units(metadata_project) == {
         "traits__organism__body_length": "px",
@@ -161,8 +165,7 @@ def test_units_are_reported_per_column(metadata_project):
 
 
 def test_a_dict_metric_s_keys_share_the_parent_unit(metadata_project):
-    store_values(metadata_project, {"specimen0": {"x": 1.0, "y": 2.0}},
-                 metric_name="centroid", unit="px")
+    store_values(metadata_project, {"specimen0": {"x": 1.0, "y": 2.0}}, metric_name="centroid", unit="px")
     units = metric_units(metadata_project)
     assert units["traits__organism__centroid__x"] == "px"
     assert units["traits__organism__centroid__y"] == "px"
@@ -174,12 +177,14 @@ def test_a_dict_metric_s_keys_share_the_parent_unit(metadata_project):
 
 
 def wide_frame():
-    return pd.DataFrame({
-        ID_COL: ["a", "b"],
-        "traits__organism__body_length": [100.0, 200.0],
-        "traits__organism__area_px": [10000.0, 40000.0],
-        "traits__organism__mean_lightness": [0.5, 0.6],
-    })
+    return pd.DataFrame(
+        {
+            ID_COL: ["a", "b"],
+            "traits__organism__body_length": [100.0, 200.0],
+            "traits__organism__area_px": [10000.0, 40000.0],
+            "traits__organism__mean_lightness": [0.5, 0.6],
+        }
+    )
 
 
 UNITS = {
@@ -190,8 +195,7 @@ UNITS = {
 
 
 def test_lengths_divide_once_and_areas_twice():
-    converted = _to_millimetres(wide_frame(), UNITS,
-                               pd.Series({"a": 10.0, "b": 20.0}))
+    converted = _to_millimetres(wide_frame(), UNITS, pd.Series({"a": 10.0, "b": 20.0}))
     assert converted["traits__organism__body_length_mm"].tolist() == [10.0, 10.0]
     assert converted["traits__organism__area_px_mm2"].tolist() == [100.0, 100.0]
 
@@ -246,21 +250,26 @@ def test_nothing_convertible_leaves_the_frame_untouched(caplog):
 
 
 def filterable():
-    return pd.DataFrame({
-        ID_COL: ["a", "b", "c", "d"],
-        "length": [10.0, 50.0, 90.0, None],
-        "flag": ["usable", "cut_off", "usable", "usable"],
-    })
+    return pd.DataFrame(
+        {
+            ID_COL: ["a", "b", "c", "d"],
+            "length": [10.0, 50.0, 90.0, None],
+            "flag": ["usable", "cut_off", "usable", "usable"],
+        }
+    )
 
 
-@pytest.mark.parametrize("condition, expected", [
-    ((">", 40), ["b", "c"]),
-    ((">=", 50), ["b", "c"]),
-    (("<", 50), ["a"]),
-    (("<=", 50), ["a", "b"]),
-    (("==", 50), ["b"]),
-    (("!=", 50), ["a", "c"]),
-])
+@pytest.mark.parametrize(
+    "condition, expected",
+    [
+        ((">", 40), ["b", "c"]),
+        ((">=", 50), ["b", "c"]),
+        (("<", 50), ["a"]),
+        (("<=", 50), ["a", "b"]),
+        (("==", 50), ["b"]),
+        (("!=", 50), ["a", "c"]),
+    ],
+)
 def test_each_comparison_selects_what_it_says(condition, expected):
     assert _apply_filters(filterable(), {"length": condition})[ID_COL].tolist() == expected
 
@@ -273,26 +282,22 @@ def test_membership_filters_take_a_container():
 
 
 def test_a_callable_expresses_what_the_shorthand_cannot():
-    kept = _apply_filters(filterable(),
-                         {"length": lambda series: series.between(20, 80)})
+    kept = _apply_filters(filterable(), {"length": lambda series: series.between(20, 80)})
     assert kept[ID_COL].tolist() == ["b"]
 
 
 def test_conditions_are_anded_together():
-    kept = _apply_filters(filterable(),
-                         {"length": (">", 20), "flag": ("in", ["usable"])})
+    kept = _apply_filters(filterable(), {"length": (">", 20), "flag": ("in", ["usable"])})
     assert kept[ID_COL].tolist() == ["c"]
 
 
-@pytest.mark.parametrize("condition", [(">", 0), ("<", 1000), ("!=", 1),
-                                       ("not in", ["x"])])
+@pytest.mark.parametrize("condition", [(">", 0), ("<", 1000), ("!=", 1), ("not in", ["x"])])
 def test_a_missing_value_never_passes(condition):
     """
     "This metric wasn't measured" must not quietly count as passing a !=
     test -- an unmeasured occurrence is not a verified-good one.
     """
-    assert "d" not in _apply_filters(filterable(),
-                                    {"length": condition})[ID_COL].tolist()
+    assert "d" not in _apply_filters(filterable(), {"length": condition})[ID_COL].tolist()
 
 
 def test_filtering_on_a_column_that_is_not_there_raises():
@@ -344,8 +349,7 @@ def test_path_false_returns_without_writing(measured_project, tmp_path):
 
 def test_identifying_columns_come_first(measured_project):
     """Where anyone opening the CSV expects them."""
-    exported = cf.export_metrics(measured_project,
-                                 occurrence_columns=["device", "species"])
+    exported = cf.export_metrics(measured_project, occurrence_columns=["device", "species"])
     assert exported.columns[:3].tolist() == [ID_COL, "device", "species"]
 
 
@@ -361,8 +365,7 @@ def test_filters_narrow_the_export_and_delete_nothing(measured_project):
     """
     column = "traits__organism__body_length"
     everything = cf.export_metrics(measured_project)
-    filtered = cf.export_metrics(measured_project,
-                                 filters={column: (">", everything[column].median())})
+    filtered = cf.export_metrics(measured_project, filters={column: (">", everything[column].median())})
 
     assert 0 < len(filtered) < len(everything)
     assert len(cf.export_metrics(measured_project)) == len(everything)
@@ -374,27 +377,30 @@ QC_AREA = "qc__organism__mask_area"
 @pytest.fixture
 def screened_project(measured_project):
     """The measured project plus a 'qc' run, the kind a filter reads and an analysis doesn't."""
-    cf.run_metrics(measured_project, run_name="qc", visualize=False,
-                   metrics=[cf.mask_area(), cf.mask_fraction()])
+    cf.run_metrics(
+        measured_project, run_name="qc", visualize=False, metrics=[cf.mask_area(), cf.mask_fraction()]
+    )
     return measured_project
 
 
 def qc_cutoff(project_path, column=QC_AREA, **kwargs):
     """A cutoff some occurrences pass and some don't."""
-    return cf.export_metrics(project_path, path=False, manifest=False,
-                             **kwargs)[column].median()
+    return cf.export_metrics(project_path, path=False, manifest=False, **kwargs)[column].median()
 
 
-@pytest.mark.parametrize("selection", [
-    {"run_names": ["traits"]},
-    {"metric_names": ["body_length"]},
-])
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {"run_names": ["traits"]},
+        {"metric_names": ["body_length"]},
+    ],
+)
 def test_a_filter_reads_a_column_the_selection_left_out(screened_project, selection):
     """What decides the rows and what goes in the file are two selections."""
     unfiltered = cf.export_metrics(screened_project, path=False, **selection)
     filtered = cf.export_metrics(
-        screened_project, path=False, **selection,
-        filters={QC_AREA: (">", qc_cutoff(screened_project))})
+        screened_project, path=False, **selection, filters={QC_AREA: (">", qc_cutoff(screened_project))}
+    )
 
     assert 0 < len(filtered) < len(unfiltered)
     assert filtered.columns.tolist() == unfiltered.columns.tolist()
@@ -403,8 +409,11 @@ def test_a_filter_reads_a_column_the_selection_left_out(screened_project, select
 def test_a_selected_column_that_is_filtered_on_is_still_exported(screened_project):
     column = "traits__organism__body_length"
     filtered = cf.export_metrics(
-        screened_project, path=False, run_names=["traits"],
-        filters={column: (">", 0), QC_AREA: (">", qc_cutoff(screened_project))})
+        screened_project,
+        path=False,
+        run_names=["traits"],
+        filters={column: (">", 0), QC_AREA: (">", qc_cutoff(screened_project))},
+    )
 
     assert column in filtered.columns
     assert not [c for c in filtered.columns if c.startswith("qc__")]
@@ -413,16 +422,17 @@ def test_a_selected_column_that_is_filtered_on_is_still_exported(screened_projec
 def test_an_unnarrowed_export_keeps_its_filter_columns(screened_project):
     """Leaving a column out is the selection's doing, never the filter's."""
     filtered = cf.export_metrics(
-        screened_project, path=False,
-        filters={QC_AREA: (">", qc_cutoff(screened_project))})
+        screened_project, path=False, filters={QC_AREA: (">", qc_cutoff(screened_project))}
+    )
     assert QC_AREA in filtered.columns
 
 
 def test_a_filter_only_run_is_named_in_the_manifest(screened_project, tmp_path):
     """Its columns aren't exported, but it decided the rows."""
     out = tmp_path / "traits.csv"
-    cf.export_metrics(screened_project, out, run_names=["traits"],
-                      filters={QC_AREA: (">", qc_cutoff(screened_project))})
+    cf.export_metrics(
+        screened_project, out, run_names=["traits"], filters={QC_AREA: (">", qc_cutoff(screened_project))}
+    )
 
     record = json.loads(cf_paths.export_sidecar_path(out).read_text(encoding="utf-8"))
     assert sorted(run["name"] for run in record["runs"]) == ["qc", "traits"]
@@ -434,11 +444,10 @@ def test_a_filter_on_an_unselected_column_can_be_written_in_millimetres(screened
     cf.declare_scale(screened_project, 4.0, scope="device", scope_value="boxA")
     converted = f"{QC_AREA}_mm2"
     cutoff = qc_cutoff(screened_project, column=converted, units="mm")
-    unfiltered = cf.export_metrics(screened_project, path=False, units="mm",
-                                   run_names=["traits"])
-    filtered = cf.export_metrics(screened_project, path=False, units="mm",
-                                 run_names=["traits"],
-                                 filters={converted: (">", cutoff)})
+    unfiltered = cf.export_metrics(screened_project, path=False, units="mm", run_names=["traits"])
+    filtered = cf.export_metrics(
+        screened_project, path=False, units="mm", run_names=["traits"], filters={converted: (">", cutoff)}
+    )
 
     assert 0 < len(filtered) < len(unfiltered)
     assert filtered.columns.tolist() == unfiltered.columns.tolist()
@@ -446,20 +455,26 @@ def test_a_filter_on_an_unselected_column_can_be_written_in_millimetres(screened
 
 def test_a_filter_column_no_run_holds_still_raises(screened_project):
     with pytest.raises(KeyError, match="not in the export"):
-        cf.export_metrics(screened_project, path=False, run_names=["traits"],
-                          filters={"qc__organism__nope": (">", 0)})
+        cf.export_metrics(
+            screened_project, path=False, run_names=["traits"], filters={"qc__organism__nope": (">", 0)}
+        )
 
 
 def test_a_filter_only_value_does_not_count_as_measured(metadata_project):
     """drop_empty is judged on the selected columns; a QC score alone isn't a trait."""
     first, second, third = load_occurrences(metadata_project)[ID_COL].tolist()[:3]
     store_values(metadata_project, {first: 10.0, second: 20.0})
-    store_values(metadata_project, {first: 1.0, second: 1.0, third: 1.0},
-                 run_name="qc", metric_name="score", unit="score")
+    store_values(
+        metadata_project,
+        {first: 1.0, second: 1.0, third: 1.0},
+        run_name="qc",
+        metric_name="score",
+        unit="score",
+    )
 
-    exported = cf.export_metrics(metadata_project, path=False,
-                                 run_names=["traits"],
-                                 filters={"qc__organism__score": (">", 0)})
+    exported = cf.export_metrics(
+        metadata_project, path=False, run_names=["traits"], filters={"qc__organism__score": (">", 0)}
+    )
     assert sorted(exported[ID_COL]) == sorted([first, second])
 
 
@@ -484,10 +499,15 @@ def embedded_project(metadata_project):
     occurrences = load_occurrences(metadata_project)
     lydia = occurrences.loc[occurrences["species"] == "Libellula lydia", ID_COL].tolist()[:3]
     anax = occurrences.loc[occurrences["species"] == "Anax junius", ID_COL].tolist()[:3]
-    vectors = {lydia[0]: pointing(0), lydia[1]: pointing(10, length=100.0), lydia[2]: pointing(20),
-               anax[0]: pointing(90), anax[1]: pointing(100), anax[2]: pointing(80)}
-    store_values(metadata_project, vectors, run_name="embedding", metric_name="embedding",
-                 unit="embedding")
+    vectors = {
+        lydia[0]: pointing(0),
+        lydia[1]: pointing(10, length=100.0),
+        lydia[2]: pointing(20),
+        anax[0]: pointing(90),
+        anax[1]: pointing(100),
+        anax[2]: pointing(80),
+    }
+    store_values(metadata_project, vectors, run_name="embedding", metric_name="embedding", unit="embedding")
     return metadata_project, lydia, anax
 
 
@@ -506,8 +526,9 @@ def test_vectors_are_compared_by_direction_unless_asked_otherwise(embedded_proje
 def test_only_the_given_occurrences_are_measured_against(embedded_project):
     """Without the first lydia, the other two are each the other's only neighbour."""
     project, lydia, anax = embedded_project
-    chosen = cf.exemplars_per_group(project, "embedding", "species",
-                                    occurrence_ids=[lydia[1], lydia[2], *anax])
+    chosen = cf.exemplars_per_group(
+        project, "embedding", "species", occurrence_ids=[lydia[1], lydia[2], *anax]
+    )
     # a tie, which goes to the first id
     assert chosen == sorted([min(lydia[1], lydia[2]), anax[0]])
 
@@ -519,8 +540,9 @@ def test_several_exemplars_per_group(embedded_project):
 
 def test_a_vector_of_another_length_is_left_out(embedded_project, caplog):
     project, lydia, anax = embedded_project
-    store_values(project, {lydia[1]: [1.0, 0.0, 5.0]}, run_name="embedding",
-                 metric_name="embedding", unit="embedding")
+    store_values(
+        project, {lydia[1]: [1.0, 0.0, 5.0]}, run_name="embedding", metric_name="embedding", unit="embedding"
+    )
     with caplog.at_level("WARNING"):
         chosen = cf.exemplars_per_group(project, "embedding", "species")
     assert lydia[1] not in chosen and "left out" in caplog.text
@@ -532,8 +554,9 @@ def test_a_single_number_picks_the_median_member_without_being_scaled_away(metad
     lydia = occurrences.loc[occurrences["species"] == "Libellula lydia", ID_COL].tolist()[:3]
     store_values(metadata_project, {lydia[0]: 90.0, lydia[1]: 10.0, lydia[2]: 50.0})
 
-    assert cf.exemplars_per_group(metadata_project, "traits", "species",
-                                  metric_name="body_length") == [lydia[2]]
+    assert cf.exemplars_per_group(metadata_project, "traits", "species", metric_name="body_length") == [
+        lydia[2]
+    ]
 
 
 def test_a_dict_of_numbers_is_a_feature_and_its_other_entries_are_skipped(metadata_project, caplog):
@@ -543,18 +566,31 @@ def test_a_dict_of_numbers_is_a_feature_and_its_other_entries_are_skipped(metada
     anax = occurrences.loc[occurrences["species"] == "Anax junius", ID_COL].tolist()[:1]
 
     def mix(red, blue, top):
-        return {"red": red, "blue": blue, "unmatched": 1.0 - red - blue,
-                "ranked_color_1": top, "any_present": True}
+        return {
+            "red": red,
+            "blue": blue,
+            "unmatched": 1.0 - red - blue,
+            "ranked_color_1": top,
+            "any_present": True,
+        }
 
-    store_values(metadata_project,
-                 {lydia[0]: mix(0.9, 0.0, "red"), lydia[1]: mix(0.1, 0.8, "blue"),
-                  lydia[2]: mix(0.5, 0.4, "red"),
-                  anax[0]: {"red": 0.2, "ranked_color_1": "red"}},   # no blue: other keys
-                 run_name="colours", metric_name="color_bins", unit="fraction")
+    store_values(
+        metadata_project,
+        {
+            lydia[0]: mix(0.9, 0.0, "red"),
+            lydia[1]: mix(0.1, 0.8, "blue"),
+            lydia[2]: mix(0.5, 0.4, "red"),
+            anax[0]: {"red": 0.2, "ranked_color_1": "red"},
+        },  # no blue: other keys
+        run_name="colours",
+        metric_name="color_bins",
+        unit="fraction",
+    )
 
     with caplog.at_level("WARNING"):
-        chosen = cf.exemplars_per_group(metadata_project, "colours", "species",
-                                        metric_name="color_bins", normalize=False)
+        chosen = cf.exemplars_per_group(
+            metadata_project, "colours", "species", metric_name="color_bins", normalize=False
+        )
     assert chosen == [lydia[2]]
     assert "left out" in caplog.text
 
@@ -591,8 +627,9 @@ def by_id(frame):
 
 def test_a_part_failing_its_filters_is_emptied_and_the_row_kept(two_part_project):
     project, (first, second, third) = two_part_project
-    exported = by_id(cf.export_metrics(project, path=False, manifest=False,
-                                       part_filters={"abdomen": {ABDOMEN: (">", 10)}}))
+    exported = by_id(
+        cf.export_metrics(project, path=False, manifest=False, part_filters={"abdomen": {ABDOMEN: (">", 10)}})
+    )
 
     assert exported.loc[second, HEAD] == 20.0 and pd.isna(exported.loc[second, ABDOMEN])
     assert exported.loc[first, ABDOMEN] == 50.0
@@ -602,8 +639,7 @@ def test_a_part_failing_its_filters_is_emptied_and_the_row_kept(two_part_project
 
 def test_a_row_filter_would_have_dropped_the_whole_occurrence(two_part_project):
     project, (first, second, third) = two_part_project
-    exported = cf.export_metrics(project, path=False, manifest=False,
-                                 filters={ABDOMEN: (">", 10)})
+    exported = cf.export_metrics(project, path=False, manifest=False, filters={ABDOMEN: (">", 10)})
     assert second not in set(exported[ID_COL])
 
 
@@ -614,8 +650,7 @@ def test_a_row_with_no_part_left_is_dropped_unless_empty_rows_are_kept(two_part_
     exported = cf.export_metrics(project, path=False, manifest=False, part_filters=rules)
     assert sorted(exported[ID_COL]) == sorted([second, third])
 
-    everyone = cf.export_metrics(project, path=False, manifest=False, part_filters=rules,
-                                 drop_empty=False)
+    everyone = cf.export_metrics(project, path=False, manifest=False, part_filters=rules, drop_empty=False)
     assert first in set(everyone[ID_COL])
     assert by_id(everyone).loc[first, [HEAD, ABDOMEN]].isna().all()
 
@@ -623,9 +658,14 @@ def test_a_row_with_no_part_left_is_dropped_unless_empty_rows_are_kept(two_part_
 def test_every_part_is_judged_before_any_is_emptied(two_part_project):
     """The head's rule reads the abdomen's column, which the abdomen's own rule empties."""
     project, (first, second, third) = two_part_project
-    exported = by_id(cf.export_metrics(
-        project, path=False, manifest=False,
-        part_filters={"abdomen": {ABDOMEN: (">", 10)}, "head": {ABDOMEN: ("<", 10)}}))
+    exported = by_id(
+        cf.export_metrics(
+            project,
+            path=False,
+            manifest=False,
+            part_filters={"abdomen": {ABDOMEN: (">", 10)}, "head": {ABDOMEN: ("<", 10)}},
+        )
+    )
 
     assert exported.loc[second, HEAD] == 20.0 and pd.isna(exported.loc[second, ABDOMEN])
     assert pd.isna(exported.loc[first, HEAD]) and exported.loc[first, ABDOMEN] == 50.0
@@ -633,20 +673,36 @@ def test_every_part_is_judged_before_any_is_emptied(two_part_project):
 
 def test_row_filters_run_before_part_filters(two_part_project):
     project, (first, second, third) = two_part_project
-    exported = cf.export_metrics(project, path=False, manifest=False,
-                                 filters={ABDOMEN: ("<", 55)},
-                                 part_filters={"abdomen": {ABDOMEN: (">", 10)}})
+    exported = cf.export_metrics(
+        project,
+        path=False,
+        manifest=False,
+        filters={ABDOMEN: ("<", 55)},
+        part_filters={"abdomen": {ABDOMEN: (">", 10)}},
+    )
     assert sorted(exported[ID_COL]) == sorted([first, second])
     assert pd.isna(by_id(exported).loc[second, ABDOMEN])
 
 
 def test_a_part_filter_reads_a_column_the_selection_left_out(two_part_project):
     project, (first, second, third) = two_part_project
-    store_values(project, {first: 0.9, second: 0.1, third: 0.9}, run_name="qc",
-                 part="abdomen", metric_name="score", unit="score")
-    exported = by_id(cf.export_metrics(
-        project, path=False, manifest=False, run_names=["traits"],
-        part_filters={"abdomen": {"qc__abdomen__score": (">", 0.5)}}))
+    store_values(
+        project,
+        {first: 0.9, second: 0.1, third: 0.9},
+        run_name="qc",
+        part="abdomen",
+        metric_name="score",
+        unit="score",
+    )
+    exported = by_id(
+        cf.export_metrics(
+            project,
+            path=False,
+            manifest=False,
+            run_names=["traits"],
+            part_filters={"abdomen": {"qc__abdomen__score": (">", 0.5)}},
+        )
+    )
 
     assert {HEAD, ABDOMEN} <= set(exported.columns)
     assert not [column for column in exported.columns if column.startswith("qc__")]
@@ -656,11 +712,14 @@ def test_a_part_filter_reads_a_column_the_selection_left_out(two_part_project):
 def test_a_part_with_nothing_exported_cannot_be_filtered(two_part_project):
     project, _ids = two_part_project
     with pytest.raises(ValueError, match="no exported column"):
-        cf.export_metrics(project, path=False, manifest=False,
-                          part_filters={"thorax": {ABDOMEN: (">", 10)}})
+        cf.export_metrics(project, path=False, manifest=False, part_filters={"thorax": {ABDOMEN: (">", 10)}})
     with pytest.raises(KeyError, match="not in the export"):
-        cf.export_metrics(project, path=False, manifest=False,
-                          part_filters={"abdomen": {"traits__abdomen__nope": (">", 10)}})
+        cf.export_metrics(
+            project,
+            path=False,
+            manifest=False,
+            part_filters={"abdomen": {"traits__abdomen__nope": (">", 10)}},
+        )
 
 
 def test_part_filters_are_in_the_manifest_with_what_they_did(two_part_project, tmp_path):
@@ -670,8 +729,7 @@ def test_part_filters_are_in_the_manifest_with_what_they_did(two_part_project, t
     record = json.loads(cf_paths.export_sidecar_path(out).read_text(encoding="utf-8"))
 
     assert record["selection"]["part_filters"] == {"abdomen": {ABDOMEN: [">", 10]}}
-    assert record["part_counts"] == {
-        "abdomen": {"kept": 2, "filtered_out": 1, "not_measured": 0}}
+    assert record["part_counts"] == {"abdomen": {"kept": 2, "filtered_out": 1, "not_measured": 0}}
     # the emptied abdomen value is not among the values the file is said to hold
     assert record["source_masks"]["n_values"] == 4
 
@@ -683,8 +741,10 @@ def test_an_export_without_part_filters_records_nothing_about_them(two_part_proj
     cf.export_metrics(project, plain)
     cf.export_metrics(project, filtered, part_filters={"abdomen": {ABDOMEN: (">", 10)}})
     cf.export_metrics(project, moved, part_filters={"abdomen": {ABDOMEN: (">", 55)}})
-    records = [json.loads(cf_paths.export_sidecar_path(path).read_text(encoding="utf-8"))
-               for path in (plain, filtered, moved)]
+    records = [
+        json.loads(cf_paths.export_sidecar_path(path).read_text(encoding="utf-8"))
+        for path in (plain, filtered, moved)
+    ]
 
     assert "part_counts" not in records[0] and "part_filters" not in records[0]["selection"]
     assert len({record["export_hash"] for record in records}) == 3
@@ -694,11 +754,22 @@ def test_a_part_filter_can_be_written_in_millimetres(screened_project):
     cf.declare_scale(screened_project, 4.0, scope="device", scope_value="boxA")
     converted = f"{QC_AREA}_mm2"
     cutoff = qc_cutoff(screened_project, column=converted, units="mm")
-    by_row = cf.export_metrics(screened_project, path=False, units="mm", manifest=False,
-                               run_names=["traits"], filters={converted: (">", cutoff)})
-    by_part = cf.export_metrics(screened_project, path=False, units="mm", manifest=False,
-                                run_names=["traits"],
-                                part_filters={"organism": {converted: (">", cutoff)}})
+    by_row = cf.export_metrics(
+        screened_project,
+        path=False,
+        units="mm",
+        manifest=False,
+        run_names=["traits"],
+        filters={converted: (">", cutoff)},
+    )
+    by_part = cf.export_metrics(
+        screened_project,
+        path=False,
+        units="mm",
+        manifest=False,
+        run_names=["traits"],
+        part_filters={"organism": {converted: (">", cutoff)}},
+    )
 
     # one part exported, so emptying it is dropping the row
     assert sorted(by_part[ID_COL]) == sorted(by_row[ID_COL])
@@ -738,19 +809,28 @@ def test_only_millimetres_are_supported(measured_project):
 
 def screen():
     """A project's own screening label: one about the image, so asked without a mask."""
-    return exclusive_label_annotation(["usable", "cut_off", "blurry"], name="usability",
-                                      requires_mask=False)
+    return exclusive_label_annotation(["usable", "cut_off", "blurry"], name="usability", requires_mask=False)
 
 
-def store_flags(project_path, flags, run_name="screening",
-                source_mask_hash=None):
+def store_flags(project_path, flags, run_name="screening", source_mask_hash=None):
     recipe = Recipe("metric", run_name, [screen()], part="organism")
     run_id = start_run(project_path, recipe)
-    append_metrics(project_path, run_id, recipe.hash,
-                   [make_metric_row(occurrence_id, "organism", "usability",
-                                    flag, unit="category",
-                                    source_mask_hash=source_mask_hash)
-                    for occurrence_id, flag in flags.items()])
+    append_metrics(
+        project_path,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row(
+                occurrence_id,
+                "organism",
+                "usability",
+                flag,
+                unit="category",
+                source_mask_hash=source_mask_hash,
+            )
+            for occurrence_id, flag in flags.items()
+        ],
+    )
 
 
 def test_stored_labels_can_be_selected_on_by_bare_metric_name(metadata_project):
@@ -758,11 +838,11 @@ def test_stored_labels_can_be_selected_on_by_bare_metric_name(metadata_project):
     The run and part prefixes are added for you, so a screening pass's usable
     crops are {"usability": "usable"}.
     """
-    store_flags(metadata_project, {"specimen0": "usable", "specimen1": "cut_off",
-                                   "specimen2": "usable"})
-    assert occurrences_matching(metadata_project, "screening",
-                                {"usability": "usable"}) == ["specimen0",
-                                                                  "specimen2"]
+    store_flags(metadata_project, {"specimen0": "usable", "specimen1": "cut_off", "specimen2": "usable"})
+    assert occurrences_matching(metadata_project, "screening", {"usability": "usable"}) == [
+        "specimen0",
+        "specimen2",
+    ]
 
 
 def test_a_mistyped_metric_name_raises_once_there_is_data(metadata_project):
@@ -773,20 +853,17 @@ def test_a_mistyped_metric_name_raises_once_there_is_data(metadata_project):
     """
     store_flags(metadata_project, {"specimen0": "usable"})
     with pytest.raises(KeyError, match="rule column"):
-        occurrences_matching(metadata_project, "screening",
-                             {"annotate_flag": "usable"})
+        occurrences_matching(metadata_project, "screening", {"annotate_flag": "usable"})
 
 
-def test_a_run_nobody_has_done_yet_selects_none_and_says_so(metadata_project,
-                                                            caplog):
+def test_a_run_nobody_has_done_yet_selects_none_and_says_so(metadata_project, caplog):
     """
     The one empty case that ISN'T a typo. There is nothing to check a rule
     against, so the typo guard can't apply -- it applies from the first
     recorded value onward.
     """
     with caplog.at_level("WARNING"):
-        assert occurrences_matching(metadata_project, "screening",
-                                    {"usability": "usable"}) == []
+        assert occurrences_matching(metadata_project, "screening", {"usability": "usable"}) == []
     assert "nothing to match" in caplog.text
 
 
@@ -800,27 +877,30 @@ def test_labels_survive_a_resegmentation_by_default(metadata_project):
     from critterframe.records import masks as mask_records
     from helpers.synthetic import blob_mask
 
-    store_flags(metadata_project, {"specimen0": "usable"},
-                source_mask_hash="the_mask_that_was_on_screen")
-    mask_records.save_masks(metadata_project, [
-        mask_records.make_mask_row("specimen0", blob_mask(),
-                                   recipe_hash="brand_new")])
+    store_flags(metadata_project, {"specimen0": "usable"}, source_mask_hash="the_mask_that_was_on_screen")
+    mask_records.save_masks(
+        metadata_project, [mask_records.make_mask_row("specimen0", blob_mask(), recipe_hash="brand_new")]
+    )
 
-    assert occurrences_matching(metadata_project, "screening",
-                                {"usability": "usable"}) == ["specimen0"]
-    assert occurrences_matching(metadata_project, "screening",
-                                {"usability": "usable"},
-                                current_only=True) == []
+    assert occurrences_matching(metadata_project, "screening", {"usability": "usable"}) == ["specimen0"]
+    assert (
+        occurrences_matching(metadata_project, "screening", {"usability": "usable"}, current_only=True) == []
+    )
 
 
 def test_numeric_labels_match_as_stored(metadata_project):
     """Values are compared as they were stored, without coercion."""
     recipe = Recipe("metric", "qc", [screen()], part="organism")
     run_id = start_run(metadata_project, recipe)
-    append_metrics(metadata_project, run_id, recipe.hash, [
-        make_metric_row("specimen0", "organism", "grade", 3),
-        make_metric_row("specimen1", "organism", "grade", np.int64(4)),
-    ])
+    append_metrics(
+        metadata_project,
+        run_id,
+        recipe.hash,
+        [
+            make_metric_row("specimen0", "organism", "grade", 3),
+            make_metric_row("specimen1", "organism", "grade", np.int64(4)),
+        ],
+    )
     assert occurrences_matching(metadata_project, "qc", {"grade": 4}) == ["specimen1"]
 
 
@@ -908,11 +988,9 @@ def test_a_different_selection_is_a_different_export(measured_project, tmp_path)
     everything = tmp_path / "all.csv"
     narrowed = tmp_path / "some.csv"
     cf.export_metrics(measured_project, everything)
-    cf.export_metrics(measured_project, narrowed,
-                      metric_names=["body_length"])
+    cf.export_metrics(measured_project, narrowed, metric_names=["body_length"])
 
-    assert read_sidecar(everything)["export_hash"] \
-        != read_sidecar(narrowed)["export_hash"]
+    assert read_sidecar(everything)["export_hash"] != read_sidecar(narrowed)["export_hash"]
 
 
 def test_resegmenting_moves_the_export_hash(measured_project, tmp_path):
@@ -926,24 +1004,35 @@ def test_resegmenting_moves_the_export_hash(measured_project, tmp_path):
     before = tmp_path / "before.csv"
     cf.export_metrics(measured_project, before)
 
-    cf.run_segments(measured_project, steps=[cf.segment(ThresholdModel(erode=3))],
-                    run_name="tighter", visualize=False)
+    cf.run_segments(
+        measured_project, steps=[cf.segment(ThresholdModel(erode=3))], run_name="tighter", visualize=False
+    )
     # The exact recipe _measured_template used under "traits" (conftest.py) --
     # run_name is pinned to a recipe, so re-measuring after resegmenting has to
     # be this same recipe rather than a narrower stand-in.
-    cf.run_metrics(measured_project, run_name="traits",
-                   transforms=[cf.remove_appendages(), cf.orient()],
-                   metrics=[cf.body_length(), cf.max_width(),
-                            cf.mask_area(name="area_px", unit="px2"),
-                            cf.mean_lightness(), cf.blur_variance(),
-                            cf.bilateral_asymmetry(), cf.edge_fraction()],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project,
+        run_name="traits",
+        transforms=[cf.remove_appendages(), cf.orient()],
+        metrics=[
+            cf.body_length(),
+            cf.max_width(),
+            cf.mask_area(name="area_px", unit="px2"),
+            cf.mean_lightness(),
+            cf.blur_variance(),
+            cf.bilateral_asymmetry(),
+            cf.edge_fraction(),
+        ],
+        visualize=False,
+    )
 
     after = tmp_path / "after.csv"
     cf.export_metrics(measured_project, after)
 
-    assert read_sidecar(before)["source_masks"]["derivations"] \
+    assert (
+        read_sidecar(before)["source_masks"]["derivations"]
         != read_sidecar(after)["source_masks"]["derivations"]
+    )
     assert read_sidecar(before)["export_hash"] != read_sidecar(after)["export_hash"]
 
 
@@ -953,8 +1042,13 @@ def test_how_the_rows_were_chosen_is_recorded(measured_project, tmp_path):
     useful if the threshold that was applied is still knowable a year later.
     """
     out = tmp_path / "traits.csv"
-    cf.export_metrics(measured_project, out, units=None, current_only=True,
-                      filters={"traits__organism__body_length": (">", 5)})
+    cf.export_metrics(
+        measured_project,
+        out,
+        units=None,
+        current_only=True,
+        filters={"traits__organism__body_length": (">", 5)},
+    )
 
     selection = read_sidecar(out)["selection"]
     assert selection["filters"] == {"traits__organism__body_length": [">", 5]}
@@ -969,19 +1063,18 @@ def test_a_predicate_filter_is_recorded_by_name(measured_project, tmp_path):
     kept, and the docstring says so -- two different lambdas sharing a name are
     indistinguishable here.
     """
+
     def not_tiny(series):
         return series > 5
 
     out = tmp_path / "traits.csv"
-    cf.export_metrics(measured_project, out,
-                      filters={"traits__organism__body_length": not_tiny})
+    cf.export_metrics(measured_project, out, filters={"traits__organism__body_length": not_tiny})
 
     recorded = read_sidecar(out)["selection"]["filters"]
     assert recorded["traits__organism__body_length"]["callable"].endswith("not_tiny")
 
     again = tmp_path / "again.csv"
-    cf.export_metrics(measured_project, again,
-                      filters={"traits__organism__body_length": not_tiny})
+    cf.export_metrics(measured_project, again, filters={"traits__organism__body_length": not_tiny})
     assert read_sidecar(out)["export_hash"] == read_sidecar(again)["export_hash"]
 
 
@@ -992,7 +1085,7 @@ def test_the_project_logs_exports_it_wrote_elsewhere(measured_project, tmp_path)
     has this project handed out".
     """
     cf.export_metrics(measured_project, tmp_path / "traits.csv")
-    cf.export_metrics(measured_project, path=False)          # returned, never written
+    cf.export_metrics(measured_project, path=False)  # returned, never written
 
     log = cf.load_exports(measured_project)
     assert len(log) == 2
@@ -1008,8 +1101,7 @@ def test_a_rename_relabels_and_changes_nothing_else(measured_project, tmp_path):
     out = tmp_path / "traits.csv"
     renamed = cf.export_metrics(measured_project, out, rename={column: "length"})
 
-    assert renamed.columns.tolist() == ["length" if c == column else c
-                                        for c in plain.columns]
+    assert renamed.columns.tolist() == ["length" if c == column else c for c in plain.columns]
     assert renamed["length"].tolist() == plain[column].tolist()
     assert pd.read_csv(out).columns.tolist() == renamed.columns.tolist()
 
@@ -1039,48 +1131,51 @@ def test_a_rename_names_the_converted_column(measured_project, tmp_path):
     cf.declare_scale(measured_project, 4.0, scope="device", scope_value="boxA")
     converted = "traits__organism__body_length_mm"
     out = tmp_path / "traits.csv"
-    exported = cf.export_metrics(measured_project, out, units="mm",
-                                 rename={converted: "length_mm"})
+    exported = cf.export_metrics(measured_project, out, units="mm", rename={converted: "length_mm"})
 
     assert "length_mm" in exported.columns
     length = read_sidecar(out)["columns"]["length_mm"]
-    assert (length["column"], length["unit"], length["source_unit"]) \
-        == (converted, "mm", "px")
+    assert (length["column"], length["unit"], length["source_unit"]) == (converted, "mm", "px")
 
 
 def test_filters_take_default_names_alongside_a_rename(measured_project):
     column = "traits__organism__body_length"
     everything = cf.export_metrics(measured_project, path=False)
     filtered = cf.export_metrics(
-        measured_project, path=False, rename={column: "length"},
-        filters={column: (">", everything[column].median())})
+        measured_project,
+        path=False,
+        rename={column: "length"},
+        filters={column: (">", everything[column].median())},
+    )
 
     assert 0 < len(filtered) < len(everything)
     assert "length" in filtered.columns
 
 
-@pytest.mark.parametrize("rename, error, match", [
-    ({"traits__organism__nope": "x"}, KeyError, "not in the export"),
-    ({"traits__organism__body_length": "traits__organism__area_px"},
-     ValueError, "already columns"),
-    ({"traits__organism__body_length": "x", "traits__organism__area_px": "x"},
-     ValueError, "more than one column"),
-    ({ID_COL: "id"}, ValueError, "can't be renamed"),
-])
-def test_a_rename_that_cannot_be_honoured_raises(measured_project, rename,
-                                                 error, match):
+@pytest.mark.parametrize(
+    "rename, error, match",
+    [
+        ({"traits__organism__nope": "x"}, KeyError, "not in the export"),
+        ({"traits__organism__body_length": "traits__organism__area_px"}, ValueError, "already columns"),
+        (
+            {"traits__organism__body_length": "x", "traits__organism__area_px": "x"},
+            ValueError,
+            "more than one column",
+        ),
+        ({ID_COL: "id"}, ValueError, "can't be renamed"),
+    ],
+)
+def test_a_rename_that_cannot_be_honoured_raises(measured_project, rename, error, match):
     with pytest.raises(error, match=match):
         cf.export_metrics(measured_project, path=False, rename=rename)
 
 
 def test_a_rename_is_in_the_hash_only_when_given(measured_project, tmp_path):
     """An export made before the option existed keeps its hash; a relabelled table is a different one."""
-    omitted, empty, renamed = (tmp_path / name for name in
-                               ("omitted.csv", "empty.csv", "renamed.csv"))
+    omitted, empty, renamed = (tmp_path / name for name in ("omitted.csv", "empty.csv", "renamed.csv"))
     cf.export_metrics(measured_project, omitted)
     cf.export_metrics(measured_project, empty, rename={})
-    cf.export_metrics(measured_project, renamed,
-                      rename={"traits__organism__body_length": "length"})
+    cf.export_metrics(measured_project, renamed, rename={"traits__organism__body_length": "length"})
 
     assert "rename" not in read_sidecar(omitted)["selection"]
     assert read_sidecar(omitted)["export_hash"] == read_sidecar(empty)["export_hash"]
@@ -1104,7 +1199,7 @@ def test_a_project_that_has_exported_nothing_reads_as_empty(measured_project):
 
 def test_an_export_inside_the_project_is_logged_relative_to_it(measured_project, tmp_path):
     """So a copied project's log still names its own files; one written elsewhere stays absolute."""
-    cf.export_metrics(measured_project)                        # the default: exports/
+    cf.export_metrics(measured_project)  # the default: exports/
     cf.export_metrics(measured_project, tmp_path / "elsewhere.csv")
 
     inside, outside = cf.load_exports(measured_project)["path"]

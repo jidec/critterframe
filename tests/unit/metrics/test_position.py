@@ -19,8 +19,8 @@ import pytest
 import critterframe as cf
 from critterframe.recipes import Segment
 
-FRAME = (200, 400)          # height, width
-BOX = (slice(40, 60), slice(300, 340))      # y, x -- right of centre, high up
+FRAME = (200, 400)  # height, width
+BOX = (slice(40, 60), slice(300, 340))  # y, x -- right of centre, high up
 
 
 def a_segment():
@@ -34,8 +34,7 @@ def a_segment():
 def cropped_and_rotated():
     """A working frame that has moved a long way from the original."""
     segment = a_segment()
-    for operation in (cf.crop_to_mask(pad=0.1), cf.rotate(20),
-                      cf.resize(scale=2.0)):
+    for operation in (cf.crop_to_mask(pad=0.1), cf.rotate(20), cf.resize(scale=2.0)):
         segment, _info = operation(segment)
     return segment
 
@@ -117,11 +116,14 @@ def test_image_bounds_survive_a_crop():
 # ---------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("metric, unit", [
-    (cf.centroid(), "px"),
-    (cf.relative_position(), "fraction"),
-    (cf.image_bounds(), "px"),
-])
+@pytest.mark.parametrize(
+    "metric, unit",
+    [
+        (cf.centroid(), "px"),
+        (cf.relative_position(), "fraction"),
+        (cf.image_bounds(), "px"),
+    ],
+)
 def test_units_distinguish_pixels_from_fractions(metric, unit):
     """
     Which is what tells the export whether a column can be converted to
@@ -130,15 +132,13 @@ def test_units_distinguish_pixels_from_fractions(metric, unit):
     assert metric.unit == unit
 
 
-@pytest.mark.parametrize("metric", [cf.centroid(), cf.relative_position(),
-                                    cf.image_bounds()])
+@pytest.mark.parametrize("metric", [cf.centroid(), cf.relative_position(), cf.image_bounds()])
 def test_every_position_metric_needs_a_mask(metric):
     with pytest.raises(ValueError, match="has no mask yet"):
         metric(Segment(np.zeros((*FRAME, 3), np.uint8)))
 
 
-@pytest.mark.parametrize("metric", [cf.centroid(), cf.relative_position(),
-                                    cf.image_bounds()])
+@pytest.mark.parametrize("metric", [cf.centroid(), cf.relative_position(), cf.image_bounds()])
 def test_every_position_metric_reports_several_numbers_at_once(metric):
     """
     A position is not one number, and splitting it into two operations would
@@ -148,9 +148,9 @@ def test_every_position_metric_reports_several_numbers_at_once(metric):
 
 
 def test_positions_export_as_one_column_per_key(measured_project):
-    cf.run_metrics(measured_project, run_name="where",
-                   metrics=[cf.centroid(), cf.relative_position()],
-                   visualize=False)
+    cf.run_metrics(
+        measured_project, run_name="where", metrics=[cf.centroid(), cf.relative_position()], visualize=False
+    )
     exported = cf.export_metrics(measured_project, run_names=["where"])
 
     assert "where__organism__centroid__x" in exported.columns
