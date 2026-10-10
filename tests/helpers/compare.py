@@ -10,7 +10,7 @@ real difference through.
 
 The one place time is behaviour rather than provenance -- the `_1` suffix on an
 import archived twice in one day -- is tested by freezing the clock, not by
-stripping anything. See `tests/unit/test_ingest.py`.
+stripping anything. See `tests/unit/ingest/test_occurrences.py`.
 """
 
 import re

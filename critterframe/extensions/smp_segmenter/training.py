@@ -14,7 +14,7 @@ from sklearn.metrics import f1_score, jaccard_score, roc_auc_score
 from ...devices import resolve_device
 from ...maskops import mask_iou
 from ...records.models import register_model
-from ...recipes import DEFAULT_PART, hash_spec
+from ...core.recipes import DEFAULT_PART, hash_spec
 from ...training.datasets import DATASET_FILE, export_training_data
 from ...training.splits import split_ids
 from ...visualization import figures

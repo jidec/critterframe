@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.transforms.orient import (
     apply_affine,
     compute_orientation,

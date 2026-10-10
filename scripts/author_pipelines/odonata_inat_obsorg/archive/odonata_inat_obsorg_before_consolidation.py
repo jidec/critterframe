@@ -65,7 +65,7 @@ done = cf.load_masks(PROJECT_PATH, parts=["body"], recipe_hash=recipe_hash,
                      columns=["occurrence_id", "part", "recipe_hash"])["occurrence_id"]
 
 cf.define_subset(PROJECT_PATH, name="resnet_cluster_test_5000",
-                 occurrence_ids=cf.sample_occurrences(done, 5000))
+                 occurrence_ids=cf.sample_ids(done, 5000))
 
 
 # # every bin also needs high chroma, so browns, greys and pruinose whites land in "unmatched".

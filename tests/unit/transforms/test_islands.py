@@ -7,7 +7,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 
 def body_with_islands(shape=(300, 300)):

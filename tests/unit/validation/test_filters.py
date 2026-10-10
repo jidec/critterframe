@@ -281,7 +281,7 @@ def test_a_dict_says_it_explicitly():
 
 def _store(project_path, run_name, metric_name, values, part="organism"):
     import critterframe as cf
-    from critterframe.recipes import Recipe
+    from critterframe.core.recipes import Recipe
     from critterframe.records.metrics import append_metrics, make_metric_row
     from critterframe.records.runs import start_run
 

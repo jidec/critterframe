@@ -2,7 +2,7 @@
 
 import logging
 
-from ..recipes import DEFAULT_PART, describe_spec
+from ..core.recipes import DEFAULT_PART, describe_spec
 from ..records import masks as mask_records
 from ..records.metrics import TRANSFORM_INFO_UNIT, load_metrics
 from ..records.occurrences import load_occurrences

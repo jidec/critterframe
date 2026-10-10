@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from ..maskops import mask_bounds
-from ..recipes import Transform
+from ..core.recipes import Transform
 from ..visualization.panels import annotate, side_by_side
 from .orient import apply_affine, rotation_matrix
 

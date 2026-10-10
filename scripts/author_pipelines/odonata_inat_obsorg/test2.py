@@ -1,8 +1,8 @@
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_ids
+from critterframe.selection.queries import ids_with_mask
 from critterframe.metrics.embedding import pretrained
 from critterframe.extensions.smp_segmenter import segmentation
 
@@ -20,7 +20,7 @@ PROJECT_PATH = "D:/cf_projects/odonata_inat_obsorg"
 #     },
 # )
 #
-# cf.define_subset(PROJECT_PATH,name="completed_tight_abdomens",occurrence_ids=cf.completed_ids(PROJECT_PATH,run_name="body_parts_tighter"))
+# cf.define_subset(PROJECT_PATH,name="completed_tight_abdomens",occurrence_ids=cf.ids_completed(PROJECT_PATH,run_name="body_parts_tighter"))
 #
 # cf.grow_subset(PROJECT_PATH, name="abdomen_annotations", target_size=200, from_subset="completed_tight_abdomens")
 # cf.run_metrics(PROJECT_PATH, subset="abdomen_annotations",

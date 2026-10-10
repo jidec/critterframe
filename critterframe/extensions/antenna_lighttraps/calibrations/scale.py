@@ -7,9 +7,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .... import download as core_download
+from ....ingest import download as core_download
 from ....calibrations import scale as scale_calibration
-from ....recipes import hash_spec
+from ....core.recipes import hash_spec
 from ....records import calibrations as calibration_records
 from ....visualization import figures
 from ....visualization import pipeline as pipeline_visualization

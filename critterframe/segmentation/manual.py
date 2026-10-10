@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from ..maskops import mask_iou
-from ..recipes import Segmentation
+from ..core.recipes import Segmentation
 from ..visualization.panels import (
     ADDED_COLOR,
     REMOVED_COLOR,

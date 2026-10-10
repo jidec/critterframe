@@ -231,7 +231,7 @@ def test_a_split_can_be_frozen_as_a_subset(specimens):
     splits = cf.split_ids(specimens, fractions=FRACTIONS)
     cf.define_subset(specimens, "train", occurrence_ids=splits["train"])
 
-    from critterframe.project.subsets import select_ids
+    from critterframe.selection.subsets import select_ids
 
     assert sorted(select_ids(specimens, subset="train")) == sorted(splits["train"])
 

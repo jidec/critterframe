@@ -18,7 +18,7 @@ import tempfile
 import cv2
 import numpy as np
 
-from critterframe.selectionhelpers import sample_occurrences
+from critterframe.selection.algorithms import sample_ids
 from critterframe.visualization.grids import comparison_grid, image_grid
 
 logging.basicConfig(level=logging.INFO)
@@ -40,9 +40,9 @@ def panel(width, height, color, text):
 
 
 print("== sampling ==")
-print("n=5 :", sample_occurrences(IDS, 5))
-print("n=5 :", sample_occurrences(IDS, 5), "  <- identical: the sample is stable")
-print("n=99:", len(sample_occurrences(IDS, 99)), "of", len(IDS),
+print("n=5 :", sample_ids(IDS, 5))
+print("n=5 :", sample_ids(IDS, 5), "  <- identical: the sample is stable")
+print("n=99:", len(sample_ids(IDS, 99)), "of", len(IDS),
       "  <- asking for more than there are returns them all")
 
 print("\n== image grid: one view, many occurrences ==")

@@ -4,7 +4,7 @@ import logging
 
 import pandas as pd
 
-from ..recipes import DEFAULT_PART, canonical_json, load_json
+from ..core.recipes import DEFAULT_PART, canonical_json, load_json
 from . import masks as mask_records
 from . import runs as run_records
 from .runs import open_database

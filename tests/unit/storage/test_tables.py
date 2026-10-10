@@ -256,3 +256,28 @@ def test_naming_a_column_a_table_lacks_fails_the_read(tmp_path):
     write_table(rows(a_row()), path)
     with pytest.raises(Exception):
         load_table(path, columns=["value", "not_a_column"])
+
+
+# ---------------------------------------------------------------------------
+# load_table(filters=): rows dropped while the file is scanned
+# ---------------------------------------------------------------------------
+
+
+def test_filters_keep_only_matching_rows(tmp_path):
+    path = tmp_path / "t.parquet"
+    write_table(pd.DataFrame({"key": ["a", "b", "c"], "kind": ["x", "y", "x"], "n": [1, 2, 3]}), path)
+
+    kept = load_table(path, filters=[("kind", "in", ["x"])])
+    assert kept["key"].tolist() == ["a", "c"]
+
+    both = load_table(path, filters=[("kind", "in", ["x"]), ("n", ">", 1)])
+    assert both["key"].tolist() == ["c"]
+
+
+def test_a_filter_column_need_not_be_read(tmp_path):
+    path = tmp_path / "t.parquet"
+    write_table(pd.DataFrame({"key": ["a", "b", "c"], "kind": ["x", "y", "x"]}), path)
+
+    kept = load_table(path, columns=["key"], filters=[("kind", "==", "y")])
+    assert kept.columns.tolist() == ["key"]
+    assert kept["key"].tolist() == ["b"]

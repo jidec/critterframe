@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from ..project import paths
-from ..recipes import canonical_json, describe_recipe_change, load_json
+from ..core.recipes import canonical_json, describe_recipe_change, load_json
 from ..storage.jsonfiles import append_jsonl
 from ..storage.sqlite import connect
 
@@ -346,7 +346,7 @@ def resolve_recipe_currency(project_path, kind, name, part, recipe_hash, force, 
             raise ValueError(
                 f"run_name {name!r} currently points at a different metric "
                 f"recipe for part {part!r} (current hash {current!r}, this "
-                f"run's hash is {recipe_hash!r}). export.metrics_wide and "
+                f"run's hash is {recipe_hash!r}). wide.metrics_wide and "
                 f"records.metrics.latest_values key on run_name alone, so "
                 f"proceeding would silently interleave two recipes under one "
                 f"name. Pass force=True to move {name!r} onto this recipe -- "

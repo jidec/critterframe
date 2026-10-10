@@ -21,8 +21,8 @@ import pytest
 from critterframe.project import paths
 from critterframe.records import models as model_records
 from critterframe.records.models import RegisteredModel, register_model
-from critterframe.recipes import Recipe, _model_identity
-from critterframe.segmentation.run import segment
+from critterframe.core.recipes import Recipe, _model_identity
+from critterframe.segmentation.run_segments import segment
 from helpers.models import ThresholdModel
 
 

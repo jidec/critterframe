@@ -8,6 +8,8 @@ on:
       - "docs/**"
       - "mkdocs.yml"
       - "README.md"
+      - "tools/**"
+      - "scripts/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch: {}
 
@@ -24,8 +26,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install package with docs extras
-        run: pip install -e ".[docs]"
+      - name: Install Graphviz, which draws the Internals graphs
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Install package with docs and graphs extras
+        run: pip install -e ".[docs,graphs]"
+
+      - name: Draw the Internals graphs into docs/graphs/
+        run: python tools/make_graphs.py
 
       - name: Build (strict, catches broken refs/links before deploying)
         run: mkdocs build --strict

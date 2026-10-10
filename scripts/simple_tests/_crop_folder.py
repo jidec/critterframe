@@ -15,7 +15,7 @@ from pathlib import Path
 
 import cv2
 
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.segmentation.groundedsam import sam2
 from critterframe.visualization.panels import PanelFiles
 

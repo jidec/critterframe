@@ -42,10 +42,10 @@ import os
 import shutil
 
 import critterframe as cf
-from critterframe.project.subsets import select_occurrences
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_occurrences
+from critterframe.selection.queries import ids_with_mask
 from critterframe.records.occurrences import ID_COL
-from critterframe.selectionhelpers import cap_per_group
+from critterframe.selection.algorithms import cap_per_group
 from critterframe.training.datasets import export_training_data
 from critterframe.training.splits import split_ids
 
@@ -152,7 +152,7 @@ if __name__ == "__main__":
     # and only species that still have MIN_PER_CLASS after that.
     occurrences = select_occurrences(PROJECT_PATH, columns=[LABEL_COL, GROUP_COL])
     occurrences = occurrences[
-        occurrences[ID_COL].isin(occurrence_ids_with_mask(PROJECT_PATH, PART))
+        occurrences[ID_COL].isin(ids_with_mask(PROJECT_PATH, PART))
         & occurrences[LABEL_COL].notna()
         & (occurrences[LABEL_COL].astype(str).str.strip() != "")
     ]

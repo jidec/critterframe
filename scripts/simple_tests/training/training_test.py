@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 import critterframe as cf
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 
 # Shared with the test suite rather than written out twice -- see
 # tests/helpers/. The suite asserts what these produce; this script shows it.

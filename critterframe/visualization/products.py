@@ -7,9 +7,10 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from .. import drivers, segments as segment_iteration
-from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe
+from ..core import drivers, segments as segment_iteration
+from ..project import paths
+from ..selection import subsets as subset_selection
+from ..core.recipes import DEFAULT_PART, Recipe
 from ..records.occurrences import ID_COL, load_occurrences
 from . import pipeline as pipeline_visualization
 
@@ -102,7 +103,7 @@ def render_segments(
             format without alpha.
 
     Returns:
-        `{part: summary}`, each a `drivers.Tally.summary` plus `directory`.
+        `{part: summary}`, each a `core.drivers.Tally.summary` plus `directory`.
     """
     paths.require_project(project_path)
 

@@ -9,12 +9,12 @@ record names no population, since who else is in scope can't change its value.
 import pytest
 
 import critterframe as cf
-from critterframe.drivers import NoInput
-from critterframe.metrics.run import RunContext
-from critterframe.metrics.stored import StoredValues
+from critterframe.core.drivers import NoInput
+from critterframe.metrics.run_metrics import RunContext
+from critterframe.metrics.base.stored import StoredValues
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.runs import start_run
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 
 IDS = [f"specimen{index}" for index in range(8)]
 
@@ -68,7 +68,7 @@ def test_the_function_sees_one_occurrence_and_nothing_else(metadata_project):
 def test_a_derived_metric_is_never_handed_a_segment(metadata_project):
     import numpy as np
 
-    from critterframe.recipes import Segment
+    from critterframe.core.recipes import Segment
 
     store_traits(metadata_project)
     metric = ratio()

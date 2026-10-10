@@ -29,7 +29,7 @@ identical specimens.
 import cv2
 import numpy as np
 
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 # A drawn specimen's body, in pixels. Exposed so a test can assert against the
 # number it drew with rather than restating a literal.

@@ -28,7 +28,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.records import masks as mask_records
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow

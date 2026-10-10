@@ -13,8 +13,8 @@ import numpy as np
 import pytest
 
 from critterframe.extensions.smp_segmenter import segmentation
-from critterframe.recipes import Recipe
-from critterframe.segmentation.run import segment
+from critterframe.core.recipes import Recipe
+from critterframe.segmentation.run_segments import segment
 
 
 # ---------------------------------------------------------------------------

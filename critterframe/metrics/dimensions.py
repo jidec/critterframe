@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from ..maskops import inscribed_radius, mask_bounds
-from ..recipes import Metric
+from ..core.recipes import Metric
 from ..visualization.panels import annotate, mask_to_bgr
 
 

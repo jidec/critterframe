@@ -19,7 +19,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.metrics.quality import WARN_THRESHOLDS
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 
 def blob(shape=(200, 200), axes=(30, 60), angle=0, centre=None):

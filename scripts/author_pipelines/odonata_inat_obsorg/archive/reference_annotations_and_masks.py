@@ -16,7 +16,7 @@ cf.run_metrics(PROJECT_PATH, subset="usability_annotation_set",
 # define a subset of usable occurrence images
 cf.define_subset(
     PROJECT_PATH, name="usability_annotation_set_usable",
-    occurrence_ids=cf.occurrences_matching(
+    occurrence_ids=cf.ids_matching(
         PROJECT_PATH, "usability_annotation", {"usability_annotation": "usable"}),
 )
 

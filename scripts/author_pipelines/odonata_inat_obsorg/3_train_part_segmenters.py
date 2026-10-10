@@ -2,8 +2,7 @@ import logging
 
 import critterframe as cf
 from critterframe.extensions.smp_segmenter import segmentation, training
-from critterframe.project.subsets import define_subset
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import define_subset
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,7 +13,7 @@ DATASET_DIR = f"{PROJECT_PATH}/training/body_parts"
 BODY_PART_TRANSFORMS = [cf.remove_background(), cf.crop_to_mask(), cf.orient(axis_strategy="longer")]
 
 # newly drawn reference masks reach training without anyone remembering to redefine the subset by hand.
-head_ids = occurrence_ids_with_mask(PROJECT_PATH, part="head", reference=True)
+head_ids = set(cf.ids_with_mask(PROJECT_PATH, part="head", reference=True))
 
 # remove ids with annotation mistakes
 training_ids = sorted(head_ids - {"4177294498","2273301679","2563482116","3070675391","3747273588","3759334647",

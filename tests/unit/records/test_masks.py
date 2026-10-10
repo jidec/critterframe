@@ -216,31 +216,6 @@ def test_parts_of_one_occurrence_coexist(tmp_path):
     assert len(mask_records.load_masks(tmp_path)) == 2
 
 
-def test_occurrence_ids_with_mask_is_presence_only(tmp_path):
-    """The identity-only read behind mask_lookup(), for a caller that just needs the ids."""
-    mask_records.save_masks(
-        tmp_path,
-        [
-            make_row("a", part="organism"),
-            make_row("b", part="organism"),
-            make_row("a", part="wing"),
-        ],
-    )
-    assert mask_records.occurrence_ids_with_mask(tmp_path, part="organism") == {"a", "b"}
-    assert mask_records.occurrence_ids_with_mask(tmp_path, part="wing") == {"a"}
-    assert mask_records.occurrence_ids_with_mask(tmp_path, part="head") == set()
-
-
-def test_occurrence_ids_with_mask_reads_the_reference_table(tmp_path):
-    mask_records.save_masks(tmp_path, [make_row("a")], reference=True)
-    assert mask_records.occurrence_ids_with_mask(tmp_path, reference=True) == {"a"}
-    assert mask_records.occurrence_ids_with_mask(tmp_path) == set()
-
-
-def test_occurrence_ids_with_mask_on_an_empty_project_is_empty(tmp_path):
-    assert mask_records.occurrence_ids_with_mask(tmp_path) == set()
-
-
 def test_the_reference_table_is_a_different_file(tmp_path):
     """
     Validation is comparison between two tables of identical schema. Writing a
@@ -517,13 +492,13 @@ def test_info_round_trips_with_the_mask(tmp_path):
     info = {"orient": {"unreliable": False, "eigval_ratio": 0.2}, "segment": {"score": 0.9, "n_boxes": 1}}
     mask_records.save_masks(tmp_path, [make_row("a", info=info)])
 
-    [row] = mask_records.mask_lookup(tmp_path).values()
+    [row] = mask_records.mask_lookup(tmp_path, info=True).values()
     assert mask_records.mask_info(row) == info
 
 
 def test_a_mask_with_no_info_reads_as_empty(tmp_path):
     mask_records.save_masks(tmp_path, [make_row("a")])
-    [row] = mask_records.mask_lookup(tmp_path).values()
+    [row] = mask_records.mask_lookup(tmp_path, info=True).values()
     assert mask_records.mask_info(row) == {}
 
 
@@ -534,7 +509,7 @@ def test_a_table_written_before_info_was_recorded_takes_new_rows(tmp_path):
     write_table(pd.DataFrame([row], columns=legacy_columns), paths.masks_path(tmp_path))
 
     mask_records.save_masks(tmp_path, [make_row("b", info={"segment": {"score": 1.0}})])
-    rows = mask_records.mask_lookup(tmp_path)
+    rows = mask_records.mask_lookup(tmp_path, info=True)
     assert mask_records.mask_info(rows["a"]) == {}
     assert mask_records.mask_info(rows["b"]) == {"segment": {"score": 1.0}}
 
@@ -578,3 +553,109 @@ def test_a_mask_digest_is_stable_and_sees_one_pixel():
     changed[0, 0] = not changed[0, 0]
     assert mask_records.mask_digest(changed) != mask_records.mask_digest(mask)
     assert mask_records.mask_digest(mask) != mask_records.mask_digest(mask.T)
+
+
+# ---------------------------------------------------------------------------
+# Reading only what a lookup needs
+#
+# A project's mask table reaches gigabytes, and half of that is the info
+# column. A lookup that read all of it to keep one part ran a 42 GB machine
+# out of memory, so the part and the columns are narrowed in the read itself.
+# ---------------------------------------------------------------------------
+
+
+def three_parts(tmp_path):
+    mask_records.save_masks(
+        tmp_path,
+        [
+            make_row("a", part="organism", info={"segment": {"score": 0.9}}),
+            make_row("b", part="organism"),
+            make_row("a", part="wing"),
+            make_row("a", part="head"),
+        ],
+    )
+
+
+def test_a_part_filter_returns_what_filtering_the_whole_table_would(tmp_path):
+    three_parts(tmp_path)
+    everything = mask_records.load_masks(tmp_path)
+
+    for parts in (["organism"], ["wing", "head"], ["absent"]):
+        narrowed = mask_records.load_masks(tmp_path, parts=parts)
+        expected = everything[everything["part"].isin(parts)]
+        assert sorted(zip(narrowed["occurrence_id"], narrowed["part"])) == sorted(
+            zip(expected["occurrence_id"], expected["part"])
+        )
+
+
+def test_a_part_filter_works_when_the_part_column_is_not_read(tmp_path):
+    three_parts(tmp_path)
+    narrowed = mask_records.load_masks(tmp_path, parts=["organism"], columns=["occurrence_id"])
+    assert narrowed.columns.tolist() == ["occurrence_id"]
+    assert sorted(narrowed["occurrence_id"]) == ["a", "b"]
+
+
+def test_a_recipe_filter_returns_only_that_recipes_masks(tmp_path):
+    mask_records.save_masks(
+        tmp_path, [make_row("a", recipe_hash="first"), make_row("b", recipe_hash="second")]
+    )
+    assert mask_records.load_masks(tmp_path, recipe_hash="second")["occurrence_id"].tolist() == ["b"]
+
+
+def test_a_lookup_narrows_the_read_itself(tmp_path, monkeypatch):
+    """The other parts' rows and the info column must never be loaded, not loaded and dropped."""
+    three_parts(tmp_path)
+    reads = []
+    original = pd.read_parquet
+
+    def recording(path, **kwargs):
+        reads.append(kwargs)
+        return original(path, **kwargs)
+
+    monkeypatch.setattr(pd, "read_parquet", recording)
+    mask_records.mask_lookup(tmp_path, part="wing")
+
+    [read] = reads
+    assert ("part", "in", ["wing"]) in read["filters"]
+    assert "info" not in read["columns"]
+    assert "created_at" not in read["columns"]
+    assert {"occurrence_id", "rle_counts", "recipe_hash", "source_mask_hash"} <= set(read["columns"])
+
+
+def test_a_lookup_row_still_decodes_and_carries_its_identity(tmp_path):
+    three_parts(tmp_path)
+    row = mask_records.mask_lookup(tmp_path, part="organism")["a"]
+    assert isinstance(row, dict)
+    assert mask_records.decode_mask(row).any()
+    assert "recipe_hash" in row
+    assert "source_mask_hash" in row
+
+
+def test_info_is_read_only_when_asked_for(tmp_path):
+    three_parts(tmp_path)
+    assert "info" not in mask_records.mask_lookup(tmp_path)["a"]
+    with_info = mask_records.mask_lookup(tmp_path, info=True)
+    assert mask_records.mask_info(with_info["a"]) == {"segment": {"score": 0.9}}
+    assert mask_records.mask_info(with_info["b"]) == {}
+
+
+def test_asking_a_row_read_without_info_for_it_raises(tmp_path):
+    """
+    Answering {} would make "read without the column" look exactly like "this
+    mask recorded nothing", and the mask_info metric would store empty values.
+    """
+    three_parts(tmp_path)
+    row = mask_records.mask_lookup(tmp_path)["a"]
+    with pytest.raises(KeyError, match="info=True"):
+        mask_records.mask_info(row)
+
+
+def test_a_table_from_before_source_hashes_and_info_still_looks_up(tmp_path):
+    legacy_columns = [column for column in mask_records.COLUMNS if column not in ("info", "source_mask_hash")]
+    row = {key: value for key, value in make_row("a").items() if key in legacy_columns}
+    write_table(pd.DataFrame([row], columns=legacy_columns), paths.masks_path(tmp_path))
+
+    plain = mask_records.mask_lookup(tmp_path)["a"]
+    assert mask_records.decode_mask(plain).any()
+    assert plain.get("source_mask_hash") is None
+    assert mask_records.mask_info(mask_records.mask_lookup(tmp_path, info=True)["a"]) == {}

@@ -19,7 +19,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.segmentation import manual
 from critterframe.visualization import panels
 from helpers.stubs import FakeCv2

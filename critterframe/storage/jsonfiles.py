@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..recipes import json_default
+from ..core.recipes import json_default
 
 logger = logging.getLogger(__name__)
 

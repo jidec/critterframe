@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 
-from ..recipes import Metric
+from ..core.recipes import Metric
 
 
 def n_islands(name=None, unit="count"):

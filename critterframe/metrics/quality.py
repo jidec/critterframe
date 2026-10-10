@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from ..maskops import mask_iou
-from ..recipes import Metric
+from ..core.recipes import Metric
 from ..visualization.panels import annotate, diff_panel, mask_to_bgr
 
 # Laplacian-variance floor below which a masked image is called blurry.

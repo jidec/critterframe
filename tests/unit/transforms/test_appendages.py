@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 BODY_CENTRE = (150, 150)
 BODY_AXES = (25, 70)

@@ -22,7 +22,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from critterframe.segmentation.groundedsam import GroundedSAM2
 
 

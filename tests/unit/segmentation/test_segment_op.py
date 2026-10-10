@@ -17,8 +17,8 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Recipe, Segment
-from critterframe.segmentation.run import _build_recipes
+from critterframe.core.recipes import Recipe, Segment
+from critterframe.segmentation.run_segments import _build_recipes
 from helpers.models import (
     EmptyMaskModel,
     NoThresholdModel,

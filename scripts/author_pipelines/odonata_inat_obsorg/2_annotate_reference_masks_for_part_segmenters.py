@@ -15,7 +15,6 @@ Before: 1_ingest_download_and_segment_organism.py. Next: 3_train_part_segmenters
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
 
 logging.basicConfig(level=logging.INFO)
 
@@ -28,12 +27,12 @@ cf.grow_subset(PROJECT_PATH, name="usability_annotation_set", target_size=150)
 cf.run_metrics(PROJECT_PATH, subset="usability_annotation_set",
                metrics=[cf.exclusive_label_annotation(["usable", "not_usable"], name="usability",
                                                       requires_mask=False)])
-usable_ids = cf.occurrences_matching(PROJECT_PATH, "usability", {"usability": "usable"})
+usable_ids = cf.ids_matching(PROJECT_PATH, "usability", {"usability": "usable"})
 cf.define_subset(PROJECT_PATH, name="usability_annotation_set_usable", occurrence_ids=usable_ids)
 
 # create the part segmenter reference set
 # an occurrence already in the reference set stays in it, whatever it is labelled now
-reference_ids = select_ids(PROJECT_PATH, subset="mask_reference_set")
+reference_ids = cf.select_ids(PROJECT_PATH, subset="mask_reference_set")
 cf.grow_subset(PROJECT_PATH, name="mask_reference_set", target_size=100,
                candidate_ids=sorted(set(usable_ids) | set(reference_ids)),
                candidate_note="labelled usable, plus everything already in the reference set")

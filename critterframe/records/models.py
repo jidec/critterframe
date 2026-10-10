@@ -9,7 +9,7 @@ from pathlib import Path
 
 from ..storage.jsonfiles import read_json, write_json
 from ..project import paths
-from ..recipes import hash_spec
+from ..core.recipes import hash_spec
 from .occurrences import ids_record
 
 logger = logging.getLogger(__name__)

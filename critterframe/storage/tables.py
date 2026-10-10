@@ -96,19 +96,21 @@ def upsert_table(new_df, table_path, key_cols):
     return combined
 
 
-def load_table(table_path, columns=None, missing_ok=False):
+def load_table(table_path, columns=None, missing_ok=False, filters=None):
     """Read a parquet table.
 
     Args:
         table_path: Parquet path.
         columns: Column names to read; all if None.
         missing_ok: Return an empty DataFrame for a missing file instead of raising.
+        filters: `[(column, op, value), ...]` rows must all satisfy, applied while the file
+            is scanned. A filter column need not be among `columns`.
     """
     if not Path(table_path).exists():
         if missing_ok:
             return pd.DataFrame(columns=list(columns) if columns else [])
         raise FileNotFoundError(f"no table at {table_path}. Ingest or run the step that produces it first.")
-    return pd.read_parquet(table_path, columns=columns)
+    return pd.read_parquet(table_path, columns=columns, filters=filters or None)
 
 
 def table_columns(table_path):

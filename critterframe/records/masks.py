@@ -10,7 +10,7 @@ import pandas as pd
 from pycocotools import mask as mask_utils
 
 from ..project import paths
-from ..recipes import DEFAULT_PART, hash_spec
+from ..core.recipes import DEFAULT_PART, hash_spec
 from ..storage.tables import load_table, table_columns, upsert_table, write_table
 
 logger = logging.getLogger(__name__)
@@ -38,6 +38,23 @@ COLUMNS = [
 # neither "which masks does this recipe already cover" nor "is this value's
 # source mask still current" needs a single one of them.
 IDENTITY_COLUMNS = ["occurrence_id", "part", "recipe_hash", "source_mask_hash"]
+
+# What a lookup row is used for: the mask itself and its identity. `info` and
+# `created_at` are left out, since together they are half of a large table and
+# only the mask_info metric reads one of them.
+LOOKUP_COLUMNS = [
+    "occurrence_id",
+    "part",
+    "rle_counts",
+    "rle_height",
+    "rle_width",
+    "area",
+    "score",
+    "recipe_hash",
+    "run_id",
+    "from_part",
+    "source_mask_hash",
+]
 
 
 def _encode_mask(mask):
@@ -81,9 +98,16 @@ def mask_info(row):
     """Return the `{operation label: scalar info}` a mask row recorded, or `{}`.
 
     Args:
-        row: A mask row.
+        row: A mask row read with its `info`.
+
+    Raises:
+        KeyError: If the row was read without `info`, e.g. by `mask_lookup` without `info=True`.
     """
-    value = row.get("info") if hasattr(row, "get") else None
+    # A row with no info key was read without the column, which is not the same
+    # as a mask that recorded none: answering {} there would hide the difference.
+    if "info" not in row:
+        raise KeyError("this mask row was read without its info -- pass info=True to mask_lookup")
+    value = row["info"]
     return json.loads(value) if isinstance(value, str) else {}
 
 
@@ -255,10 +279,18 @@ def load_masks(
         occurrence_ids: Occurrences to include; all if None.
         recipe_hash: Keep only masks made by this recipe.
         reference: Read the reference table.
-        columns: Columns to read. Leave None when filtering, since the filter columns
-            must be read too.
+        columns: Columns to read. Must include `occurrence_id` when `occurrence_ids` is given.
     """
-    df = load_table(paths.masks_path(project_path, reference=reference), columns=columns, missing_ok=True)
+    # Applied while the file is scanned, so the other parts' rows are never loaded.
+    filters = []
+    if parts is not None:
+        filters.append(("part", "in", [str(part) for part in parts]))
+    if recipe_hash is not None:
+        filters.append(("recipe_hash", "==", recipe_hash))
+
+    df = load_table(
+        paths.masks_path(project_path, reference=reference), columns=columns, missing_ok=True, filters=filters
+    )
     if df.empty:
         return df
 
@@ -268,12 +300,10 @@ def load_masks(
     # question fail on exactly the projects that had something to answer with.
     if "occurrence_id" in df.columns:
         df["occurrence_id"] = df["occurrence_id"].astype(str)
-    if parts is not None:
-        df = df[df["part"].isin(parts)]
+    # In pandas, not in the scan: a project-sized id list is the wrong thing to
+    # hand a parquet filter, and the part filter has already shrunk the frame.
     if occurrence_ids is not None:
         df = df[df["occurrence_id"].isin({str(i) for i in occurrence_ids})]
-    if recipe_hash is not None:
-        df = df[df["recipe_hash"] == recipe_hash]
 
     return df.reset_index(drop=True)
 
@@ -295,17 +325,37 @@ def get_mask(project_path, occurrence_id, part=DEFAULT_PART, reference=False):
     return decode_mask(df.iloc[0])
 
 
-def mask_lookup(project_path, part=DEFAULT_PART, occurrence_ids=None, reference=False):
+def mask_lookup(project_path, part=DEFAULT_PART, occurrence_ids=None, reference=False, info=False):
     """Return `{occurrence_id: mask row}` for one part, read in a single pass.
+
+    Only that part's rows and `LOOKUP_COLUMNS` are read.
 
     Args:
         project_path: Project to read from.
         part: The part.
         occurrence_ids: Occurrences to include; all if None.
         reference: Read the reference table.
+        info: Also read each mask's recorded `info`.
+
+    Returns:
+        `{occurrence_id: row}`, each row a dict.
     """
-    df = load_masks(project_path, parts=[part], occurrence_ids=occurrence_ids, reference=reference)
-    return {row["occurrence_id"]: row for _, row in df.iterrows()}
+    wanted = LOOKUP_COLUMNS + (["info"] if info else [])
+    available = set(table_columns(paths.masks_path(project_path, reference=reference)))
+    columns = [column for column in wanted if column in available]
+    df = load_masks(
+        project_path,
+        parts=[part],
+        occurrence_ids=occurrence_ids,
+        reference=reference,
+        columns=columns or None,
+    )
+    if df.empty:
+        return {}
+    if info and "info" not in df.columns:
+        # A table written before info was recorded: every mask in it has none.
+        df["info"] = None
+    return dict(zip(df["occurrence_id"], df.to_dict("records")))
 
 
 def _load_identities(project_path, reference=False, **filters):
@@ -376,9 +426,3 @@ def parts_present(project_path, reference=False):
 def has_masks(project_path, reference=False):
     """Return whether the project has a mask table."""
     return paths.masks_path(project_path, reference=reference).exists()
-
-
-def occurrence_ids_with_mask(project_path, part=DEFAULT_PART, reference=False):
-    """Return every occurrence id with a mask for the part, as a set."""
-    df = load_masks(project_path, parts=[part], reference=reference, columns=["occurrence_id", "part"])
-    return set(df["occurrence_id"]) if not df.empty else set()

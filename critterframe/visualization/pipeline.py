@@ -12,8 +12,8 @@ import numpy as np
 
 from ..storage.jsonfiles import write_json
 from ..project import paths
-from ..recipes import DEFAULT_PART
-from ..selectionhelpers import sample_occurrences
+from ..core.recipes import DEFAULT_PART
+from ..selection.algorithms import sample_ids
 from . import grids
 
 logger = logging.getLogger(__name__)
@@ -42,7 +42,7 @@ def resolve_sample(occurrence_ids, visualize):
     ids = [str(occurrence_id) for occurrence_id in occurrence_ids]
     count = sample_count(visualize)
     if count is not None:
-        return sample_occurrences(ids, count)
+        return sample_ids(ids, count)
 
     wanted = {str(occurrence_id) for occurrence_id in visualize}
     chosen = [occurrence_id for occurrence_id in ids if occurrence_id in wanted]
@@ -444,7 +444,7 @@ class Report:
         if count is None:
             wanted = set(self.visualize)
             return [item for item in ids if item in wanted], end
-        return sample_occurrences(ids, count), end
+        return sample_ids(ids, count), end
 
     def _save_window(self):
         if not self._window.dirty or self._window_end is None:

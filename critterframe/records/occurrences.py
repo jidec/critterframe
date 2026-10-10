@@ -5,7 +5,7 @@ import logging
 import pandas as pd
 
 from ..project import paths
-from ..recipes import hash_spec
+from ..core.recipes import hash_spec
 from ..storage.tables import load_table, table_columns, write_table
 
 logger = logging.getLogger(__name__)

@@ -4,10 +4,10 @@ import logging
 
 import pandas as pd
 
-from .. import segments as segment_iteration
-from .. import selectionhelpers
+from ..core import segments as segment_iteration
+from ..selection import algorithms as selection_algorithms
 from ..maskops import mask_coverage, mask_iou, pad_to_common_shape
-from ..recipes import DEFAULT_PART, hash_spec
+from ..core.recipes import DEFAULT_PART, hash_spec
 from ..records import masks as mask_records
 from ..storage.imagestore import ImageStore
 from ..visualization import figures
@@ -110,7 +110,7 @@ def _validate_one_part(
 
     if steps is None:
         predicted = mask_records.mask_lookup(project_path, part=part)
-        occurrence_ids = selectionhelpers.require_present(predicted, reference=reference)
+        occurrence_ids = selection_algorithms.require_present(predicted, reference=reference)
         missing = len(reference) - len(occurrence_ids)
         if missing:
             logger.warning(
@@ -276,5 +276,5 @@ def _log_summary(df, part, show_worst, column="iou"):
         logger.info("  %s < %.1f: %d/%d (%.1f%%)", column, threshold, below, len(df), 100 * below / len(df))
 
     if show_worst:
-        worst = selectionhelpers.worst_n(values, show_worst)
+        worst = selection_algorithms.worst_n(values, show_worst)
         logger.info("  worst %d: %s", len(worst), ", ".join(f"{occ}={value:.3f}" for occ, value in worst))

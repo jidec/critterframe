@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 # How long a writer waits for a lock before giving up, once more than one
 # process is writing to the same project's runs_and_metrics.sqlite (e.g.
 # several sharded segmentation runs sharing one project -- see
-# segmentation.run.run_segments' shard= parameter). Without this, sqlite's
+# segmentation.run_segments.run_segments' shard= parameter). Without this, sqlite's
 # default is to raise "database is locked" immediately rather than wait.
 BUSY_TIMEOUT_MS = 30_000
 

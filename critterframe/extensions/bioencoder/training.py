@@ -6,8 +6,8 @@ import os
 import pandas as pd
 
 from ...devices import resolve_device
-from ...project import subsets as subset_selection
-from ...recipes import DEFAULT_PART
+from ...selection import subsets as subset_selection
+from ...core.recipes import DEFAULT_PART
 from ...records.occurrences import ID_COL
 from ...training.datasets import export_training_data
 from ...training.splits import split_ids

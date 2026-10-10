@@ -60,6 +60,13 @@ docs = [
     "mkdocstrings[python]",
 ]
 
+# The dependency graphs (tools/make_graphs.py). Both draw through Graphviz's
+# `dot`, which is a system install and not a Python package.
+graphs = [
+    "pydeps",
+    "code2flow",
+]
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
@@ -76,7 +83,7 @@ python_files = ["test_*.py"]
 norecursedirs = ["scripts", "projects", "critterframe.egg-info", ".git", ".idea", "build", "dist"]
 
 # tests/ mirrors the package, so duplicate basenames are unavoidable
-# (test_masks.py twice, test_ingest.py three times). importlib import mode is
+# (test_masks.py twice, test_occurrences.py twice). importlib import mode is
 # what stops that being an "import file mismatch" error; pythonpath is what
 # keeps tests/helpers importable once rootdir is no longer on sys.path.
 pythonpath = ["tests"]

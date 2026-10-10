@@ -41,8 +41,8 @@ def segment_parts(project_path, model=None):
 def test_every_step_s_info_is_stored_on_each_part_s_mask(segmented_project):
     segment_parts(segmented_project)
 
-    head = mask_records.mask_lookup(segmented_project, part="head")
-    tail = mask_records.mask_lookup(segmented_project, part="tail")
+    head = mask_records.mask_lookup(segmented_project, part="head", info=True)
+    tail = mask_records.mask_lookup(segmented_project, part="tail", info=True)
     for occurrence_id in head:
         head_info = mask_records.mask_info(head[occurrence_id])
         tail_info = mask_records.mask_info(tail[occurrence_id])
@@ -208,6 +208,6 @@ def test_comparing_two_runs_ignores_their_transform_info(segmented_project):
 
 def test_a_selection_rule_can_name_transform_info(segmented_project):
     measure(segmented_project)
-    sure = cf.occurrences_matching(segmented_project, "body_dimensions", {"orient__unreliable": [False]})
-    unsure = cf.occurrences_matching(segmented_project, "body_dimensions", {"orient__unreliable": [True]})
+    sure = cf.ids_matching(segmented_project, "body_dimensions", {"orient__unreliable": [False]})
+    unsure = cf.ids_matching(segmented_project, "body_dimensions", {"orient__unreliable": [True]})
     assert len(sure) + len(unsure) == SPECIMENS

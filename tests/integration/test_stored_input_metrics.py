@@ -10,7 +10,7 @@ the upstream run's recipe, recorded beside their own hash.
 import pytest
 
 import critterframe as cf
-from critterframe.metrics import run as metric_run
+from critterframe.metrics import run_metrics as metric_run
 
 SPECIMENS = 8
 

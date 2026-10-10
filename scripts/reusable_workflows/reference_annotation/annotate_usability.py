@@ -51,7 +51,7 @@ cf.run_metrics(PROJECT_PATH, subset=CANDIDATES_SUBSET,
 
 # Freeze the usable ones as a subset for the mask pass. Redefined on every run,
 # so screening more of the sample reaches it without a separate step.
-usable = cf.occurrences_matching(PROJECT_PATH, "usability", {"usability": "usable"})
+usable = cf.ids_matching(PROJECT_PATH, "usability", {"usability": "usable"})
 cf.define_subset(PROJECT_PATH, USABLE_SUBSET, occurrence_ids=usable,
                  note=f"screened usable from {CANDIDATES_SUBSET}")
 

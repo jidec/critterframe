@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 
 from ..devices import resolve_device
-from ..recipes import Metric, hash_spec
+from ..core.recipes import Metric, hash_spec
 from ..records.models import fingerprint_file
 
 logger = logging.getLogger(__name__)

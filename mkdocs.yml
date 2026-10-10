@@ -38,6 +38,15 @@ markdown_extensions:
       base_path: ["."]
       check_paths: true
 
+# Builds the Examples tab from the pipeline scripts and adds it to the nav below.
+hooks:
+  - tools/docs_examples.py
+
+# So `mkdocs serve` reloads when a script shown on an Examples page is edited.
+watch:
+  - scripts/reusable_workflows
+  - scripts/author_pipelines/odonata_inat_obsorg
+
 plugins:
   - search
   - mkdocstrings:
@@ -58,20 +67,27 @@ plugins:
             docstring_options:
               warn_missing_types: false
 
-# Ordered to match the package layout in README.md, so the tree a reader sees
-# there and the nav they browse here are the same list in the same order.
+# The API pages are ordered to match the package layout on the Internals page
+# (docs/internals.md), so the tree a reader sees there and the nav they browse
+# here are the same list in the same order.
+# The graphs are generated into docs/graphs/; only the pictures are published.
+exclude_docs: |
+  graphs/*.gv
+
 nav:
-  - Home: index.md
+  - Overview: index.md
+  - Concepts: concepts.md
+  - Guide: guide.md
   - API Reference:
       # Pipeline reference first, deliberately out of the package-layout order
       # below: it's the cf.* surface (everything __init__.py re-exports), not
       # one more module.
       - public package-level API (for composing pipelines): api/index.md
-      - recipes: api/recipes.md
+      - core: api/core.md
       - ingest: api/ingest.md
-      - download: api/download.md
       - export: api/export.md
-      - selectionhelpers: api/selectionhelpers.md
+      - wide: api/wide.md
+      - selection: api/selection.md
       - project: api/project.md
       - storage: api/storage.md
       - records:
@@ -90,3 +106,4 @@ nav:
       - visualization: api/visualization.md
       - training: api/training.md
       - extensions: api/extensions.md
+  - Internals: internals.md

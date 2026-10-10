@@ -9,11 +9,12 @@ from pathlib import Path
 import cv2
 import pandas as pd
 
-from .. import segments
-from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, hash_spec
+from ..core import segments
+from ..project import paths
+from ..selection import subsets as subset_selection
+from ..core.recipes import DEFAULT_PART, hash_spec
 from ..records.occurrences import ID_COL, ids_record
-from ..export import metrics_wide
+from ..wide import metrics_wide
 from ..storage.jsonfiles import write_json
 from ..visualization import pipeline as pipeline_visualization
 from ..visualization.panels import segment_panel

@@ -8,7 +8,9 @@ up as a failing test anywhere else, because a developer with torch installed
 never notices.
 """
 
+import ast
 import os
+import pathlib
 import subprocess
 import sys
 
@@ -71,6 +73,42 @@ def test_import_does_not_read_a_dotenv():
         cwd=os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     )
     assert result.stdout.strip() == "[]"
+
+
+IMPORT_FREE_MODULES = [
+    "project/paths.py",
+    "core/drivers.py",
+    "maskops.py",
+    "colorspaces.py",
+    "selection/algorithms.py",
+    # Each runs before the module beside it is imported, so it is held to the same rule.
+    "core/__init__.py",
+    "selection/__init__.py",
+]
+
+
+@pytest.mark.parametrize("module", IMPORT_FREE_MODULES)
+def test_a_leaf_module_imports_nothing_from_the_package(module):
+    """
+    These are used by ingest, the run drivers and visualization alike, so none
+    may reach back into the package: the selection algorithms importing `export` once
+    made a real import cycle. Read from the source, because importing any of
+    them runs `critterframe/__init__.py`, which loads everything.
+    """
+    source = (pathlib.Path(cf.__file__).parent / module).read_text(encoding="utf-8")
+    reaching_in = [
+        node.lineno
+        for node in ast.walk(ast.parse(source))
+        if (
+            isinstance(node, ast.ImportFrom)
+            and (node.level > 0 or (node.module or "").startswith("critterframe"))
+        )
+        or (
+            isinstance(node, ast.Import)
+            and any(alias.name.startswith("critterframe") for alias in node.names)
+        )
+    ]
+    assert not reaching_in, f"{module} imports from the package on line(s) {reaching_in}"
 
 
 @pytest.mark.parametrize("name", cf.__all__)

@@ -6,7 +6,7 @@ from functools import partial
 import cv2
 import numpy as np
 
-from ..recipes import Metric
+from ..core.recipes import Metric
 from ..visualization.panels import (
     DISPLAY_MAX,
     annotate,

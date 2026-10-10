@@ -4,7 +4,7 @@ current only while the values it was fit on are.
 
 The upstream recipe sits beside the cluster metric's hash the way its reference
 population does: recorded by prepare(), compared by
-`metrics.run._current_for_population`. Moving the upstream run onto a new
+`metrics.run_metrics._current_for_population`. Moving the upstream run onto a new
 recipe therefore rescores the cluster run on its next pass, instead of leaving
 values fit on replaced embeddings looking current.
 """

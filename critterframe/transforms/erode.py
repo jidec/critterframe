@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from ..maskops import edge_distance
-from ..recipes import Transform
+from ..core.recipes import Transform
 from ..visualization.panels import annotate
 
 # The default share of the maximum inscribed radius to take off every edge.

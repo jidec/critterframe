@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
-from ... import ingest as core_ingest
-from ...recipes import recorded_callable
+from ...ingest import occurrences as core_ingest
+from ...core.recipes import recorded_callable
 from ...timing import timed
 from . import archive
 
@@ -24,7 +24,7 @@ DEFAULT_MEDIA_TYPE = "StillImage"
 
 # GBIF's own way of saying "this record documents the absence of an organism",
 # not a quality judgement -- see ingest_occurrences' drop= and the core
-# contract it implements (critterframe.ingest.ingest_occurrences).
+# contract it implements (critterframe.ingest.occurrences.ingest_occurrences).
 ABSENT_OCCURRENCES = {"occurrenceStatus": ["ABSENT"]}
 
 # The rows iNaturalist itself published to GBIF, which prioritize_inat= hands
@@ -274,9 +274,9 @@ def ingest_occurrences(
         transform: A `callable(df) -> df` run after normalization.
         drop: `{column: values}` naming rows that are not organisms; `ABSENT_OCCURRENCES`
             by default. None keeps every row.
-        group_col: As in `critterframe.ingest.ingest_occurrences`.
-        max_per_group: As in `critterframe.ingest.ingest_occurrences`.
-        cap_rule: As in `critterframe.ingest.ingest_occurrences`.
+        group_col: As in `critterframe.ingest.occurrences.ingest_occurrences`.
+        max_per_group: As in `critterframe.ingest.occurrences.ingest_occurrences`.
+        cap_rule: As in `critterframe.ingest.occurrences.ingest_occurrences`.
         dedupe_key_cols: Columns identifying one real sighting published more than once,
             e.g. `DEFAULT_DEDUPE_KEY_COLS`. Off if None. A missing column skips
             deduplication with a warning.
@@ -285,7 +285,7 @@ def ingest_occurrences(
         prioritize_inat: Fill each group's cap from iNaturalist rows first, and let
             deduplication remove only other rows. Needs `institutionCode` among
             `occurrence_columns`.
-        trust_source_file_unchanged: As in `critterframe.ingest.ingest_occurrences`.
+        trust_source_file_unchanged: As in `critterframe.ingest.occurrences.ingest_occurrences`.
             Applies only when `archive_path` is a `.zip`.
         visualize: Write pipeline figures of the rows kept at each stage.
 

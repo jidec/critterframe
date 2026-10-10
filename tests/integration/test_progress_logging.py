@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import pytest
 
 import critterframe as cf
-from critterframe import drivers
+from critterframe.core import drivers
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow

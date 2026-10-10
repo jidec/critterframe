@@ -8,9 +8,10 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from .. import drivers
-from ..project import paths, subsets as subset_selection
-from ..recipes import hash_spec
+from ..core import drivers
+from ..project import paths
+from ..selection import subsets as subset_selection
+from ..core.recipes import hash_spec
 from ..records import calibrations as calibration_records
 from ..records.occurrences import ID_COL
 from ..storage.imagestore import ImageStore
@@ -440,7 +441,7 @@ def measure_scales(
             a px/mm histogram. False writes nothing.
 
     Returns:
-        The `drivers.Tally.summary` dict plus `missed`, the images where no target matched.
+        The `core.drivers.Tally.summary` dict plus `missed`, the images where no target matched.
     """
     paths.require_project(project_path)
 

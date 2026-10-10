@@ -13,13 +13,13 @@ Before: 4_gate_and_segment_parts.py. Next: 6_filter_and_export.py.
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
+from critterframe.selection.subsets import select_ids
 
 logging.basicConfig(level=logging.INFO)
 
 PROJECT_PATH = "D:/cf_projects/odonata_inat_obsorg"
 
-abdomens = set(cf.completed_ids(PROJECT_PATH, "body_parts", part="abdomen"))
+abdomens = set(cf.ids_completed(PROJECT_PATH, "body_parts", part="abdomen"))
 gated = set(select_ids(PROJECT_PATH, subset="organism_gate_pass"))
 
 cf.grow_subset(PROJECT_PATH, "part_screening_calibrate", target_size=100,

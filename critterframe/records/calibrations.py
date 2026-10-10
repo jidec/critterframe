@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import pandas as pd
 
 from ..project import paths
-from ..recipes import canonical_json, load_json
+from ..core.recipes import canonical_json, load_json
 from ..records import occurrences as occurrence_records
 from ..records.occurrences import ID_COL, load_occurrences
 from ..storage.tables import load_table, upsert_table

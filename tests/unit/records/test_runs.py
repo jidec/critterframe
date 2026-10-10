@@ -19,7 +19,7 @@ import sqlite3
 import pytest
 
 from critterframe.project import paths
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from critterframe.records import metrics as metric_records
 from critterframe.records import runs as run_records
 from critterframe.metrics.dimensions import body_length

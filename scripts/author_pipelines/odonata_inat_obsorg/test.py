@@ -1,8 +1,8 @@
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_ids
+from critterframe.selection.queries import ids_with_mask
 from critterframe.metrics.embedding import pretrained
 from critterframe.extensions.smp_segmenter import segmentation
 
@@ -43,7 +43,7 @@ PROJECT_PATH = "D:/cf_projects/odonata_inat_obsorg"
 # # this subset have no outlier score or cluster yet.
 # cf.define_subset(
 #     PROJECT_PATH, name="organism_outlier_reference",
-#     occurrence_ids=sorted(set(cf.sample_occurrences(select_ids(PROJECT_PATH), 10000))
+#     occurrence_ids=sorted(set(cf.sample_ids(select_ids(PROJECT_PATH), 10000))
 #                           | set(select_ids(PROJECT_PATH, subset="organism_annotations"))),
 # )
 #

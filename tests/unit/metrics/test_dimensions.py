@@ -14,7 +14,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 
 def rectangle_mask(width=40, height=100, shape=(200, 200)):
@@ -278,7 +278,7 @@ def test_a_mask_with_no_shape_is_refused():
 
 
 def test_elongation_is_a_ratio_and_does_not_convert():
-    from critterframe.export import CONVERTIBLE_UNITS
+    from critterframe.wide import CONVERTIBLE_UNITS
 
     assert cf.elongation().unit == "ratio"
     assert "ratio" not in CONVERTIBLE_UNITS

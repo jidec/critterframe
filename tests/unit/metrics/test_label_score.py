@@ -24,11 +24,11 @@ import pytest
 
 import critterframe as cf
 from critterframe.metrics.label_score import MIN_PER_CLASS
-from critterframe.metrics.run import RunContext
-from critterframe.metrics.stored import StoredValues
+from critterframe.metrics.run_metrics import RunContext
+from critterframe.metrics.base.stored import StoredValues
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.runs import start_run
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 
 pytest.importorskip("sklearn")
 
@@ -241,7 +241,7 @@ def test_too_few_labels_of_one_kind_is_refused(metadata_project):
 
 
 def test_an_occurrence_with_no_feature_value_has_no_score(metadata_project):
-    from critterframe.drivers import NoInput
+    from critterframe.core.drivers import NoInput
 
     lengths = {
         occurrence_id: value for occurrence_id, value in LENGTHS.items() if occurrence_id != "specimen0"

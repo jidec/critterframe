@@ -5,8 +5,9 @@ import logging
 import numpy as np
 import pandas as pd
 
-from ..project import paths, subsets as subset_selection
-from ..recipes import hash_spec
+from ..project import paths
+from ..selection import subsets as subset_selection
+from ..core.recipes import hash_spec
 from ..records import occurrences as occurrence_records
 from ..records.occurrences import ID_COL, ids_record, load_occurrences
 from ..visualization import figures

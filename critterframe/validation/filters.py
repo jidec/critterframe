@@ -6,19 +6,14 @@ import math
 import numpy as np
 import pandas as pd
 
-from ..recipes import DEFAULT_PART, hash_spec
-from ..export import (
-    _apply_filters,
-    _recorded_filters,
-    column_name,
-    export_metrics,
-    metrics_wide,
-)
+from ..core.recipes import DEFAULT_PART, hash_spec
+from ..export import _recorded_filters, export_metrics
 from ..metrics.quality import WARN_THRESHOLDS
-from ..project.subsets import select_ids
+from ..selection.subsets import select_ids
 from ..records.occurrences import ID_COL
 from ..visualization import figures
 from ..visualization import pipeline as pipeline_visualization
+from ..wide import apply_filters, column_name, metrics_wide
 from .filter_grids import draw_filter_grids
 
 logger = logging.getLogger(__name__)
@@ -922,7 +917,7 @@ def _score_filters(labelled, filters, label_col, bad_labels):
     ids = labelled[ID_COL].astype(str)
     is_bad = labelled[label_col].isin(bad_labels).to_numpy()
     passes = {
-        column: labelled.index.isin(_apply_filters(labelled, {column: rule}).index)
+        column: labelled.index.isin(apply_filters(labelled, {column: rule}).index)
         for column, rule in filters.items()
     }
     kept = np.ones(len(labelled), bool)
@@ -1089,13 +1084,13 @@ def audit_filters(
         - `n`, `n_bad`, `n_kept`, `n_kept_bad`: the counts behind the rates.
         - `coverage`: share of labelled rows kept.
         - `bad_rate_before`, `bad_rate_after`: share of bad rows among all labelled rows,
-          and among those kept.
+            and among those kept.
         - `good_retained`, `bad_caught`: share of good rows kept, and of bad rows removed.
         - `<rate>_ci`: the Wilson 95% interval of each rate, as `(low, high)`.
         - `recall_<label>`, `n_<label>`: share removed, and count, per bad label.
         - `filters`: DataFrame with one row per filter: what it removes on its own
-          (`removed`, `removed_bad`, `removed_good`) and what no other filter removes
-          (`removed_only_here`, `only_here_bad`, `only_here_good`).
+            (`removed`, `removed_bad`, `removed_good`) and what no other filter removes
+            (`removed_only_here`, `only_here_bad`, `only_here_good`).
         - `kept_bad`, `dropped_good`: occurrence ids of the misses, sorted.
     """
     if label_metric is None:

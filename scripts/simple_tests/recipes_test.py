@@ -17,7 +17,7 @@ Run from the repo root:
 import numpy as np
 
 import critterframe as cf
-from critterframe.recipes import Recipe, Segment
+from critterframe.core.recipes import Recipe, Segment
 
 print("== recipe identity ==")
 

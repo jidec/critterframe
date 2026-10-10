@@ -13,7 +13,7 @@ then draws masks on the usable part of it.
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_occurrences
+from critterframe.selection.subsets import select_occurrences
 
 logging.basicConfig(level=logging.INFO)
 

@@ -556,7 +556,7 @@ def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
     """
     A GBIF download is routinely dominated by a few common species -- this is
     the option that thins it back out, forwarded straight through to
-    critterframe.ingest.ingest_occurrences.
+    critterframe.ingest.occurrences.ingest_occurrences.
     """
     occurrence = (
         "gbifID\toccurrenceStatus\tspecies\n"
@@ -933,7 +933,7 @@ def test_reingesting_the_same_archive_skips_the_expensive_parse(tmp_path, monkey
     The scenario this exists for: a multi-gigabyte GBIF archive whose parse
     takes minutes and gigabytes of RAM. A repeat ingest with identical
     decisions must not pay that cost again just to discover, afterward, that
-    there was nothing new -- already_ingested is checked BEFORE
+    there was nothing new -- the import log is checked BEFORE
     read_darwincore_archive runs, not after.
     """
     zpath = write_archive_zip(tmp_path / "gbif.zip")
@@ -943,7 +943,7 @@ def test_reingesting_the_same_archive_skips_the_expensive_parse(tmp_path, monkey
 
     def _no_parse(*a, **kw):
         raise AssertionError(
-            "read_darwincore_archive ran on a repeat ingest -- already_ingested should have skipped it"
+            "read_darwincore_archive ran on a repeat ingest -- the import on record should have skipped it"
         )
 
     monkeypatch.setattr(archive, "read_darwincore_archive", _no_parse)

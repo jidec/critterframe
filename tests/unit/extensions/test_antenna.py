@@ -99,7 +99,7 @@ def test_the_non_organism_vocabulary_belongs_to_the_extension():
 def test_group_col_and_max_per_group_reach_the_core_ingest(tmp_path):
     """
     An export dominated by a few common species is thinned back out by
-    forwarding straight through to critterframe.ingest.ingest_occurrences,
+    forwarding straight through to critterframe.ingest.occurrences.ingest_occurrences,
     against an already-downloaded CSV so this never touches the network.
     """
     csv_path = tmp_path / "export.csv"

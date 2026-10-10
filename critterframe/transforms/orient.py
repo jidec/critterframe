@@ -5,7 +5,7 @@ import logging
 import cv2
 import numpy as np
 
-from ..recipes import Transform
+from ..core.recipes import Transform
 from ..visualization.panels import annotate, side_by_side
 
 logger = logging.getLogger(__name__)

@@ -16,7 +16,7 @@ from critterframe.metrics.embedding import (
     letterbox,
     state_dict_digest,
 )
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 
 
 class Encoder:
@@ -118,7 +118,7 @@ def test_embedding_a_segment_returns_a_normalized_plain_list():
         def __call__(self, images):
             return torch.stack([images.mean(dim=(2, 3))[0]])
 
-    from critterframe.recipes import Segment
+    from critterframe.core.recipes import Segment
 
     model = EmbeddingModel(MeanColour(), "a.pt", input_size=(8, 8), device="cpu")
     segment = Segment(np.full((10, 10, 3), 128, np.uint8), mask=np.ones((10, 10), bool))

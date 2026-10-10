@@ -18,7 +18,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.records import masks as mask_records
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from helpers.models import ThresholdModel
 
 pytestmark = pytest.mark.slow
@@ -243,7 +243,7 @@ def test_a_derived_part_is_measured_and_rendered_in_its_upstream_frame(segmented
 
     assert framed["processed"] == own["processed"] == 8
 
-    from critterframe.export import column_name, metrics_wide
+    from critterframe.wide import column_name, metrics_wide
 
     values = metrics_wide(segmented_project, parts=["core"])
     # Cropping to the organism keeps the whole upstream frame, so the part's

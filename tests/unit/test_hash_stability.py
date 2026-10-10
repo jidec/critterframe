@@ -28,9 +28,9 @@ golden test nobody reads protects nothing. One per layer:
 """
 
 from critterframe.metrics.dimensions import body_length
-from critterframe.recipes import Recipe, canonical_json, hash_spec
+from critterframe.core.recipes import Recipe, canonical_json, hash_spec
 from critterframe.records.masks import derivation_hash
-from critterframe.segmentation.run import segment
+from critterframe.segmentation.run_segments import segment
 
 
 class FrozenModel:

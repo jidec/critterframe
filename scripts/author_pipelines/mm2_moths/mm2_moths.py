@@ -152,7 +152,7 @@ cf.run_metrics(
 cf.define_subset(
     PROJECT_PATH,
     "reference",
-    occurrence_ids=cf.occurrences_matching(
+    occurrence_ids=cf.ids_matching(
         PROJECT_PATH, "usability", {"usability": "usable"}),
 )
 

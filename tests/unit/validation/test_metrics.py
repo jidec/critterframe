@@ -24,7 +24,7 @@ import pytest
 import critterframe as cf
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.runs import start_run
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from critterframe.validation.metrics import _pair_metrics
 
 

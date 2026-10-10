@@ -12,11 +12,11 @@ import pandas as pd
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Metric
+from critterframe.core.recipes import Metric
 from critterframe.records import failures as failure_records
 from critterframe.records import masks as mask_records
 from critterframe.records import occurrences as occurrence_records
-from critterframe.segmentation.run import _build_recipes
+from critterframe.segmentation.run_segments import _build_recipes
 from critterframe.storage.imagestore import ImageStore
 from helpers.models import ThresholdModel
 

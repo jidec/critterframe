@@ -1,8 +1,8 @@
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_ids
+from critterframe.selection.queries import ids_with_mask
 from critterframe.metrics.embedding import pretrained
 from critterframe.extensions.smp_segmenter import segmentation
 

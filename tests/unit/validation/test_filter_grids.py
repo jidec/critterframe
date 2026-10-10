@@ -16,7 +16,7 @@ import pytest
 
 import critterframe as cf
 from critterframe.project import paths
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from critterframe.records.metrics import append_metrics, make_metric_row
 from critterframe.records.runs import start_run
 from critterframe.validation.filter_grids import STRIP_CELLS, thin_ranks

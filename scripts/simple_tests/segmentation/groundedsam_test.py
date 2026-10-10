@@ -28,7 +28,7 @@ import time
 from pathlib import Path
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.segmentation.groundedsam import groundedsam2, sam2
 from critterframe.visualization.panels import PanelFiles
 

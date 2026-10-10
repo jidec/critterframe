@@ -18,7 +18,6 @@ import logging
 
 import critterframe as cf
 from critterframe.extensions.smp_segmenter import training
-from critterframe.records.masks import occurrence_ids_with_mask
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,7 +47,7 @@ FRACTIONS = {"train": 0.70, "val": 0.15, "test": 0.15}
 
 # Every occurrence with a reference mask for this part, frozen as a subset so
 # the split is reproducible and visible in subsets.toml.
-reference_ids = sorted(occurrence_ids_with_mask(PROJECT_PATH, PART, reference=True))
+reference_ids = cf.ids_with_mask(PROJECT_PATH, PART, reference=True)
 cf.define_subset(PROJECT_PATH, TRAINING_SUBSET, occurrence_ids=reference_ids,
                  note=f"every reference {PART} mask, for {DATASET_DIR}")
 logging.info("%d reference %s masks to train from", len(reference_ids), PART)

@@ -1,7 +1,7 @@
 """mask_info(): the diagnostics a segmentation run stored on each mask, as a metric."""
 
-from .. import drivers
-from ..recipes import Metric
+from ..core import drivers
+from ..core.recipes import Metric
 from ..records import masks as mask_records
 
 
@@ -27,6 +27,7 @@ class MaskInfoMetric(Metric):
             part=context.part,
             occurrence_ids=context.occurrence_ids,
             reference=context.reference,
+            info=True,
         )
         self._info = {occurrence_id: mask_records.mask_info(row) for occurrence_id, row in rows.items()}
         return None

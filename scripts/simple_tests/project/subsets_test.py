@@ -13,7 +13,9 @@ Run from the repo root:
 
 import logging
 
-from critterframe.project import paths, subsets
+from critterframe.project import paths
+
+from critterframe.selection import subsets
 from critterframe.records.occurrences import load_occurrences
 
 logging.basicConfig(level=logging.INFO)

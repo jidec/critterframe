@@ -6,10 +6,10 @@ import logging
 import numpy as np
 import pandas as pd
 
-from .. import selectionhelpers
-from ..export import column_name, metrics_wide
+from ..selection import algorithms as selection_algorithms
+from ..wide import column_name, metrics_wide
 from ..project import paths
-from ..recipes import DEFAULT_PART, hash_spec
+from ..core.recipes import DEFAULT_PART, hash_spec
 from ..records import masks as mask_records
 from ..records import runs as run_records
 from ..records.occurrences import ID_COL
@@ -179,7 +179,7 @@ def compare_metrics(
             # the dropna() this replaces), displayed with its sign -- the
             # signed and unsigned series diverge here, so only the ranking
             # step is shared.
-            worst = selectionhelpers.worst_n(percent, show_worst, ascending=False)
+            worst = selection_algorithms.worst_n(percent, show_worst, ascending=False)
             if worst:
                 logger.info(
                     "    worst %d: %s",

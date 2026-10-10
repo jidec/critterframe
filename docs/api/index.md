@@ -309,6 +309,52 @@
     options:
       show_root_full_path: false
 
+# selecting occurrences
+
+::: critterframe.select_ids
+    options:
+      show_root_full_path: false
+
+::: critterframe.ids_matching
+    options:
+      show_root_full_path: false
+
+::: critterframe.ids_passing
+    options:
+      show_root_full_path: false
+
+::: critterframe.ids_completed
+    options:
+      show_root_full_path: false
+
+::: critterframe.ids_with_mask
+    options:
+      show_root_full_path: false
+
+::: critterframe.ids_with_image
+    options:
+      show_root_full_path: false
+
+::: critterframe.exemplars_per_group
+    options:
+      show_root_full_path: false
+
+::: critterframe.sample_ids
+    options:
+      show_root_full_path: false
+
+::: critterframe.sample_per_group
+    options:
+      show_root_full_path: false
+
+::: critterframe.grow_sample
+    options:
+      show_root_full_path: false
+
+::: critterframe.shard_ids
+    options:
+      show_root_full_path: false
+
 # exporting
 
 ::: critterframe.export_metrics
@@ -320,30 +366,6 @@
       show_root_full_path: false
 
 ::: critterframe.load_exports
-    options:
-      show_root_full_path: false
-
-::: critterframe.occurrences_matching
-    options:
-      show_root_full_path: false
-
-::: critterframe.completed_ids
-    options:
-      show_root_full_path: false
-
-::: critterframe.exemplars_per_group
-    options:
-      show_root_full_path: false
-
-::: critterframe.occurrence_ids_with_mask
-    options:
-      show_root_full_path: false
-
-::: critterframe.sample_occurrences
-    options:
-      show_root_full_path: false
-
-::: critterframe.shard_occurrences
     options:
       show_root_full_path: false
 

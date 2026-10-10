@@ -5,7 +5,7 @@ and no lost work.
 run_segments(shard=(index, total)) is what lets several workers -- a cluster
 job array, a plain multiprocessing.Pool, or a ThreadPoolExecutor -- process
 one project in parallel: shards are deterministic and disjoint by
-construction (selectionhelpers.shard_occurrences), and a sharded run writes
+construction (selection.algorithms.shard_ids), and a sharded run writes
 to a private staging area rather than masks.parquet directly, so no amount
 of concurrent writing can lose a row the way upsert_table's whole-file
 rewrite would. That last part is the one thing a sequential test can't fully

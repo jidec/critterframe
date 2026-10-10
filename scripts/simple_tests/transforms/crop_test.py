@@ -18,7 +18,7 @@ import cv2
 import numpy as np
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.transforms.crop import REGIONS
 
 # A frame with a numbered blob in each quadrant, so a misplaced crop is obvious.

@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 
 from ..maskops import largest_component
-from ..recipes import Transform
+from ..core.recipes import Transform
 from ..visualization.panels import annotate
 
 logger = logging.getLogger(__name__)

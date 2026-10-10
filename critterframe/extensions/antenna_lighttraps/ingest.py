@@ -7,7 +7,7 @@ from urllib.parse import urlparse
 
 import pandas as pd
 
-from ...ingest import ingest_occurrences as core_ingest_occurrences
+from ...ingest.occurrences import ingest_occurrences as core_ingest_occurrences
 from ...project import paths
 from . import api
 
@@ -29,7 +29,7 @@ NUMERIC_COLS = [
 ]
 
 # Determinations that mean "this detection isn't an organism", excluded at
-# ingest (see ingest.ingest_occurrences' drop=). Values, not a confidence
+# ingest (see ingest.occurrences.ingest_occurrences' drop=). Values, not a confidence
 # threshold, and the distinction is the point: this says Antenna decided the
 # crop holds no moth, which is a fact about the source's output. How much to
 # trust a LOW-CONFIDENCE identification of a real moth is a judgement about your
@@ -132,10 +132,10 @@ def ingest_occurrences(
         transform: A `callable(df) -> df` run after the Antenna derivations.
         drop: Rows to exclude as non-organisms; `NON_ORGANISM_DETERMINATIONS` by default.
             None ingests every detection.
-        group_col: As in `critterframe.ingest.ingest_occurrences`.
-        max_per_group: As in `critterframe.ingest.ingest_occurrences`.
-        cap_rule: As in `critterframe.ingest.ingest_occurrences`.
-        visualize: As in `critterframe.ingest.ingest_occurrences`.
+        group_col: As in `critterframe.ingest.occurrences.ingest_occurrences`.
+        max_per_group: As in `critterframe.ingest.occurrences.ingest_occurrences`.
+        cap_rule: As in `critterframe.ingest.occurrences.ingest_occurrences`.
+        visualize: As in `critterframe.ingest.occurrences.ingest_occurrences`.
 
     Returns:
         The resulting occurrence table.

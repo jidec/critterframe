@@ -17,7 +17,7 @@ import numpy as np
 import pytest
 
 import critterframe as cf
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 
 FRAME = (200, 400)  # height, width
 BOX = (slice(40, 60), slice(300, 340))  # y, x -- right of centre, high up

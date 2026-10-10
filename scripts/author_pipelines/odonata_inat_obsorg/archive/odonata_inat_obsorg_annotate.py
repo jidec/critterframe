@@ -13,8 +13,8 @@ The third is skipped until the pipeline has produced what it needs.
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_ids
+from critterframe.selection.queries import ids_with_mask
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ cf.run_metrics(PROJECT_PATH, subset="usability_annotation_set",
 
 cf.define_subset(
     PROJECT_PATH, name="usability_annotation_set_usable",
-    occurrence_ids=cf.occurrences_matching(
+    occurrence_ids=cf.ids_matching(
         PROJECT_PATH, "usability_annotation", {"usability_annotation": "usable"}),
 )
 
@@ -53,7 +53,7 @@ cf.run_segments(
 # why it should not reach an export. Unlike a reference mask this label exists
 # for every input, so it is what the abdomen filters are calibrated against.
 
-abdomens = occurrence_ids_with_mask(PROJECT_PATH, part="abdomen")
+abdomens = set(ids_with_mask(PROJECT_PATH, part="abdomen"))
 gated = set(select_ids(PROJECT_PATH, subset="organism_gate_pass")) \
     if "organism_gate_pass" in cf.load_subsets(PROJECT_PATH) else set()
 

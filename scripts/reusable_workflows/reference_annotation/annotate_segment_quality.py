@@ -23,8 +23,6 @@ Next: validation/audit_filters.py.
 import logging
 
 import critterframe as cf
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,13 +46,13 @@ QUALITY_RUN = "segment_quality"
 
 def existing(subset):
     try:
-        return set(select_ids(PROJECT_PATH, subset=subset))
+        return set(cf.select_ids(PROJECT_PATH, subset=subset))
     except KeyError:
         return set()
 
 
 # The population that reaches an export: occurrences with a mask for every part.
-pool = set.intersection(*(occurrence_ids_with_mask(PROJECT_PATH, part=part)
+pool = set.intersection(*(set(cf.ids_with_mask(PROJECT_PATH, part=part))
                           for part in PARTS))
 
 cf.grow_subset(PROJECT_PATH, AUDIT_SUBSET, target_size=AUDIT_SIZE,

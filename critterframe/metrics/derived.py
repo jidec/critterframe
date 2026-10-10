@@ -2,8 +2,8 @@
 
 import inspect
 
-from ..recipes import canonical_json
-from .stored import StoredValueMetric
+from ..core.recipes import canonical_json
+from .base.stored import StoredValueMetric
 
 
 class DerivedMetric(StoredValueMetric):

@@ -6,8 +6,8 @@ import numpy as np
 import pandas as pd
 
 from ..records.occurrences import ID_COL
-from ..segments import iterate_segments
-from ..selectionhelpers import sample_occurrences
+from ..core.segments import iterate_segments
+from ..selection.algorithms import sample_ids
 from ..visualization import grids
 from ..visualization.panels import ADDED_COLOR, REMOVED_COLOR, annotate, bordered
 
@@ -116,7 +116,7 @@ class _Plan:
     def take(self, ids, cap):
         """Return up to `cap` of `ids`, the same ones every run, and mark them as needing a cutout."""
         ids = [str(occurrence_id) for occurrence_id in ids]
-        chosen = sample_occurrences(ids, cap) if len(ids) > cap else sorted(ids)
+        chosen = sample_ids(ids, cap) if len(ids) > cap else sorted(ids)
         self.needed.update(chosen)
         return chosen
 

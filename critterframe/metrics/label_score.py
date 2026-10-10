@@ -3,12 +3,12 @@
 import logging
 import math
 
-from ..project.subsets import select_ids
-from ..recipes import hash_spec
+from ..selection.subsets import select_ids
+from ..core.recipes import hash_spec
 from ..records.metrics import latest_values
 from ..records.occurrences import ID_COL, ids_record
 from ..visualization import figures
-from .stored import StoredValueMetric
+from .base.stored import StoredValueMetric
 
 logger = logging.getLogger(__name__)
 

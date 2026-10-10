@@ -354,7 +354,7 @@ def test_a_recipe_that_would_not_reproduce_itself_refuses_the_shortcut(segmented
 
 def _explodes(name="explodes"):
     """A metric that always raises, standing in for one that genuinely can."""
-    from critterframe.recipes import Metric
+    from critterframe.core.recipes import Metric
 
     def _raise(_segment):
         raise ValueError("no")

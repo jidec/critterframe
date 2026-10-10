@@ -175,7 +175,7 @@ def test_a_qc_threshold_is_calibrated_against_human_labels(graded, monkeypatch):
     A threshold is picked by looking at what it WOULD have excluded on crops a
     person already judged -- never by eye, and never hardcoded.
     """
-    from critterframe.export import metrics_wide
+    from critterframe.wide import metrics_wide
     from critterframe.validation.filters import suggest_threshold, sweep_thresholds
 
     # Two of the eight are called unusable; the rest are fine.
@@ -215,7 +215,7 @@ def test_the_labels_pick_out_the_crops_worth_more_human_time(graded, monkeypatch
 
     cf.run_metrics(graded, run_name="screening", metrics=[screen()], visualize=False)
 
-    usable = cf.occurrences_matching(graded, "screening", {"usability": "usable"})
+    usable = cf.ids_matching(graded, "screening", {"usability": "usable"})
     assert len(usable) == SPECIMENS - 1
 
     cf.define_subset(graded, "usable", occurrence_ids=usable)

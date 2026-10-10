@@ -1,6 +1,6 @@
-from critterframe.metrics.inductive_color_thresholds import inductive_color_thresholds
-from critterframe.records.masks import occurrence_ids_with_mask
-from critterframe.selectionhelpers import sample_occurrences
+from critterframe.metrics.color.inductive_thresholds import inductive_color_thresholds
+from critterframe.selection.queries import ids_with_mask
+from critterframe.selection.algorithms import sample_ids
 
 import logging
 

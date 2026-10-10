@@ -26,7 +26,7 @@ validation all run without torch. Keep it that way: a new core module should not
 ```
 pip install -e ".[dev]"
 
-pytest                              # ~1,100 tests, ~45s; needs no GPU, network, or credentials
+pytest                              # ~2,200 tests, about a minute; needs no GPU, network, or credentials
 pytest tests/unit -m "not slow"     # inner loop, a few seconds
 pytest -n auto                      # parallel; the suite is tmp_path-isolated
 pytest -m gpu                       # opt in to what's deselected by default
@@ -68,15 +68,55 @@ The synthetic pipeline script writes real pipeline grids and product renders, so
 after touching `visualization/`. The rest need real state — a populated project, credentials, a GPU, or files
 under `scripts/test_images/`.
 
-`scripts/*.py` (excluding `simple_tests/`) are annotated reference pipelines, one per project shape. They point
-at project paths that don't exist in this repo; read them as documentation of intended usage, and expect to
-change `PROJECT_PATH` before running one.
+The pipelines under `scripts/` are in two folders. `scripts/reusable_workflows/` holds one folder per task
+most projects need (calibration, reference annotation, a custom segmentation model, validation), plus
+`simplest_full_pipeline.py`. `scripts/author_pipelines/` holds whole projects as they were run, one folder
+each; `odonata_inat_obsorg/` is the worked end-to-end example. They point at project paths that don't exist
+in this repo; read them as documentation of intended usage, and expect to change `PROJECT_PATH` before
+running one. The docs site's Examples tab is generated from the reusable workflows and the numbered
+`odonata_inat_obsorg` steps; `docs/guide.md` describes the other author pipelines by hand, so one of
+those added, renamed or removed is a change to that page too.
 
 `ruff check .` is the lint, configured in `pyproject.toml`, and is clean and worth keeping clean. It runs the
 pyflakes rules everywhere and the docstring rules on the package; `scripts/` and `README.md` are excluded,
 and so are docstring rules for `tests/`. `ruff format .` is the formatter, applied to `critterframe/` and
 `tests/` (line length 110); `ruff format --check .` is clean and worth keeping clean. `scripts/` is never
 formatted, since pipeline scripts are laid out by hand. No type checker is run.
+
+### Everything at once
+
+```
+python tools/check.py           # tests, ruff check, ruff format --check, mkdocs build --strict
+python tools/check.py --fast    # unit tests without the slow ones, lint and format; no docs build
+```
+
+One line per step, pass or fail, with the end of a failed step's output. Every step runs whatever the
+earlier ones did, and the exit code is non-zero if any failed.
+
+### The dependency graphs
+
+```
+winget install Graphviz.Graphviz    # both tools draw through `dot`
+pip install -e ".[graphs]"
+python tools/make_graphs.py                         # everything, into docs/graphs/ (gitignored)
+python tools/make_graphs.py --target run_metrics    # one function's callers and callees
+```
+
+The graphs are published on the docs site: the docs workflow draws them on every deploy, and
+`docs/internals.md` (the Internals page) holds the reading order and links to each. They are generated
+files and are not committed. That page links to them with HTML anchors, not Markdown links, because a
+strict build fails on a Markdown link whose target is missing, and the docs must build on a machine
+without Graphviz. `docs/graphs/subpackages.svg` is the import graph with one node per
+subpackage or top-level module, from `pydeps`; an arrow points from the imported module to its importer. It
+is reliable, and includes imports made inside functions. A graph of every module is not drawn: at about 100
+nodes and 600 edges no arrow in it can be followed. The rest are `code2flow` call graphs, whose nodes show
+the first line of each function's docstring on hover: `calls_<subpackage>.svg` (and
+`calls_top_level.svg` for the modules directly under the package) draw the calls inside one folder, and
+`calls_around_<function>.svg` draw one entry point across the whole package (the tool's
+`ENTRY_POINTS`, or any function with `--target`). Call graphs are a map, not a proof: calls are matched by
+name, so they miss anything dispatched through an `Operation`, a factory, or a model's `predict`/`identity`.
+The tool resolves an imported name against each file's path inside the package and leaves one that fits more
+than one file unresolved, so a call graph can miss an edge where two modules share a name.
 
 ### The docs site
 
@@ -86,12 +126,26 @@ mkdocs serve           # live preview at localhost:8000
 mkdocs build --strict  # what CI runs before deploying; fails on broken refs/links
 ```
 
-`docs/index.md` is a `pymdownx.snippets` include of this README, not separate content — edit the README, not
-that file. `docs/api/*.md` are thin `mkdocstrings` directives, one per subpackage; they render existing
+The site has five tabs, one per reader's question. **Overview** (`docs/index.md`) is a `pymdownx.snippets`
+include of `README.md`, not separate content: edit the README, not that file. The README is the pitch
+(what the package does, the framework and pipeline principles, installation) and links to the other pages
+by absolute site URL, since a relative link would resolve differently on GitHub and on the site.
+**Concepts** (`docs/concepts.md`) holds the project folder structure and the vocabulary. **Guide**
+(`docs/guide.md`) holds the example pipelines, validation and the extensions. **Internals**
+(`docs/internals.md`) holds the package layout tree, the graphs and testing: a module added, moved or
+renamed is a change to that tree. Those three are ordinary files, edited directly. **Examples** has no
+file under `docs/`: the hook `tools/docs_examples.py` builds its pages on every build from
+`scripts/reusable_workflows/` (one page per folder, plus `simplest_full_pipeline.py`) and from the numbered
+scripts of `scripts/author_pipelines/odonata_inat_obsorg/`, and adds them to the nav. Each script appears as
+its docstring, as prose, followed by its code, ordered by the docstring's "Step N of M". So a script's
+docstring is read by users on the site and is written for them, and a new script or workflow folder needs
+no docs change. A script that does not parse is skipped with a warning, which fails the strict build.
+`docs/api/*.md` are thin `mkdocstrings` directives, one per subpackage; they render existing
 docstrings as-is, so a new subpackage needs a new `docs/api/<name>.md` plus a `mkdocs.yml` nav entry, but a new
 module inside an existing subpackage needs nothing (`show_submodules` picks it up). `.github/workflows/docs.yml`
 deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touches `critterframe/`, `docs/`,
-`mkdocs.yml`, or `README.md`.
+`tools/`, `scripts/`, `mkdocs.yml`, or `README.md`. It installs Graphviz and the `graphs` extra and runs
+`tools/make_graphs.py` first, so the Internals page's graphs are drawn from the code being deployed.
 
 ## Architecture
 
@@ -106,10 +160,10 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
    values})` keeps it out of the table entirely. That's the contract being enforced, not a filter being
    applied: a row asserting nothing doesn't belong in a table whose every row asserts an organism. Safe to do
    at ingest because the source file is archived *before* parsing, so `raw_imports/` keeps every dropped row.
-   Extensions own the vocabulary (`antenna_lighttraps.ingest.NON_ORGANISM_DETERMINATIONS`). See `ingest.py`
+   Extensions own the vocabulary (`antenna_lighttraps.ingest.NON_ORGANISM_DETERMINATIONS`). See `ingest/`
    under Package layout below for the raw import/import vocabulary and how turning one into the other is
    recorded.
-3. **Any number of parts per occurrence**, defaulting to `"organism"` (`recipes.DEFAULT_PART`).
+3. **Any number of parts per occurrence**, defaulting to `"organism"` (`core.recipes.DEFAULT_PART`).
 4. **At most one canonical mask per occurrence-part**, in `masks.parquet`, RLE-encoded, **always in the
    coordinates of the original analysis image**. Reference masks live in an identical table
    (`reference_masks.parquet`) reached with `reference=True`. Called *reference*, never "ground truth" --
@@ -127,12 +181,12 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
 7. **Metrics are any derived value**: traits, QC scores, human labels, embeddings, cluster assignments, outlier
    scores. Stored long in `runs_and_metrics.sqlite`, reshaped wide at export. That includes what a metric
    run's transforms reported: each transform's scalar info is stored as a sibling row named by its label
-   (`segments.operation_labels`, so a repeat is `orient_2`) with unit `records.metrics.TRANSFORM_INFO_UNIT`,
+   (`core.segments.operation_labels`, so a repeat is `orient_2`) with unit `records.metrics.TRANSFORM_INFO_UNIT`,
    because a length measured after an unsure `orient` is suspect in a way only that row says. Export and
    `metrics_wide` leave those columns out unless `transform_info=True` (or they're named in `metric_names`) —
    `compare_metrics` would otherwise try to difference a boolean — and export drops them after filters have
    run, so a filter can use one without exporting it; a default export's manifest and hash never see them.
-   `occurrences_matching` always sees them, so a rule can name `orient__unreliable`. Not in
+   `ids_matching` always sees them, so a rule can name `orient__unreliable`. Not in
    the recipe hash — recording them doesn't change a measured value — so occurrences measured before they were
    recorded get theirs only on a `force=True` rerun.
 8. **Metrics are immutable historical results, and a value is *current* only while its source mask is.** Every
@@ -141,7 +195,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
    (so resegmenting the organism moves the identity of every part below it). Replacing an
    occurrence-part's canonical mask deletes nothing — it just means the values derived from the old mask stop
    being current, and the long table legitimately holds both. Anything that reshapes values for analysis
-   (`export.metrics_wide`, `records.metrics.latest_values`, `compare_metrics`, and `export_metrics` through
+   (`wide.metrics_wide`, `records.metrics.latest_values`, `compare_metrics`, and `export_metrics` through
    them) reports only the current ones, via `records.metrics.current_rows`; `current_only=False` opts out where
    you want the raw history. Provenance is kept, and the working analysis follows the current masks.
    A row stores nothing the run already records — no per-row `version` (it's in the recipe spec, hence in the
@@ -168,7 +222,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
    looks like, how to measure it.
    A scope is just an occurrence column — `occurrence_id` for a target in every frame, `session_path` for a
    light trap's card, `device` for a fixed rig — which is how the package identifies a group everywhere else
-   (`outliers.group_col`, `splits.group_col`, subset `column`), so changing what a calibration covers is a data
+   (a group metric's `group_col`, `splits.group_col`, subset `column`), so changing what a calibration covers is a data
    change, not a code change. `resolve_for_occurrences()` maps scopes down to one answer per occurrence,
    narrowest scope winning (ranked by how many occurrences a scope value covers, so a project's own scope gets
    sensible precedence for free). Nothing is written onto occurrences: that table is snapshot-written and a
@@ -185,7 +239,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
     judgement can't be smuggled into the one place that can't undo it.
 
     A per-group cap at import (`ingest_occurrences(group_col=, max_per_group=)`, via
-    `selectionhelpers.cap_per_group`) looks like it belongs on the filter side — it's a threshold, not
+    `selection.algorithms.cap_per_group`) looks like it belongs on the filter side — it's a threshold, not
     membership — but it judges something neither `drop=` nor a filter does. `drop=` and a filter both judge
     ONE occurrence: whether it's an organism, whether its result is good enough. A per-group cap judges the
     POPULATION: every row in an oversized group is an equally valid, equally wanted candidate, so capping it
@@ -203,14 +257,14 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
 
     Gating later steps by a subset built from a calibrated filter is also not a filter in this item's sense. A
     cascade runs cheap scores on the organism segment, calibrates conservative cutoffs against usability
-    labels, freezes the passing occurrences as a subset (`export_metrics(path=False, manifest=False,
-    filters=gate)` then `define_subset`), and runs the expensive part steps with `subset=` that name. Nothing
+    labels, freezes the passing occurrences as a subset (`ids_passing(filters=gate)` then `define_subset`),
+    and runs the expensive part steps with `subset=` that name. Nothing
     is deleted and nothing is recomputed to revise it: widening the gate adds only the newly admitted
     occurrences, and narrowing it costs nothing. It decides where effort goes, the same question a cap answers,
     and it keeps invalid inputs out of every population fit below it. The export then runs on that
     subset, whose `note` records the rule, so the gate needs no second copy among the export's `filters`.
 
-    A third import-time judgment, `selectionhelpers.dedupe_by`, answers a different question again: not "is
+    A third import-time judgment, `selection.algorithms.dedupe_by`, answers a different question again: not "is
     this an organism" (`drop=`) or "does the population need this many" (`cap_per_group`), but "are these two
     rows the same real thing" — the same sighting independently published by two aggregators (GBIF fed by both
     iNaturalist and Observation.org, say), each minting its own id, so no id-based check can see the collision.
@@ -279,7 +333,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
     the manifest's `columns` is keyed by the CSV's own header: a rename made in R leaves a header the manifest
     no longer describes, where one made here is listed under the new name with the default one (`column`)
     and its run, part, metric and unit beside it. It is a relabel only, applied last, so `filters`,
-    `audit_filters` and `occurrences_matching` keep naming default columns, and it is in the export hash
+    `audit_filters` and `ids_matching` keep naming default columns, and it is in the export hash
     only when given. What goes in the file and what decides its rows are separate selections: a filter may
     name a column `run_names`/`parts`/`metric_names` left out, whose values are loaded for the filter and
     dropped after it, the treatment transform-info columns get. There is no "drop the filter columns" flag
@@ -294,7 +348,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
     never measured, and the manifest's `part_counts` says how many of each; emptied values are left out
     of its `n_values` and `source_masks`. Both keys are in the export hash only when given.
 
-### The three types everything is built from (`recipes.py`)
+### The three types everything is built from (`core/recipes.py`)
 
 - **`Segment`** — the working representation: image, current mask, and a 2×3 affine mapping ORIGINAL image
   coordinates to its own. Spatial transforms compose onto that affine via `Segment.replace(applied=...)`;
@@ -320,7 +374,7 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
 ### Repeat-awareness
 
 `run_segments` and `run_metrics` both compute their recipe hash, ask the store which `(occurrence_id, part)`
-pairs that hash already covered (`records.masks.completed_keys` / `metrics.run._completed_keys` — the metric one
+pairs that hash already covered (`records.masks.completed_keys` / `metrics.run_metrics._completed_keys` — the metric one
 lives with the run because "what work is left" is a property of the run, not of the stored values), and skip
 them. This is what makes runs interruptible and makes expensive metrics behave like cached derived data.
 `force=True` overrides. **This is a behavioural guarantee — don't add a code path that writes results without
@@ -366,7 +420,7 @@ questions.
 scope: nothing ever reads a mask BY `run_name` (`masks.parquet`'s key is `occurrence_id`+`part`), so once the
 hash no longer encodes it, a segmentation run renamed with no other change simply recognizes the existing
 canonical mask as its own — free, and correct, since there is no per-name copy for anything to leave empty.
-`metrics.run._completed_keys` is the opposite: `run_name` is what `export.column_name` and
+`metrics.run_metrics._completed_keys` is the opposite: `run_name` is what `wide.column_name` and
 `records.metrics.latest_values` key values back by, so an unscoped check would let a brand-new name silently
 inherit another name's completion and process nothing, leaving that name's export column permanently empty.
 It therefore takes an explicit `run_name` and joins to `runs.name`; `run_metrics` calls it twice — once scoped
@@ -375,7 +429,7 @@ this exact recipe) — and for the second set, `_copyable_rows` re-inserts the e
 run's `run_id` instead of recomputing them, a plain `INSERT`-shaped read with no image, transform, or model
 involved. The `copied` count in `run_metrics`' return dict is this, distinct from `processed`.
 
-This copy step is only safe because of one more check: `metrics.run._current_for_population` (see the group
+This copy step is only safe because of one more check: `metrics.run_metrics._current_for_population` (see the group
 model bullet below) narrows both the same-name and cross-name candidate sets to rows whose reference
 population actually matches this run's own fit, so a group metric never copies — or silently treats as
 current — a score fit against a population this run wouldn't have used.
@@ -393,7 +447,7 @@ today's behaviour; the machinery is in place if that changes.
 
 ### Hashes: one rule, different consumers
 
-Every hash is `recipes.hash_spec` (16 hex chars over canonical JSON), and every one follows the same rule: **it
+Every hash is `core.recipes.hash_spec` (16 hex chars over canonical JSON), and every one follows the same rule: **it
 covers exactly what changes the output; who, when, where and what-it's-called are recorded beside it, never in
 it** (names, subsets, timestamps, paths, `visualize`, `force`). What differs is what reads the hash back, and that
 sets what a change costs:
@@ -414,7 +468,7 @@ changed one makes exactly its own metrics stale. It is a new root — no `from_p
 Only the first two rows are pinned by `tests/unit/test_hash_stability.py`. A pipeline report usually reuses the
 run's own recipe hash, but there it only locates files, so a report may be deleted freely. The one identity that
 sits beside a hash rather than inside it is a group metric's reference population (`context_json`, checked by
-`metrics.run._current_for_population`; see Run semantics). When adding a hash, decide which row it belongs to
+`metrics.run_metrics._current_for_population`; see Run semantics). When adding a hash, decide which row it belongs to
 first; that decides whether it must be stable forever.
 
 ### Storage invariants that fail silently
@@ -432,10 +486,19 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   the row. Not recoverable automatically: the fix is a judgement about the data (two photos of one specimen,
   or two specimens sharing a number?), and silently keeping whichever copy came first picks an arbitrary
   winner and loses the other.
-- **A source CSV is read without type inference** (`ingest._CSV_READ`: `dtype=str`, only an empty field
+- **A source CSV is read without type inference** (`ingest.occurrences._CSV_READ`: `dtype=str`, only an empty field
   missing). Pandas' own guessing turns an id `007` into `7` (stored as `"7"`, matching nothing upstream) and a
   value `"NA"` into missing, with no error. The cost is that a column not in `numeric_cols` is a string, so a
   `drop=` rule or subset `values=` written with numbers matches nothing on it — list the column instead.
+- **A mask lookup narrows the read itself, by part and by column.** `records.masks.mask_lookup` passes the
+  part to parquet as a filter and reads `LOOKUP_COLUMNS` only, and `load_masks` does the same for `parts=`
+  and `recipe_hash=`. A project's mask table reaches gigabytes, about half of it the `info` column, and
+  every run starts with one lookup per part: reading the whole table to keep a quarter of it ran a 42 GB
+  machine out of memory on a 1.9-million-row project. A lookup row is a plain dict, not a pandas Series,
+  for the same reason. `info` is read only with `info=True`, and `mask_info()` raises on a row read without
+  it: answering `{}` there would make "not read" look like "nothing recorded", and the `mask_info`
+  metric would store empty values. Filtering in pandas after a full read gives the same rows and is the
+  regression to avoid; a test asserts the filter and column list reach `pd.read_parquet`.
 - **RLE mask counts are stored as raw bytes, not base64.** Parquet has a binary column type, so base64 would
   cost roughly a third of the mask table's size plus an encode/decode on every read and write, for nothing.
 - **`ImageStore` is keyed by occurrence id and takes a project path**, so it can't be pointed at another LMDB
@@ -467,7 +530,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   incremental processing, since every occurrence added to a growing project would move the hash and force a
   full rescore of everyone already measured. Unlike every other operation, though, a group metric's VALUE
   genuinely depends on that population, so two runs can share a hash while having fit different models — the
-  gap `runs.context_json` above exists to make visible. `metrics.run._current_for_population` is what
+  gap `runs.context_json` above exists to make visible. `metrics.run_metrics._current_for_population` is what
   actually CHECKS it, using data `prepare()` already returns and `context_json` already stores (no new
   column): a stored group-metric value only counts as current, or safe to copy onto a differently-named run,
   when the reference population it was fit against matches this run's own. This closes the gap for real —
@@ -485,11 +548,11 @@ Each of these is a guard whose removal produces wrong data rather than an error,
 
   | input \ scope | one occurrence-part | population (fit in `prepare()`) |
   |---|---|---|
-  | segment pixels | ordinary metric (`body_length`, `embedding`) | `outliers.PooledPixelGroupMetric` (`color_clusters`, `inductive_color_thresholds`) |
-  | stored values | `derived.DerivedMetric` (`derived()`) | `outliers.GroupMetric` (`cluster`, `outlier`), `label_score.LabelScoreMetric` (`label_score`) |
+  | segment pixels | ordinary metric (`body_length`, `embedding`) | `base.group.PooledPixelGroupMetric` (`color_clusters`, `inductive_color_thresholds`) |
+  | stored values | `derived.DerivedMetric` (`derived()`) | `base.group.GroupMetric` (`cluster`, `outlier`), `label_score.LabelScoreMetric` (`label_score`) |
 
   The input axis is `Metric.input` (`"segment"` or `"stored"`, not in `spec()`), and `run_metrics`
-  enforces it. A stored-input metric is called with a `stored.StoredValues` (an occurrence id and a part),
+  enforces it. A stored-input metric is called with a `base.stored.StoredValues` (an occurrence id and a part),
   never a Segment, so it cannot measure pixels. A recipe made only of stored-input metrics opens no image
   store, and it rejects `transforms=` because they would have nothing to act on. The scope axis is enforced
   by signatures. `derived(fn, ...)` hands `fn` one occurrence's `{metric_name: value}` and nothing else, and
@@ -505,7 +568,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   metric's population is visible only to the fit in `prepare()`, and each occurrence is then scored on its own
   stored row.
 
-  Both stored-input kinds read through `stored.StoredValueMetric`: `latest_values` (current rows only), the
+  Both stored-input kinds read through `base.stored.StoredValueMetric`: `latest_values` (current rows only), the
   feature-spec check, and `from_recipe_hash`. That puts "what counts as a current stored value" in one place.
   A group metric no longer re-measures features from the segment. It was a hybrid that fit on stored values
   and scored on pixels, so the fit and the score could see different numbers, and over an embedding it ran
@@ -524,11 +587,11 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   loud.** `records.runs.resolve_recipe_currency` raises if `(kind="metric", name, part)` already points at a
   different `recipe_hash`, unless `force=True` — `run_metrics`' own `force` argument, doing double duty. The error
   says WHAT differs from the recipe the name points at, operation by operation
-  (`recipes.describe_recipe_change`): two hashes alone can't tell a person whether they changed something. This
+  (`core.recipes.describe_recipe_change`): two hashes alone can't tell a person whether they changed something. This
   exists only for metrics: masks.parquet upserts to a single current row per occurrence-part, so a *segment*
   run_name cycling through several recipe hashes over a project's life is exactly what resegmenting is, not
   ambiguity — `resolve_recipe_currency` is a no-op for `kind="segment"`. Metrics have no such row; the table is
-  append-only, and `export.metrics_wide`/`records.metrics.latest_values` key on `run_name` alone, so two
+  append-only, and `wide.metrics_wide`/`records.metrics.latest_values` key on `run_name` alone, so two
   recipes sharing a name would otherwise silently interleave under one export column or one group-metric fit.
   The pointer itself lives in a small `current_recipes` table, separate from the immutable `runs` history, the
   same way masks.parquet sits beside the segmentation run log — moving it is not from
@@ -561,7 +624,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   info as a `transform_info` row (see item 7).
 - **Metric runs distinguish "no mask" from "measured nothing"** with a sentinel, so an occurrence segmentation
   hasn't reached is neither a failure nor a skip.
-- **A colour threshold is its spec.** `metrics.color_thresholds.ColorThreshold` is a named set of half-open
+- **A colour threshold is its spec.** `metrics.color.thresholds.ColorThreshold` is a named set of half-open
   cutoffs, possibly across several colour spaces, and its `spec()` is what reaches the recipe hash, so moving any
   cutoff is a different recipe. Thresholds in one `threshold_fractions` are scored independently and may overlap;
   the `"unmatched"` share is opt-in rather than implied, because a partition is a claim about the thresholds the
@@ -578,7 +641,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   finished segment and is what says how much of an export is bad. With `requires_mask=True`, its default, it
   describes the MASK, so it is read `current_only` and a resegmentation voids it. `requires_mask=False` is
   the opposite: a label that describes the image (usable or not, asked before any mask exists), which is why
-  `occurrences_matching` defaults to `current_only=False`. Its labels are in the recipe hash: another
+  `ids_matching` defaults to `current_only=False`. Its labels are in the recipe hash: another
   vocabulary is another question, so a label added later is a new recipe and the earlier labels stop being
   current. The package holds no vocabulary of its own. A fixed 13-label `usability_annotation` and a built-in
   list of bad labels used to exist and were removed as too specific to one kind of project; labels stored
@@ -586,7 +649,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   filter functions require `label_metric=` and one of `bad_labels=`/`good_labels=`, and `label_score` takes
   either too: with a vocabulary of the project's own, a label left off `bad_labels` silently counts as clean,
   where one left off `good_labels` counts as bad. `validation.filters.audit_filters` builds its frame through `export_metrics` itself
-  and applies `export._apply_filters`, so what it scores is exactly what an export keeps (unit conversion,
+  and applies `wide.apply_filters`, so what it scores is exactly what an export keeps (unit conversion,
   NaN-never-passes). Calibration and audit samples are two independently grown subsets, each drawn from
   outside the other, rather than one `split_ids` call: `grow_subset` is additive, so enlarging a sample never
   moves a segment across the line, where re-splitting a larger set would.
@@ -599,7 +662,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
   `get_validated_filters` then sweeps a cutoff over, and scored in-sample they would flatter every cutoff.
   Its fit is recorded beside the hash like a group metric's, plus `fit_hash`, a digest of which occurrence
   carried which label, because the population digest names who was labelled and not what they were called;
-  `metrics.run._current_for_population` compares it, so relabelling rescores without a recipe change.
+  `metrics.run_metrics._current_for_population` compares it, so relabelling rescores without a recipe change.
   Absent from every other record, where None matches None.
 - **Every candidate filter is calibrated by one sweep under one constraint, and one that catches nothing is
   left out.** `validation.filters.get_validated_filters` takes continuous candidates (`"below"`/`"above"`)
@@ -639,7 +702,7 @@ Each of these is a guard whose removal produces wrong data rather than an error,
 `run_segments(shard=(index, total))` is the parallel entry point; the pieces below are what make it safe, and
 each was added for a failure that had no error message.
 
-- **Shards are computed, not coordinated.** `selectionhelpers.shard_occurrences` sorts then takes a
+- **Shards are computed, not coordinated.** `selection.algorithms.shard_ids` sorts then takes a
   round-robin slice, so any number of workers given the same ids and the same `total` agree on the same
   disjoint split with no communication.
 - **A sharded run never upserts `masks.parquet`.** `upsert_table` is a whole-file read-merge-overwrite with no
@@ -655,9 +718,11 @@ each was added for a failure that had no error message.
   brand-new project.
 - **`download_images` threads the fetch only.** Batching and every `store.put_many()` stay on the calling
   thread, so concurrency never reaches the image store. `max_workers=1` reproduces the sequential behaviour.
-- **`project/paths.py`, `selectionhelpers.py` and `drivers.py` import nothing from the package.** That is what
-  lets ingest, run drivers, and visualization use them without acquiring a dependency on the metrics or export
-  layers; `selectionhelpers` reaching into `export` previously created a real import cycle.
+- **`project/paths.py`, `selection/algorithms.py` and `core/drivers.py` import nothing from the package.** That is
+  what lets ingest, run drivers, and visualization use them without acquiring a dependency on the metrics or
+  export layers; the selection algorithms reaching into `export` previously created a real import cycle.
+  `tests/integration/test_public_api.py` checks it from the source of each, `maskops`, `colorspaces`,
+  `selection/__init__.py` and `core/__init__.py` included.
 
 ### Visualization: two kinds, two contracts
 
@@ -675,7 +740,7 @@ either kind; they keep their duplicated `_wait_for_key` for the cv2-stub reason 
     `visualize=25` samples 25, `True` a default 25, `["a","b"]` names them, `False` opens a `NullReport` whose
     methods all no-op, so call sites never branch on the flag. **There is no per-item file mode** — a
     10,000-occurrence activity can't be inspected as 10,000 files. The default sample is deterministic
-    (`selectionhelpers.sample_occurrences`), so two versions of a recipe show the SAME specimens and can be
+    (`selection.algorithms.sample_ids`), so two versions of a recipe show the SAME specimens and can be
     compared cell by cell. `rank="lowest"`/`"highest"` keeps the N items with the worst value passed to
     `done()` instead (worst IoU first, weakest scale match first), holding only N items' cells at once.
   - **checkpoints**, `<stem>__<label>.jpg` — two kinds. `visualize_every=N` writes `__at<N>` every N items,
@@ -708,7 +773,7 @@ either kind; they keep their duplicated `_wait_for_key` for the cv2-stub reason 
   filename with that occurrence column's value (`Aeshna_cyanea__<occurrence_id>.png`), made filename-safe so a
   double underscore only ever separates pieces; it is in the folder's hash only when set, so one folder never
   holds both naming schemes. WHICH occurrences to render is never the render's business: a rule like one
-  exemplar per species is a selection (`export.exemplars_per_group`) whose ids are passed in.
+  exemplar per species is a selection (`selection.queries.exemplars_per_group`) whose ids are passed in.
 
 A render derives nothing and records nothing: no mask, no metric, no run row. It hashes its transform chain
 only so the folder name identifies what's in it and a rerun is a no-op. Don't add a code path that makes a
@@ -726,14 +791,7 @@ each part, so a `parts=` list is all they need.
 
 - **`project/`** — `paths` (every project path, returning `pathlib.Path`; creates nothing, so what a project
   holds is an honest account of what has been done to it; a hash sits in each report and import-manifest
-  filename so two configurations leave two files to compare, not one overwriting the other), `subsets` (named
-  selections, `subsets.toml`, and `select_occurrences`, which every run funnels through. A subset selects
-  rows and never copies them, so an occurrence can be in several and a run over one leaves the others'
-  masks and metrics alone. The file is hand-editable TOML, written by a small serializer of our own and read
-  with `tomllib`. A `column`/`query` subset is live; `from_subset=` and `occurrence_ids=` freeze a
-  membership something else can depend on, and an id-list subset stores its own `{count, ids_hash}`.
-  `grow_subset(from_subset=)` re-resolves its source on every call, which is how an expensive pass is capped
-  to an independently sized part of a cheaper one), `summarize` (returns data, not printed text, so it can
+  filename so two configurations leave two files to compare, not one overwriting the other), `summarize` (returns data, not printed text, so it can
   back a status line or a test; `describe_run` renders what `start_run` stored), and
   `archive` (`archive_project`: a deposit-ready copy leaving out the image store, raw source data and working
   files, with local paths reduced to file names; Dryad publishes under CC0, which photos and GBIF-mediated raw
@@ -756,15 +814,24 @@ each part, so a `parts=` list is all they need.
   applied to many occurrences. The length is typed at the terminal, not in a second window, since nothing
   else mixes clicking with typing. `make_scale_row` refuses a non-positive px/mm: a failed measurement
   written by mistake would later divide into infinities nobody notices.
-- **`segments.py`** — `iterate_segments`, the per-occurrence loop most drivers walk (renders, validation,
-  dataset export, the pooled-pixel colour metrics), plus `build_segment` for the `from_part` framing, and
-  `scalar_info`/`operation_labels` for how an operation's info is stored. `run_segments` and `run_metrics` keep
-  their own loops — a multi-part fork in one, per-occurrence writes and cross-name copies in the other — but
-  build with the same pieces. Torch-free and records-only, so it sits in core rather than under `training/`,
+- **`core/`** — the center of the package, kept in one folder to say so: `recipes` (the three types above,
+  and every hash), `segments` and `drivers`. Everything else is built on these and none of them is specific
+  to one activity. `core/__init__.py` imports nothing, since it runs before `core/drivers.py` does.
+- **`core/segments.py`** — `iterate_segments`, the per-occurrence loop most drivers walk (renders, validation,
+  dataset export, the pooled-pixel colour metrics), plus what a loop is made of: `run_chain` (apply
+  operations in order, count their flags, keep each one's scalar info under its label),
+  `framed_segment` (one occurrence-part from the image store: its mask, the chain, and for `from_part` the
+  relabel-and-reproject that puts the part's own mask into the upstream part's frame, which is done there
+  and nowhere else), `build_segment`, and `scalar_info`/`operation_labels` for how an operation's info is
+  stored. `run_segments` and `run_metrics` keep their own loops — a multi-part fork in one, per-occurrence
+  writes and cross-name copies in the other — but build with the same pieces: `run_metrics` and
+  `iterate_segments` call `framed_segment`, and `run_segments`, whose upstream is a union of parts with no
+  own mask to reproject, calls `build_segment` and `run_chain`. What each caller does with the info is its
+  own business: mask metadata in one, `transform_info` metric rows in the other. Torch-free and records-only, so it sits in core rather than under `training/`,
   where it used to live and where two colour metrics had to reach for it.
-- **`drivers.py`** — what every per-item driver shares, whether or not it builds a segment: `Tally` (what it
+- **`core/drivers.py`** — what every per-item driver shares, whether or not it builds a segment: `Tally` (what it
   counts, and the summary it returns), `Progress` (its progress line), and `NoInput` with `log_no_input` (an
-  occurrence with nothing to work from yet). Separate from `segments.py` because ingest, download, scale
+  occurrence with nothing to work from yet). Separate from `core/segments.py` because ingest, download, scale
   calibration and mask import count with `Tally` too, and shouldn't pull in the image store and visualization
   to do it. Imports nothing from the package.
 - **`maskops.py`** — mask arithmetic with no project attached: `mask_iou`, `mask_coverage`,
@@ -782,7 +849,7 @@ each part, so a `parts=` list is all they need.
   8-bit path stores Lab a/b offset by +128 and hue on 0-179, which is harmless for a translation-invariant distance
   and wrong for chroma or a hue arc, so no metric calls `cv2.cvtColor` for a colour space itself. `ColorSpace.circular`
   names the channels that wrap (hue), and `in_arc` is the one wrap-aware membership test. Imports nothing from the
-  package, the same rule as `maskops` and `selectionhelpers`.
+  package, the same rule as `maskops` and `selection.algorithms`.
 - **`timing.py`** — `timed()`, the "<label> in Ns" line around a slow step. A multi-gigabyte ingest spends
   minutes inside single calls, and a caller watching the log otherwise sees nothing between "start" and
   "done". Nothing is logged if the block raises: a line saying a step finished, when it didn't, is worse than
@@ -790,32 +857,49 @@ each part, so a `parts=` list is all they need.
 - **`devices.py`** — `resolve_device()`, the one place that asks whether there is a CUDA device. Torch is
   imported inside the function, so core stays importable without it, and every model class stays lazy: asking
   at construction time would make BUILDING a recipe — which may never run — initialize CUDA.
-- **`selectionhelpers.py`** — transient "out of these occurrences, which ones" helpers: `sample_occurrences`
-  (deterministic, so a sample is stable across runs and recipes), `sample_per_group` (the same, stratified —
-  smallest group first, each capped at its own size, so a common group's rollover tops up the rest rather than
-  crowding out a rare one), `rows_matching` (the `{column: values}` test behind ingest's `drop=`; any rule
-  matches, a missing value never does, an unknown column raises), `require_present`/`exclude_present` (AND-
-  compose several "does this id exist somewhere" checks — has an image, has a mask for a part — into one call;
-  the reads themselves live with the data, e.g. `storage.imagestore.ImageStore.keys()`,
-  `records.masks.occurrence_ids_with_mask()`, passed in already-materialized rather than read here), and
-  `worst_n` (the `{occurrence_id: value}` → worst-N-sorted rule behind `validate_masks`'/`compare_metrics`'
-  `show_worst`), and `group_medoids` (per group, the ids with the smallest summed distance to the rest of their group;
-  `export.exemplars_per_group` is its reader, picking e.g. one specimen per species by a stored embedding,
-  a single number, or a dict of numbers such as `threshold_fractions`' colour proportions,
-  computed on each call and stored nowhere). Distinct from `project/subsets`, which is about named, persisted selections. The reads that feed these
-  live with the data: `export.completed_ids(project, run_name, part=)` is "the occurrences a run has a
-  current result for", and its result goes to `grow_subset(candidate_ids=, candidate_note=)`. It is a
-  function and not a `from_run=` on `grow_subset` because "completed" needs a part, a mask-or-metric
-  meaning and a currency rule, and because real pools are combinations (has an abdomen, AND passes the
-  gate). For a metric run it reads `records.metrics.result_keys`, which selects no values: an embedding
-  run's are gigabytes of JSON that answering "who is done" has no use for.
-  **Nothing here reads a project or imports anything else from the package** — deliberate, not incidental:
-  reaching into `export` for this once created a real import cycle, so every selection rule stays a pure
-  function over data the caller already has, the same split `export.occurrences_matching` uses (it reads,
-  then calls `rows_matching` for the comparison). `records.masks`/`storage.imagestore` are safe to import
-  directly (no transitive path back to `selectionhelpers`), but the rule stays absolute anyway: "zero package
-  imports" needs no re-verification as the rest of the graph changes; "these specific ones happen to be safe"
-  does, every time something downstream moves.
+- **`selection/`** — which occurrences. A selection is a list of ids, and it moves through three modules.
+  **Queries** read a project and return ids, **algorithms** are pure functions over ids or tables the caller
+  already has, and **subsets** freeze ids under a name that every driver takes as `subset=`. One naming rule
+  covers all three: in a function name "occurrences" means table rows and "ids" means ids
+  (`select_occurrences` returns a DataFrame, `select_ids` a list); a project query is `ids_<condition>`, and
+  a function acting on ids the caller supplies is `<verb>_ids`.
+  - `queries` — `ids_matching` (stored values against a membership-only `{metric: values}` rule set: it reads,
+    then calls `rows_matching` for the comparison), `ids_passing` (the ids an export with those `filters`
+    would keep, read from the same `wide.filtered_wide` frame `export_metrics` starts from, so a gate and an
+    export cannot disagree), `ids_completed` ("the occurrences a run has a current result for"), `ids_with_mask`,
+    `ids_with_image`, and `exemplars_per_group` (`group_medoids`' reader, picking e.g. one specimen per
+    species by a stored embedding, a single number, or a dict of numbers such as `threshold_fractions`'
+    colour proportions, computed on each call and stored nowhere). Every query returns a sorted list of
+    string ids. `ids_completed`'s result goes to `grow_subset(candidate_ids=, candidate_note=)`. It is a
+    function and not a `from_run=` on `grow_subset` because "completed" needs a part, a mask-or-metric
+    meaning and a currency rule, and because real pools are combinations (has an abdomen, AND passes the
+    gate). For a metric run it reads `records.metrics.result_keys`, which selects no values: an embedding
+    run's are gigabytes of JSON that answering "who is done" has no use for. `ids_with_image` on a project
+    with no image store returns nothing and creates nothing.
+  - `algorithms` — `sample_ids` (deterministic, so a sample is stable across runs and recipes),
+    `sample_per_group` (the same, stratified — smallest group first, each capped at its own size, so a common
+    group's rollover tops up the rest rather than crowding out a rare one), `shard_ids`, `grow_sample`,
+    `rows_matching` (the `{column: values}` test behind ingest's `drop=`; any rule matches, a missing value
+    never does, an unknown column raises), `cap_per_group` and `dedupe_by` (ingest's two population
+    judgements), `require_present`/`exclude_present` (AND-compose several "does this id exist somewhere"
+    checks — has an image, has a mask for a part — into one call, over sets passed in already materialized),
+    `worst_n` (the `{occurrence_id: value}` → worst-N-sorted rule behind `validate_masks`'/`compare_metrics`'
+    `show_worst`), and `group_medoids` (per group, the ids with the smallest summed distance to the rest of
+    their group). **Nothing here reads a project or imports anything else from the package** — deliberate, not
+    incidental: reaching into `export` for this once created a real import cycle, so every selection rule
+    stays a pure function over data the caller already has. `records.masks`/`storage.imagestore` would be
+    safe to import directly, but the rule stays absolute anyway: "zero package imports" needs no
+    re-verification as the rest of the graph changes; "these specific ones happen to be safe" does, every
+    time something downstream moves. `selection/__init__.py` is held to the same rule, because importing
+    `selection.algorithms` runs it first.
+  - `subsets` — named selections, `subsets.toml`, and `select_occurrences`, which every run funnels through.
+    A subset selects rows and never copies them, so an occurrence can be in several and a run over one leaves
+    the others' masks and metrics alone. The file is hand-editable TOML, written by a small serializer of our
+    own and read with `tomllib`. A `column`/`query` subset is live; `from_subset=` and `occurrence_ids=`
+    freeze a membership something else can depend on, and an id-list subset stores its own
+    `{count, ids_hash}`. `grow_subset(from_subset=)` re-resolves its source on every call, which is how an
+    expensive pass is capped to an independently sized part of a cheaper one. `select_ids` is the one
+    id-returning function that is not sorted: it keeps table order, which `limit=` cuts.
 - **`storage/`** — one module per backend, none with any knowledge of an entity: `imagestore` (LMDB, one store
   per project, byte-exact), `tables` (parquet replace/upsert/load), `jsonfiles` (`atomic_write`, `write_json`,
   `append_jsonl`, `read_jsonl` — every manifest, registry and append-only log in the package, UTF-8 and
@@ -842,7 +926,13 @@ each part, so a `parts=` list is all they need.
   success would otherwise clear it). Both run drivers persist failures and both take `retry_failed=`: the
   ledger is scoped by a `context_hash` of the recipe chained with the mask it worked from, so a retuned recipe
   or a resegmentation retries by itself and only an unchanged repeat of the same attempt is skipped.
-- **`ingest.py` / `download.py` / `export.py`** — the generic in/out. A RAW IMPORT is a source's data exactly as
+- **`ingest/` / `export.py`** — the generic in/out. `ingest/` is five modules: `occurrences`
+  (`ingest_occurrences`), `images` (`ingest_images`), `download` (`download_images`), `archive` (raw bytes
+  written into `raw_imports/` once and found again, which both ingests use) and `imports` (the import record:
+  `import_recipe`, the manifest and log, `load_imports`, and the repeat checks, which all go through
+  `import_identity` and `is_recorded` so no two of them can hash the same decisions differently). INGEST is
+  the action and an import is the record it may leave: an image ingest leaves none, and neither does an
+  occurrence ingest recognized as a repeat. A RAW IMPORT is a source's data exactly as
   it arrived; an IMPORT is what that becomes once `ingest_occurrences` reshapes it (id_col, image_url_col,
   `transform=`, which takes one callable or a SEQUENCE of them — an extension stacking its own derivations on
   a caller's must pass a sequence, since a closure around both would record only the wrapper's name and two
@@ -867,14 +957,19 @@ each part, so a `parts=` list is all they need.
   archives a *manifest* of its own, not the pixels, since copying every image into `raw_imports/` would
   double a project's largest storage cost. It has no import manifest of this kind, because a folder has no
   `id_col` or `drop=` to record, and it is deliberately not idempotent: the folder is the source of truth
-  and every file is re-read, which is what makes replacing a file with a corrected one work. Colliding
+  and every file is re-read, which is what makes replacing a file with a corrected one work. Only the
+  manifest is recognized: one byte-identical to a manifest already archived for that folder is reused
+  (`archive.archived_hashes` reads them from disk, since no log records them). Colliding
   filename stems are reported as the two paths before anything is written, since the downstream
   duplicate-id error names the id and not which files to rename. A downloaded image is checked to decode
   because a URL that returns an HTML error page with status 200 would otherwise surface much later, as a
   segmentation failure on an image nobody can open; and a stored image is never replaced, since it is the
-  evidence every mask and measurement was derived from. `export.py` owns the wide view —
-  `column_name`, `metrics_wide`, `metric_units`, all built on one `_current_long` read — which validation and
-  `training/datasets` build on too, plus the export manifest (`load_exports` reads the log back). A column
+  evidence every mask and measurement was derived from. `wide.py` owns the wide view —
+  `column_name`, `metrics_wide`, `metric_units`, all built on one `_current_long` read, the filter
+  evaluation (`passing`, `apply_filters`), and `filtered_wide`, the joined, unit-converted and filtered frame
+  that `export_metrics` and `selection.queries.ids_passing` both start from — which validation and
+  `training/datasets` build on too. `export.py` keeps what makes that frame a file: `part_filters`,
+  `rename`, the CSV and the export manifest (`load_exports` reads the log back). A column
   name carries run, part and metric because all three vary independently and any two can collide. A
   converted column is renamed with its unit, and an uncalibrated occurrence gets NaN there, never a pixel
   value under a millimeter heading. `validate_masks` applies `transforms=` to both masks because a
@@ -897,7 +992,7 @@ each part, so a `parts=` list is all they need.
   point-prompt path for pre-cropped images), `manual` (draw/correct by hand — an alternative segmentation, not
   a separate system), `mask_import_export` (`import_masks`/`export_masks`: masks in and out as
   `<occurrence_id>__<part>.png` in original image coordinates, with a `masks.export.json` the importing run
-  records as its source), `run` (`segment()` operation + `run_segments`). Shared steps run once per
+  records as its source), `run_segments` (the `segment()` operation and the `run_segments` driver). Shared steps run once per
   occurrence and the segment forks per part, so a three-part run does one background removal, not three.
   When detection finds no box the segmentation fails; it never falls back to another prompting strategy,
   which would store a mask its recipe no longer describes. A run draws its own result panel as well as the
@@ -906,20 +1001,25 @@ each part, so a `parts=` list is all they need.
   off the edge there is no single boundary, so whatever is painted is invented and then lowers the IoU
   `validate_masks` reports as if the segmenter had erred. A hand correction reports removed and added area
   separately, since a mask 20% too big and one 20% too small are different failures.
-- **`metrics/`** — `dimensions`, `islands` (`n_islands`, counting what `transforms.islands` removes), `position` (reports in ORIGINAL coordinates), `quality`, `pixels`
-  (`masked_pixels`, the one rule every colour metric reads pixels by), `color_means` (plus grey-world
-  `white_balanced_color` and `background_color`, for photography whose lighting nothing controls), `color_thresholds`
-  (`ColorThreshold`, `threshold_fractions`, and the black/hue presets built on them), `inductive_color_thresholds`
-  (the same `ColorThreshold`s, fitted per group in `prepare()`), `color_clusters` (a KMeans palette fitted per group
-  from pooled pixels, scored as each organism's share of it), `embedding` (`EmbeddingModel` wrapping any
+- **`metrics/`** — `dimensions`, `islands` (`n_islands`, counting what `transforms.islands` removes), `position` (reports in ORIGINAL coordinates), `quality`, `color/` (`means`, plus grey-world
+  `white_balanced_color` and `background_color`, for photography whose lighting nothing controls; `thresholds`:
+  `ColorThreshold`, `threshold_fractions`, and the black/hue presets built on them; `inductive_thresholds`:
+  the same `ColorThreshold`s, fitted per group in `prepare()`; `clusters`: a KMeans palette fitted per group
+  from pooled pixels, scored as each organism's share of it. `colorspaces.py` stays at the top level, since
+  it converts colour and measures nothing), `embedding` (`EmbeddingModel` wrapping any
   torch network that maps an image batch to vectors, `pretrained()` for a timm backbone with its classifier
   removed and its weights identified by `state_dict_digest`, and the `embedding()` metric; torch and timm are
-  imported inside functions only, the `devices.py` rule), `stored` (`StoredValues` and
-  `StoredValueMetric`, what every stored-input metric reads through), `derived` (per-occurrence values
-  from stored ones), `label_score` (a probability fitted on stored features against stored human labels), `outliers` (group metrics, on scalar or vector features, with a per-cluster gallery and a
-  PCA projection drawn in `prepare()`), `annotation` (human
-  labels), `mask_info` (the diagnostics a segmentation run stored on each mask, as a metric), `run`
-  (`run_metrics` + `RunContext` + `_completed_keys`). What each metric is for, kept here and out of the
+  imported inside functions only, the `devices.py` rule), `derived` (per-occurrence values
+  from stored ones), `label_score` (a probability fitted on stored features against stored human labels), `outliers` and `clusters` (the two
+  group metrics over stored scalar or vector features; a fit draws its reference population, as a PCA
+  projection where there are more than two columns, and `clusters` a per-cluster gallery), `annotation` (human
+  labels), `mask_info` (the diagnostics a segmentation run stored on each mask, as a metric), `run_metrics`
+  (the `run_metrics` driver + `RunContext` + `_completed_keys`). Every module directly under `metrics/` is a metric
+  except `run`, the driver; what metrics are built from sits in `metrics/base/`: `pixels` (`masked_pixels`,
+  the one rule every colour metric reads pixels by), `stored` (`StoredValues` and `StoredValueMetric`, what
+  every stored-input metric reads through), and `group` (`GroupMetric` and `PooledPixelGroupMetric`, the
+  bases for a metric fitted per group in `prepare()`, with `group_lookup`, `fitted_for` and the `POPULATION`
+  fallback key). A new population metric starts from `base.group`. What each metric is for, kept here and out of the
   docstrings: `body_length` and `max_width` measure image axes, so only an oriented mask makes them the
   organism's own; `max_width` is a span, not a pixel count, so a row crossing two wings and the gap
   reports wingtip to wingtip. `mask_area` is the size measure for a part with no clear length, e.g. a
@@ -1027,7 +1127,7 @@ each part, so a `parts=` list is all they need.
   factories take `name=None` and `unit=...` so the same operation can appear twice under different names.
 - **Transforms return `(segment, info)`; metrics return a value.** `info` is a diagnostics dict. Include a
   reliability flag where the operation can tell its own result is doubtful: `degenerate` means it returned the
-  segment unchanged, `unreliable` that what it returned is suspect. `segments.iterate_segments` (and the run
+  segment unchanged, `unreliable` that what it returned is suspect. `core.segments.iterate_segments` (and the run
   drivers) count those flags per run — they reach the run's `context_json` and the driver's summary, so a
   thousand-occurrence run says how many orientations it wasn't sure about rather than leaving it on whichever
   panels happened to be sampled.
@@ -1046,17 +1146,19 @@ each part, so a `parts=` list is all they need.
   first; the three pending-first drivers — `download_images` and both `measure_scales` — take `max_new` for
   the second. `validate_masks` has only `limit`: it persists nothing, so it has no already-done concept for a
   `max_new` to sit after.
-- **Every driver builds with `segments.build_segment` and returns `drivers.Tally.summary`.** Most walk
-  `segments.iterate_segments` (open the image store, build the Segment, optionally frame it by an upstream part,
+- **Every driver builds with `core.segments.framed_segment` or `build_segment`, runs its chain with
+  `core.segments.run_chain`, and returns `core.drivers.Tally.summary`.** A new driver does not write its own
+  `state, info = operation(state)` loop or its own `from_part` reprojection. Most walk
+  `core.segments.iterate_segments` (open the image store, build the Segment, optionally frame it by an upstream part,
   run the chain, count); `run_segments` and `run_metrics` keep their own loops for the reasons under
-  `segments.py` above. One summary shape: `attempted, processed, skipped, no_input, failed, failures, flags`, plus whatever that driver
+  `core/segments.py` above. One summary shape: `attempted, processed, skipped, no_input, failed, failures, flags`, plus whatever that driver
   alone has (`run_id`, `copied`, `previously_failed`, `missed`, `directory`, `elapsed_s`). `no_input` is "nothing to work
   from" — no image, no mask, no `from_part` mask — which is neither a failure nor work done. A driver raises
-  `drivers.NoInput` for it, never writes it to the failures ledger, and logs one line per reason rather than
+  `core.drivers.NoInput` for it, never writes it to the failures ledger, and logs one line per reason rather than
   one per occurrence, so it is attempted again once the input exists: a failure's retry key (recipe plus
   upstream mask) doesn't move when an image is finally downloaded, so recording it as one would skip that
   occurrence forever. `records.failures.NOT_FAILURES` ignores ledger rows written before this.
-- **A per-item loop reports progress through `drivers.Progress`, throttled on wall-clock time**
+- **A per-item loop reports progress through `core.drivers.Progress`, throttled on wall-clock time**
   (`PROGRESS_INTERVAL`, 30s), never on `batch_size` or an item count. `batch_size` is a durability knob (what an
   interruption can lose), and one item costs a millisecond in one driver and a minute in another, so a count
   would be spam for one and silence for another. `total` is the PENDING work, after the already-done filter,
@@ -1067,7 +1169,7 @@ each part, so a `parts=` list is all they need.
   runs, so the two bundled segmenters read it the same way: 0.0 is neutral (logit 0 is probability 0.5),
   negative grows the mask, positive shrinks it. A model thresholding its own sigmoid instead would read
   `segment()`'s neutral 0.0 as "keep every pixel above zero probability" — the whole frame.
-- **A pipeline script is written flat, because clarity is king there.** `scripts/*.py` and
+- **A pipeline script is written flat, because clarity is king there.** `scripts/reusable_workflows/` and
   `scripts/author_pipelines/` are read top to bottom as the record of what was done to a project, so each
   step is one explicit call with its arguments in view: three parts are three `run_metrics` calls, and a
   rename map is spelled out line by line. No loops or comprehensions over parts, no config dicts keyed by
@@ -1126,9 +1228,5 @@ each part, so a `parts=` list is all they need.
   generalize `metrics.annotation.click_two_points`; a model gets a `landmarks(model)` factory mirroring
   `segment(model)`, its checkpoint reaching the hash through `identity()`; geometric landmarks and outline
   semilandmarks come from the mask like any metric. Procrustes alignment is a group metric: the consensus is
-  fit in `prepare()` as in `metrics.outliers`, its population recorded in `context_json`. Also missing: a
+  fit in `prepare()` as in `metrics.base.group`, its population recorded in `context_json`. Also missing: a
   morphometrics export format (TPS, geomorph long) and a keypoint format in `training/datasets`.
-- `sketch1.py` and `scripts/sketches.py` are the original design sketches this package was built from. They
-  reference an older `critterframes`/`critterframes_inat` naming, and `scripts/sketches.py` isn't valid Python.
-  They're kept as the design record; the realized versions are `scripts/dragonfly_bodies_inat.py` and
-  `scripts/dragonfly_wings_museums.py`.

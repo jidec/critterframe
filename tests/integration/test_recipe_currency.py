@@ -89,7 +89,7 @@ def counted_width(interrupt_at=None):
     resumed one are the same recipe -- as a real rerun of one script is.
     """
     from critterframe.metrics.dimensions import _max_width
-    from critterframe.recipes import Metric
+    from critterframe.core.recipes import Metric
 
     calls = []
 

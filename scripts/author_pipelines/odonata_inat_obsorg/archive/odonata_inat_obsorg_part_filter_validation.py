@@ -26,8 +26,8 @@ import logging
 
 import critterframe as cf
 from critterframe.metrics.embedding import pretrained
-from critterframe.project.subsets import select_ids
-from critterframe.records.masks import occurrence_ids_with_mask
+from critterframe.selection.subsets import select_ids
+from critterframe.selection.queries import ids_with_mask
 from critterframe.validation.filters import SEGMENT_BAD_LABELS
 
 logging.basicConfig(level=logging.INFO)
@@ -35,7 +35,7 @@ logging.basicConfig(level=logging.INFO)
 PROJECT_PATH = "D:/cf_projects/odonata_inat_obsorg"
 
 # every gated occurrence with an abdomen mask, which is what an abdomen export holds
-pool = (occurrence_ids_with_mask(PROJECT_PATH, part="abdomen")
+pool = (set(ids_with_mask(PROJECT_PATH, part="abdomen"))
         & set(select_ids(PROJECT_PATH, subset="organism_gate_pass")))
 
 cf.grow_subset(PROJECT_PATH, "part_screening_calibrate", target_size=100,

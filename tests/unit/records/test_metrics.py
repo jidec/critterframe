@@ -13,7 +13,7 @@ away real values.
 import pandas as pd
 import pytest
 
-from critterframe.recipes import Recipe
+from critterframe.core.recipes import Recipe
 from critterframe.records import masks as mask_records
 from critterframe.records import metrics as metric_records
 from critterframe.records import runs as run_records

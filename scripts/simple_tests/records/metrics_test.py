@@ -14,7 +14,7 @@ Run from the repo root:
 
 import logging
 
-from critterframe.export import metrics_wide
+from critterframe.wide import metrics_wide
 from critterframe.records.metrics import load_metrics
 from critterframe.records.runs import load_runs
 

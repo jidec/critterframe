@@ -11,9 +11,10 @@ import cv2
 import numpy as np
 import pandas as pd
 
-from .. import drivers
-from ..project import paths, subsets as subset_selection
-from ..recipes import DEFAULT_PART, Recipe, Segmentation, hash_spec
+from ..core import drivers
+from ..project import paths
+from ..selection import subsets as subset_selection
+from ..core.recipes import DEFAULT_PART, Recipe, Segmentation, hash_spec
 from ..records import masks as mask_records
 from ..records import occurrences as occurrence_records
 from ..records import runs as run_records
@@ -65,7 +66,7 @@ def import_masks(
         visualize: Write a pipeline grid of imported masks over their images.
 
     Returns:
-        `{part: summary}`, each a `drivers.Tally.summary` plus `run_id`, `replaced`,
+        `{part: summary}`, each a `core.drivers.Tally.summary` plus `run_id`, `replaced`,
         `unmatched` (files naming no occurrence here) and `unverified` (masks with no
         image to check their size against).
     """

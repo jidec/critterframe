@@ -26,7 +26,7 @@ from critterframe.metrics.annotation import (
     _point_pair,
     _skipped_pair,
 )
-from critterframe.recipes import Segment
+from critterframe.core.recipes import Segment
 from critterframe.visualization import panels
 from helpers.stubs import FakeCv2
 
@@ -164,7 +164,7 @@ def test_click_units_do_not_convert_to_millimetres():
     is grading a pipeline measured in pixels should stay in pixels, and the key
     names carry their own units so the coarse parent tag can't mislead.
     """
-    from critterframe.export import CONVERTIBLE_UNITS
+    from critterframe.wide import CONVERTIBLE_UNITS
 
     assert cf.click_two_points().unit not in CONVERTIBLE_UNITS
 
