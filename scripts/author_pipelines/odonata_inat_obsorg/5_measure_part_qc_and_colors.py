@@ -1,5 +1,5 @@
 """
-Step 5 of 8: measure every head, thorax and abdomen: the QC scores the filters
+Step 5 of 9: measure every head, thorax and abdomen: the QC scores the filters
 are calibrated on, an embedding, and the colour traits that get exported.
 
 Every segmented part is measured; nothing is filtered here.

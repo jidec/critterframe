@@ -1,6 +1,6 @@
-"""Draw the package's graphs into docs/graphs/: imports between folders, calls within each folder, calls around each entry point.
+"""Draw the package's diagrams into docs/diagrams/: imports between folders, calls within each folder, calls around each entry point.
 
-In a call graph, hovering a function shows the first line of its docstring.
+In a call diagram, hovering a function shows the first line of its docstring.
 """
 
 import argparse
@@ -15,10 +15,10 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 PACKAGE = REPO / "critterframe"
 # Inside docs/, so the site publishes them; docs/internals.md links to each.
-OUTPUT = REPO / "docs" / "graphs"
+OUTPUT = REPO / "docs" / "diagrams"
 
-# The functions a pipeline is made of, as `{graph name: code2flow target}`. Each is drawn from the whole
-# package, so the calls a per-folder graph cannot show (a driver into core/, records/, selection/) are in it.
+# The functions a pipeline is made of, as `{diagram name: code2flow target}`. Each is drawn from the whole
+# package, so the calls a per-folder diagram cannot show (a driver into core/, records/, selection/) are in it.
 # A name defined in more than one file is given as `<file>::<function>`.
 ENTRY_POINTS = {
     "ingest_occurrences": "occurrences::ingest_occurrences",
@@ -53,7 +53,7 @@ def _external_imports():
 
 
 def _pydeps(output, *options):
-    """Write one module import graph of the package."""
+    """Write one module import diagram of the package."""
     # pydeps follows every import to the bottom before --only filters the picture, and the walk
     # through torch and transformers overflows the stack. Excluding what is not ours stops it at
     # the package's edge.
@@ -122,7 +122,7 @@ def _with_tooltip(dot, summary):
 
 
 def _code2flow(sources, output, target=None, upstream=0, downstream=0):
-    """Write one function call graph of the given files or directories."""
+    """Write one function call diagram of the given files or directories."""
     from code2flow import engine
     from code2flow import model as code2flow_model
     from code2flow import python as code2flow_python
@@ -186,9 +186,9 @@ def _subpackages(directory):
 
 
 def main():
-    """Write the module graphs and the call graphs, or one call graph centered on --target."""
+    """Write the module diagrams and the call diagrams, or one call diagram centered on --target."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", help="Draw only the call graph around this function, e.g. run_metrics.")
+    parser.add_argument("--target", help="Draw only the call diagram around this function, e.g. run_metrics.")
     parser.add_argument("--upstream", type=int, default=1, help="Levels of callers to include.")
     parser.add_argument("--downstream", type=int, default=2, help="Levels of callees to include.")
     args = parser.parse_args()
@@ -201,7 +201,7 @@ def main():
         _code2flow([PACKAGE], output, args.target, args.upstream, args.downstream)
         return
 
-    # One node per folder or top-level module. A graph of every module is not drawn: at about
+    # One node per folder or top-level module. A diagram of every module is not drawn: at about
     # 100 nodes and 600 edges no arrow in it can be followed.
     print("imports between folders (pydeps):")
     _pydeps(OUTPUT / "subpackages.svg", "--max-module-depth", "2")

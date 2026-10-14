@@ -1,3 +1,11 @@
+"""
+Render one abdomen per species: the one whose colour proportions are most
+typical of its species.
+
+Run after 5_measure_part_qc_and_colors.py, which stores the colour proportions
+the exemplars are chosen by.
+"""
+
 import logging
 
 import critterframe as cf

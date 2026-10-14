@@ -60,9 +60,9 @@ docs = [
     "mkdocstrings[python]",
 ]
 
-# The dependency graphs (tools/make_graphs.py). Both draw through Graphviz's
+# The dependency diagrams (tools/make_diagrams.py). Both draw through Graphviz's
 # `dot`, which is a system install and not a Python package.
-graphs = [
+diagrams = [
     "pydeps",
     "code2flow",
 ]

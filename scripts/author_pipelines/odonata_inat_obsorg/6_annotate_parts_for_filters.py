@@ -1,5 +1,5 @@
 """
-Step 6 of 8: screen a random sample of finished head, thorax and abdomen
+Step 6 of 9: screen a random sample of finished head, thorax and abdomen
 segments.
 
 Each is given one key: perfect, good or poor. The label exists for every

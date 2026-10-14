@@ -1,3 +1,12 @@
+"""
+Step 3 of 9: train a head, a thorax and an abdomen segmenter on the reference
+masks from step 2, and register each one.
+
+Every reference head mask goes into training, less a list of occurrences with
+annotation mistakes. Each part is exported as its own dataset, cut out of the
+organism segment with the same transforms step 4 applies before segmenting.
+"""
+
 import logging
 
 import critterframe as cf

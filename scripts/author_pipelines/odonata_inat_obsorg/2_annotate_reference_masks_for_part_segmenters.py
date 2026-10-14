@@ -1,5 +1,5 @@
 """
-Step 2 of 8: label each image usable or not_usable, and correct reference part
+Step 2 of 9: label each image usable or not_usable, and correct reference part
 masks on the usable ones.
 
 Usability labels decide which images get reference masks: an image with no

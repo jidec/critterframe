@@ -1,3 +1,12 @@
+"""
+Light-trap insects from a Mothitor deployment, ingested through Antenna.
+
+The first half is all a trait table needs: ingest, download, segment, measure,
+set the scale by hand, export. The second half screens a sample for usability,
+makes reference masks and clicked lengths on the usable crops, validates
+against them, calibrates a QC filter, and exports in millimetres.
+"""
+
 import logging
 import cv2
 import critterframe as cf
@@ -11,7 +20,7 @@ logging.basicConfig(level=logging.INFO)
 PROJECT_PATH = "D:/cf_projects/mothitor_antenna_insects"
 
 # ingest through Antenna extension
-antenna_ingest.ingest_occurrences(PROJECT_PATH, import_csv_path="C:/new_new_downloads\insect-ecology-lab-mothitor-test_export-147.csv")
+antenna_ingest.ingest_occurrences(PROJECT_PATH, import_csv_path="C:/new_new_downloads/insect-ecology-lab-mothitor-test_export-147.csv")
 
 # download images using urls in ingest
 cf.download_images(PROJECT_PATH)

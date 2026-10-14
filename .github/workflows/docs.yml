@@ -26,14 +26,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Graphviz, which draws the Internals graphs
+      - name: Install Graphviz, which draws the Internals diagrams
         run: sudo apt-get update && sudo apt-get install -y graphviz
 
-      - name: Install package with docs and graphs extras
-        run: pip install -e ".[docs,graphs]"
+      - name: Install package with docs and diagrams extras
+        run: pip install -e ".[docs,diagrams]"
 
-      - name: Draw the Internals graphs into docs/graphs/
-        run: python tools/make_graphs.py
+      - name: Draw the Internals diagrams into docs/diagrams/
+        run: python tools/make_diagrams.py
 
       - name: Build (strict, catches broken refs/links before deploying)
         run: mkdocs build --strict

@@ -1,3 +1,11 @@
+"""
+Step 4 of 9: segment the head, thorax and abdomen out of every organism
+segment, with the segmenters step 3 registered.
+
+The shared steps run once per occurrence and are the transforms the segmenters
+were trained on.
+"""
+
 import logging
 
 import critterframe as cf

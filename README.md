@@ -45,7 +45,7 @@ cf.export_metrics("C:/my_project", "traits.csv")
 - Training a bioencoder model
 - Advanced customizable ingests from a GBIF DarwinCore archive
 
-See [scripts/](https://github.com/jidec/critterframe/tree/main/scripts) for full example pipelines, described in the [Guide](https://jidec.github.io/critterframe/guide/)
+See [scripts/](https://github.com/jidec/critterframe/tree/main/scripts) for full example pipelines, shown in full under [Examples](https://jidec.github.io/critterframe/examples/reusable_workflows/simplest_full_pipeline/)
 
 ## The framework
 
@@ -86,16 +86,6 @@ See [scripts/](https://github.com/jidec/critterframe/tree/main/scripts) for full
 - Persistent named subsets make it easy to pass data around for validation, training, or subset-specific processing
 - Metrics exports designed for easy analysis post-critterframe
 - Multithreading/sharding for image downloading, segmentation, and metric runs
-
-## Where to go next
-
-| Page | Answers |
-|---|---|
-| [Concepts](https://jidec.github.io/critterframe/concepts/) | What a project folder holds, and what each term means. |
-| [Guide](https://jidec.github.io/critterframe/guide/) | Which example pipeline to start from, how to validate one, and what the extensions add. |
-| [Examples](https://jidec.github.io/critterframe/examples/simplest_full_pipeline/) | The pipeline scripts in full: the simplest one, the reusable workflows, and a whole project step by step. |
-| [API Reference](https://jidec.github.io/critterframe/api/) | Every function a pipeline calls, and every module behind them. |
-| [Internals](https://jidec.github.io/critterframe/internals/) | How the package is laid out, with import and call graphs, for reading or extending the code. |
 
 ## Installation
 ```

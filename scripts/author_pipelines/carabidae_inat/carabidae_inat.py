@@ -1,3 +1,10 @@
+"""
+Carabid beetles from iNaturalist, ingested from a GBIF archive.
+
+Ingest with cross-source deduplication and a cap of 500 occurrences per
+species, download the images, and segment the organism.
+"""
+
 import logging
 
 import critterframe as cf

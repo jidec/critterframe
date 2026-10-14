@@ -1,5 +1,5 @@
 """
-Step 7 of 8: calibrate each part's filters against the screening labels and
+Step 7 of 9: calibrate each part's filters against the screening labels and
 export one table.
 
 Each part is filtered on its own: an occurrence whose abdomen fails keeps its
@@ -38,8 +38,8 @@ head_filters = cf.get_validated_filters(
     annotation_run="exclusive_label_annotation",
     label_metric="exclusive_label_annotation",
     subset="head_annotations",
-    max_fpr=0.1,
-    min_precision=0.8,
+    max_fpr=0.2,
+    min_precision=0.6,
     drop_redundant=True,     # a filter that catches nothing the others miss only costs good segments
 )
 
@@ -61,8 +61,8 @@ thorax_filters = cf.get_validated_filters(
     annotation_run="exclusive_label_annotation",
     label_metric="exclusive_label_annotation",
     subset="thorax_annotations",
-    max_fpr=0.1,
-    min_precision=0.8,
+    max_fpr=0.05,
+    min_precision=0.5,
     drop_redundant=True,
 )
 

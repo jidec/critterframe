@@ -73,9 +73,8 @@ most projects need (calibration, reference annotation, a custom segmentation mod
 `simplest_full_pipeline.py`. `scripts/author_pipelines/` holds whole projects as they were run, one folder
 each; `odonata_inat_obsorg/` is the worked end-to-end example. They point at project paths that don't exist
 in this repo; read them as documentation of intended usage, and expect to change `PROJECT_PATH` before
-running one. The docs site's Examples tab is generated from the reusable workflows and the numbered
-`odonata_inat_obsorg` steps; `docs/guide.md` describes the other author pipelines by hand, so one of
-those added, renamed or removed is a change to that page too.
+running one. The docs site's Examples tab is generated from both folders, so a pipeline added, renamed
+or removed needs no docs change.
 
 `ruff check .` is the lint, configured in `pyproject.toml`, and is clean and worth keeping clean. It runs the
 pyflakes rules everywhere and the docstring rules on the package; `scripts/` and `README.md` are excluded,
@@ -93,30 +92,30 @@ python tools/check.py --fast    # unit tests without the slow ones, lint and for
 One line per step, pass or fail, with the end of a failed step's output. Every step runs whatever the
 earlier ones did, and the exit code is non-zero if any failed.
 
-### The dependency graphs
+### The dependency diagrams
 
 ```
 winget install Graphviz.Graphviz    # both tools draw through `dot`
-pip install -e ".[graphs]"
-python tools/make_graphs.py                         # everything, into docs/graphs/ (gitignored)
-python tools/make_graphs.py --target run_metrics    # one function's callers and callees
+pip install -e ".[diagrams]"
+python tools/make_diagrams.py                         # everything, into docs/diagrams/ (gitignored)
+python tools/make_diagrams.py --target run_metrics    # one function's callers and callees
 ```
 
-The graphs are published on the docs site: the docs workflow draws them on every deploy, and
+The diagrams are published on the docs site: the docs workflow draws them on every deploy, and
 `docs/internals.md` (the Internals page) holds the reading order and links to each. They are generated
 files and are not committed. That page links to them with HTML anchors, not Markdown links, because a
 strict build fails on a Markdown link whose target is missing, and the docs must build on a machine
-without Graphviz. `docs/graphs/subpackages.svg` is the import graph with one node per
+without Graphviz. `docs/diagrams/subpackages.svg` is the import diagram with one node per
 subpackage or top-level module, from `pydeps`; an arrow points from the imported module to its importer. It
-is reliable, and includes imports made inside functions. A graph of every module is not drawn: at about 100
-nodes and 600 edges no arrow in it can be followed. The rest are `code2flow` call graphs, whose nodes show
+is reliable, and includes imports made inside functions. A diagram of every module is not drawn: at about 100
+nodes and 600 edges no arrow in it can be followed. The rest are `code2flow` call diagrams, whose nodes show
 the first line of each function's docstring on hover: `calls_<subpackage>.svg` (and
 `calls_top_level.svg` for the modules directly under the package) draw the calls inside one folder, and
 `calls_around_<function>.svg` draw one entry point across the whole package (the tool's
-`ENTRY_POINTS`, or any function with `--target`). Call graphs are a map, not a proof: calls are matched by
+`ENTRY_POINTS`, or any function with `--target`). Call diagrams are a map, not a proof: calls are matched by
 name, so they miss anything dispatched through an `Operation`, a factory, or a model's `predict`/`identity`.
 The tool resolves an imported name against each file's path inside the package and leaves one that fits more
-than one file unresolved, so a call graph can miss an edge where two modules share a name.
+than one file unresolved, so a call diagram can miss an edge where two modules share a name.
 
 ### The docs site
 
@@ -126,26 +125,30 @@ mkdocs serve           # live preview at localhost:8000
 mkdocs build --strict  # what CI runs before deploying; fails on broken refs/links
 ```
 
-The site has five tabs, one per reader's question. **Overview** (`docs/index.md`) is a `pymdownx.snippets`
+The site has six tabs, one per reader's question. **Overview** (`docs/index.md`) is a `pymdownx.snippets`
 include of `README.md`, not separate content: edit the README, not that file. The README is the pitch
 (what the package does, the framework and pipeline principles, installation) and links to the other pages
 by absolute site URL, since a relative link would resolve differently on GitHub and on the site.
-**Concepts** (`docs/concepts.md`) holds the project folder structure and the vocabulary. **Guide**
-(`docs/guide.md`) holds the example pipelines, validation and the extensions. **Internals**
-(`docs/internals.md`) holds the package layout tree, the graphs and testing: a module added, moved or
-renamed is a change to that tree. Those three are ordinary files, edited directly. **Examples** has no
-file under `docs/`: the hook `tools/docs_examples.py` builds its pages on every build from
-`scripts/reusable_workflows/` (one page per folder, plus `simplest_full_pipeline.py`) and from the numbered
-scripts of `scripts/author_pipelines/odonata_inat_obsorg/`, and adds them to the nav. Each script appears as
-its docstring, as prose, followed by its code, ordered by the docstring's "Step N of M". So a script's
-docstring is read by users on the site and is written for them, and a new script or workflow folder needs
-no docs change. A script that does not parse is skipped with a warning, which fails the strict build.
+**Concepts** (`docs/concepts.md`) holds the project folder structure and the vocabulary. **Tips & Best
+Practices** (`docs/tips_&_best_practices.md`) holds how to work well with the package, validation so far.
+**Internals** (`docs/internals.md`) holds the package layout tree, a note on what the extensions are,
+the diagrams and testing: a module added, moved or renamed is a change to that tree. Those three are
+ordinary files, edited directly. **Examples** has no file under `docs/`: the hook
+`tools/docs_examples.py` builds its pages on every build from `scripts/reusable_workflows/` and
+`scripts/author_pipelines/`, and adds them to the nav after Concepts. A page is a folder directly under
+either, holding the `.py` files directly inside it (subfolders such as `archive/` are not read), or a
+`.py` file directly under either; a name starting with `_`, `test` or `temp` is left out as scratch.
+The page title is the folder name, and a folder ending `_untested` gets a "not yet run end to end"
+warning in place of the suffix. Each script appears as its docstring, as prose, followed by its code,
+ordered by the docstring's "Step N of M", then a number leading the filename, then the name. So
+a script's docstring is read by users on the site and is written for them, and a new script or pipeline
+folder needs no docs change. A script that does not parse is skipped with a warning, which fails the strict build.
 `docs/api/*.md` are thin `mkdocstrings` directives, one per subpackage; they render existing
 docstrings as-is, so a new subpackage needs a new `docs/api/<name>.md` plus a `mkdocs.yml` nav entry, but a new
 module inside an existing subpackage needs nothing (`show_submodules` picks it up). `.github/workflows/docs.yml`
 deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touches `critterframe/`, `docs/`,
-`tools/`, `scripts/`, `mkdocs.yml`, or `README.md`. It installs Graphviz and the `graphs` extra and runs
-`tools/make_graphs.py` first, so the Internals page's graphs are drawn from the code being deployed.
+`tools/`, `scripts/`, `mkdocs.yml`, or `README.md`. It installs Graphviz and the `diagrams` extra and runs
+`tools/make_diagrams.py` first, so the Internals page's diagrams are drawn from the code being deployed.
 
 ## Architecture
 

@@ -1,3 +1,11 @@
+"""
+Calibrate filters for the abdomen alone and export its colour traits: a
+one-part version of 7_filter_and_export.py.
+
+Run after 6_annotate_parts_for_filters.py, whose labels the filters are
+calibrated against.
+"""
+
 import logging
 
 import critterframe as cf

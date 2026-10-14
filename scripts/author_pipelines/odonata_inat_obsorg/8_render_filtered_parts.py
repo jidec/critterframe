@@ -1,5 +1,5 @@
 """
-Step 8 of 8: render up to 1000 kept segments per part, for looking at what the
+Step 8 of 9: render up to 1000 kept segments per part, for looking at what the
 filters let through.
 
 Reads the table 7_filter_and_export.py wrote. A part that failed its filters
@@ -9,7 +9,7 @@ thorax keep their own proportions.
 
 Unattended.
 
-Before: 7_filter_and_export.py.
+Before: 7_filter_and_export.py. Next: 9_render_parts_species_exemplars.py.
 """
 
 import logging

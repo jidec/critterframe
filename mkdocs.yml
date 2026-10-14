@@ -45,7 +45,7 @@ hooks:
 # So `mkdocs serve` reloads when a script shown on an Examples page is edited.
 watch:
   - scripts/reusable_workflows
-  - scripts/author_pipelines/odonata_inat_obsorg
+  - scripts/author_pipelines
 
 plugins:
   - search
@@ -70,14 +70,15 @@ plugins:
 # The API pages are ordered to match the package layout on the Internals page
 # (docs/internals.md), so the tree a reader sees there and the nav they browse
 # here are the same list in the same order.
-# The graphs are generated into docs/graphs/; only the pictures are published.
+# The diagrams are generated into docs/diagrams/; only the pictures are published.
 exclude_docs: |
-  graphs/*.gv
+  diagrams/*.gv
 
 nav:
   - Overview: index.md
   - Concepts: concepts.md
-  - Guide: guide.md
+  # The Examples tab is inserted here by tools/docs_examples.py.
+  - Tips & Best Practices: "tips_&_best_practices.md"
   - API Reference:
       # Pipeline reference first, deliberately out of the package-layout order
       # below: it's the cf.* surface (everything __init__.py re-exports), not

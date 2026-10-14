@@ -1,8 +1,6 @@
 # Concepts
 
-What a `critterframe` project is made of, and the words the package uses for it.
-
-## The project structure
+## `critterframe` project folder structure
 
 ```
 my_project/
