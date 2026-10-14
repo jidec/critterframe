@@ -1,0 +1,3180 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Image frames of critters into dataframes of traits">
+      
+      
+      
+        <link rel="canonical" href="https://jidec.github.io/critterframe/examples/author_pipelines/odonata_inat_obsorg/">
+      
+      
+        <link rel="prev" href="../mothitor_moths/">
+      
+      
+        <link rel="next" href="../salamander_boxes_untested/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Odonata inat obsorg - critterframe</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../../../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../../assets/_mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#odonata-inat-obsorg" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+<header class="md-header" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../../.." title="critterframe" class="md-header__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            critterframe
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Odonata inat obsorg
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+            
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../.." class="md-tabs__link">
+        
+  
+  
+    
+  
+  Overview
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../concepts/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Concepts
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../../reusable_workflows/simplest_full_pipeline/" class="md-tabs__link">
+          
+  
+  
+  Examples
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../tips_%26_best_practices/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Tips & Best Practices
+
+      </a>
+    </li>
+  
+
+      
+        
+  
+  
+  
+  
+    
+    
+      <li class="md-tabs__item">
+        <a href="../../../api/" class="md-tabs__link">
+          
+  
+  
+  API Reference
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../../internals/" class="md-tabs__link">
+        
+  
+  
+    
+  
+  Internals
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../../.." title="critterframe" class="md-nav__button md-logo" aria-label="critterframe" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    critterframe
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/jidec/critterframe" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    jidec/critterframe
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Concepts
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+        
+        
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Examples
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Examples
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reusable_workflows/simplest_full_pipeline/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Simplest full pipeline
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_2" id="__nav_3_2_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reusable workflows
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_2">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Reusable workflows
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reusable_workflows/calibration/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Calibration
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reusable_workflows/custom_segmentation_model/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Custom segmentation model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reusable_workflows/reference_annotation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Reference annotation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../reusable_workflows/validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_3_3" id="__nav_3_3_label" tabindex="">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Author pipelines
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_3_3">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Author pipelines
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../carabidae_inat/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Carabidae inat
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dragonfly_wings_museums_untested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Dragonfly wings museums
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mm2_moths/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mm2 moths
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../mothitor_moths/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Mothitor moths
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Odonata inat obsorg
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Odonata inat obsorg
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1_ingest_download_and_segment_organismpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1_ingest_download_and_segment_organism.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2_annotate_reference_masks_for_part_segmenterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2_annotate_reference_masks_for_part_segmenters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3_train_part_segmenterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3_train_part_segmenters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4_segment_partspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4_segment_parts.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5_measure_part_qc_and_colorspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5_measure_part_qc_and_colors.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6_annotate_parts_for_filterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6_annotate_parts_for_filters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7_filter_and_exportpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7_filter_and_export.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8_render_filtered_partspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8_render_filtered_parts.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9_render_parts_species_exemplarspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9_render_parts_species_exemplars.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abdomen_exemplar_renderspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        abdomen_exemplar_renders.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter_export_abdomen_onlypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        filter_export_abdomen_only.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train_bioencoderpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train_bioencoder.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate_groundedsampy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_groundedsam.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../salamander_boxes_untested/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Salamander boxes
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../tips_%26_best_practices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tips & Best Practices
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    API Reference
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    API Reference
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    public package-level API (for composing pipelines)
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/core/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    core
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/ingest/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    ingest
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/export/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    export
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/wide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    wide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    selection
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/project/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    project
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/storage/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    storage
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+      
+      
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5_9" >
+        
+          
+          <label class="md-nav__link" for="__nav_5_9" id="__nav_5_9_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    records
+  
+
+    
+  </span>
+  
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_9">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    records
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/occurrences/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    occurrences
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/masks/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    masks
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/failures/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    failures
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/runs/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    runs
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/records/models/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    models
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/segmentation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    segmentation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/transforms/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    transforms
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    metrics
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/calibrations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    calibrations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/validation/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    validation
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/visualization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    visualization
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/training/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    training
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../api/extensions/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    extensions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../../internals/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Internals
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1_ingest_download_and_segment_organismpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1_ingest_download_and_segment_organism.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2_annotate_reference_masks_for_part_segmenterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2_annotate_reference_masks_for_part_segmenters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3_train_part_segmenterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3_train_part_segmenters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4_segment_partspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4_segment_parts.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5_measure_part_qc_and_colorspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5_measure_part_qc_and_colors.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6_annotate_parts_for_filterspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6_annotate_parts_for_filters.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7_filter_and_exportpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7_filter_and_export.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8_render_filtered_partspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8_render_filtered_parts.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9_render_parts_species_exemplarspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9_render_parts_species_exemplars.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#abdomen_exemplar_renderspy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        abdomen_exemplar_renders.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#filter_export_abdomen_onlypy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        filter_export_abdomen_only.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#train_bioencoderpy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        train_bioencoder.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#validate_groundedsampy" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        validate_groundedsam.py
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="odonata-inat-obsorg">Odonata inat obsorg<a class="headerlink" href="#odonata-inat-obsorg" title="Permanent link">&para;</a></h1>
+<p>The scripts in <code>scripts/author_pipelines/odonata_inat_obsorg/</code>, in the order to run them.</p>
+<h2 id="1_ingest_download_and_segment_organismpy"><code>1_ingest_download_and_segment_organism.py</code><a class="headerlink" href="#1_ingest_download_and_segment_organismpy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/1_ingest_download_and_segment_organism.py"><code>scripts/author_pipelines/odonata_inat_obsorg/1_ingest_download_and_segment_organism.py</code></a></p>
+<p>Dragonfly bodies from iNaturalist observations published through GBIF</p>
+<p>1_ingest_download_and_segment_organism.py           unattended
+  2_annotate_reference_masks_for_part_segmenters.py   manual by a person: usability labels, reference part masks
+  3_train_part_segmenters.py                          training: head / thorax / abdomen segmenters
+  4_segment_parts.py                                  unattended: head / thorax / abdomen
+  5_measure_part_qc_and_colors.py                     unattended: part QC scores, colour traits
+  6_annotate_parts_for_filters.py                     manual by a person: quality labels per part
+  7_filter_and_export.py                              unattended: filters, export
+  8_render_filtered_parts.py                          unattended: renders of the kept parts
+  9_render_parts_species_exemplars.py                 unattended: one render per part per species</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.extensions.gbif_darwincore_inat</span><span class="w"> </span><span class="kn">import</span> <span class="n">ingest</span> <span class="k">as</span> <span class="n">gbif_ingest</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># ingest</span>
+<span class="n">gbif_ingest</span><span class="o">.</span><span class="n">ingest_occurrences</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">archive_path</span><span class="o">=</span><span class="s2">"D:/0036785-260806074905277.zip"</span><span class="p">,</span>
+    <span class="n">occurrence_columns</span><span class="o">=</span><span class="n">gbif_ingest</span><span class="o">.</span><span class="n">DEFAULT_INAT_OCCURRENCE_COLUMNS</span><span class="p">,</span>
+    <span class="n">inat_photo_size</span><span class="o">=</span><span class="s2">"medium"</span><span class="p">,</span>
+    <span class="n">dedupe_key_cols</span><span class="o">=</span><span class="p">[</span><span class="s2">"eventDate"</span><span class="p">,</span><span class="s2">"decimalLatitude"</span><span class="p">,</span><span class="s2">"decimalLongitude"</span><span class="p">],</span>
+    <span class="n">group_col</span><span class="o">=</span><span class="s2">"scientificName"</span><span class="p">,</span>
+    <span class="n">max_per_group</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+    <span class="n">trust_source_file_unchanged</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">prioritize_inat</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># download</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">download_images</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">)</span>
+
+<span class="c1"># foundational segmentation of organism using groundedsam2</span>
+<span class="c1"># makes custom part segmentation task much easier by removing the background</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_segments</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s2">"organism_groundedsam2"</span><span class="p">,</span>
+    <span class="n">steps</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">cf</span><span class="o">.</span><span class="n">segment</span><span class="p">(</span><span class="n">cf</span><span class="o">.</span><span class="n">groundedsam2</span><span class="p">(</span><span class="n">text_prompt</span><span class="o">=</span><span class="s2">"insect."</span><span class="p">,</span> <span class="n">box_threshold</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">text_threshold</span><span class="o">=</span><span class="mf">0.25</span><span class="p">),</span>
+                   <span class="n">mask_threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">),</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="2_annotate_reference_masks_for_part_segmenterspy"><code>2_annotate_reference_masks_for_part_segmenters.py</code><a class="headerlink" href="#2_annotate_reference_masks_for_part_segmenterspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/2_annotate_reference_masks_for_part_segmenters.py"><code>scripts/author_pipelines/odonata_inat_obsorg/2_annotate_reference_masks_for_part_segmenters.py</code></a></p>
+<p>Step 2 of 9: label each image usable or not_usable, and correct reference part
+masks on the usable ones.</p>
+<p>Usability labels decide which images get reference masks: an image with no
+single complete organism has no correct part mask to draw. The reference masks are what the part
+segmenters (step 3) train on.</p>
+<p>A person at a window. Each pass resumes: rerun and only what is unlabelled is
+shown.</p>
+<p>Before: 1_ingest_download_and_segment_organism.py. Next: 3_train_part_segmenters.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># annotate usability so we don't try to put any invalid images in the part segmenter training sets</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">grow_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"usability_annotation_set"</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+<span class="c1"># the label describes the image, not its mask, so it is asked of every image and survives resegmenting.</span>
+<span class="c1"># run_name defaults to "usability"</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"usability_annotation_set"</span><span class="p">,</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">exclusive_label_annotation</span><span class="p">([</span><span class="s2">"usable"</span><span class="p">,</span> <span class="s2">"not_usable"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="s2">"usability"</span><span class="p">,</span>
+                                                      <span class="n">requires_mask</span><span class="o">=</span><span class="kc">False</span><span class="p">)])</span>
+<span class="n">usable_ids</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">ids_matching</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"usability"</span><span class="p">,</span> <span class="p">{</span><span class="s2">"usability"</span><span class="p">:</span> <span class="s2">"usable"</span><span class="p">})</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">define_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"usability_annotation_set_usable"</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">usable_ids</span><span class="p">)</span>
+
+<span class="c1"># create the part segmenter reference set</span>
+<span class="c1"># an occurrence already in the reference set stays in it, whatever it is labelled now</span>
+<span class="n">reference_ids</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">select_ids</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"mask_reference_set"</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">grow_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"mask_reference_set"</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span>
+               <span class="n">candidate_ids</span><span class="o">=</span><span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">usable_ids</span><span class="p">)</span> <span class="o">|</span> <span class="nb">set</span><span class="p">(</span><span class="n">reference_ids</span><span class="p">)),</span>
+               <span class="n">candidate_note</span><span class="o">=</span><span class="s2">"labelled usable, plus everything already in the reference set"</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_segments</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">from_part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+    <span class="n">subset</span><span class="o">=</span><span class="s2">"mask_reference_set"</span><span class="p">,</span>
+    <span class="n">shared_steps</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">()],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">{</span><span class="n">part</span><span class="p">:</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">correct_mask</span><span class="p">()]</span> <span class="k">for</span> <span class="n">part</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">"head"</span><span class="p">,</span> <span class="s2">"thorax"</span><span class="p">,</span> <span class="s2">"abdomen"</span><span class="p">]},</span>
+    <span class="n">reference</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">force</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">visualize</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="3_train_part_segmenterspy"><code>3_train_part_segmenters.py</code><a class="headerlink" href="#3_train_part_segmenterspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/3_train_part_segmenters.py"><code>scripts/author_pipelines/odonata_inat_obsorg/3_train_part_segmenters.py</code></a></p>
+<p>Step 3 of 9: train a head, a thorax and an abdomen segmenter on the reference
+masks from step 2, and register each one.</p>
+<p>Every reference head mask goes into training, less a list of occurrences with
+annotation mistakes. Each part is exported as its own dataset, cut out of the
+organism segment with the same transforms step 4 applies before segmenting.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.extensions.smp_segmenter</span><span class="w"> </span><span class="kn">import</span> <span class="n">segmentation</span><span class="p">,</span> <span class="n">training</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.selection.subsets</span><span class="w"> </span><span class="kn">import</span> <span class="n">define_subset</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+<span class="n">DATASET_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">PROJECT_PATH</span><span class="si">}</span><span class="s2">/training/body_parts"</span>
+
+<span class="c1"># transforms used to create the training set (and intended to be applied BEFORE applying the segmenters later)</span>
+<span class="n">BODY_PART_TRANSFORMS</span> <span class="o">=</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">)]</span>
+
+<span class="c1"># newly drawn reference masks reach training without anyone remembering to redefine the subset by hand.</span>
+<span class="n">head_ids</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">cf</span><span class="o">.</span><span class="n">ids_with_mask</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span> <span class="n">reference</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+
+<span class="c1"># remove ids with annotation mistakes</span>
+<span class="n">training_ids</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">head_ids</span> <span class="o">-</span> <span class="p">{</span><span class="s2">"4177294498"</span><span class="p">,</span><span class="s2">"2273301679"</span><span class="p">,</span><span class="s2">"2563482116"</span><span class="p">,</span><span class="s2">"3070675391"</span><span class="p">,</span><span class="s2">"3747273588"</span><span class="p">,</span><span class="s2">"3759334647"</span><span class="p">,</span>
+                                  <span class="s2">"3873762939"</span><span class="p">,</span><span class="s2">"3873771580"</span><span class="p">,</span><span class="s2">"4162072296"</span><span class="p">,</span><span class="s2">"4171342892"</span><span class="p">,</span><span class="s2">"4522442468"</span><span class="p">,</span><span class="s2">"4889841733"</span><span class="p">,</span>
+                                  <span class="s2">"5840134655"</span><span class="p">,</span><span class="s2">"3873762939"</span><span class="p">,</span><span class="s2">"3873771580"</span><span class="p">,</span><span class="s2">"4171342892"</span><span class="p">,</span><span class="s2">"4889841733"</span><span class="p">,</span><span class="s2">"5901775605"</span><span class="p">,</span>
+                                  <span class="s2">"5902514590"</span><span class="p">})</span>
+<span class="n">define_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"body_parts_training"</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">training_ids</span><span class="p">)</span>
+
+<span class="c1"># prepare training datasets</span>
+<span class="n">head_dataset</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">prepare_dataset</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/head"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span> <span class="n">from_part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+    <span class="n">transforms</span><span class="o">=</span><span class="n">BODY_PART_TRANSFORMS</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"body_parts_training"</span><span class="p">,</span>
+    <span class="n">fractions</span><span class="o">=</span><span class="p">{</span><span class="s2">"train"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"test"</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">thorax_dataset</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">prepare_dataset</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/thorax"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span> <span class="n">from_part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+    <span class="n">transforms</span><span class="o">=</span><span class="n">BODY_PART_TRANSFORMS</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"body_parts_training"</span><span class="p">,</span>
+    <span class="n">fractions</span><span class="o">=</span><span class="p">{</span><span class="s2">"train"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"test"</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">},</span>
+<span class="p">)</span>
+<span class="n">abdomen_dataset</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">prepare_dataset</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/abdomen"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span> <span class="n">from_part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+    <span class="n">transforms</span><span class="o">=</span><span class="n">BODY_PART_TRANSFORMS</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"body_parts_training"</span><span class="p">,</span>
+    <span class="n">fractions</span><span class="o">=</span><span class="p">{</span><span class="s2">"train"</span><span class="p">:</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s2">"test"</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">},</span>
+<span class="p">)</span>
+
+<span class="c1"># train segmenters then register their provenance so they can be used in critterframe</span>
+<span class="n">ENCODER_NAME</span> <span class="o">=</span> <span class="n">segmentation</span><span class="o">.</span><span class="n">DEFAULT_ENCODER</span>
+<span class="n">TRAINING_SIZE</span> <span class="o">=</span> <span class="n">segmentation</span><span class="o">.</span><span class="n">DEFAULT_SIZE</span>
+
+<span class="c1"># head</span>
+<span class="n">head_checkpoint</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">head_dataset</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/head"</span><span class="p">,</span>
+                                 <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+                                 <span class="n">val_split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_path</span><span class="o">=</span><span class="n">PROJECT_PATH</span><span class="p">)</span>
+<span class="n">training</span><span class="o">.</span><span class="n">register_trained</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"head_segmenter_v1"</span><span class="p">,</span> <span class="n">head_checkpoint</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/head"</span><span class="p">,</span>
+    <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># thorax</span>
+<span class="n">thorax_checkpoint</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">thorax_dataset</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/thorax"</span><span class="p">,</span>
+                                   <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+                                   <span class="n">val_split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_path</span><span class="o">=</span><span class="n">PROJECT_PATH</span><span class="p">)</span>
+<span class="n">training</span><span class="o">.</span><span class="n">register_trained</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"thorax_segmenter_v1"</span><span class="p">,</span> <span class="n">thorax_checkpoint</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/thorax"</span><span class="p">,</span>
+    <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># abdomen</span>
+<span class="n">abdomen_checkpoint</span> <span class="o">=</span> <span class="n">training</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">abdomen_dataset</span><span class="p">,</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/abdomen"</span><span class="p">,</span>
+                                    <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+                                    <span class="n">val_split</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">project_path</span><span class="o">=</span><span class="n">PROJECT_PATH</span><span class="p">)</span>
+<span class="n">training</span><span class="o">.</span><span class="n">register_trained</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"abdomen_segmenter_v1"</span><span class="p">,</span> <span class="n">abdomen_checkpoint</span><span class="p">,</span>
+    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATASET_DIR</span><span class="si">}</span><span class="s2">/abdomen"</span><span class="p">,</span>
+    <span class="n">encoder_name</span><span class="o">=</span><span class="n">ENCODER_NAME</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">TRAINING_SIZE</span><span class="p">,</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="4_segment_partspy"><code>4_segment_parts.py</code><a class="headerlink" href="#4_segment_partspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/4_segment_parts.py"><code>scripts/author_pipelines/odonata_inat_obsorg/4_segment_parts.py</code></a></p>
+<p>Step 4 of 9: segment the head, thorax and abdomen out of every organism
+segment, with the segmenters step 3 registered.</p>
+<p>The shared steps run once per occurrence and are the transforms the segmenters
+were trained on.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.extensions.smp_segmenter</span><span class="w"> </span><span class="kn">import</span> <span class="n">segmentation</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># mask_threshold is a logit where 1.0 keeps only the pixels each segmenter is surest of so a mask is tighter than at the neutral 0.0.</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_segments</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">run_name</span><span class="o">=</span><span class="s2">"body_parts_tighter"</span><span class="p">,</span>
+    <span class="n">from_part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+    <span class="n">shared_steps</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">)],</span>
+    <span class="n">outputs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"head"</span><span class="p">:</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">segment</span><span class="p">(</span><span class="n">segmentation</span><span class="o">.</span><span class="n">load_registered</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"head_segmenter_v1"</span><span class="p">),</span> <span class="n">mask_threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+        <span class="s2">"thorax"</span><span class="p">:</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">segment</span><span class="p">(</span><span class="n">segmentation</span><span class="o">.</span><span class="n">load_registered</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"thorax_segmenter_v1"</span><span class="p">),</span> <span class="n">mask_threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+        <span class="s2">"abdomen"</span><span class="p">:</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">segment</span><span class="p">(</span><span class="n">segmentation</span><span class="o">.</span><span class="n">load_registered</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"abdomen_segmenter_v1"</span><span class="p">),</span> <span class="n">mask_threshold</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)],</span>
+    <span class="p">},</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="5_measure_part_qc_and_colorspy"><code>5_measure_part_qc_and_colors.py</code><a class="headerlink" href="#5_measure_part_qc_and_colorspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/5_measure_part_qc_and_colors.py"><code>scripts/author_pipelines/odonata_inat_obsorg/5_measure_part_qc_and_colors.py</code></a></p>
+<p>Step 5 of 9: measure every head, thorax and abdomen: the QC scores the filters
+are calibrated on, an embedding, and the colour traits that get exported.</p>
+<p>Every segmented part is measured; nothing is filtered here.</p>
+<p>Unattended, on a GPU for the embeddings.</p>
+<p>Before: 4_segment_parts.py. Next: 6_annotate_parts_for_filters.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.metrics.embedding</span><span class="w"> </span><span class="kn">import</span> <span class="n">pretrained</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># qc scores: candidates for filtering out bad segments</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">run_name</span><span class="o">=</span><span class="s2">"qc"</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="p">[</span><span class="s2">"head"</span><span class="p">,</span> <span class="s2">"thorax"</span><span class="p">,</span> <span class="s2">"abdomen"</span><span class="p">],</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">mask_info</span><span class="p">(</span><span class="n">operations</span><span class="o">=</span><span class="p">[</span><span class="s2">"segment"</span><span class="p">]),</span>
+                        <span class="n">cf</span><span class="o">.</span><span class="n">mask_fraction</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">blur_variance</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">mask_area</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">n_islands</span><span class="p">(),</span>
+                        <span class="n">cf</span><span class="o">.</span><span class="n">elongation</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">jaggedness</span><span class="p">()])</span>
+
+<span class="c1"># embeddings</span>
+<span class="c1"># cf.run_metrics(PROJECT_PATH, run_name="resnet18_embedding", parts=["head", "thorax", "abdomen"],</span>
+<span class="c1">#                transforms=[cf.remove_background(), cf.remove_islands(), cf.crop_to_mask(),</span>
+<span class="c1">#                            cf.orient(axis_strategy="longer"), cf.crop_to_mask()],</span>
+<span class="c1">#                metrics=[cf.embedding(pretrained("resnet18", resize="pad"), name="resnet18_embedding")])</span>
+
+<span class="c1"># every bin also needs high chroma, so browns, greys and pruinose whites land in "unmatched".</span>
+<span class="c1"># light blue gets a lower chroma floor because pale blues are inherently low-chroma (sky blue ~26, brown ~24)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">run_name</span><span class="o">=</span><span class="s2">"color_thresholds"</span><span class="p">,</span> <span class="n">parts</span><span class="o">=</span><span class="p">[</span><span class="s2">"head"</span><span class="p">,</span> <span class="s2">"thorax"</span><span class="p">,</span> <span class="s2">"abdomen"</span><span class="p">],</span>
+               <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)],</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">threshold_fractions</span><span class="p">([</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"red"</span><span class="p">,</span>        <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">345</span><span class="p">,</span> <span class="mi">50</span><span class="p">),</span>  <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"orange"</span><span class="p">,</span>     <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">50</span><span class="p">,</span> <span class="mi">75</span><span class="p">),</span>   <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"yellow"</span><span class="p">,</span>     <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">75</span><span class="p">,</span> <span class="mi">105</span><span class="p">),</span>  <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"green"</span><span class="p">,</span>      <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">105</span><span class="p">,</span> <span class="mi">195</span><span class="p">),</span> <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"blue"</span><span class="p">,</span>       <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">195</span><span class="p">,</span> <span class="mi">305</span><span class="p">),</span> <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">lch_l</span><span class="o">=</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">55</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"light_blue"</span><span class="p">,</span> <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">195</span><span class="p">,</span> <span class="mi">305</span><span class="p">),</span> <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="n">lch_l</span><span class="o">=</span><span class="p">(</span><span class="mi">55</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                            <span class="n">cf</span><span class="o">.</span><span class="n">color_threshold</span><span class="p">(</span><span class="s2">"purple"</span><span class="p">,</span>     <span class="n">lch_h</span><span class="o">=</span><span class="p">(</span><span class="mi">305</span><span class="p">,</span> <span class="mi">345</span><span class="p">),</span> <span class="n">lch_c</span><span class="o">=</span><span class="p">(</span><span class="mi">30</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+                        <span class="p">],</span> <span class="n">unmatched</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"color_bins"</span><span class="p">),</span>
+                        <span class="c1"># present at &gt;= 5% of the part; n_colors_present; ranked_color_1/2</span>
+                        <span class="n">cf</span><span class="o">.</span><span class="n">color_presence</span><span class="p">(</span><span class="n">min_fraction</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span> <span class="n">n_ranked_colors</span><span class="o">=</span><span class="mi">2</span><span class="p">),</span>
+                    <span class="p">])</span>
+</code></pre></div>
+<h2 id="6_annotate_parts_for_filterspy"><code>6_annotate_parts_for_filters.py</code><a class="headerlink" href="#6_annotate_parts_for_filterspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/6_annotate_parts_for_filters.py"><code>scripts/author_pipelines/odonata_inat_obsorg/6_annotate_parts_for_filters.py</code></a></p>
+<p>Step 6 of 9: screen a random sample of finished head, thorax and abdomen
+segments.</p>
+<p>Each is given one key: perfect, good or poor. The label exists for every
+segment, so it is what each part's filters (step 7) are calibrated against.</p>
+<p>A person at a window. Resumes: rerun and only unlabelled segments are shown.</p>
+<p>Before: 5_measure_part_qc_and_colors.py. Next: 7_filter_and_export.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="n">quality_label</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">exclusive_label_annotation</span><span class="p">(</span>
+    <span class="n">labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"perfect"</span><span class="p">,</span> <span class="s2">"good"</span><span class="p">,</span> <span class="s2">"poor"</span><span class="p">],</span>
+    <span class="n">note</span><span class="o">=</span><span class="s2">"These are judgements about segment shape, NOT illumination.</span><span class="se">\n</span><span class="s2">"</span>
+         <span class="s2">"perfect: the part entire, not curved, not covered by wing, and with &lt;5% background bleed</span><span class="se">\n</span><span class="s2">"</span>
+         <span class="s2">"good: representative of color pattern of part but doesn't have to be entire part and can be curved</span><span class="se">\n</span><span class="s2">"</span>
+         <span class="s2">"poor: not representative of color pattern of part, not of part at all, has &gt;5% background bleed</span><span class="se">\n</span><span class="s2">"</span><span class="p">,</span>
+    <span class="n">show_original</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="c1"># each part is shown as the colour traits see it: islands removed and the edge eroded</span>
+<span class="c1"># head</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">grow_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"head_annotations"</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"head_annotations"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span>
+               <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                           <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)],</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">quality_label</span><span class="p">])</span>
+<span class="c1"># thorax</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">grow_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"thorax_annotations"</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"thorax_annotations"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span>
+               <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                           <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)],</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">quality_label</span><span class="p">])</span>
+<span class="c1"># abdomen</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">grow_subset</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"abdomen_annotations"</span><span class="p">,</span> <span class="n">target_size</span><span class="o">=</span><span class="mi">200</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_metrics</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">subset</span><span class="o">=</span><span class="s2">"abdomen_annotations"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+               <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                           <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">)],</span>
+               <span class="n">metrics</span><span class="o">=</span><span class="p">[</span><span class="n">quality_label</span><span class="p">])</span>
+</code></pre></div>
+<h2 id="7_filter_and_exportpy"><code>7_filter_and_export.py</code><a class="headerlink" href="#7_filter_and_exportpy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/7_filter_and_export.py"><code>scripts/author_pipelines/odonata_inat_obsorg/7_filter_and_export.py</code></a></p>
+<p>Step 7 of 9: calibrate each part's filters against the screening labels and
+export one table.</p>
+<p>Each part is filtered on its own: an occurrence whose abdomen fails keeps its
+head and thorax values.</p>
+<p>Unattended.</p>
+<p>Before: 6_annotate_parts_for_filters.py. Next: 8_render_filtered_parts.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.project.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">exports_dir</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># a starting point copied from the thorax; edit once head labels exist</span>
+<span class="n">head_filters</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">get_validated_filters</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span>
+    <span class="n">metric_specs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"qc"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"mask_info__segment__score"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>  <span class="c1"># mask not confident</span>
+            <span class="s2">"blur_variance"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># out of focus</span>
+            <span class="s2">"mask_fraction"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># tiny within image</span>
+            <span class="s2">"mask_area"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>                  <span class="c1"># tiny in general</span>
+            <span class="s2">"n_islands"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                  <span class="c1"># many fragments</span>
+            <span class="s2">"elongation"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># too slender for a roughly round head</span>
+            <span class="s2">"jaggedness"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># shouldn't be too jagged</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">bad_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"poor"</span><span class="p">],</span>
+    <span class="n">annotation_run</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">label_metric</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">subset</span><span class="o">=</span><span class="s2">"head_annotations"</span><span class="p">,</span>
+    <span class="n">max_fpr</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+    <span class="n">min_precision</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span>
+    <span class="n">drop_redundant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>     <span class="c1"># a filter that catches nothing the others miss only costs good segments</span>
+<span class="p">)</span>
+
+<span class="n">thorax_filters</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">get_validated_filters</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span>
+    <span class="n">metric_specs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"qc"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"mask_info__segment__score"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>  <span class="c1"># mask not confident</span>
+            <span class="s2">"blur_variance"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># out of focus</span>
+            <span class="s2">"mask_fraction"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># tiny within image</span>
+            <span class="s2">"mask_area"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>                  <span class="c1"># tiny in general</span>
+            <span class="s2">"n_islands"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                  <span class="c1"># many fragments</span>
+            <span class="s2">"elongation"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># too slender for a roughly round thorax</span>
+            <span class="s2">"jaggedness"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># shouldn't be too jagged</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">bad_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"poor"</span><span class="p">],</span>
+    <span class="n">annotation_run</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">label_metric</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">subset</span><span class="o">=</span><span class="s2">"thorax_annotations"</span><span class="p">,</span>
+    <span class="n">max_fpr</span><span class="o">=</span><span class="mf">0.05</span><span class="p">,</span>
+    <span class="n">min_precision</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">drop_redundant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">abdomen_filters</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">get_validated_filters</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+    <span class="n">metric_specs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"qc"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"blur_variance"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># out of focus</span>
+            <span class="s2">"mask_fraction"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># tiny within image</span>
+            <span class="c1"># "mask_area": "below",                # tiny in general - wrong filter for the current annot set</span>
+            <span class="s2">"n_islands"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                  <span class="c1"># many fragments</span>
+            <span class="s2">"elongation"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>                 <span class="c1"># not slender as an abdomen should be</span>
+            <span class="s2">"jaggedness"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># abdomens shouldn't be too jagged</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">bad_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"poor"</span><span class="p">],</span>
+    <span class="n">annotation_run</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">label_metric</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">subset</span><span class="o">=</span><span class="s2">"abdomen_annotations"</span><span class="p">,</span>
+    <span class="n">max_fpr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">min_precision</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+    <span class="n">drop_redundant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># export</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">export_metrics</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">path</span><span class="o">=</span><span class="n">exports_dir</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"part_colors.csv"</span><span class="p">,</span>   <span class="c1"># 8_render_filtered_parts.py reads this</span>
+    <span class="n">run_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"color_thresholds"</span><span class="p">],</span>
+    <span class="n">part_filters</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"head"</span><span class="p">:</span> <span class="n">head_filters</span><span class="p">,</span>
+        <span class="s2">"thorax"</span><span class="p">:</span> <span class="n">thorax_filters</span><span class="p">,</span>
+        <span class="s2">"abdomen"</span><span class="p">:</span> <span class="n">abdomen_filters</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">rename</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"color_thresholds__head__color_bins__red"</span><span class="p">:</span> <span class="s2">"head_red_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__orange"</span><span class="p">:</span> <span class="s2">"head_orange_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__yellow"</span><span class="p">:</span> <span class="s2">"head_yellow_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__green"</span><span class="p">:</span> <span class="s2">"head_green_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__blue"</span><span class="p">:</span> <span class="s2">"head_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__light_blue"</span><span class="p">:</span> <span class="s2">"head_light_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__purple"</span><span class="p">:</span> <span class="s2">"head_purple_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_bins__unmatched"</span><span class="p">:</span> <span class="s2">"head_unmatched_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__red_present"</span><span class="p">:</span> <span class="s2">"head_red_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__orange_present"</span><span class="p">:</span> <span class="s2">"head_orange_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__yellow_present"</span><span class="p">:</span> <span class="s2">"head_yellow_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__green_present"</span><span class="p">:</span> <span class="s2">"head_green_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__blue_present"</span><span class="p">:</span> <span class="s2">"head_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__light_blue_present"</span><span class="p">:</span> <span class="s2">"head_light_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__purple_present"</span><span class="p">:</span> <span class="s2">"head_purple_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__n_colors_present"</span><span class="p">:</span> <span class="s2">"head_n_colors_present"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__ranked_color_1"</span><span class="p">:</span> <span class="s2">"head_ranked_color_1"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__head__color_presence__ranked_color_2"</span><span class="p">:</span> <span class="s2">"head_ranked_color_2"</span><span class="p">,</span>
+
+        <span class="s2">"color_thresholds__thorax__color_bins__red"</span><span class="p">:</span> <span class="s2">"thorax_red_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__orange"</span><span class="p">:</span> <span class="s2">"thorax_orange_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__yellow"</span><span class="p">:</span> <span class="s2">"thorax_yellow_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__green"</span><span class="p">:</span> <span class="s2">"thorax_green_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__blue"</span><span class="p">:</span> <span class="s2">"thorax_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__light_blue"</span><span class="p">:</span> <span class="s2">"thorax_light_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__purple"</span><span class="p">:</span> <span class="s2">"thorax_purple_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_bins__unmatched"</span><span class="p">:</span> <span class="s2">"thorax_unmatched_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__red_present"</span><span class="p">:</span> <span class="s2">"thorax_red_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__orange_present"</span><span class="p">:</span> <span class="s2">"thorax_orange_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__yellow_present"</span><span class="p">:</span> <span class="s2">"thorax_yellow_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__green_present"</span><span class="p">:</span> <span class="s2">"thorax_green_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__blue_present"</span><span class="p">:</span> <span class="s2">"thorax_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__light_blue_present"</span><span class="p">:</span> <span class="s2">"thorax_light_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__purple_present"</span><span class="p">:</span> <span class="s2">"thorax_purple_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__n_colors_present"</span><span class="p">:</span> <span class="s2">"thorax_n_colors_present"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__ranked_color_1"</span><span class="p">:</span> <span class="s2">"thorax_ranked_color_1"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__thorax__color_presence__ranked_color_2"</span><span class="p">:</span> <span class="s2">"thorax_ranked_color_2"</span><span class="p">,</span>
+
+        <span class="s2">"color_thresholds__abdomen__color_bins__red"</span><span class="p">:</span> <span class="s2">"abdomen_red_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__orange"</span><span class="p">:</span> <span class="s2">"abdomen_orange_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__yellow"</span><span class="p">:</span> <span class="s2">"abdomen_yellow_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__green"</span><span class="p">:</span> <span class="s2">"abdomen_green_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__blue"</span><span class="p">:</span> <span class="s2">"abdomen_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__light_blue"</span><span class="p">:</span> <span class="s2">"abdomen_light_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__purple"</span><span class="p">:</span> <span class="s2">"abdomen_purple_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_bins__unmatched"</span><span class="p">:</span> <span class="s2">"abdomen_unmatched_prop"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__red_present"</span><span class="p">:</span> <span class="s2">"abdomen_red_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__orange_present"</span><span class="p">:</span> <span class="s2">"abdomen_orange_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__yellow_present"</span><span class="p">:</span> <span class="s2">"abdomen_yellow_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__green_present"</span><span class="p">:</span> <span class="s2">"abdomen_green_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__blue_present"</span><span class="p">:</span> <span class="s2">"abdomen_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__light_blue_present"</span><span class="p">:</span> <span class="s2">"abdomen_light_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__purple_present"</span><span class="p">:</span> <span class="s2">"abdomen_purple_presence"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__n_colors_present"</span><span class="p">:</span> <span class="s2">"abdomen_n_colors_present"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__ranked_color_1"</span><span class="p">:</span> <span class="s2">"abdomen_ranked_color_1"</span><span class="p">,</span>
+        <span class="s2">"color_thresholds__abdomen__color_presence__ranked_color_2"</span><span class="p">:</span> <span class="s2">"abdomen_ranked_color_2"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">occurrence_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"sex"</span><span class="p">,</span> <span class="s2">"occurrence_id"</span><span class="p">,</span> <span class="s2">"eventDate"</span><span class="p">,</span> <span class="s2">"decimalLatitude"</span><span class="p">,</span> <span class="s2">"decimalLongitude"</span><span class="p">,</span>
+                        <span class="s2">"coordinateUncertaintyInMeters"</span><span class="p">,</span> <span class="s2">"order"</span><span class="p">,</span> <span class="s2">"family"</span><span class="p">,</span> <span class="s2">"genus"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                        <span class="s2">"scientificName"</span><span class="p">,</span> <span class="s2">"image_url"</span><span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="8_render_filtered_partspy"><code>8_render_filtered_parts.py</code><a class="headerlink" href="#8_render_filtered_partspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/8_render_filtered_parts.py"><code>scripts/author_pipelines/odonata_inat_obsorg/8_render_filtered_parts.py</code></a></p>
+<p>Step 8 of 9: render up to 1000 kept segments per part, for looking at what the
+filters let through.</p>
+<p>Reads the table 7_filter_and_export.py wrote. A part that failed its filters
+has no value in any of its columns, so n_colors_present being filled in means
+the part was kept. The abdomen is squeezed to a fixed strip; the head and
+thorax keep their own proportions.</p>
+<p>Unattended.</p>
+<p>Before: 7_filter_and_export.py. Next: 9_render_parts_species_exemplars.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.project.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">exports_dir</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># ids as text, so one like 007 isn't read as 7</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">exports_dir</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"part_colors.csv"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s2">"occurrence_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+
+<span class="n">head_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"head_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">1000</span><span class="p">]</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"head_renders_filtered"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">head_kept</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)])</span>
+
+<span class="n">thorax_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"thorax_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">1000</span><span class="p">]</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"thorax_renders_filtered"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">thorax_kept</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)])</span>
+
+<span class="n">abdomen_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"abdomen_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()[:</span><span class="mi">1000</span><span class="p">]</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"abdomen_renders_filtered"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">abdomen_kept</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">100</span><span class="p">)])</span>
+</code></pre></div>
+<h2 id="9_render_parts_species_exemplarspy"><code>9_render_parts_species_exemplars.py</code><a class="headerlink" href="#9_render_parts_species_exemplarspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/9_render_parts_species_exemplars.py"><code>scripts/author_pipelines/odonata_inat_obsorg/9_render_parts_species_exemplars.py</code></a></p>
+<p>Step 9 of 9: render one head, one thorax and one abdomen per species: the one
+whose colour proportions are most typical of its species.</p>
+<p>Chosen among the parts the filters kept, read from the table
+7_filter_and_export.py wrote, by the colour proportions
+5_measure_part_qc_and_colors.py stored. Each part is chosen on its own, so a
+species' head, thorax and abdomen can come from three different occurrences.
+Files are named by species.</p>
+<p>Unattended.</p>
+<p>Before: 8_render_filtered_parts.py.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.project.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">exports_dir</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># ids as text, so one like 007 isn't read as 7</span>
+<span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="n">exports_dir</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"part_colors.csv"</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="p">{</span><span class="s2">"occurrence_id"</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+
+<span class="c1"># color_bins is fractions, already on one scale, so not normalized.</span>
+<span class="n">head_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"head_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">head_exemplars</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">exemplars_per_group</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"color_thresholds"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                                        <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="s2">"color_bins"</span><span class="p">,</span>
+                                        <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">head_kept</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"head_exemplar_per_species"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"head"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">head_exemplars</span><span class="p">,</span> <span class="n">name_by</span><span class="o">=</span><span class="s2">"species"</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)])</span>
+
+<span class="n">thorax_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"thorax_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">thorax_exemplars</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">exemplars_per_group</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"color_thresholds"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                                          <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="s2">"color_bins"</span><span class="p">,</span>
+                                          <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">thorax_kept</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"thorax_exemplar_per_species"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"thorax"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">thorax_exemplars</span><span class="p">,</span> <span class="n">name_by</span><span class="o">=</span><span class="s2">"species"</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="n">height</span><span class="o">=</span><span class="mi">100</span><span class="p">)])</span>
+
+<span class="n">abdomen_kept</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="n">df</span><span class="p">[</span><span class="s2">"abdomen_n_colors_present"</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">(),</span> <span class="s2">"occurrence_id"</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">abdomen_exemplars</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">exemplars_per_group</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"color_thresholds"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                                           <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="s2">"color_bins"</span><span class="p">,</span>
+                                           <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">abdomen_kept</span><span class="p">,</span> <span class="n">normalize</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"abdomen_exemplar_per_species"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">abdomen_exemplars</span><span class="p">,</span> <span class="n">name_by</span><span class="o">=</span><span class="s2">"species"</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">100</span><span class="p">)])</span>
+</code></pre></div>
+<h2 id="abdomen_exemplar_renderspy"><code>abdomen_exemplar_renders.py</code><a class="headerlink" href="#abdomen_exemplar_renderspy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/abdomen_exemplar_renders.py"><code>scripts/author_pipelines/odonata_inat_obsorg/abdomen_exemplar_renders.py</code></a></p>
+<p>Render one abdomen per species: the one whose colour proportions are most
+typical of its species.</p>
+<p>Run after 5_measure_part_qc_and_colors.py, which stores the colour proportions
+the exemplars are chosen by.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># one abdomen per species: the one whose colour proportions are most typical of the species.</span>
+<span class="c1"># color_bins is the fractions 5_measure_part_qc_and_colors.py stored; already on one scale, so not normalized.</span>
+<span class="n">standard_ids</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">exemplars_per_group</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="s2">"abdomen_color_thresholds"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                                      <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span> <span class="n">metric_name</span><span class="o">=</span><span class="s2">"color_bins"</span><span class="p">,</span>
+                                      <span class="n">normalize</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">render_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"abdomen_standard_per_species"</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+                   <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">standard_ids</span><span class="p">,</span> <span class="n">name_by</span><span class="o">=</span><span class="s2">"species"</span><span class="p">,</span>
+                   <span class="n">transforms</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">remove_islands</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">(</span><span class="n">axis_strategy</span><span class="o">=</span><span class="s2">"longer"</span><span class="p">),</span> <span class="n">cf</span><span class="o">.</span><span class="n">erode</span><span class="p">(</span><span class="n">fraction</span><span class="o">=</span><span class="mf">0.15</span><span class="p">),</span>
+                               <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">resize</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">100</span><span class="p">)])</span>
+</code></pre></div>
+<h2 id="filter_export_abdomen_onlypy"><code>filter_export_abdomen_only.py</code><a class="headerlink" href="#filter_export_abdomen_onlypy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/filter_export_abdomen_only.py"><code>scripts/author_pipelines/odonata_inat_obsorg/filter_export_abdomen_only.py</code></a></p>
+<p>Calibrate filters for the abdomen alone and export its colour traits: a
+one-part version of 7_filter_and_export.py.</p>
+<p>Run after 6_annotate_parts_for_filters.py, whose labels the filters are
+calibrated against.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.project.paths</span><span class="w"> </span><span class="kn">import</span> <span class="n">exports_dir</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="n">abdomen_filters</span> <span class="o">=</span> <span class="n">cf</span><span class="o">.</span><span class="n">get_validated_filters</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">part</span><span class="o">=</span><span class="s2">"abdomen"</span><span class="p">,</span>
+    <span class="n">metric_specs</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"abdomen_qc"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"blur_variance"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># out of focus</span>
+            <span class="s2">"mask_fraction"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>              <span class="c1"># tiny within image</span>
+            <span class="c1"># "mask_area": "below",                # tiny in general - wrong filter for the current annot set</span>
+            <span class="s2">"n_islands"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                  <span class="c1"># many fragments</span>
+            <span class="s2">"elongation"</span><span class="p">:</span> <span class="s2">"below"</span><span class="p">,</span>                 <span class="c1"># not slender as an abdomen should be</span>
+            <span class="s2">"jaggedness"</span><span class="p">:</span> <span class="s2">"above"</span><span class="p">,</span>                 <span class="c1"># abdomens shouldn't be too jagged</span>
+        <span class="p">},</span>
+    <span class="p">},</span>
+    <span class="n">bad_labels</span><span class="o">=</span><span class="p">[</span><span class="s2">"poor"</span><span class="p">],</span>
+    <span class="n">annotation_run</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">label_metric</span><span class="o">=</span><span class="s2">"exclusive_label_annotation"</span><span class="p">,</span>
+    <span class="n">subset</span><span class="o">=</span><span class="s2">"abdomen_annotations"</span><span class="p">,</span>
+    <span class="n">max_fpr</span><span class="o">=</span><span class="mf">0.1</span><span class="p">,</span>
+    <span class="n">min_precision</span><span class="o">=</span><span class="mf">0.8</span><span class="p">,</span>
+    <span class="n">drop_redundant</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># export</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">export_metrics</span><span class="p">(</span>
+    <span class="n">PROJECT_PATH</span><span class="p">,</span>
+    <span class="n">path</span><span class="o">=</span><span class="n">exports_dir</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"part_colors.csv"</span><span class="p">,</span>   <span class="c1"># 8_render_filtered_parts.py reads this</span>
+    <span class="n">run_names</span><span class="o">=</span><span class="p">[</span><span class="s2">"abdomen_color_thresholds"</span><span class="p">],</span>
+    <span class="n">filters</span><span class="o">=</span> <span class="n">abdomen_filters</span><span class="p">,</span>
+    <span class="n">rename</span><span class="o">=</span><span class="p">{</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__red"</span><span class="p">:</span> <span class="s2">"abdomen_red_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__orange"</span><span class="p">:</span> <span class="s2">"abdomen_orange_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__yellow"</span><span class="p">:</span> <span class="s2">"abdomen_yellow_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__green"</span><span class="p">:</span> <span class="s2">"abdomen_green_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__blue"</span><span class="p">:</span> <span class="s2">"abdomen_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__light_blue"</span><span class="p">:</span> <span class="s2">"abdomen_light_blue_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__purple"</span><span class="p">:</span> <span class="s2">"abdomen_purple_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_bins__unmatched"</span><span class="p">:</span> <span class="s2">"abdomen_unmatched_prop"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__red_present"</span><span class="p">:</span> <span class="s2">"abdomen_red_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__orange_present"</span><span class="p">:</span> <span class="s2">"abdomen_orange_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__yellow_present"</span><span class="p">:</span> <span class="s2">"abdomen_yellow_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__green_present"</span><span class="p">:</span> <span class="s2">"abdomen_green_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__blue_present"</span><span class="p">:</span> <span class="s2">"abdomen_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__light_blue_present"</span><span class="p">:</span> <span class="s2">"abdomen_light_blue_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__purple_present"</span><span class="p">:</span> <span class="s2">"abdomen_purple_presence"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__n_colors_present"</span><span class="p">:</span> <span class="s2">"abdomen_n_colors_present"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__ranked_color_1"</span><span class="p">:</span> <span class="s2">"abdomen_ranked_color_1"</span><span class="p">,</span>
+        <span class="s2">"abdomen_color_thresholds__abdomen__color_presence__ranked_color_2"</span><span class="p">:</span> <span class="s2">"abdomen_ranked_color_2"</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="n">occurrence_columns</span><span class="o">=</span><span class="p">[</span><span class="s2">"sex"</span><span class="p">,</span> <span class="s2">"occurrence_id"</span><span class="p">,</span> <span class="s2">"eventDate"</span><span class="p">,</span> <span class="s2">"decimalLatitude"</span><span class="p">,</span> <span class="s2">"decimalLongitude"</span><span class="p">,</span>
+                        <span class="s2">"coordinateUncertaintyInMeters"</span><span class="p">,</span> <span class="s2">"order"</span><span class="p">,</span> <span class="s2">"family"</span><span class="p">,</span> <span class="s2">"genus"</span><span class="p">,</span> <span class="s2">"species"</span><span class="p">,</span>
+                        <span class="s2">"scientificName"</span><span class="p">,</span> <span class="s2">"image_url"</span><span class="p">],</span>
+<span class="p">)</span>
+</code></pre></div>
+<h2 id="train_bioencoderpy"><code>train_bioencoder.py</code><a class="headerlink" href="#train_bioencoderpy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/train_bioencoder.py"><code>scripts/author_pipelines/odonata_inat_obsorg/train_bioencoder.py</code></a></p>
+<p>Trains a BioEncoder embedding model on this pipeline's organism segments, with
+species as the metric-learning label, and registers the weights so an embedding
+step can load them.</p>
+<p>Outside the numbered sequence, and optional: 6_filter_and_export.py embeds with
+an off-the-shelf resnet18 today.
+Also IMPORTABLE for EMBEDDING_TRANSFORMS and the model/run constants -- the
+embedding metric must frame each organism exactly as this dataset export did --
+so everything that does work is guarded by <code>if __name__ == "__main__":</code>.</p>
+<p>Critterframe does the dataset side and BioEncoder only trains:</p>
+<div class="highlight"><pre><span></span><code>critterframe                          BioEncoder
+------------                          ----------
+choose + cap species        (step 1)
+split, grouped by observer  (step 2)
+export train/&amp;lt;species&amp;gt;/...  (step 3)
+                                      configure   (step 5)
+                                      train       (step 5, stage 1)
+                                      swa         (step 5)
+register the swa weights    (step 6)
+</code></pre></div>
+<p><code>bioencoder_split_dataset</code> is deliberately NOT used. It splits at random
+within each class, so one observer's repeat photos of one animal land on both
+sides and the validation score is inflated; <code>split_ids(group_col=)</code> is the
+leakage guard it doesn't have. export_training_data(class_by=) already writes
+BioEncoder's own <code>&amp;lt;root&amp;gt;/data/&amp;lt;run&amp;gt;/{train,val}/&amp;lt;class&amp;gt;/</code> layout.</p>
+<p>Only stage 1 (supervised-contrastive, projection head) is trained: that stage
+produces the embedding space. Stage 2 only fits a classifier head on a frozen
+encoder, which an embedding metric never uses.</p>
+<p>BioEncoder is called through its Python API, not the <code>bioencoder_*</code> commands.
+The CLI hands root_dir/run_name between processes via ~/.bioencoder.yaml and
+swallows tracebacks inside subprocess output; in-process, a failure is an
+ordinary exception.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">shutil</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.selection.subsets</span><span class="w"> </span><span class="kn">import</span> <span class="n">select_occurrences</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.selection.queries</span><span class="w"> </span><span class="kn">import</span> <span class="n">ids_with_mask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.records.occurrences</span><span class="w"> </span><span class="kn">import</span> <span class="n">ID_COL</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.selection.algorithms</span><span class="w"> </span><span class="kn">import</span> <span class="n">cap_per_group</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.training.datasets</span><span class="w"> </span><span class="kn">import</span> <span class="n">export_training_data</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">critterframe.training.splits</span><span class="w"> </span><span class="kn">import</span> <span class="n">split_ids</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+
+<span class="c1"># BioEncoder's root_dir. It lays everything out beneath it by run name:</span>
+<span class="c1">#   data/&lt;RUN_NAME&gt;/{train,val,test}/&lt;species&gt;/&lt;occurrence_id&gt;.png  (written here)</span>
+<span class="c1">#   weights/&lt;RUN_NAME&gt;/first/{epoch&lt;N&gt;, swa}                        (BioEncoder)</span>
+<span class="c1">#   logs/, runs/ (tensorboard)                                      (BioEncoder)</span>
+<span class="n">BIOENCODER_ROOT</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">PROJECT_PATH</span><span class="si">}</span><span class="s2">/training/bioencoder"</span>
+
+<span class="c1"># Bump this for a new model rather than retraining over an old one:</span>
+<span class="c1"># bioencoder.train(overwrite=True) deletes weights/&lt;RUN_NAME&gt;/first, which</span>
+<span class="c1"># would pull the checkpoint out from under a model already registered from it.</span>
+<span class="n">RUN_NAME</span> <span class="o">=</span> <span class="s2">"odonata_v1"</span>
+<span class="n">MODEL_NAME</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"bioencoder_</span><span class="si">{</span><span class="n">RUN_NAME</span><span class="si">}</span><span class="s2">"</span>
+
+<span class="n">DATA_DIR</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">BIOENCODER_ROOT</span><span class="si">}</span><span class="s2">/data/</span><span class="si">{</span><span class="n">RUN_NAME</span><span class="si">}</span><span class="s2">"</span>
+<span class="n">CONFIG_PATH</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">BIOENCODER_ROOT</span><span class="si">}</span><span class="s2">/configs/</span><span class="si">{</span><span class="n">RUN_NAME</span><span class="si">}</span><span class="s2">_stage1.yml"</span>
+<span class="n">CHECKPOINT</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">BIOENCODER_ROOT</span><span class="si">}</span><span class="s2">/weights/</span><span class="si">{</span><span class="n">RUN_NAME</span><span class="si">}</span><span class="s2">/first/swa"</span>
+
+<span class="n">PART</span> <span class="o">=</span> <span class="s2">"organism"</span>
+<span class="c1"># The SAME chain the pipeline's embedding metric must use: a model</span>
+<span class="c1"># trained on background-removed, cropped, oriented segments and run on</span>
+<span class="c1"># anything else embeds badly with no error to say so. Import it from here.</span>
+<span class="n">EMBEDDING_TRANSFORMS</span> <span class="o">=</span> <span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">remove_background</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">crop_to_mask</span><span class="p">(),</span> <span class="n">cf</span><span class="o">.</span><span class="n">orient</span><span class="p">()]</span>
+
+<span class="n">LABEL_COL</span> <span class="o">=</span> <span class="s2">"species"</span>      <span class="c1"># blank for genus-level identifications, which are left out</span>
+<span class="n">GROUP_COL</span> <span class="o">=</span> <span class="s2">"recordedBy"</span>   <span class="c1"># one observer's repeat photos must not straddle train/val</span>
+
+<span class="c1"># Species with fewer examples have too few positive pairs to learn from; more</span>
+<span class="c1"># than the cap lets a few common species dominate every batch. BioEncoder's own</span>
+<span class="c1"># split_dataset balances with max_ratio -- this is the same idea, applied once</span>
+<span class="c1"># here since that step is skipped. 20 is also split_dataset's min_per_class.</span>
+<span class="n">MIN_PER_CLASS</span> <span class="o">=</span> <span class="mi">20</span>
+<span class="n">MAX_PER_CLASS</span> <span class="o">=</span> <span class="mi">100</span>
+<span class="n">FRACTIONS</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"train"</span><span class="p">:</span> <span class="mf">0.70</span><span class="p">,</span> <span class="s2">"val"</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">,</span> <span class="s2">"test"</span><span class="p">:</span> <span class="mf">0.15</span><span class="p">}</span>   <span class="c1"># test: never seen by BioEncoder</span>
+<span class="n">SEED</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="c1"># timm_resnet18 rather than BioEncoder's example efficientnet_b5: the larger</span>
+<span class="c1"># backbones failed to build or ran out of GPU memory on this machine. The SupCon</span>
+<span class="c1"># loss feeds two augmented crops per image, so memory is ~2x batch_size.</span>
+<span class="n">BACKBONE</span> <span class="o">=</span> <span class="s2">"timm_resnet18"</span>
+<span class="n">IMG_SIZE</span> <span class="o">=</span> <span class="mi">256</span>
+<span class="n">EPOCHS</span> <span class="o">=</span> <span class="mi">50</span>
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">24</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">stage1_config</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""BioEncoder's train_stage1.yml, as a dict -- the package ships no template."""</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="s2">"model"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"backbone"</span><span class="p">:</span> <span class="n">BACKBONE</span><span class="p">,</span>
+            <span class="c1"># How many of the last epoch checkpoints bioencoder.swa() averages.</span>
+            <span class="s2">"top_k_checkpoints"</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"train"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"n_epochs"</span><span class="p">:</span> <span class="n">EPOCHS</span><span class="p">,</span>
+            <span class="s2">"amp"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">"ema"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="s2">"ema_decay_per_epoch"</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">,</span>
+            <span class="s2">"target_metric"</span><span class="p">:</span> <span class="s2">"precision_at_1"</span><span class="p">,</span>
+            <span class="s2">"stage"</span><span class="p">:</span> <span class="s2">"first"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"dataloaders"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"train_batch_size"</span><span class="p">:</span> <span class="n">BATCH_SIZE</span><span class="p">,</span>
+            <span class="c1"># Validation drops its last incomplete batch, so this must stay</span>
+            <span class="c1"># well under the size of the val split.</span>
+            <span class="s2">"valid_batch_size"</span><span class="p">:</span> <span class="n">BATCH_SIZE</span><span class="p">,</span>
+            <span class="s2">"num_workers"</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="s2">"optimizer"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"SGD"</span><span class="p">,</span> <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"lr"</span><span class="p">:</span> <span class="mf">0.003</span><span class="p">}},</span>
+        <span class="s2">"scheduler"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"CosineAnnealingLR"</span><span class="p">,</span>
+                      <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"T_max"</span><span class="p">:</span> <span class="n">EPOCHS</span><span class="p">,</span> <span class="s2">"eta_min"</span><span class="p">:</span> <span class="mf">0.0003</span><span class="p">}},</span>
+        <span class="s2">"criterion"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"name"</span><span class="p">:</span> <span class="s2">"SupCon"</span><span class="p">,</span> <span class="s2">"params"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"temperature"</span><span class="p">:</span> <span class="mf">0.1</span><span class="p">}},</span>
+        <span class="s2">"img_size"</span><span class="p">:</span> <span class="n">IMG_SIZE</span><span class="p">,</span>
+        <span class="s2">"augmentations"</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">"sample_save"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>   <span class="c1"># writes data/&lt;run&gt;/aug_sample/ -- look at it once</span>
+            <span class="s2">"sample_n"</span><span class="p">:</span> <span class="mi">5</span><span class="p">,</span>
+            <span class="c1"># Geometry only. No colour jitter / hue shifts: colour is exactly</span>
+            <span class="c1"># the signal an odonate embedding should keep, and augmenting it</span>
+            <span class="c1"># away trains the model to ignore it.</span>
+            <span class="s2">"transforms"</span><span class="p">:</span> <span class="p">[</span>
+                <span class="p">{</span><span class="s2">"RandomResizedCrop"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"height"</span><span class="p">:</span> <span class="n">IMG_SIZE</span><span class="p">,</span> <span class="s2">"width"</span><span class="p">:</span> <span class="n">IMG_SIZE</span><span class="p">,</span>
+                                       <span class="s2">"scale"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]}},</span>
+                <span class="p">{</span><span class="s2">"HorizontalFlip"</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">"VerticalFlip"</span><span class="p">:</span> <span class="kc">None</span><span class="p">},</span>
+                <span class="p">{</span><span class="s2">"ShiftScaleRotate"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"p"</span><span class="p">:</span> <span class="mf">0.4</span><span class="p">}},</span>
+                <span class="p">{</span><span class="s2">"MedianBlur"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"p"</span><span class="p">:</span> <span class="mf">0.3</span><span class="p">}},</span>
+            <span class="p">],</span>
+        <span class="p">},</span>
+    <span class="p">}</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">yaml</span>
+
+    <span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+
+    <span class="c1"># Step 1: candidate occurrences -- an organism mask to cut the segment</span>
+    <span class="c1"># from, a species to label it with, at most MAX_PER_CLASS per species,</span>
+    <span class="c1"># and only species that still have MIN_PER_CLASS after that.</span>
+    <span class="n">occurrences</span> <span class="o">=</span> <span class="n">select_occurrences</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">,</span> <span class="n">GROUP_COL</span><span class="p">])</span>
+    <span class="n">occurrences</span> <span class="o">=</span> <span class="n">occurrences</span><span class="p">[</span>
+        <span class="n">occurrences</span><span class="p">[</span><span class="n">ID_COL</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">ids_with_mask</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">PART</span><span class="p">))</span>
+        <span class="o">&amp;</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">notna</span><span class="p">()</span>
+        <span class="o">&amp;</span> <span class="p">(</span><span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">str</span><span class="p">)</span><span class="o">.</span><span class="n">str</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="o">!=</span> <span class="s2">""</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="n">occurrences</span> <span class="o">=</span> <span class="n">cap_per_group</span><span class="p">(</span><span class="n">occurrences</span><span class="p">,</span> <span class="n">LABEL_COL</span><span class="p">,</span> <span class="n">MAX_PER_CLASS</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+    <span class="n">counts</span> <span class="o">=</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">value_counts</span><span class="p">()</span>
+    <span class="n">occurrences</span> <span class="o">=</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">isin</span><span class="p">(</span><span class="n">counts</span><span class="p">[</span><span class="n">counts</span> <span class="o">&gt;=</span> <span class="n">MIN_PER_CLASS</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="p">)]</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"</span><span class="si">%d</span><span class="s2"> occurrences across </span><span class="si">%d</span><span class="s2"> species with &gt;= </span><span class="si">%d</span><span class="s2"> examples"</span><span class="p">,</span>
+                <span class="nb">len</span><span class="p">(</span><span class="n">occurrences</span><span class="p">),</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">(),</span> <span class="n">MIN_PER_CLASS</span><span class="p">)</span>
+
+    <span class="c1"># Step 2: split, stratified by species and grouped by observer.</span>
+    <span class="n">splits</span> <span class="o">=</span> <span class="n">split_ids</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">occurrence_ids</span><span class="o">=</span><span class="n">occurrences</span><span class="p">[</span><span class="n">ID_COL</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">(),</span>
+                       <span class="n">fractions</span><span class="o">=</span><span class="n">FRACTIONS</span><span class="p">,</span> <span class="n">stratify_col</span><span class="o">=</span><span class="n">LABEL_COL</span><span class="p">,</span>
+                       <span class="n">group_col</span><span class="o">=</span><span class="n">GROUP_COL</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">SEED</span><span class="p">)</span>
+
+    <span class="c1"># BioEncoder reads train/ and val/ as two separate ImageFolders, and an</span>
+    <span class="c1"># ImageFolder numbers classes by its OWN sorted folder list -- a species</span>
+    <span class="c1"># missing from val shifts every label after it, silently. Grouping by</span>
+    <span class="c1"># observer can put all of a species on one side, so keep only species</span>
+    <span class="c1"># present in both, and drop the rest from every split (test included)</span>
+    <span class="c1"># BEFORE exporting, so dataset.json describes what was written.</span>
+    <span class="n">label_of</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">occurrences</span><span class="p">[</span><span class="n">ID_COL</span><span class="p">],</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]))</span>
+    <span class="n">shared</span> <span class="o">=</span> <span class="p">({</span><span class="n">label_of</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="s2">"train"</span><span class="p">]}</span>
+              <span class="o">&amp;</span> <span class="p">{</span><span class="n">label_of</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">splits</span><span class="p">[</span><span class="s2">"val"</span><span class="p">]})</span>
+    <span class="n">dropped</span> <span class="o">=</span> <span class="n">occurrences</span><span class="p">[</span><span class="n">LABEL_COL</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">shared</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">dropped</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s2">"dropping </span><span class="si">%d</span><span class="s2"> species not present in both train and val"</span><span class="p">,</span> <span class="n">dropped</span><span class="p">)</span>
+    <span class="n">splits</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="p">[</span><span class="n">i</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ids</span> <span class="k">if</span> <span class="n">label_of</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="ow">in</span> <span class="n">shared</span><span class="p">]</span>
+              <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">ids</span> <span class="ow">in</span> <span class="n">splits</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+
+    <span class="c1"># Step 3: write BioEncoder's layout directly. Cleared first: the export</span>
+    <span class="c1"># leaves unrelated existing files alone, and a species or image left over</span>
+    <span class="c1"># from an earlier export would be trained on as though it were selected.</span>
+    <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">):</span>
+        <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">DATA_DIR</span><span class="p">)</span>
+    <span class="n">export_training_data</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">DATA_DIR</span><span class="p">,</span> <span class="n">splits</span><span class="o">=</span><span class="n">splits</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="n">PART</span><span class="p">,</span>
+                         <span class="n">transforms</span><span class="o">=</span><span class="n">EMBEDDING_TRANSFORMS</span><span class="p">,</span> <span class="n">class_by</span><span class="o">=</span><span class="n">LABEL_COL</span><span class="p">,</span>
+                         <span class="n">metadata</span><span class="o">=</span><span class="p">[</span><span class="n">GROUP_COL</span><span class="p">])</span>
+
+    <span class="c1"># An occurrence can still fail to export (a transform failing on its</span>
+    <span class="c1"># mask), so check the class lists once more on disk, where BioEncoder</span>
+    <span class="c1"># will read them.</span>
+    <span class="n">train_classes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">/train"</span><span class="p">))</span>
+    <span class="n">val_classes</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">/val"</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">train_classes</span> <span class="o">!=</span> <span class="n">val_classes</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"train and val class folders differ after export "</span>
+            <span class="sa">f</span><span class="s2">"(train only: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">train_classes</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">val_classes</span><span class="p">)</span><span class="si">}</span><span class="s2">, "</span>
+            <span class="sa">f</span><span class="s2">"val only: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">val_classes</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">train_classes</span><span class="p">)</span><span class="si">}</span><span class="s2">) -- BioEncoder "</span>
+            <span class="s2">"would misalign labels; see the export log for failed occurrences"</span><span class="p">)</span>
+
+    <span class="c1"># Step 4: the stage-1 config.</span>
+    <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">CONFIG_PATH</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">CONFIG_PATH</span><span class="p">,</span> <span class="s2">"w"</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span><span class="p">)</span> <span class="k">as</span> <span class="n">handle</span><span class="p">:</span>
+        <span class="n">yaml</span><span class="o">.</span><span class="n">safe_dump</span><span class="p">(</span><span class="n">stage1_config</span><span class="p">(),</span> <span class="n">handle</span><span class="p">,</span> <span class="n">sort_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+    <span class="c1"># Step 5: train. Imported here: bioencoder imports torch at import time,</span>
+    <span class="c1"># and importing this module for EMBEDDING_TRANSFORMS shouldn't.</span>
+    <span class="c1"># configure() sets root_dir/run_name for the calls after it (and writes</span>
+    <span class="c1"># ~/.bioencoder.yaml for the CLI). train() needs CUDA. swa() averages the</span>
+    <span class="c1"># last top_k_checkpoints epochs into weights/&lt;run&gt;/first/swa -- the file</span>
+    <span class="c1"># BioEncoder's own inference loads, and the one registered below.</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">bioencoder</span>
+
+    <span class="n">bioencoder</span><span class="o">.</span><span class="n">configure</span><span class="p">(</span><span class="n">root_dir</span><span class="o">=</span><span class="n">BIOENCODER_ROOT</span><span class="p">,</span> <span class="n">run_name</span><span class="o">=</span><span class="n">RUN_NAME</span><span class="p">,</span> <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">bioencoder</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">CONFIG_PATH</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">bioencoder</span><span class="o">.</span><span class="n">swa</span><span class="p">(</span><span class="n">config_path</span><span class="o">=</span><span class="n">CONFIG_PATH</span><span class="p">)</span>
+
+    <span class="c1"># Step 6: register. Fingerprints the swa weights, so retraining into the</span>
+    <span class="c1"># same path changes every embedding recipe's hash; training_data points at</span>
+    <span class="c1"># the export's dataset.json. `parameters` is what</span>
+    <span class="c1"># extensions.bioencoder.training.load() is called with by</span>
+    <span class="c1"># embedding.load_registered(PROJECT_PATH, MODEL_NAME), which is all</span>
+    <span class="c1"># the pipeline needs to embed with this model (ImageNet mean/std,</span>
+    <span class="c1"># which BioEncoder trained with, is load()'s default).</span>
+    <span class="n">cf</span><span class="o">.</span><span class="n">register_model</span><span class="p">(</span>
+        <span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">MODEL_NAME</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">CHECKPOINT</span><span class="p">,</span> <span class="n">task</span><span class="o">=</span><span class="s2">"embedding"</span><span class="p">,</span>
+        <span class="n">framework</span><span class="o">=</span><span class="s2">"torch"</span><span class="p">,</span> <span class="n">base_model</span><span class="o">=</span><span class="n">BACKBONE</span><span class="p">,</span> <span class="n">training_data</span><span class="o">=</span><span class="n">DATA_DIR</span><span class="p">,</span>
+        <span class="n">parameters</span><span class="o">=</span><span class="p">{</span><span class="s2">"backbone"</span><span class="p">:</span> <span class="n">BACKBONE</span><span class="p">,</span> <span class="s2">"projection_head"</span><span class="p">:</span> <span class="kc">True</span><span class="p">,</span>
+                    <span class="s2">"input_size"</span><span class="p">:</span> <span class="p">[</span><span class="n">IMG_SIZE</span><span class="p">,</span> <span class="n">IMG_SIZE</span><span class="p">],</span> <span class="s2">"normalize"</span><span class="p">:</span> <span class="kc">True</span><span class="p">},</span>
+        <span class="n">notes</span><span class="o">=</span><span class="sa">f</span><span class="s2">"BioEncoder stage 1 (SupCon) + SWA; label=</span><span class="si">{</span><span class="n">LABEL_COL</span><span class="si">}</span><span class="s2">, "</span>
+              <span class="sa">f</span><span class="s2">"grouped by </span><span class="si">{</span><span class="n">GROUP_COL</span><span class="si">}</span><span class="s2">; config </span><span class="si">{</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">basename</span><span class="p">(</span><span class="n">CONFIG_PATH</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+    <span class="p">)</span>
+</code></pre></div>
+<h2 id="validate_groundedsampy"><code>validate_groundedsam.py</code><a class="headerlink" href="#validate_groundedsampy" title="Permanent link">&para;</a></h2>
+<p><a href="https://github.com/jidec/critterframe/blob/main/scripts/author_pipelines/odonata_inat_obsorg/validate_groundedsam.py"><code>scripts/author_pipelines/odonata_inat_obsorg/validate_groundedsam.py</code></a></p>
+<p>Which GroundedSAM2 settings work best for 1_ingest_and_segment_organism.py's
+organism segment -- text_prompt, box_threshold, text_threshold, and segment()'s
+mask_threshold?</p>
+<p>Outside the numbered sequence: it feeds nothing, and answers a question about a
+choice the pipeline already makes. Needs 2_annotate_references.py's reference
+part masks.</p>
+<p>Each parameter is swept one at a time against a fixed baseline, ranked by how
+much of the body (the union of the head/thorax/abdomen reference masks) the
+candidate organism mask covers -- not IoU, since the organism mask feeds the
+part segmenter and picking up the wings alongside the body costs nothing
+there, only missing part of the body does.</p>
+<div class="highlight"><pre><span></span><code><span class="kn">import</span><span class="w"> </span><span class="nn">logging</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">critterframe</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">cf</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">(</span><span class="n">level</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">INFO</span><span class="p">)</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+
+<span class="n">PROJECT_PATH</span> <span class="o">=</span> <span class="s2">"D:/cf_projects/odonata_inat_obsorg"</span>
+<span class="n">BODY_PARTS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"head"</span><span class="p">,</span> <span class="s2">"thorax"</span><span class="p">,</span> <span class="s2">"abdomen"</span><span class="p">]</span>
+
+<span class="c1"># text_prompt/box_threshold/text_threshold configure GroundedSAM2 itself;</span>
+<span class="c1"># mask_threshold is segment()'s own param, applied to whatever model runs --</span>
+<span class="c1"># kept in a separate baseline/sweep pair so it's never confused with a model</span>
+<span class="c1"># kwarg.</span>
+<span class="n">MODEL_BASELINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">text_prompt</span><span class="o">=</span><span class="s2">"insect."</span><span class="p">,</span> <span class="n">box_threshold</span><span class="o">=</span><span class="mf">0.25</span><span class="p">,</span> <span class="n">text_threshold</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
+<span class="n">SEGMENT_BASELINE</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">mask_threshold</span><span class="o">=</span><span class="mf">0.0</span><span class="p">)</span>
+
+<span class="n">MODEL_SWEEPS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"text_prompt"</span><span class="p">:</span> <span class="p">[</span><span class="s2">"dragonfly."</span><span class="p">,</span> <span class="s2">"insect."</span><span class="p">,</span> <span class="s2">"subject."</span><span class="p">],</span>
+    <span class="s2">"box_threshold"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">],</span>
+    <span class="s2">"text_threshold"</span><span class="p">:</span> <span class="p">[</span><span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">,</span> <span class="mf">0.35</span><span class="p">],</span>
+<span class="p">}</span>
+<span class="n">SEGMENT_SWEEPS</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">"mask_threshold"</span><span class="p">:</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span>
+<span class="p">}</span>
+
+<span class="c1"># The body the organism mask needs to cover, materialized once as a reference</span>
+<span class="c1"># part so every sweep candidate below compares against it directly instead of</span>
+<span class="c1"># re-unioning head/thorax/abdomen per candidate.</span>
+<span class="n">cf</span><span class="o">.</span><span class="n">run_segments</span><span class="p">(</span><span class="n">PROJECT_PATH</span><span class="p">,</span> <span class="n">part</span><span class="o">=</span><span class="s2">"body"</span><span class="p">,</span> <span class="n">from_part</span><span class="o">=</span><span class="n">BODY_PARTS</span><span class="p">,</span> <span class="n">steps</span><span class="o">=</span><span class="p">[],</span>
+                <span class="n">reference</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">from_reference</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_validate</span><span class="p">(</span><span class="n">model_kwargs</span><span class="p">,</span> <span class="n">segment_kwargs</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+    <span class="k">return</span> <span class="n">cf</span><span class="o">.</span><span class="n">validate_masks</span><span class="p">(</span>
+        <span class="n">PROJECT_PATH</span><span class="p">,</span>
+        <span class="n">part</span><span class="o">=</span><span class="s2">"organism"</span><span class="p">,</span>
+        <span class="n">reference_part</span><span class="o">=</span><span class="s2">"body"</span><span class="p">,</span>
+        <span class="n">metric</span><span class="o">=</span><span class="s2">"coverage"</span><span class="p">,</span>
+        <span class="n">steps</span><span class="o">=</span><span class="p">[</span><span class="n">cf</span><span class="o">.</span><span class="n">segment</span><span class="p">(</span><span class="n">cf</span><span class="o">.</span><span class="n">groundedsam2</span><span class="p">(</span><span class="o">**</span><span class="n">model_kwargs</span><span class="p">),</span> <span class="o">**</span><span class="n">segment_kwargs</span><span class="p">)],</span>
+        <span class="n">visualize</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="n">label</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_rank</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+    <span class="k">return</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="n">results</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span>
+        <span class="n">key</span><span class="o">=</span><span class="k">lambda</span> <span class="n">item</span><span class="p">:</span> <span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">][</span><span class="s2">"coverage"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">else</span> <span class="o">-</span><span class="mf">1.0</span><span class="p">,</span>
+        <span class="n">reverse</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_log_ranked</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"-- </span><span class="si">%s</span><span class="s2"> --"</span><span class="p">,</span> <span class="n">param</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">value</span><span class="p">,</span> <span class="n">scores</span> <span class="ow">in</span> <span class="n">_rank</span><span class="p">(</span><span class="n">results</span><span class="p">):</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"  </span><span class="si">%-12r</span><span class="s2"> mean=</span><span class="si">%.3f</span><span class="s2"> median=</span><span class="si">%.3f</span><span class="s2">  (</span><span class="si">%d</span><span class="s2"> compared)"</span><span class="p">,</span> <span class="n">value</span><span class="p">,</span>
+                    <span class="n">scores</span><span class="p">[</span><span class="s2">"coverage"</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span>
+                    <span class="n">scores</span><span class="p">[</span><span class="s2">"coverage"</span><span class="p">]</span><span class="o">.</span><span class="n">median</span><span class="p">()</span> <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">)</span> <span class="k">else</span> <span class="nb">float</span><span class="p">(</span><span class="s2">"nan"</span><span class="p">),</span>
+                    <span class="nb">len</span><span class="p">(</span><span class="n">scores</span><span class="p">))</span>
+
+<span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">candidates</span> <span class="ow">in</span> <span class="n">SEGMENT_SWEEPS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="n">value</span><span class="p">:</span> <span class="n">_validate</span><span class="p">(</span><span class="n">MODEL_BASELINE</span><span class="p">,</span> <span class="p">{</span><span class="o">**</span><span class="n">SEGMENT_BASELINE</span><span class="p">,</span> <span class="n">param</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span>
+                                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+              <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">}</span>
+    <span class="n">_log_ranked</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+
+<span class="k">for</span> <span class="n">param</span><span class="p">,</span> <span class="n">candidates</span> <span class="ow">in</span> <span class="n">MODEL_SWEEPS</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+    <span class="n">results</span> <span class="o">=</span> <span class="p">{</span><span class="n">value</span><span class="p">:</span> <span class="n">_validate</span><span class="p">({</span><span class="o">**</span><span class="n">MODEL_BASELINE</span><span class="p">,</span> <span class="n">param</span><span class="p">:</span> <span class="n">value</span><span class="p">},</span> <span class="n">SEGMENT_BASELINE</span><span class="p">,</span>
+                                <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">param</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+              <span class="k">for</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">candidates</span><span class="p">}</span>
+    <span class="n">_log_ranked</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">results</span><span class="p">)</span>
+
+<span class="c1"># INFO:__main__:-- text_prompt --</span>
+<span class="c1"># INFO:__main__:  'dragonfly.' mean=0.996 median=0.998  (82 compared)</span>
+<span class="c1"># INFO:__main__:  'insect.'    mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  'subject.'   mean=0.982 median=0.998  (82 compared)</span>
+<span class="c1">#</span>
+<span class="c1"># INFO:__main__:-- box_threshold --</span>
+<span class="c1"># INFO:__main__:  0.15         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.25         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.35         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1">#</span>
+<span class="c1"># INFO:__main__:-- text_threshold --</span>
+<span class="c1"># INFO:__main__:  0.15         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.25         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.35         mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1">#</span>
+<span class="c1"># INFO:__main__:-- mask_threshold --</span>
+<span class="c1"># INFO:__main__:  -1.0         mean=0.998 median=0.999  (82 compared)</span>
+<span class="c1"># INFO:__main__:  -0.5         mean=0.997 median=0.999  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.0          mean=0.996 median=0.997  (82 compared)</span>
+<span class="c1"># INFO:__main__:  0.5          mean=0.972 median=0.978  (82 compared)</span>
+<span class="c1"># INFO:__main__:  1.0          mean=0.945 median=0.958  (82 compared)</span>
+</code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "../../..", "features": ["navigation.tabs", "navigation.sections", "navigation.top", "content.code.copy", "content.action.edit", "toc.follow"], "search": "../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
