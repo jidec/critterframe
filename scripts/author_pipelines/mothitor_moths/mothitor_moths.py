@@ -17,7 +17,11 @@ from critterframe.extensions.antenna_lighttraps.calibrations import (  # noqa: E
 
 logging.basicConfig(level=logging.INFO)
 
-PROJECT_PATH = "D:/cf_projects/mothitor_antenna_insects"
+PROJECT_PATH = "D:/cf_projects/mothitor_antenna_moths"
+
+# A wall shot from this deployment with the Carolina Biological ruler (metric edge, cm) in frame.
+# The camera is fixed, so one px/mm from this image holds for every crop.
+SCALE_IMAGE_PATH = f"{PROJECT_PATH}/ama_2025-09-22_21_00_02.jpg"
 
 # ingest through Antenna extension
 antenna_ingest.ingest_occurrences(PROJECT_PATH, import_csv_path="C:/new_new_downloads/insect-ecology-lab-mothitor-test_export-147.csv")
@@ -50,8 +54,14 @@ cf.run_metrics(
     ],
 )
 
-# add scale
-cf.measure_scale_by_hand(PROJECT_PATH, cv2.imread(PROJECT_PATH + "/ama_2025-10-06_23_50_02_extra.jpg"), target_mm=10.0)  # applies to every occurrence
+# add scale by hand: click the ruler's metric 0 and 10 cm ticks (100 mm) in the window.
+# A long span keeps click error small: the ruler is only about 4 px/mm in this image.
+# Applies to every occurrence; ones that already have a scale are skipped unless force=True.
+scale_image = cv2.imread(SCALE_IMAGE_PATH)
+if scale_image is None:
+    raise FileNotFoundError(f"could not read scale image {SCALE_IMAGE_PATH}")
+cf.click_scale(PROJECT_PATH, scale_image, target_mm=100.0,
+                         name="ama_2025-09-22_21_00_02")
 
 cf.print_summary(PROJECT_PATH)
 cf.export_metrics(PROJECT_PATH,path="D:/GitProjects/cf_projects/mothitor_antenna_insects/metrics.csv",

@@ -48,7 +48,7 @@ elif METHOD == "declared":
 elif METHOD == "clicked":
     scene = cv2.imread("source/trap_sheet_with_scale_bar.jpg")
     # target_mm=None prompts for the length after the two clicks.
-    cf.measure_scale_by_hand(PROJECT_PATH, scene, target_mm=10.0)
+    cf.click_scale(PROJECT_PATH, scene, target_mm=10.0)
 
 # Coverage check: an occurrence without a scale exports blank mm columns.
 scales = cf.scale_for_occurrences(PROJECT_PATH)

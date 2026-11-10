@@ -85,6 +85,14 @@
     options:
       show_root_full_path: false
 
+::: critterframe.sam3
+    options:
+      show_root_full_path: false
+
+::: critterframe.sam3_points
+    options:
+      show_root_full_path: false
+
 ::: critterframe.correct_mask
     options:
       show_root_full_path: false
@@ -120,6 +128,10 @@
       show_root_full_path: false
 
 ::: critterframe.crop_to_mask
+    options:
+      show_root_full_path: false
+
+::: critterframe.crop_inside_mask
     options:
       show_root_full_path: false
 
@@ -381,6 +393,13 @@
     options:
       show_root_full_path: false
 
+::: critterframe.render_collage
+    options:
+      show_root_full_path: false
+
+The layers a collage is built from are reached as `cf.collage.<factory>` (`cf.collage.grid()`,
+`cf.collage.sort_by(...)`), documented under [visualization](visualization.md).
+
 # validation
 
 ::: critterframe.get_validated_filters
@@ -420,6 +439,10 @@
 ::: critterframe.extensions.bioencoder.embedding.embedding
 
 ::: critterframe.extensions.bioencoder.training.prepare_dataset
+
+::: critterframe.extensions.bioencoder.training.register_trained
+
+::: critterframe.extensions.bioencoder.embedding.load_registered
 
 ::: critterframe.extensions.bioencoder.training.train
 

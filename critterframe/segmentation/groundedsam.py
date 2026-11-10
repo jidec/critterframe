@@ -65,7 +65,7 @@ class GroundedSAM2:
         size=1024,
         use_center_point=False,
         use_corner_points=False,
-        retry_without_center=True,
+        retry_without_center=False,
         min_area_frac=MIN_AREA_FRAC,
         device=None,
     ):
@@ -211,16 +211,7 @@ class GroundedSAM2:
 
     def _prompt_points(self, width, height, use_center_point, use_corner_points):
         """Return the `(points, labels)` prompt lists; both empty when neither flag is set."""
-        points, labels = [], []
-        if use_center_point:
-            points.append([width // 2, height // 2])  # center -- the organism
-            labels.append(1)
-        if use_corner_points:
-            mx, my = int(width * CORNER_MARGIN), int(height * CORNER_MARGIN)
-            points += [[mx, my], [width - mx, my], [mx, height - my], [width - mx, height - my]]
-            labels += [0, 0, 0, 0]  # corners -- background
-
-        return points, labels
+        return prompt_points(width, height, use_center_point, use_corner_points)
 
     def _predict(self, image, points=None, labels=None, box=None, mask_threshold=0.0):
         """Run one SAM2 pass for a given prompt, and return `(mask, score)`.
@@ -336,6 +327,32 @@ class GroundedSAM2:
 
         annotate(panel, f"{info['prompt']} score {score:.3f}{'  RETRIED' if info['retried'] else ''}")
         segment.emit_panel(panel, "segment")
+
+
+def prompt_points(width, height, use_center_point, use_corner_points):
+    """Return the `(points, labels)` point prompt for a frame cropped around one organism.
+
+    Shared by every SAM-family segmenter here, so their point prompts cannot drift apart.
+
+    Args:
+        width: Image width in pixels.
+        height: Image height in pixels.
+        use_center_point: Add a positive point at the center, where the organism is.
+        use_corner_points: Add negative points just inside the four corners, which are background.
+
+    Returns:
+        `(points, labels)` as lists of `[x, y]` and 1/0 labels; both empty when neither flag is set.
+    """
+    points, labels = [], []
+    if use_center_point:
+        points.append([width // 2, height // 2])  # center -- the organism
+        labels.append(1)
+    if use_corner_points:
+        mx, my = int(width * CORNER_MARGIN), int(height * CORNER_MARGIN)
+        points += [[mx, my], [width - mx, my], [mx, height - my], [width - mx, height - my]]
+        labels += [0, 0, 0, 0]  # corners -- background
+
+    return points, labels
 
 
 def _box_iou(a, b):

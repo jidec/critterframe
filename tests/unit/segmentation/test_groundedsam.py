@@ -185,7 +185,7 @@ def test_every_setting_that_changes_the_mask_changes_the_identity(kwargs):
     [
         {"use_center_point": True},
         {"use_corner_points": True},
-        {"retry_without_center": False},
+        {"retry_without_center": True},
         {"min_area_frac": 0.5},
     ],
 )

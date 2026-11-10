@@ -3,7 +3,7 @@
 import cv2
 import numpy as np
 
-from ...colorspaces import convert
+from ...colorspaces import convert, get_space
 from ...core.recipes import Metric
 from ..base.pixels import masked_pixels, visualize_mask
 
@@ -13,9 +13,21 @@ def mean_lightness(name=None, unit="fraction"):
     return Metric("mean_lightness", _mean_lightness, version="1", unit=unit, metric_name=name)
 
 
-def mean_color(name=None, unit="fraction"):
-    """Metric: mean color of the masked pixels, as `{"r", "g", "b"}` on 0-1 scales."""
-    return Metric("mean_color", _mean_color, version="1", unit=unit, metric_name=name)
+def mean_color(name=None, unit="fraction", space="rgb"):
+    """Metric: mean color of the masked pixels, as `{"r", "g", "b"}` on 0-1 scales.
+
+    In another space the keys are that space's channels, in its canonical units. A hue is a
+    circular mean, and `lch` is the mean Lab color expressed as lightness, chroma and hue.
+
+    Args:
+        name: Metric name.
+        unit: Recorded unit.
+        space: A key of `colorspaces.SPACES`.
+    """
+    get_space(space)
+    # Only when not RGB, so every mean_color recorded before `space` existed keeps its hash.
+    parameters = {"space": space} if space != "rgb" else {}
+    return Metric("mean_color", _mean_color, parameters, version="1", unit=unit, metric_name=name)
 
 
 def white_balanced_color(name=None, unit="fraction"):
@@ -45,9 +57,20 @@ def _mean_lightness(segment):
     return lightness
 
 
-def _mean_color(segment):
-    red, green, blue = convert(masked_pixels(segment), "rgb").mean(axis=0)
-    return {"r": float(red), "g": float(green), "b": float(blue)}
+def _mean_color(segment, space="rgb"):
+    pixels = masked_pixels(segment)
+    target = get_space(space)
+    if target.name == "lch":
+        lightness, a, b = convert(pixels, "lab").astype(np.float64).mean(axis=0)
+        means = [lightness, np.hypot(a, b), np.degrees(np.arctan2(b, a)) % 360.0]
+    else:
+        values = convert(pixels, target.name)
+        means = list(values.mean(axis=0))
+        for index, channel in enumerate(target.channels):
+            if channel in target.circular:
+                radians = np.radians(values[:, index].astype(np.float64))
+                means[index] = np.degrees(np.arctan2(np.sin(radians).mean(), np.cos(radians).mean())) % 360.0
+    return {channel: float(mean) for channel, mean in zip(target.channels, means)}
 
 
 def _grey_world_scale(image):

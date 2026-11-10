@@ -1,5 +1,5 @@
 """
-Step 9 of 9: render one head, one thorax and one abdomen per species: the one
+Step 9 of 10: render one head, one thorax and one abdomen per species: the one
 whose colour proportions are most typical of its species.
 
 Chosen among the parts the filters kept, read from the table
@@ -10,7 +10,7 @@ Files are named by species.
 
 Unattended.
 
-Before: 8_render_filtered_parts.py.
+Before: 8_render_filtered_parts.py. Next: 10_render_collages.py.
 """
 
 import logging

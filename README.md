@@ -92,9 +92,9 @@ See [scripts/](https://github.com/jidec/critterframe/tree/main/scripts) for full
 pip install "critterframe[torch] @ git+https://github.com/jidec/critterframe.git"
 ```
 
-`[torch]` pulls in the ready-to-go SAM2/GroundedSAM2 torch models essential for many projects (as well as some deep-learning-based metrics), installing PyPI's default torch build for your platform if you don't yet have torch installed.
+`[torch]` pulls in the ready-to-go SAM2/GroundedSAM2 and SAM3 torch models essential for many projects (as well as some deep-learning-based metrics), installing PyPI's default torch build for your platform if you don't yet have torch installed.
 
-Installing [CUDA](https://developer.nvidia.com/cuda-downloads) beforehand to enable processing on GPU is recommended (GroundedSAM2 can fall back to CPU but becomes very slow).
+Installing [CUDA](https://developer.nvidia.com/cuda-downloads) beforehand to enable processing on GPU is recommended (GroundedSAM2 can fall back to CPU but becomes very slow). SAM3's `facebook/sam3` checkpoint is gated on Hugging Face: accept its license there and run `hf auth login` once before first use.
 
 If you need a torch version that fits a certain CUDA version (such as the version that exists on a computing cluster)
 install [that torch version](https://pytorch.org/get-started/locally/) before installing `critterframe[torch]` (critterframe's `torch` dependency carries no version pin so it won't be overridden).

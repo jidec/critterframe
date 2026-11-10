@@ -10,6 +10,7 @@ Dragonfly bodies from iNaturalist observations published through GBIF
   7_filter_and_export.py                              unattended: filters, export
   8_render_filtered_parts.py                          unattended: renders of the kept parts
   9_render_parts_species_exemplars.py                 unattended: one render per part per species
+  10_render_collages.py                               unattended: collages of the kept parts
 """
 
 import logging

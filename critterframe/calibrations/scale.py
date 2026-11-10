@@ -561,7 +561,7 @@ def measure_scales(
     return tally.summary(missed=missed)
 
 
-def measure_scale_by_hand(
+def click_scale(
     project_path,
     image,
     target_mm=None,
@@ -644,7 +644,7 @@ def measure_scale_by_hand(
     if visualize:
         item = name or "scene"
         identity = {
-            "kind": "measure_scale_by_hand",
+            "kind": "click_scale",
             "image": image_digest(image),
             "name": name,
             "scope": scope,
@@ -653,7 +653,7 @@ def measure_scale_by_hand(
             "target_mm": result.get("target_mm", target_mm),
         }
         with pipeline_visualization.open_report(
-            project_path, "measure_scale_by_hand", hash_spec(identity), visualize=[item], identity=identity
+            project_path, "click_scale", hash_spec(identity), visualize=[item], identity=identity
         ).begin([item]) as report:
             report.panel(item, "clicked", click_scale_panel(image, result))
             report.done(item)

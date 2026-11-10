@@ -9,8 +9,8 @@ from .selection.subsets import define_subset, define_subsets, grow_subset, load_
 
 # --- getting data in -------------------------------------------------------
 from .calibrations.scale import (
+    click_scale,
     declare_scale,
-    measure_scale_by_hand,
     measure_scales,
     scale_for_occurrences,
     scale_from_click,
@@ -30,10 +30,11 @@ from .segmentation.groundedsam import groundedsam2, sam2
 from .segmentation.manual import correct_mask, draw_mask
 from .segmentation.mask_import_export import export_masks, import_masks
 from .segmentation.run_segments import run_segments, segment
+from .segmentation.sam3 import sam3, sam3_points
 
 # --- transforms ------------------------------------------------------------
 from .transforms.appendages import remove_appendages
-from .transforms.crop import crop, crop_to_mask, remove_background, resize, rotate
+from .transforms.crop import crop, crop_inside_mask, crop_to_mask, remove_background, resize, rotate
 from .transforms.erode import erode
 from .transforms.islands import remove_islands
 from .transforms.orient import orient
@@ -113,6 +114,8 @@ from .selection.algorithms import (
 )
 from .visualization.grids import comparison_grid, image_grid
 from .visualization.products import render_segments
+from .visualization import collage
+from .visualization.collage import render_collage
 
 # --- validation ------------------------------------------------------------
 from .validation.filters import (
@@ -135,8 +138,10 @@ __all__ = [
     "body_length",
     "bounding_box",
     "centroid",
+    "click_scale",
     "click_two_points",
     "cluster",
+    "collage",
     "color_clusters",
     "color_presence",
     "color_threshold",
@@ -144,6 +149,7 @@ __all__ = [
     "comparison_grid",
     "correct_mask",
     "crop",
+    "crop_inside_mask",
     "crop_to_mask",
     "declare_scale",
     "define_subset",
@@ -196,7 +202,6 @@ __all__ = [
     "max_width",
     "mean_color",
     "mean_lightness",
-    "measure_scale_by_hand",
     "measure_scales",
     "merge_mask_shards",
     "n_islands",
@@ -209,12 +214,15 @@ __all__ = [
     "remove_appendages",
     "remove_background",
     "remove_islands",
+    "render_collage",
     "render_segments",
     "resize",
     "rotate",
     "run_metrics",
     "run_segments",
     "sam2",
+    "sam3",
+    "sam3_points",
     "sample_ids",
     "sample_per_group",
     "scale_for_occurrences",

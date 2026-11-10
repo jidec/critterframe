@@ -124,3 +124,35 @@ def test_contrast_is_signed_by_which_is_lighter():
 def test_a_mask_covering_the_whole_frame_has_no_background():
     with pytest.raises(ValueError, match="no background"):
         cf.background_color()(flat((128, 128, 128)))
+
+
+# ---------------------------------------------------------------------------
+# mean_color(space=)
+# ---------------------------------------------------------------------------
+
+
+def test_an_rgb_mean_color_keeps_the_spec_it_always_had():
+    """`space` reaches the spec only when it isn't RGB, so no stored mean_color goes stale."""
+    assert cf.mean_color().spec()["parameters"] == {}
+    assert cf.mean_color(space="lch").spec()["parameters"] == {"space": "lch"}
+
+
+def test_mean_color_in_lch_reports_hue_in_degrees():
+    colour = cf.mean_color(space="lch")(flat((0, 0, 255)))  # BGR red
+    assert set(colour) == {"l", "c", "h"}
+    assert colour["h"] == pytest.approx(40, abs=5)
+    assert colour["c"] > 50
+
+
+def test_a_hue_mean_wraps_around_zero():
+    """Half the pixels at hue 350, half at 10: the mean is red, not cyan at 180."""
+    image = np.zeros((10, 10, 3), np.uint8)
+    image[:5] = cv2.cvtColor(np.uint8([[[175, 255, 255]]]), cv2.COLOR_HSV2BGR)[0, 0]
+    image[5:] = cv2.cvtColor(np.uint8([[[5, 255, 255]]]), cv2.COLOR_HSV2BGR)[0, 0]
+    hue = cf.mean_color(space="hsv")(Segment(image, mask=np.ones((10, 10), bool)))["h"]
+    assert min(hue, 360 - hue) < 5
+
+
+def test_an_unknown_space_is_refused():
+    with pytest.raises(ValueError, match="colour space"):
+        cf.mean_color(space="cmyk")

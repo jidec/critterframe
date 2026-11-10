@@ -104,7 +104,7 @@ def mask_to_bgr(mask):
     return cv2.cvtColor((np.asarray(mask).astype(np.uint8) * 255), cv2.COLOR_GRAY2BGR)
 
 
-def overlay_mask(image, mask, color=REMOVED_COLOR, alpha=0.5):
+def overlay_mask(image, mask, color=REMOVED_COLOR, alpha=0.1):
     """Return the image with the mask's pixels tinted.
 
     Args:

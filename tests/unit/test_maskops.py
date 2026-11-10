@@ -13,6 +13,7 @@ import pytest
 
 from critterframe.maskops import (
     largest_component,
+    largest_inscribed_rectangle,
     mask_bounds,
     mask_coverage,
     mask_iou,
@@ -179,3 +180,45 @@ def test_edge_distance_counts_the_frame_as_an_edge():
     assert (distance[~mask] == 0).all()
     assert inscribed_radius(mask) == pytest.approx(10.0, abs=0.5)
     assert inscribed_radius(np.zeros((5, 5), bool)) == 0.0
+
+
+# ---------------------------------------------------------------------------
+# largest_inscribed_rectangle
+# ---------------------------------------------------------------------------
+
+
+def test_a_rectangular_mask_is_its_own_inscribed_rectangle():
+    assert largest_inscribed_rectangle(a_mask()) == mask_bounds(a_mask())
+
+
+def test_an_l_shape_keeps_its_bigger_arm():
+    mask = np.zeros((30, 30), bool)
+    mask[5:25, 5:10] = True  # 20 x 5 upright
+    mask[20:25, 5:28] = True  # 5 x 23 foot, the larger rectangle
+    assert largest_inscribed_rectangle(mask) == {"x": 5, "y": 20, "width": 23, "height": 5}
+
+
+def _brute_force_area(mask):
+    best = 0
+    rows, cols = mask.shape
+    for y0 in range(rows):
+        for y1 in range(y0 + 1, rows + 1):
+            for x0 in range(cols):
+                for x1 in range(x0 + 1, cols + 1):
+                    if mask[y0:y1, x0:x1].all():
+                        best = max(best, (y1 - y0) * (x1 - x0))
+    return best
+
+
+@pytest.mark.parametrize("seed", range(20))
+def test_the_rectangle_is_inside_the_mask_and_as_big_as_any(seed):
+    mask = np.random.default_rng(seed).random((9, 11)) < 0.7
+    box = largest_inscribed_rectangle(mask)
+
+    assert mask[box["y"] : box["y"] + box["height"], box["x"] : box["x"] + box["width"]].all()
+    assert box["width"] * box["height"] == _brute_force_area(mask)
+
+
+def test_an_empty_mask_has_no_rectangle_inside_it():
+    with pytest.raises(ValueError, match="empty mask"):
+        largest_inscribed_rectangle(np.zeros((10, 10), bool))

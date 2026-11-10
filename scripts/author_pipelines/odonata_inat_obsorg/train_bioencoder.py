@@ -13,18 +13,19 @@ Critterframe does the dataset side and BioEncoder only trains:
 
     critterframe                          BioEncoder
     ------------                          ----------
-    choose + cap species        (step 1)
-    split, grouped by observer  (step 2)
-    export train/<species>/...  (step 3)
-                                          configure   (step 5)
-                                          train       (step 5, stage 1)
-                                          swa         (step 5)
-    register the swa weights    (step 6)
+    prepare_dataset             (step 1)
+      choose + cap species
+      split, grouped by observer
+      export train/<species>/...
+                                          configure   (step 3)
+                                          train       (step 3, stage 1)
+                                          swa         (step 3)
+    register_trained            (step 4)
 
 `bioencoder_split_dataset` is deliberately NOT used. It splits at random
 within each class, so one observer's repeat photos of one animal land on both
-sides and the validation score is inflated; `split_ids(group_col=)` is the
-leakage guard it doesn't have. export_training_data(class_by=) already writes
+sides and the validation score is inflated; the extension's prepare_dataset
+splits with `group_col=`, the leakage guard it doesn't have, and writes
 BioEncoder's own `<root>/data/<run>/{train,val}/<class>/` layout.
 
 Only stage 1 (supervised-contrastive, projection head) is trained: that stage
@@ -42,14 +43,7 @@ import os
 import shutil
 
 import critterframe as cf
-from critterframe.selection.subsets import select_occurrences
-from critterframe.selection.queries import ids_with_mask
-from critterframe.records.occurrences import ID_COL
-from critterframe.selection.algorithms import cap_per_group
-from critterframe.training.datasets import export_training_data
-from critterframe.training.splits import split_ids
-
-logger = logging.getLogger(__name__)
+from critterframe.extensions.bioencoder.training import prepare_dataset, register_trained
 
 PROJECT_PATH = "D:/cf_projects/odonata_inat_obsorg"
 
@@ -81,7 +75,7 @@ GROUP_COL = "recordedBy"   # one observer's repeat photos must not straddle trai
 # Species with fewer examples have too few positive pairs to learn from; more
 # than the cap lets a few common species dominate every batch. BioEncoder's own
 # split_dataset balances with max_ratio -- this is the same idea, applied once
-# here since that step is skipped. 20 is also split_dataset's min_per_class.
+# here since that step is skipped.
 MIN_PER_CLASS = 20
 MAX_PER_CLASS = 100
 FRACTIONS = {"train": 0.70, "val": 0.15, "test": 0.15}   # test: never seen by BioEncoder
@@ -147,68 +141,33 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    # Step 1: candidate occurrences -- an organism mask to cut the segment
-    # from, a species to label it with, at most MAX_PER_CLASS per species,
-    # and only species that still have MIN_PER_CLASS after that.
-    occurrences = select_occurrences(PROJECT_PATH, columns=[LABEL_COL, GROUP_COL])
-    occurrences = occurrences[
-        occurrences[ID_COL].isin(ids_with_mask(PROJECT_PATH, PART))
-        & occurrences[LABEL_COL].notna()
-        & (occurrences[LABEL_COL].astype(str).str.strip() != "")
-    ]
-    occurrences = cap_per_group(occurrences, LABEL_COL, MAX_PER_CLASS, seed=SEED)
-    counts = occurrences[LABEL_COL].value_counts()
-    occurrences = occurrences[occurrences[LABEL_COL].isin(counts[counts >= MIN_PER_CLASS].index)]
-    logger.info("%d occurrences across %d species with >= %d examples",
-                len(occurrences), occurrences[LABEL_COL].nunique(), MIN_PER_CLASS)
-
-    # Step 2: split, stratified by species and grouped by observer.
-    splits = split_ids(PROJECT_PATH, occurrence_ids=occurrences[ID_COL].tolist(),
-                       fractions=FRACTIONS, stratify_col=LABEL_COL,
-                       group_col=GROUP_COL, seed=SEED)
-
-    # BioEncoder reads train/ and val/ as two separate ImageFolders, and an
-    # ImageFolder numbers classes by its OWN sorted folder list -- a species
-    # missing from val shifts every label after it, silently. Grouping by
-    # observer can put all of a species on one side, so keep only species
-    # present in both, and drop the rest from every split (test included)
-    # BEFORE exporting, so dataset.json describes what was written.
-    label_of = dict(zip(occurrences[ID_COL], occurrences[LABEL_COL]))
-    shared = ({label_of[i] for i in splits["train"]}
-              & {label_of[i] for i in splits["val"]})
-    dropped = occurrences[LABEL_COL].nunique() - len(shared)
-    if dropped:
-        logger.warning("dropping %d species not present in both train and val", dropped)
-    splits = {name: [i for i in ids if label_of[i] in shared]
-              for name, ids in splits.items()}
-
-    # Step 3: write BioEncoder's layout directly. Cleared first: the export
-    # leaves unrelated existing files alone, and a species or image left over
-    # from an earlier export would be trained on as though it were selected.
+    # Step 1: the dataset, in BioEncoder's layout. Only occurrences with an
+    # organism mask and a species, at most MAX_PER_CLASS per species, species
+    # with fewer than MIN_PER_CLASS left out, split grouped by observer, and
+    # any species missing from train or val dropped from every split. Cleared
+    # first: prepare_dataset refuses a directory that already holds images,
+    # since one left over from an earlier export would be trained on.
     if os.path.exists(DATA_DIR):
         shutil.rmtree(DATA_DIR)
-    export_training_data(PROJECT_PATH, DATA_DIR, splits=splits, part=PART,
-                         transforms=EMBEDDING_TRANSFORMS, class_by=LABEL_COL,
-                         metadata=[GROUP_COL])
+    prepare_dataset(
+        PROJECT_PATH,
+        DATA_DIR,
+        label_col=LABEL_COL,
+        group_col=GROUP_COL,
+        part=PART,
+        transforms=EMBEDDING_TRANSFORMS,
+        min_per_label=MIN_PER_CLASS,
+        max_per_label=MAX_PER_CLASS,
+        fractions=FRACTIONS,
+        seed=SEED,
+    )
 
-    # An occurrence can still fail to export (a transform failing on its
-    # mask), so check the class lists once more on disk, where BioEncoder
-    # will read them.
-    train_classes = set(os.listdir(f"{DATA_DIR}/train"))
-    val_classes = set(os.listdir(f"{DATA_DIR}/val"))
-    if train_classes != val_classes:
-        raise RuntimeError(
-            f"train and val class folders differ after export "
-            f"(train only: {sorted(train_classes - val_classes)}, "
-            f"val only: {sorted(val_classes - train_classes)}) -- BioEncoder "
-            "would misalign labels; see the export log for failed occurrences")
-
-    # Step 4: the stage-1 config.
+    # Step 2: the stage-1 config.
     os.makedirs(os.path.dirname(CONFIG_PATH), exist_ok=True)
     with open(CONFIG_PATH, "w", encoding="utf-8") as handle:
         yaml.safe_dump(stage1_config(), handle, sort_keys=False)
 
-    # Step 5: train. Imported here: bioencoder imports torch at import time,
+    # Step 3: train. Imported here: bioencoder imports torch at import time,
     # and importing this module for EMBEDDING_TRANSFORMS shouldn't.
     # configure() sets root_dir/run_name for the calls after it (and writes
     # ~/.bioencoder.yaml for the CLI). train() needs CUDA. swa() averages the
@@ -220,18 +179,21 @@ if __name__ == "__main__":
     bioencoder.train(config_path=CONFIG_PATH, overwrite=True)
     bioencoder.swa(config_path=CONFIG_PATH)
 
-    # Step 6: register. Fingerprints the swa weights, so retraining into the
+    # Step 4: register. Fingerprints the swa weights, so retraining into the
     # same path changes every embedding recipe's hash; training_data points at
-    # the export's dataset.json. `parameters` is what
-    # extensions.bioencoder.training.load() is called with by
-    # embedding.load_registered(PROJECT_PATH, MODEL_NAME), which is all
-    # the pipeline needs to embed with this model (ImageNet mean/std,
-    # which BioEncoder trained with, is load()'s default).
-    cf.register_model(
-        PROJECT_PATH, MODEL_NAME, path=CHECKPOINT, task="embedding",
-        framework="torch", base_model=BACKBONE, training_data=DATA_DIR,
-        parameters={"backbone": BACKBONE, "projection_head": True,
-                    "input_size": [IMG_SIZE, IMG_SIZE], "normalize": True},
+    # the export's dataset.json. The backbone, input size and head recorded
+    # here are what embedding.load_registered(PROJECT_PATH, MODEL_NAME) loads
+    # the model with, which is all the pipeline needs to embed with it
+    # (ImageNet mean/std, which BioEncoder trained with, is load()'s default).
+    # They are not in the model's identity: change one under a new MODEL_NAME.
+    register_trained(
+        PROJECT_PATH,
+        MODEL_NAME,
+        checkpoint=CHECKPOINT,
+        dataset_dir=DATA_DIR,
+        backbone=BACKBONE,
+        input_size=(IMG_SIZE, IMG_SIZE),
+        projection_head=True,
         notes=f"BioEncoder stage 1 (SupCon) + SWA; label={LABEL_COL}, "
               f"grouped by {GROUP_COL}; config {os.path.basename(CONFIG_PATH)}",
     )

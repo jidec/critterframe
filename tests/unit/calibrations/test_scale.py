@@ -359,13 +359,13 @@ def test_the_panel_draws_the_clicked_line(gui):
 
 
 # ---------------------------------------------------------------------------
-# measure_scale_by_hand -- one click-through, applied to many occurrences
+# click_scale -- one click-through, applied to many occurrences
 # ---------------------------------------------------------------------------
 
 
 def test_it_applies_to_every_occurrence_by_default(gui, metadata_project):
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    result = scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+    result = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0)
 
     assert result["covered"] == 8
     stored = calibration_records.load_calibrations(metadata_project)
@@ -378,7 +378,7 @@ def test_it_applies_to_every_occurrence_by_default(gui, metadata_project):
 
 def test_it_can_target_an_explicit_list_of_occurrences(gui, metadata_project):
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    result = scale_calibration.measure_scale_by_hand(
+    result = scale_calibration.click_scale(
         metadata_project, a_scene(), target_mm=5.0, occurrence_ids=["specimen0", "specimen1"]
     )
 
@@ -391,16 +391,14 @@ def test_it_can_target_an_explicit_list_of_occurrences(gui, metadata_project):
 def test_it_can_target_a_named_subset(gui, metadata_project):
     cf.define_subset(metadata_project, "boxA", column="device", values=["boxA"])
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    result = scale_calibration.measure_scale_by_hand(
-        metadata_project, a_scene(), target_mm=5.0, subset="boxA"
-    )
+    result = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0, subset="boxA")
 
     assert result["covered"] == 4  # specimen0, 2, 4, 6
 
 
 def test_it_supports_a_named_scope_instead_of_occurrences(gui, metadata_project):
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    result = scale_calibration.measure_scale_by_hand(
+    result = scale_calibration.click_scale(
         metadata_project, a_scene(), target_mm=5.0, scope="device", scope_value="boxA"
     )
 
@@ -411,12 +409,12 @@ def test_it_supports_a_named_scope_instead_of_occurrences(gui, metadata_project)
 
 def test_a_named_scope_needs_a_scope_value(metadata_project):
     with pytest.raises(ValueError, match="needs a scope_value"):
-        scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0, scope="device")
+        scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0, scope="device")
 
 
 def test_a_named_scope_rejects_occurrence_ids(metadata_project):
     with pytest.raises(ValueError, match="only apply with scope=ID_COL"):
-        scale_calibration.measure_scale_by_hand(
+        scale_calibration.click_scale(
             metadata_project,
             a_scene(),
             target_mm=5.0,
@@ -428,14 +426,14 @@ def test_a_named_scope_rejects_occurrence_ids(metadata_project):
 
 def test_occurrence_ids_and_subset_are_mutually_exclusive(metadata_project):
     with pytest.raises(ValueError, match="not both"):
-        scale_calibration.measure_scale_by_hand(
+        scale_calibration.click_scale(
             metadata_project, a_scene(), target_mm=5.0, occurrence_ids=["specimen0"], subset="boxA"
         )
 
 
 def test_cancelling_the_click_records_nothing(gui, metadata_project):
     gui(keys=[27])
-    result = scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+    result = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0)
 
     assert result is None
     assert calibration_records.load_calibrations(metadata_project).empty
@@ -443,20 +441,20 @@ def test_cancelling_the_click_records_nothing(gui, metadata_project):
 
 def test_repeat_awareness_skips_already_covered_occurrences(gui, metadata_project):
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    first = scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+    first = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0)
     assert first["covered"] == 8
 
     # Nothing left to measure -- no window is even opened this time.
-    second = scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+    second = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0)
     assert second is None
 
 
 def test_force_remeasures_everything(gui, metadata_project):
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0)
+    scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0)
 
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 20, 0)])
-    redone = scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0, force=True)
+    redone = scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0, force=True)
 
     assert redone["covered"] == 8
     resolved = cf.scale_for_occurrences(metadata_project)
@@ -491,8 +489,8 @@ def test_a_clicked_scale_leaves_a_one_panel_grid(gui, metadata_project):
     from critterframe.project import paths
 
     gui(keys=[ord(" ")] * 2, clicks=[(cv2.EVENT_LBUTTONDOWN, 0, 0), (cv2.EVENT_LBUTTONDOWN, 10, 0)])
-    scale_calibration.measure_scale_by_hand(metadata_project, a_scene(), target_mm=5.0, name="sheet_a")
+    scale_calibration.click_scale(metadata_project, a_scene(), target_mm=5.0, name="sheet_a")
 
-    record = _scale_sidecar(metadata_project, "measure_scale_by_hand")
+    record = _scale_sidecar(metadata_project, "click_scale")
     assert record["shown"] == ["sheet_a"]
     assert (paths.pipeline_dir(metadata_project) / record["files"][0]).exists()

@@ -110,6 +110,33 @@ def test_cropping_to_the_mask_needs_a_mask():
 
 
 # ---------------------------------------------------------------------------
+# crop_inside_mask
+# ---------------------------------------------------------------------------
+
+
+def test_cropping_inside_the_mask_leaves_no_background():
+    cropped, info = cf.crop_inside_mask()(a_segment())
+
+    assert cropped.mask.all()
+    assert 0 < info["mask_fraction"] < 1
+
+
+def test_the_crop_inside_the_mask_maps_back_onto_mask_pixels():
+    original = a_segment()
+    cropped, _info = cf.crop_inside_mask()(original)
+
+    back = cropped.mask_in_original_coordinates()
+    assert back.shape == FRAME
+    assert back.sum() == cropped.mask.sum()
+    assert original.mask[back].all()
+
+
+def test_cropping_inside_the_mask_needs_a_mask():
+    with pytest.raises(ValueError, match="has no mask yet"):
+        cf.crop_inside_mask()(a_segment(mask=False))
+
+
+# ---------------------------------------------------------------------------
 # rotate
 # ---------------------------------------------------------------------------
 
@@ -237,6 +264,7 @@ class RecordingSink:
     [
         (cf.crop(region="center"), "crop"),
         (cf.crop_to_mask(), "crop_to_mask"),
+        (cf.crop_inside_mask(), "crop_inside_mask"),
         (cf.rotate(15), "rotate"),
         (cf.resize(scale=0.5), "resize"),
         (cf.remove_background(), "remove_background"),

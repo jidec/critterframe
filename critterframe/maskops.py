@@ -112,3 +112,55 @@ def inscribed_radius(mask):
         mask: Boolean array.
     """
     return float(edge_distance(mask).max()) if np.asarray(mask).any() else 0.0
+
+
+def largest_inscribed_rectangle(mask):
+    """Return the largest-area axis-aligned box lying entirely inside the mask.
+
+    Args:
+        mask: Boolean array.
+
+    Returns:
+        `{"x", "y", "width", "height"}`, as `mask_bounds` reports a box.
+
+    Raises:
+        ValueError: If the mask is empty.
+    """
+    mask = np.asarray(mask) > 0
+    bounds = mask_bounds(mask)
+    window = mask[
+        bounds["y"] : bounds["y"] + bounds["height"],
+        bounds["x"] : bounds["x"] + bounds["width"],
+    ]
+
+    # Row by row, each column tracks the run of mask pixels ending at this row
+    # (height) and the widest span that whole run can share (left, right), so
+    # (right - left) * height is the biggest rectangle with its bottom edge on
+    # this row, standing on that column. Every step is vectorized across columns.
+    width = window.shape[1]
+    columns = np.arange(width)
+    height = np.zeros(width, int)
+    left = np.zeros(width, int)
+    right = np.full(width, width)
+    best = (0, 0, 0, 0, 0)  # area, x, y, width, height
+
+    for y, row in enumerate(window):
+        height = np.where(row, height + 1, 0)
+        run_left = np.maximum.accumulate(np.where(row, 0, columns + 1))
+        run_right = np.minimum.accumulate(np.where(row, width, columns)[::-1])[::-1]
+        left = np.where(row, np.maximum(left, run_left), 0)
+        right = np.where(row, np.minimum(right, run_right), width)
+
+        area = (right - left) * height
+        column = int(np.argmax(area))
+        if area[column] > best[0]:
+            best = (
+                int(area[column]),
+                int(left[column]),
+                y - int(height[column]) + 1,
+                int(right[column] - left[column]),
+                int(height[column]),
+            )
+
+    _area, x, y, box_width, box_height = best
+    return {"x": bounds["x"] + x, "y": bounds["y"] + y, "width": box_width, "height": box_height}

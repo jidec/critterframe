@@ -23,8 +23,9 @@ Repository = "https://github.com/jidec/critterframe"
 Documentation = "https://jidec.github.io/critterframe/"
 
 [project.optional-dependencies]
-# Torch, and what's built on it: the bundled GroundedSAM2 segmenter
-# (segmentation/groundedsam.py), the embedding metric and its timm backbones
+# Torch, and what's built on it: the bundled GroundedSAM2 and SAM3 segmenters
+# (segmentation/groundedsam.py, segmentation/sam3.py; SAM3 first shipped in
+# transformers 5.0), the embedding metric and its timm backbones
 # (metrics/embedding.py), bioencoder's checkpoint loader, and smp_segmenter's
 # trainable UNet++ segmenter (extensions/smp_segmenter). Named for the
 # dependency itself, not "segmentation" -- it isn't only that, and the core
@@ -33,7 +34,7 @@ Documentation = "https://jidec.github.io/critterframe/"
 # (torch-based or not) shouldn't be made to install SAM2 to use it.
 torch = [
     "torch",
-    "transformers",
+    "transformers>=5.0",
     "pillow",
     "segmentation-models-pytorch",
     "timm",

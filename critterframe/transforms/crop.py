@@ -1,11 +1,11 @@
-"""Framing transforms: crop, crop_to_mask, rotate, resize, remove_background."""
+"""Framing transforms: crop, crop_to_mask, crop_inside_mask, rotate, resize, remove_background."""
 
 import logging
 
 import cv2
 import numpy as np
 
-from ..maskops import mask_bounds
+from ..maskops import largest_inscribed_rectangle, mask_bounds
 from ..core.recipes import Transform
 from ..visualization.panels import annotate, side_by_side
 from .orient import apply_affine, rotation_matrix
@@ -71,6 +71,14 @@ def crop_to_mask(pad=BBOX_PAD_FRAC):
         pad: Slack around the box, as a fraction of its size.
     """
     return Transform("crop_to_mask", _crop_to_mask, {"pad": pad}, version="1")
+
+
+def crop_inside_mask():
+    """Operation: crop the frame to the largest axis-aligned rectangle lying entirely inside the mask.
+
+    The rectangle is axis-aligned, so on a diagonal organism it is small: `orient()` first.
+    """
+    return Transform("crop_inside_mask", _crop_inside_mask, {}, version="1")
 
 
 def rotate(degrees):
@@ -173,6 +181,17 @@ def _crop_to_mask(segment, pad=BBOX_PAD_FRAC):
     pad_x = int(round((x1 - x0) * pad))
 
     return _apply_box(segment, x0 - pad_x, y0 - pad_y, x1 + pad_x, y1 + pad_y, "crop_to_mask")
+
+
+def _crop_inside_mask(segment):
+    """Crop to the largest rectangle containing only mask pixels."""
+    mask = segment.require_mask()
+    box = largest_inscribed_rectangle(mask)
+    x0, y0 = box["x"], box["y"]
+
+    cropped, info = _apply_box(segment, x0, y0, x0 + box["width"], y0 + box["height"], "crop_inside_mask")
+    info["mask_fraction"] = float(box["width"] * box["height"] / mask.sum())
+    return cropped, info
 
 
 def _rotate(segment, degrees):

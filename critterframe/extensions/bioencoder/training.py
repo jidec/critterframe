@@ -1,109 +1,125 @@
-"""BioEncoder training support: prepare_dataset(), load() and load_from_config(); train() is not implemented."""
+"""BioEncoder training support: prepare_dataset(), register_trained(), load() and load_from_config()."""
 
 import logging
 import os
 
 import pandas as pd
 
-from ...devices import resolve_device
-from ...selection import subsets as subset_selection
 from ...core.recipes import DEFAULT_PART
+from ...records.models import register_model
 from ...records.occurrences import ID_COL
+from ...selection import subsets as subset_selection
+from ...selection.algorithms import cap_per_group
+from ...selection.queries import ids_with_mask
 from ...training.datasets import export_training_data
 from ...training.splits import split_ids
-from .embedding import DEFAULT_INPUT_SIZE, IMAGENET_MEAN_STD, BioEncoderModel
+from .embedding import DEFAULT_INPUT_SIZE, IMAGENET_MEAN_STD, BioEncoderModel, head_label
 
 # Where the BioEncoder package keeps its own root_dir/run_name between calls.
 BIOENCODER_SETTINGS = "~/.bioencoder.yaml"
 
 logger = logging.getLogger(__name__)
 
-# Label column used for metric learning. Species is the natural choice: it's
-# what the identification actually asserts, and it's the level at which "these
-# two images should be close together" is a claim worth training on.
-DEFAULT_LABEL_COL = "taxon"
+# The fewest images a label needs; bioencoder_split_dataset's own min_per_class.
+MIN_IMAGES_PER_LABEL = 20
 
-# Group column for splitting. Observer rather than the obvious choice of taxon,
-# because one observer photographing the same individual repeatedly is the main
-# source of near-duplicates in iNaturalist data -- a random split puts the same
-# animal in train and validation and reports an excellent score for it.
-DEFAULT_GROUP_COL = "observer"
-
-# Minimum images per label. Metric learning needs several examples of a class
-# to have anything to pull together; a class with one image contributes no
-# positive pair at all and just adds noise.
-MIN_IMAGES_PER_LABEL = 5
+# The two splits BioEncoder reads as ImageFolders, which must hold the same classes.
+TRAIN_SPLIT = "train"
+VAL_SPLIT = "val"
 
 
 def prepare_dataset(
     project_path,
     output_dir,
+    label_col,
+    group_col,
     part=DEFAULT_PART,
     transforms=(),
-    label_col=DEFAULT_LABEL_COL,
-    group_col=DEFAULT_GROUP_COL,
     min_per_label=MIN_IMAGES_PER_LABEL,
+    max_per_label=None,
     fractions=None,
     reference=False,
     subset=None,
-    limit=None,
     seed=0,
     visualize=True,
 ):
-    """Build a training dataset from a project: images and masks on disk, labelled and split.
+    """Write a BioEncoder training dataset, `<split>/<label>/<occurrence_id>.png`, split by group.
+
+    A label missing from either the train or the val split is dropped from every split.
+    `output_dir` must be empty or absent.
 
     Args:
         project_path: Project to build from.
-        output_dir: Directory to write into.
+        output_dir: BioEncoder's `<root_dir>/data/<run_name>`.
+        label_col: Occurrence column holding the label, e.g. `"species"`.
+        group_col: Occurrence column whose members must stay in one split, e.g. `"recordedBy"`;
+            None splits without grouping.
         part: Part to train on.
         transforms: Operations applied to each segment; pass the chain the embedding
             metric will use at inference.
-        label_col: Occurrence column holding the label.
-        group_col: Occurrence column whose members must stay in one split.
-        min_per_label: Labels with fewer occurrences than this are dropped before the split.
-        fractions: Split fractions; 70/15/15 if None.
-        reference: Train on reference masks.
+        min_per_label: Labels with fewer occurrences than this, after the cap, are dropped.
+        max_per_label: Cap on occurrences per label, chosen at random with `seed`; None keeps all.
+        fractions: Split fractions, including `"train"` and `"val"`; 70/15/15 train/val/test if None.
+        reference: Frame segments by reference masks.
         subset: Named subset to use.
-        limit: Cap on occurrences.
-        seed: Split seed.
-        visualize: Write the exported dataset's grid and a figure of images per label per split.
+        seed: Seed for the cap and the split.
+        visualize: Write the split's figure and the exported dataset's grid.
 
     Returns:
-        The manifest DataFrame, with `split` and `label` columns.
+        The manifest DataFrame, with `split` and `class` columns.
+
+    Raises:
+        RuntimeError: If occurrences failing to export leave train and val with different labels.
     """
-    # Labels are filtered and split BEFORE anything is exported, so the
-    # dataset.json export_training_data writes describes the images that are
-    # actually in the directory. Filtering afterwards (and rewriting only
-    # manifest.csv) left its data_hash covering a population the model never
-    # saw, which is what a registered model's training_data then pointed at.
-    columns = [column for column in {label_col, group_col} if column]
+    if fractions is not None and not {TRAIN_SPLIT, VAL_SPLIT} <= set(fractions):
+        raise ValueError(f"fractions must include '{TRAIN_SPLIT}' and '{VAL_SPLIT}', got {sorted(fractions)}")
+    if os.path.isdir(output_dir) and os.listdir(output_dir):
+        raise ValueError(
+            f"{output_dir} is not empty -- clear it first, or an image left from an earlier "
+            "export would be trained on as though it were selected"
+        )
+
+    columns = [column for column in (label_col, group_col) if column]
     occurrences = subset_selection.select_occurrences(project_path, subset=subset, columns=columns)
-    labelled = occurrences[occurrences[label_col].notna()]
+    with_mask = set(ids_with_mask(project_path, part, reference=reference))
+    labels = occurrences[label_col]
+    occurrences = occurrences[
+        occurrences[ID_COL].isin(with_mask) & labels.notna() & (labels.astype(str).str.strip() != "")
+    ]
+    if max_per_label is not None:
+        occurrences = cap_per_group(occurrences, label_col, max_per_label, seed=seed)
 
-    counts = labelled[label_col].value_counts()
-    keep = counts[counts >= min_per_label].index
-    dropped = int((~labelled[label_col].isin(keep)).sum())
-    if dropped:
-        logger.info("dropped %d occurrence(s) whose label had fewer than %d examples", dropped, min_per_label)
-    labelled = labelled[labelled[label_col].isin(keep)]
-
-    if labelled.empty:
+    counts = occurrences[label_col].value_counts()
+    occurrences = occurrences[occurrences[label_col].isin(counts[counts >= min_per_label].index)]
+    if occurrences.empty:
         logger.warning("no labels have at least %d occurrence(s) -- nothing to train on", min_per_label)
         return pd.DataFrame()
-
-    occurrence_ids = labelled[ID_COL].tolist()
-    if limit is not None:
-        occurrence_ids = occurrence_ids[:limit]
+    logger.info(
+        "%d occurrence(s) across %d label(s) with at least %d each",
+        len(occurrences),
+        occurrences[label_col].nunique(),
+        min_per_label,
+    )
 
     splits = split_ids(
         project_path,
-        occurrence_ids=occurrence_ids,
+        occurrence_ids=occurrences[ID_COL].tolist(),
         fractions=fractions,
         stratify_col=label_col,
         group_col=group_col,
         seed=seed,
         visualize=visualize,
     )
+
+    # Filtered before the export, so dataset.json describes the images on disk.
+    label_of = dict(zip(occurrences[ID_COL], occurrences[label_col]))
+    shared = {label_of[i] for i in splits[TRAIN_SPLIT]} & {label_of[i] for i in splits[VAL_SPLIT]}
+    dropped = occurrences[label_col].nunique() - len(shared)
+    if dropped:
+        logger.warning(
+            "dropping %d label(s) not present in both '%s' and '%s'", dropped, TRAIN_SPLIT, VAL_SPLIT
+        )
+    splits = {name: [i for i in ids if label_of[i] in shared] for name, ids in splits.items()}
 
     manifest = export_training_data(
         project_path,
@@ -112,22 +128,78 @@ def prepare_dataset(
         part=part,
         transforms=transforms,
         reference=reference,
-        masks=True,
-        metadata=columns,
+        class_by=label_col,
+        metadata=[group_col] if group_col else None,
         visualize=visualize,
     )
     if manifest.empty:
         return manifest
 
-    # `label` is this extension's own name for the training target, and what
-    # train() reads; the export carries the occurrence column's own name.
-    manifest = manifest.rename(columns={label_col: "label"})
-    manifest.to_csv(os.path.join(output_dir, "manifest.csv"), index=False)
+    exported = {
+        name: set(manifest.loc[manifest["split"] == name, "class"]) for name in (TRAIN_SPLIT, VAL_SPLIT)
+    }
+    if exported[TRAIN_SPLIT] != exported[VAL_SPLIT]:
+        raise RuntimeError(
+            f"'{TRAIN_SPLIT}' and '{VAL_SPLIT}' hold different labels after export "
+            f"({TRAIN_SPLIT} only: {sorted(exported[TRAIN_SPLIT] - exported[VAL_SPLIT])}, "
+            f"{VAL_SPLIT} only: {sorted(exported[VAL_SPLIT] - exported[TRAIN_SPLIT])}) -- BioEncoder "
+            "would misalign them; see the export log for occurrences that failed"
+        )
 
     logger.info(
-        "prepared %d images across %d labels -> %s", len(manifest), manifest["label"].nunique(), output_dir
+        "prepared %d images across %d labels -> %s", len(manifest), len(exported[TRAIN_SPLIT]), output_dir
     )
     return manifest
+
+
+def register_trained(
+    project_path,
+    name,
+    checkpoint,
+    dataset_dir,
+    backbone,
+    input_size,
+    projection_head=True,
+    normalize=True,
+    **kwargs,
+):
+    """Register a BioEncoder checkpoint with what `embedding.load_registered()` needs to load it.
+
+    These settings are not in the registered model's identity, so register changed ones under a new name.
+
+    Args:
+        project_path: Project to register in.
+        name: Registered model name, e.g. `"bioencoder_odonata_v1"`.
+        checkpoint: The weights file, usually `weights/<run>/first/swa`.
+        dataset_dir: The directory `prepare_dataset()` wrote; its `dataset.json` becomes `training_data`.
+        backbone: As in `load`.
+        input_size: As in `load`.
+        projection_head: As in `load`.
+        normalize: As in `load`.
+        **kwargs: Passed to `records.models.register_model`; `parameters=` is merged with
+            this function's own.
+
+    Returns:
+        The `RegisteredModel`.
+    """
+    parameters = {
+        "backbone": backbone,
+        "input_size": list(input_size),
+        "projection_head": projection_head,
+        "normalize": normalize,
+    }
+    parameters.update(kwargs.pop("parameters", None) or {})
+    return register_model(
+        project_path,
+        name,
+        path=checkpoint,
+        task="embedding",
+        framework="torch",
+        base_model=kwargs.pop("base_model", backbone),
+        training_data=str(dataset_dir),
+        parameters=parameters,
+        **kwargs,
+    )
 
 
 def train(
@@ -143,11 +215,11 @@ def train(
 ):
     """Train an embedding model on a prepared dataset. Not implemented.
 
-    Raises `NotImplementedError`: train with the BioEncoder package, then `load()` its
-    checkpoint. The arguments name what a caller has to decide.
+    Raises `NotImplementedError`: train with the BioEncoder package on what `prepare_dataset()`
+    wrote, then `register_trained()` its checkpoint. The arguments name what a caller has to decide.
 
     Args:
-        manifest: DataFrame from `prepare_dataset()`, with `image_path`, `label` and `split`.
+        manifest: DataFrame from `prepare_dataset()`, with `image_path`, `class` and `split`.
         output_dir: Where to write the checkpoint and log; use a distinct path per run.
         backbone: Pretrained feature extractor to fine-tune; size it to the dataset.
         loss: Metric-learning loss, e.g. triplet, ArcFace, supervised contrastive. Pair-based
@@ -161,11 +233,10 @@ def train(
         seed: Random seed.
     """
     raise NotImplementedError(
-        "BioEncoder training isn't implemented -- prepare_dataset() produces a "
-        "standard image/label/split manifest, so train with the BioEncoder "
-        "package (then load() its checkpoint) or any metric-learning setup of "
-        "your choice (then wrap it in embedding.BioEncoderModel) to use it as "
-        "a metric. See this function's docstring for the decisions to make."
+        "BioEncoder training isn't implemented -- prepare_dataset() writes BioEncoder's own "
+        "<split>/<class>/ layout, so train with the BioEncoder package, then register_trained() "
+        "its checkpoint and embed with embedding.load_registered(), or wrap a network of your "
+        "own in embedding.BioEncoderModel. See this function's docstring for the decisions to make."
     )
 
 
@@ -193,16 +264,16 @@ def load(
         normalize: L2-normalize embeddings before storing.
         mean: Input standardization mean; ImageNet's by default.
         std: Input standardization standard deviation; ImageNet's by default.
-        device: Torch device string; CUDA where available if None.
+        device: Torch device string; CUDA where available if None, resolved on first use.
     """
     import torch
     from bioencoder.core.models import BioEncoderModel as BioEncoderNetwork
 
-    device = resolve_device(device)
     # Building the encoder fetches its ImageNet weights (cached after the
     # first time) before the checkpoint overwrites them.
     network = BioEncoderNetwork(backbone=backbone)
-    state = torch.load(checkpoint, map_location=device)
+    # Onto the CPU: the device is chosen when the model first embeds.
+    state = torch.load(checkpoint, map_location="cpu")
     if isinstance(state, dict) and "model_state_dict" in state:
         state = state["model_state_dict"]
     # strict: BioEncoder's own build_model loads with strict=False, which
@@ -218,7 +289,7 @@ def load(
         device=device,
         mean=mean,
         std=std,
-        head="projection" if projection_head else "features",
+        head=head_label(projection_head),
     )
 
 

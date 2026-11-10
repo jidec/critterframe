@@ -303,8 +303,12 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
     digests, opaque training `parameters`. `RegisteredModel.attach(network)` binds a loaded network to that
     record and forwards `predict`/`embed`/`visualize` to it while answering `identity()` from the registry, so
     retraining into the same filename moves the recipe hash and every mask and metric below it is correctly
-    redone. Name and path are deliberately NOT in `identity()`: a copied project is the same model, and a
-    reused name over different weights is not. **A model class used standalone, outside the registry, answers
+    redone. The path is deliberately NOT in `identity()`, since a copied project is the same model; the name
+    is, beside the fingerprint, because registering one file twice is deliberate and the two records may
+    carry different provenance. The attached network's own preprocessing is NOT in it either: the
+    registered `parameters` (an input size, an embedding head, a normalization) are read back at load and
+    never hashed, so changing one under an existing name and fingerprint leaves every value measured with
+    the old setting counting as current. Register a changed setting under a new name. **A model class used standalone, outside the registry, answers
     the same way** — `SMPSegmenter` and `BioEncoderModel` hash `records.models.fingerprint_file` of their
     checkpoint, not its path, since a path got both halves of that rule backwards. Each caches the digest on
     the instance, because `Recipe.hash` is read many times per run and a checkpoint is hundreds of megabytes,
@@ -312,7 +316,8 @@ deploys to GitHub Pages via `mkdocs gh-deploy` on every push to `main` that touc
     Registering is how a checkpoint gets the rest of its provenance, and a model type that needs construction
     knobs to load again supplies its own wrapper for it (`smp_segmenter.training.register_trained` records
     `encoder_name`/`size` in `parameters`, which `load_registered` reads back rather than trusting whatever
-    the module defaults are by then).
+    the module defaults are by then; `bioencoder.training.register_trained` does the same for `backbone`,
+    `input_size` and `projection_head`).
 13. **An export carries its own identity, twice.** Everything that says what an exported number IS — the
     recipe hash behind it, the run that recorded it, the mask it was measured from, the subset, the filters,
     the calibration under an mm column — is read inside `export_metrics` and then dropped by the long-to-wide
@@ -782,6 +787,36 @@ A render derives nothing and records nothing: no mask, no metric, no run row. It
 only so the folder name identifies what's in it and a rerun is a no-op. Don't add a code path that makes a
 picture into a measurement.
 
+**A collage is a product too, and it never measures.** `render_collage` (`visualization/collage/`) arranges
+many cutouts into one image, and every value that orders, sizes, groups, positions or matches a specimen is
+a stored metric or an occurrence column read through `wide.filtered_wide`, the frame `export_metrics` and
+`ids_passing` start from, so a collage given an export's `filters` shows exactly the exported specimens.
+Ordering by hue needs a colour run first (`mean_color(space="lch")`), not a hue computed inside the
+collage: that would be the picture-into-measurement path read backwards. It is built in swappable layers,
+each a lowercase factory returning a step with a `spec()`, and every module but the driver is pure:
+**arrange** (table to an `Arrangement`: order, groups, scale, target positions, match features; the only
+layer that reads columns), **layout** (arrangement to slots in layout units, one unit a cell; `nested`
+lays groups out by one layout and their members by another), **assign** (slots to items: `sequence`, or
+`match`, an optimal assignment that refuses more than `MAX_MATCH` items because its cost matrix is n²;
+slots sharing a `source` receive one item, which is how a kaleidoscope repeats one), **effects**,
+**decorations** and **compose**. Layouts produce slots and an assignment fills them because a photomosaic,
+a colour wheel and a map all need a joint item-to-slot match that an order can't express. Effects are not
+transforms: a transform decides which pixels make the cutout and sits in the cutout render's recipe, an
+effect (shadow, outline, tint) only styles the pasted copy. Cutouts are `render_segments` output under one
+render name (`cutouts`), so collages sharing a transform chain share one folder; because a render skips a
+file that exists, the driver keeps `collages/<render folder>.json`, the mask derivation each cutout was
+cut from, and re-renders any whose mask has since been replaced. The collage hash covers the cutout
+folder, those derivations, the rounded canvas geometry of every pasted copy, the effects, the drawn
+decorations and the canvas settings. It covers the PLACEMENTS rather than the arrange and layout specs,
+because the placements are the complete answer to what is drawn where: a stored value that reorders
+specimens, a grown subset, or a changed `scale_by` value moves it, and two specs that place everyone alike
+are one collage. The specs, the columns read (with run, recipe hash and unit, through
+`export.manifest_columns`/`manifest_runs`, the export manifest's own builders), the counts (no cutout,
+missing value, unarranged, unassigned) and the `ids_record` go in `<name>_<hash>.collage.json`, and who
+sits where in canvas pixels in `<name>_<hash>.placements.csv`. An item missing a value an arrange step
+reads is left out and counted rather than sorted to an arbitrary end. A collage with nothing placed
+writes nothing.
+
 **The three per-part drivers return `{part: summary}`** — `run_segments`, `run_metrics`, `render_segments` —
 one entry even for a single part, because a total over several parts is the one number that answers nothing
 ("12 rendered, 4 with no mask" doesn't say whether a part is missing everywhere or present everywhere).
@@ -812,7 +847,7 @@ each part, so a `parts=` list is all they need.
   with no target returns None, not zero and not an error: that is normal in a large collection and the caller
   decides whether it matters. A search `region` is fractional so one setting survives a change of camera
   resolution, and is worth setting wherever the rig fixes the target's position. `scale_from_click` and
-  `measure_scale_by_hand` are the by-hand route for a scale object not worth a detector (an irregular ruler,
+  `click_scale` are the by-hand route for a scale object not worth a detector (an irregular ruler,
   a printed bar on a light-trap sheet): one click-through of a scene image that is not in the image store,
   applied to many occurrences. The length is typed at the terminal, not in a second window, since nothing
   else mixes clicking with typing. `make_scale_row` refuses a non-positive px/mm: a failed measurement
@@ -986,13 +1021,20 @@ each part, so a `parts=` list is all they need.
   on a spread specimen, where a head-to-tail axis is lopsided and a wingtip-to-wingtip one is not;
   `axis_strategy="longer"` is for a body already elongate with wings swept back, e.g. Odonata, where that
   premise fails; a near-isotropic mask is flagged `unreliable` under either), `crop` (crop,
-  crop_to_mask, rotate, resize, remove_background). `remove_background` + `crop_to_mask` are the usual
+  crop_to_mask, crop_inside_mask, rotate, resize, remove_background). `remove_background` + `crop_to_mask` are the usual
   framing before a part-specific model: the organism arrives at a consistent size, and with the background
   gone the model can't key off the substrate or have to rediscover the organism's boundary. None of the
   mask-only transforms (`remove_appendages`, `remove_islands`, `erode`, `remove_background`) moves a pixel,
-  so they leave the mapping back to original coordinates untouched.
+  so they leave the mapping back to original coordinates untouched. `crop_inside_mask` frames the largest
+  axis-aligned rectangle holding only mask pixels, for a patch of the organism with no background in it (a
+  texture or colour sample); its info's `mask_fraction` says how much of the mask that rectangle kept.
 - **`segmentation/`** — `groundedsam` (SAM2 with optional Grounding DINO; `detect_bounds=False` uses the
-  point-prompt path for pre-cropped images), `manual` (draw/correct by hand — an alternative segmentation, not
+  point-prompt path for pre-cropped images), `sam3` (SAM3: `sam3()` finds and segments from a text phrase in
+  one model, keeping the best-scoring instance and reporting the runner-up under GroundedSAM2's `n_boxes`/
+  `second_box_*` keys so a two-organism filter carries over; `sam3_points()` uses its tracker head with
+  GroundedSAM2's point geometry, shared as `groundedsam.prompt_points`. `segment(mask_threshold=)` stays a
+  logit and is converted to the probability SAM3 thresholds; no `size`, since SAM3 runs at a fixed 1008 px.
+  The checkpoint is gated on Hugging Face), `manual` (draw/correct by hand — an alternative segmentation, not
   a separate system), `mask_import_export` (`import_masks`/`export_masks`: masks in and out as
   `<occurrence_id>__<part>.png` in original image coordinates, with a `masks.export.json` the importing run
   records as its source), `run_segments` (the `segment()` operation and the `run_segments` driver). Shared steps run once per
@@ -1053,7 +1095,7 @@ each part, so a `parts=` list is all they need.
   labelled members; cells are `visualization.grids.mask_cutout`s framed green or red by label). All
   comparison, nothing persisted. Those grids are drawn from the LABELLED rows only and capped per row, so
   they stay bounded whatever the project's size, and one with nothing to show is not written.
-- **`visualization/`** — five modules that spell out the model, smallest thing first:
+- **`visualization/`** — five modules and a subpackage that spell out the model, smallest thing first:
   - `panels` — one picture of one operation's decision about one occurrence-part. Shared drawing helpers
     (`overlay_mask`, `diff_panel`, `annotate`, `side_by_side`) and the colour conventions they all obey, so
     learning to read one panel is learning to read all of them. Also `save_panel`, `PanelFiles`, and
@@ -1070,6 +1112,8 @@ each part, so a `parts=` list is all they need.
   - `pipeline` — every activity's diagnostics: `open_report`, `Report`/`NullReport` (a bounded grid,
     checkpoints, figures, a sidecar), `resolve_sample`, and `PanelFanout` for a multi-output run's shared steps.
   - `products` — panels materialized per occurrence-part: `render_segments`.
+  - `collage/` — many cutouts arranged into one product image: `render_collage` and its layers (see
+    "Visualization: two kinds" above), reached from a pipeline as `cf.collage.<factory>`.
 
   A Segment's `panel_sink` is a `Report` under any activity, or `panels.PanelFiles` when you build a segment
   yourself and want full-resolution files — the latter is deliberately not reachable through `visualize=`.
@@ -1093,8 +1137,9 @@ each part, so a `parts=` list is all they need.
 - **`extensions/`** — `antenna_lighttraps` (api/ingest/download + `calibrations/scale`, scoped to Antenna's
   `event_id` — the worked example of a project choosing its own calibration scope), `bioencoder`
   (`embedding.py` — `BioEncoderModel`, a `metrics.embedding.EmbeddingModel` that keeps its own
-  `identity_class` so every hash recorded before the machinery moved into core holds; `training.py` —
-  `prepare_dataset()`, a `load()` for BioEncoder-package stage-one checkpoints that loads `strict=True` since
+  `identity_class` so every hash recorded before the machinery moved into core holds, and `load_registered`;
+  `training.py` — `prepare_dataset()`, writing BioEncoder's own `<split>/<class>/` layout,
+  `register_trained()`, a `load()` for BioEncoder-package stage-one checkpoints that loads `strict=True` since
   BioEncoder's own loader silently tolerates a wrong backbone, `load_from_config()` reading the same YAML keys
   `bioencoder_inference` does, and a deliberately unimplemented `train()` — train with the BioEncoder package),
   `gbif_darwincore_inat` (`archive`/`ingest` — the way iNaturalist observations enter a project, since the
@@ -1122,6 +1167,16 @@ each part, so a `parts=` list is all they need.
   so traits stay in pixels. BioEncoder: metric learning and not classification, because the useful output
   is a space where similar organisms sit close, which keeps working for unseen taxa. A checkpoint used
   standalone is identified by its content, cached per object, so build a new model object after retraining.
+  `prepare_dataset` replaces `bioencoder_split_dataset`, which splits at random within each class: grouping
+  by observer (`group_col="recordedBy"` for GBIF) is the leakage guard, since one person's repeat photos of
+  one animal on both sides inflate the validation score. It drops a label missing from train or val from
+  every split, before the export so `dataset.json` describes what was written, and checks the exported
+  classes again afterwards, because BioEncoder reads the two as separate ImageFolders that number classes by
+  their own folder lists, so a missing label shifts every label after it. A label needs `min_per_label`
+  examples to give any positive pairs, and `max_per_label` keeps a few common species from dominating every
+  batch. It refuses a non-empty `output_dir` because the export leaves existing files alone. It reads
+  canonical masks by default, unlike the segmenter: a mask only frames the crop here, and metric learning
+  needs more images than a reference set holds.
 
 ### Conventions to follow when extending
 

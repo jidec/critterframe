@@ -1,5 +1,5 @@
 """
-Step 7 of 9: calibrate each part's filters against the screening labels and
+Step 7 of 10: calibrate each part's filters against the screening labels and
 export one table.
 
 Each part is filtered on its own: an occurrence whose abdomen fails keeps its

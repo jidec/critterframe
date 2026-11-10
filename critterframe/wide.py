@@ -144,9 +144,7 @@ def apply_filters(df, filters):
         df: The frame.
         filters: As `passing` takes them.
     """
-    keep = passing(df, filters)
-    logger.info("filters kept %d of %d occurrences", int(keep.sum()), len(df))
-    return df[keep]
+    return df[passing(df, filters)]
 
 
 def passing(df, filters):
@@ -466,6 +464,8 @@ def filtered_wide(
         hidden = {converted_name(column, df.columns) for column in hidden}
 
     if filters:
+        n_before = len(df)
         df = apply_filters(df, filters)
+        logger.info("filters kept %d of %d occurrences", len(df), n_before)
 
     return FilteredWide(df, long_df, provenance, filter_rows, hidden, metric_columns)

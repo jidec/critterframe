@@ -1,5 +1,5 @@
 """
-Step 4 of 9: segment the head, thorax and abdomen out of every organism
+Step 4 of 10: segment the head, thorax and abdomen out of every organism
 segment, with the segmenters step 3 registered.
 
 The shared steps run once per occurrence and are the transforms the segmenters

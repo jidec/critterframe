@@ -1,0 +1,72 @@
+"""Collages: many specimens arranged into one image, from stored values, in swappable layers."""
+
+from .arrange import (
+    Arrangement,
+    group_by,
+    match_on,
+    path,
+    polar_position,
+    position,
+    project,
+    scale_by,
+    sort_by,
+)
+from .assign import match, sequence
+from .collage import render_collage
+from .decorate import caption, label, scale_bar, swatch
+from .effects import desaturate, outline, shadow, tint
+from .layouts import (
+    beeswarm,
+    dendrogram,
+    exploded,
+    grid,
+    hexgrid,
+    mirrored,
+    mosaic,
+    nested,
+    pack_circles,
+    phyllotaxis,
+    rings,
+    scatter,
+    spiral,
+    stack,
+    within,
+)
+
+__all__ = [
+    "Arrangement",
+    "beeswarm",
+    "caption",
+    "dendrogram",
+    "desaturate",
+    "exploded",
+    "grid",
+    "group_by",
+    "hexgrid",
+    "label",
+    "match",
+    "match_on",
+    "mirrored",
+    "mosaic",
+    "nested",
+    "outline",
+    "pack_circles",
+    "path",
+    "phyllotaxis",
+    "polar_position",
+    "position",
+    "project",
+    "render_collage",
+    "rings",
+    "scale_bar",
+    "scale_by",
+    "scatter",
+    "sequence",
+    "shadow",
+    "sort_by",
+    "spiral",
+    "stack",
+    "swatch",
+    "tint",
+    "within",
+]

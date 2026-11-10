@@ -1,5 +1,5 @@
 """
-Step 3 of 9: train a head, a thorax and an abdomen segmenter on the reference
+Step 3 of 10: train a head, a thorax and an abdomen segmenter on the reference
 masks from step 2, and register each one.
 
 Every reference head mask goes into training, less a list of occurrences with

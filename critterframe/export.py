@@ -138,42 +138,41 @@ def _calibration_record(project_path, resolved):
     }
 
 
-def _export_record(
-    project_path, df, long_df, provenance, selection, path=None, rename=None, part_counts=None
-):
-    """Return the record of what an export is, with its `export_hash`.
+def manifest_columns(provenance, columns, rename=None):
+    """Return what each written column holds, as a manifest records it: `{column: info}`.
 
     Args:
-        project_path: Project exported from.
-        df: The finished export.
-        long_df: The long frame it was built from.
-        provenance: `wide._column_provenance` of that frame, before unit conversion.
-        selection: The arguments that chose its rows and columns.
-        path: Where the export was written, if it was.
-        rename: The `{default name: exported name}` applied to `df`.
-        part_counts: What `part_filters` did to each part.
+        provenance: `wide._column_provenance` of the frame, before unit conversion.
+        columns: The columns written, under their final names.
+        rename: The `{default name: written name}` applied to them.
     """
-    values = long_df[long_df[ID_COL].astype(str).isin(set(df[ID_COL].astype(str)))]
-
     rename = {column: str(name) for column, name in (rename or {}).items()}
     default_of = {name: column for column, name in rename.items()}
-    default_columns = [default_of.get(column, column) for column in df.columns]
-    scale_col = rename.get(scale_calibration.SCALE_COL, scale_calibration.SCALE_COL)
+    default_columns = [default_of.get(column, column) for column in columns]
 
-    columns = {}
+    records = {}
     for column, info in provenance.items():
         final = converted_name(column, default_columns)
         if final not in default_columns:
             continue
         exported = rename.get(final, final)
-        columns[exported] = dict(info, source_unit=info["unit"])
+        records[exported] = dict(info, source_unit=info["unit"])
         if final != column:
-            columns[exported]["unit"] = final[len(column) + 1 :]
+            records[exported]["unit"] = final[len(column) + 1 :]
         # The default name, so a relabelled column still says which
         # run__part__metric column it is.
         if exported != final:
-            columns[exported]["column"] = final
+            records[exported]["column"] = final
+    return records
 
+
+def manifest_runs(project_path, values):
+    """Return the run behind each stored value used, as a manifest records them.
+
+    Args:
+        project_path: Project read from.
+        values: The long rows used.
+    """
     stored = run_records.load_runs(project_path)
     by_id = {row["run_id"]: row for row in stored.to_dict("records")} if not stored.empty else {}
     per_run = values.groupby("run_id").size() if not values.empty else pd.Series(dtype="int64")
@@ -194,6 +193,30 @@ def _export_record(
                 "n_values": int(per_run[run_id]),
             }
         )
+    return runs
+
+
+def _export_record(
+    project_path, df, long_df, provenance, selection, path=None, rename=None, part_counts=None
+):
+    """Return the record of what an export is, with its `export_hash`.
+
+    Args:
+        project_path: Project exported from.
+        df: The finished export.
+        long_df: The long frame it was built from.
+        provenance: `wide._column_provenance` of that frame, before unit conversion.
+        selection: The arguments that chose its rows and columns.
+        path: Where the export was written, if it was.
+        rename: The `{default name: exported name}` applied to `df`.
+        part_counts: What `part_filters` did to each part.
+    """
+    values = long_df[long_df[ID_COL].astype(str).isin(set(df[ID_COL].astype(str)))]
+
+    rename = {column: str(name) for column, name in (rename or {}).items()}
+    scale_col = rename.get(scale_calibration.SCALE_COL, scale_calibration.SCALE_COL)
+    columns = manifest_columns(provenance, df.columns, rename=rename)
+    runs = manifest_runs(project_path, values)
 
     source_hashes = values["source_mask_hash"] if not values.empty else pd.Series(dtype="object")
     record = {

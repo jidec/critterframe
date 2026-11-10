@@ -13,7 +13,7 @@ from ..selection.subsets import select_ids
 from ..records.occurrences import ID_COL
 from ..visualization import figures
 from ..visualization import pipeline as pipeline_visualization
-from ..wide import apply_filters, column_name, metrics_wide
+from ..wide import column_name, metrics_wide, passing
 from .filter_grids import draw_filter_grids
 
 logger = logging.getLogger(__name__)
@@ -327,7 +327,7 @@ def _calibrate_threshold(
     """Return the `(comparator, threshold)` rule for one continuous metric, or None, and its sweep."""
     sweep = sweep_thresholds(df, metric_col, flag_when, label_col, bad_labels=bad_labels)
     if not sweep.empty:
-        logger.info("%s threshold sweep (flag when %s):\n%s", label, flag_when, sweep.to_string(index=False))
+        logger.debug("%s threshold sweep (flag when %s):\n%s", label, flag_when, sweep.to_string(index=False))
 
     rule, why, choice = _choose_rule(sweep, flag_when, metric_name, max_fpr, min_precision, defaults)
     marks = None
@@ -396,7 +396,7 @@ def _calibrate_category(
     )
     if sweep.empty:
         return None, sweep
-    logger.info(
+    logger.debug(
         "%s by category, worst first (droppable with at least %d labels):\n%s",
         label,
         min_labelled,
@@ -916,10 +916,7 @@ def _score_filters(labelled, filters, label_col, bad_labels):
     """
     ids = labelled[ID_COL].astype(str)
     is_bad = labelled[label_col].isin(bad_labels).to_numpy()
-    passes = {
-        column: labelled.index.isin(apply_filters(labelled, {column: rule}).index)
-        for column, rule in filters.items()
-    }
+    passes = {column: passing(labelled, {column: rule}).to_numpy() for column, rule in filters.items()}
     kept = np.ones(len(labelled), bool)
     stages = {"labelled": len(labelled)}
     for column, passed in passes.items():

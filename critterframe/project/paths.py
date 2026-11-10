@@ -24,6 +24,8 @@ VISUALIZATIONS_DIR = "visualizations"
 PIPELINE_DIR = "pipeline"
 REPORT_SIDECAR_SUFFIX = ".report.json"
 PRODUCTS_DIR = "products"
+COLLAGES_DIR = "collages"
+COLLAGE_SIDECAR_SUFFIX = ".collage.json"
 MODELS_DIR = "models"
 MODELS_REGISTRY_FILE = "registry.json"
 EXPORTS_DIR = "exports"
@@ -271,6 +273,23 @@ def products_dir(project_path, name=""):
         name: A render's folder name; `""` for the root.
     """
     return visualizations_dir(project_path, PRODUCTS_DIR) / name
+
+
+def collages_dir(project_path):
+    """Return the directory of rendered collages."""
+    return products_dir(project_path, COLLAGES_DIR)
+
+
+def collage_path(project_path, name, collage_hash, suffix=".png"):
+    """Return one collage's file: `<name>_<hash><suffix>`.
+
+    Args:
+        project_path: The project.
+        name: The collage's name.
+        collage_hash: Its hash.
+        suffix: `.png` or another image extension, `COLLAGE_SIDECAR_SUFFIX`, or `.placements.csv`.
+    """
+    return collages_dir(project_path) / f"{name}_{collage_hash}{suffix}"
 
 
 def product_filename(occurrence_id, part=None, extension="png", label=None):

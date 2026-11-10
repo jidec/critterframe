@@ -46,12 +46,13 @@ critterframe/
         manual.py          draw/correct a mask by hand -- an alternative segmentation, not a separate system
         mask_import_export.py  import_masks()/export_masks(): masks in and out as <occurrence_id>__<part>.png
         run_segments.py       segment() operation + run_segments(), including sharded/parallel runs
+        sam3.py            SAM3, prompted by text (detection and segmentation in one model) or by points
     transforms/
         orient.py            PCA orientation, axis chosen by asymmetry rather than length
         appendages.py    remove legs/antennae from a mask
         islands.py          remove_islands: drop disconnected fragments, keeping the organism
         erode.py             erode: pull a mask in from its edges, by a share of its own thickness
-        crop.py               crop, crop_to_mask, rotate, resize, remove_background
+        crop.py               crop, crop_to_mask, crop_inside_mask, rotate, resize, remove_background
     metrics/
         base/                 what metrics are built from, not metrics themselves
             pixels.py        masked_pixels: the organism's pixels, the one rule every colour metric shares
@@ -86,6 +87,14 @@ critterframe/
         figures.py          whole-population charts: line_chart, bar_chart, histogram, scatter, funnel
         pipeline.py        every activity's diagnostics: open_report, Report, resolve_sample
         products.py       assets for downstream use: render_segments, one file per occurrence-part
+        collage/            many specimens arranged into one image: render_collage
+            arrange.py        stored values into an order, groups, sizes, positions: sort_by, group_by, scale_by, project, path
+            layouts.py        an arrangement into slots: grid, spiral, rings, phyllotaxis, scatter, mosaic, within, nested, dendrogram
+            assign.py         which item goes in which slot: sequence, match
+            effects.py        how a pasted cutout looks: shadow, outline, tint, desaturate
+            decorate.py       what is drawn besides specimens: label, swatch, scale_bar, caption
+            compose.py        placed cutouts and decorations onto one canvas, with a blend mode
+            collage.py        the driver: values, cutouts, hash, image, sidecar, placements
     training/
         splits.py            split_ids(): grouped and stratified, to avoid leakage
         datasets.py       export_training_data(): images, masks, class folders, a manifest
@@ -98,7 +107,7 @@ critterframe/
                 scale.py            scale scoped per trap night (event_id), not per occurrence
         bioencoder/
             embedding.py      BioEncoderModel (an EmbeddingModel) + load_registered()
-            training.py         prepare_dataset(), load(), load_from_config(); train() deliberately unfinished
+            training.py         prepare_dataset(), register_trained(), load(), load_from_config(); train() deliberately unfinished
         gbif_darwincore_inat/
             archive.py          read a GBIF Darwin Core Archive, zipped or extracted
             ingest.py             one photo per occurrence -> ingest_occurrences(); iNat photo sizes, prioritize_inat
